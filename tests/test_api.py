@@ -54,5 +54,7 @@ def test_platform_audit_baseline_is_present() -> None:
     findings = run_platform_audit()
     assert len(findings) == 4
     assert any(f.control_id == "AI-009" for f in findings)
-    assert all(f.severity in (Severity.low, Severity.medium, Severity.high, Severity.critical) for f in findings)
-
+    assert all(
+        f.severity in (Severity.low, Severity.medium, Severity.high, Severity.critical)
+        for f in findings
+    )

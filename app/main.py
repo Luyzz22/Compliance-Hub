@@ -54,7 +54,11 @@ class DocumentIntakeResponse(BaseModel):
 
 @app.get("/api/v1/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "product": "ComplianceHub",
+        "region": "DACH",
+    }
 
 
 @app.post("/api/v1/documents/intake", response_model=DocumentIntakeResponse)

@@ -1,0 +1,266 @@
+:root {
+  color-scheme: dark;
+  --bg: #04070f;
+  --panel: rgba(18, 25, 40, 0.78);
+  --line: rgba(124, 163, 255, 0.28);
+  --text: #edf2ff;
+  --muted: #a8b7d8;
+  --accent: #71a8ff;
+  --accent-2: #3ad7ff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+    sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 80% -20%, rgba(56, 112, 255, 0.35), transparent 40%),
+    radial-gradient(circle at -10% 20%, rgba(58, 215, 255, 0.15), transparent 35%),
+    var(--bg);
+}
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section {
+  padding: 40px 0;
+}
+
+.section-stack {
+  padding-top: 120px;
+  padding-bottom: 80px;
+  display: grid;
+  gap: 28px;
+}
+
+/* Topbar */
+
+.topbar {
+  position: fixed;
+  inset: 12px 16px auto 16px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 14px;
+}
+
+.glass {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+}
+
+.brand {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+nav {
+  display: flex;
+  gap: 18px;
+}
+
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+nav a.active,
+nav a:hover {
+  color: #ffffff;
+}
+
+/* Hero */
+
+.hero {
+  padding-top: 160px;
+  padding-bottom: 56px;
+}
+
+.kicker {
+  color: var(--accent-2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: clamp(2rem, 6vw, 4.3rem);
+  line-height: 1.06;
+  margin: 8px 0 14px;
+  max-width: 980px;
+}
+
+h1 span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.52em;
+  font-weight: 520;
+  margin-top: 10px;
+}
+
+h2 {
+  font-size: 1.9rem;
+  margin-bottom: 12px;
+}
+
+.lead {
+  color: var(--muted);
+  max-width: 760px;
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+.cta-row {
+  margin-top: 22px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  text-decoration: none;
+  padding: 10px 15px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #7b8cff);
+  color: #07101f;
+}
+
+.btn-ghost {
+  border-color: var(--line);
+  color: var(--text);
+}
+
+/* Cards & layout */
+
+.cards3,
+.cards2 {
+  display: grid;
+  gap: 16px;
+}
+
+.cards3 {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.cards2 {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.card {
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.card h3 {
+  margin-top: 0;
+}
+
+.card p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* Split section */
+
+.split {
+  padding: 34px 0 100px;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 24px;
+}
+
+.clean {
+  margin: 0;
+  padding-left: 18px;
+  color: #d7e3ff;
+  line-height: 1.8;
+}
+
+/* Metrics */
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.metric {
+  border-radius: 14px;
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.metric strong {
+  font-size: 1.45rem;
+}
+
+.metric span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Pricing */
+
+.tier .price {
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin: 8px 0 12px;
+}
+
+.tier .price span {
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.featured {
+  outline: 1px solid var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(113, 168, 255, 0.2),
+    0 8px 30px rgba(113, 168, 255, 0.15);
+}
+
+/* Responsive */
+
+@media (max-width: 900px) {
+  nav {
+    display: none;
+  }
+
+  .split {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    inset: 8px 8px auto 8px;
+  }
+}
+

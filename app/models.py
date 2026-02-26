@@ -1,19 +1,25 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import datetime
-from enum import StrEnum
+from enum import Enum
 
 
-class DocumentType(StrEnum):
+class DocumentType(str, Enum):
     invoice = "invoice"
     contract = "contract"
 
 
-class EInvoiceFormat(StrEnum):
+class EInvoiceFormat(str, Enum):
     xrechnung = "xrechnung"
     zugferd = "zugferd"
     unknown = "unknown"
+
+
+class Severity(str, Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
 
 
 @dataclass(slots=True)
@@ -33,8 +39,19 @@ class DocumentIngestRequest:
 class ComplianceAction:
     action: str
     module: str
-    severity: str
+    severity: Severity
     rationale: str
+
+
+@dataclass(slots=True)
+class TenantComplianceProfile:
+    tenant_id: str
+    data_residency_region: str
+    requires_human_approval: bool
+    accepted_invoice_formats: tuple[EInvoiceFormat, ...] = (
+        EInvoiceFormat.xrechnung,
+        EInvoiceFormat.zugferd,
+    )
 
 
 @dataclass(slots=True)
@@ -52,3 +69,12 @@ class ComplianceScoreResponse:
     score: int
     risk_level: str
     recommendations: list[str]
+
+
+@dataclass(slots=True)
+class PlatformAuditFinding:
+    control_id: str
+    domain: str
+    status: str
+    severity: Severity
+    recommendation: str
