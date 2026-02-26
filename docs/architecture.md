@@ -1,26 +1,33 @@
-# ComplianceHub Architektur
+# Architecture Blueprint – Enterprise SaaS
 
-## Zielbild
-ComplianceHub stellt einen offline-faehigen Core bereit und erweitert ihn optional um eine API-Schicht.
-Der Fokus liegt auf revisionssicherer Dokumentenaufnahme, Audit-Trails und klaren Governance-Hooks.
+## 1. Product Topology
 
-## Komponenten
-- Core Services: Regel-Engine, Audit-Hashing, Risiko-Scoring
-- API Layer (optional): FastAPI-Endpunkte fuer Health und Dokumentenaufnahme
-- Data Stores (geplant): WORM-Archiv, Audit-Log, Tenant-Config
-- Integrationen (geplant): ERP, E-Rechnung, Datenraum
+1. Document Intake Layer  
+   Input: XRechnung, ZUGFeRD, Vertrags‑PDFs  
+   Capability: Format‑Erkennung, EN‑16931‑Validierung, Metadaten‑Extraktion.
 
-## Datenfluss (MVP)
-1. Dokument wird mit Metadaten aufgenommen.
-2. Core bewertet Anforderungen (DSGVO, GoBD, E-Rechnung).
-3. Aktionen werden abgeleitet und protokolliert.
-4. Audit-Hash wird fuer unveraenderbare Nachweise gespeichert.
+2. Compliance Orchestration Layer  
+   Rule‑ und AI‑Entscheidungen für DSGVO, GoBD und E‑Rechnung.  
+   Human‑in‑the‑Loop‑Approval‑Queue für personenbezogene Daten.
 
-## Sicherheit und Compliance
-- Offline-faehiger Kern ohne Cloud-Abhaengigkeit.
-- Hash-basierte Nachweisfuehrung fuer Revisionssicherheit.
-- Governance-Hooks fuer Risiko- und Freigabeprozesse.
+3. Audit & Trust Layer  
+   Hash‑basierter, unveränderbarer Event‑Log.  
+   Zeitgestempelte Evidence‑Pakete für Betriebsprüfungen.
 
-## Deployment
-- Lokale Installationen oder private Cloud.
-- API als optionales Add-on via `.[api]`.
+4. Integration Layer  
+   DATEV‑Export, ERP/CRM‑Connectoren, Webhooks und n8n‑Flows.
+
+## 2. Reference Runtime (MVP)
+
+- API: FastAPI unter `app.main:app`.
+- Rule Engine: Python‑Service `app.services.compliance_engine`.
+- UI: Statisches Dashboard in `app/static`.
+- Persistence: In‑Memory für MVP, Ziel: PostgreSQL + WORM‑Archiv.
+
+## 3. Enterprise-SaaS-Prinzipien
+
+- Mandantenfähiges Design (Tenant ID in allen Kernobjekten).
+- Immutable Audit Trails mit SHA‑256‑Hash.
+- Region‑Pinning für DACH‑Mandanten (Frankfurt‑Region).
+- Human‑Approval‑Gates bei sensiblen Verarbeitungen.
+
