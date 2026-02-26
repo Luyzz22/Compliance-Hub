@@ -77,6 +77,21 @@ ruff check .
 - `tests/`: Unit- und API-Tests (offline-fähig)
 - `docs/`: Architektur, Compliance-Mapping, Board Memo
 
+## Enterprise-Ready Prinzipien
+
+- Security by Design: minimale Angriffsfläche, optionale API, klare Trust-Boundaries.
+- Auditability: deterministische Aktionen, Audit-Hash und revisionssichere Archiv-Hooks.
+- Compliance Hooks: DSGVO-, GoBD- und EU-AI-Act-Governance als strukturierte Aktionen.
+- Betriebsreife: reproduzierbare Builds, CI für Lint + Tests, offline-fähige Kernlogik.
+- Integrationsfähigkeit: ERP/Archiv/Workflow über klar definierte Schnittstellen (geplant).
+
+## Betrieb & Governance (MVP)
+
+- Deployment: On-Prem oder Private Cloud, API optional via `.[api]`.
+- Observability: Logging und Audit-Log sind Pflichtpfade (Erweiterung geplant).
+- Change Control: Regeln versionieren, Freigaben dokumentieren, Audit-Trails sichern.
+- Data Residency: Tenant-Daten verbleiben in der Zielumgebung.
+
 ## Architektur-Dokumente
 
 - `docs/architecture.md`
