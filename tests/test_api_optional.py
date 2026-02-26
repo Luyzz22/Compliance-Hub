@@ -1,11 +1,12 @@
 import pytest
 
 try:
+    import httpx  # noqa: F401
     from fastapi.testclient import TestClient
 
     from app.main import app
 except ModuleNotFoundError:
-    pytest.skip("fastapi not installed", allow_module_level=True)
+    pytest.skip("fastapi/httpx not installed", allow_module_level=True)
 
 
 client = TestClient(app)
