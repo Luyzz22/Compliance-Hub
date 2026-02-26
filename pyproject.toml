@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compliancehub"
+version = "0.1.0"
+description = "Enterprise-SaaS-Prototyp fuer E-Rechnung, DSGVO und GoBD"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+authors = [{name = "ComplianceHub"}]
+keywords = ["compliance", "gobd", "dsgvo", "einvoice"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: Other/Proprietary License",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+api = [
+  "fastapi>=0.110.0",
+  "uvicorn>=0.24.0",
+]
+
+dev = [
+  "pytest>=8.0.0",
+  "ruff>=0.3.0",
+]
+
+[tool.setuptools]
+packages = ["app", "app.services"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
