@@ -7,7 +7,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-
 DEFAULT_DB_URL = "sqlite+pysqlite:///./compliancehub.db"
 
 

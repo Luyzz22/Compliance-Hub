@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, EmailStr, Field
@@ -54,5 +54,5 @@ class AISystem(BaseModel):
     gdpr_dpia_required: bool
     owner_email: EmailStr
     status: AISystemStatus = AISystemStatus.draft
-    created_at_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))

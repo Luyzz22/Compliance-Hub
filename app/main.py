@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI
@@ -113,7 +113,7 @@ def intake(payload: DocumentIntakeRequest) -> DocumentIntakeResponse:
     return DocumentIntakeResponse(
         document_id=payload.document_id,
         accepted=True,
-        timestamp_utc=datetime.now(timezone.utc),
+        timestamp_utc=datetime.now(UTC),
         actions=[ComplianceActionModel.from_domain(action) for action in actions],
         audit_hash=audit_hash,
     )
