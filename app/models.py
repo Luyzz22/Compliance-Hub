@@ -1,21 +1,22 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 
-class DocumentType(str, Enum):
+class DocumentType(StrEnum):
     invoice = "invoice"
     contract = "contract"
 
 
-class EInvoiceFormat(str, Enum):
+class EInvoiceFormat(StrEnum):
     xrechnung = "xrechnung"
     zugferd = "zugferd"
     unknown = "unknown"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     low = "low"
     medium = "medium"
     high = "high"
