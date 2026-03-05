@@ -1,19 +1,34 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import json
+from datetime import datetime, timezone
+from typing import Annotated, Any
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
+from app.ai_system_models import AISystem, AISystemCreate
+from app.audit_models import AuditLog
+from app.db import engine, get_session
 from app.models import (
     ComplianceAction,
     DocumentIngestRequest,
     DocumentType,
     EInvoiceFormat,
 )
+from app.models_db import Base
+from app.repositories.ai_systems import AISystemRepository
+from app.repositories.audit_logs import AuditLogRepository
+from app.security import get_api_key_and_tenant
 from app.services.compliance_engine import build_audit_hash, derive_actions
 
 app = FastAPI(title="ComplianceHub API", version="0.1.0")
+
+
+@app.on_event("startup")
+def create_database_schema() -> None:
+    Base.metadata.create_all(bind=engine)
 
 
 class DocumentIntakeRequest(BaseModel):
@@ -52,6 +67,23 @@ class DocumentIntakeResponse(BaseModel):
     audit_hash: str
 
 
+def get_ai_system_repository(session: Annotated[Session, Depends(get_session)]) -> AISystemRepository:
+    return AISystemRepository(session)
+
+
+def get_audit_log_repository(session: Annotated[Session, Depends(get_session)]) -> AuditLogRepository:
+    return AuditLogRepository(session)
+
+
+def _model_to_json(model: BaseModel) -> str:
+    payload: dict[str, Any]
+    if hasattr(model, "model_dump"):
+        payload = model.model_dump(mode="json")  # type: ignore[assignment]
+    else:
+        payload = model.dict()  # type: ignore[assignment]
+    return json.dumps(payload)
+
+
 @app.get("/api/v1/health")
 def health() -> dict[str, str]:
     return {
@@ -81,7 +113,44 @@ def intake(payload: DocumentIntakeRequest) -> DocumentIntakeResponse:
     return DocumentIntakeResponse(
         document_id=payload.document_id,
         accepted=True,
-        timestamp_utc=datetime.now(UTC),
+        timestamp_utc=datetime.now(timezone.utc),
         actions=[ComplianceActionModel.from_domain(action) for action in actions],
         audit_hash=audit_hash,
     )
+
+
+@app.get("/api/v1/ai-systems", response_model=list[AISystem])
+def list_ai_systems(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> list[AISystem]:
+    return repository.list_for_tenant(tenant_id)
+
+
+@app.post("/api/v1/ai-systems", response_model=AISystem)
+def create_ai_system(
+    payload: AISystemCreate,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> AISystem:
+    created = repository.create(tenant_id, payload)
+    # TODO: replace synthetic actor with authenticated user id once JWT auth is introduced.
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="system",
+        action="create_ai_system",
+        entity_type="AISystem",
+        entity_id=created.id,
+        before=None,
+        after=_model_to_json(created),
+    )
+    return created
+
+
+@app.get("/api/v1/audit-logs", response_model=list[AuditLog])
+def list_audit_logs(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> list[AuditLog]:
+    return audit_repo.list_for_tenant(tenant_id=tenant_id)
