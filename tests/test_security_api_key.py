@@ -79,24 +79,22 @@ def test_invalid_api_key_returns_401(
     assert response.status_code == 401
 
 
-def test_valid_api_key_and_tenant_allows_access(
-    client_and_repository: tuple[TestClient, AISystemRepository],
-) -> None:
-    client, repository = client_and_repository
-
-    repository.create(
-        "tenant-a",
-        AISystemCreate(
-            id="ai-1",
-            name="Fraud Detection",
-            description="Flags suspicious transactions",
-            business_unit="Risk",
-            risk_level=AISystemRiskLevel.high,
-            ai_act_category=AIActCategory.high_risk,
-            gdpr_dpia_required=True,
-            owner_email="owner@example.com",
-        ),
+def test_valid_api_key_and_tenant_allows_access(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/v1/ai-systems",
+        headers={"x-api-key": "test-key-1", "x-tenant-id": "tenant-a"},
+        json={
+            "id": "ai-1",
+            "name": "Fraud Detection",
+            "description": "Flags suspicious transactions",
+            "business_unit": "Risk",
+            "risk_level": "high",
+            "ai_act_category": "high_risk",
+            "gdpr_dpia_required": True,
+            "owner_email": "owner@example.com",
+        },
     )
+    assert create_response.status_code == 200
 
     response = client.get(
         "/api/v1/ai-systems",

@@ -67,11 +67,15 @@ class DocumentIntakeResponse(BaseModel):
     audit_hash: str
 
 
-def get_ai_system_repository(session: Annotated[Session, Depends(get_session)]) -> AISystemRepository:
+def get_ai_system_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> AISystemRepository:
     return AISystemRepository(session)
 
 
-def get_audit_log_repository(session: Annotated[Session, Depends(get_session)]) -> AuditLogRepository:
+def get_audit_log_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> AuditLogRepository:
     return AuditLogRepository(session)
 
 

@@ -70,7 +70,12 @@ class AISystemRepository:
         self._session.refresh(row)
         return self._to_domain(row)
 
-    def update_status(self, tenant_id: str, aisystem_id: str, new_status: AISystemStatus) -> AISystem:
+    def update_status(
+        self,
+        tenant_id: str,
+        aisystem_id: str,
+        new_status: AISystemStatus,
+    ) -> AISystem:
         stmt = select(AISystemTable).where(
             AISystemTable.tenant_id == tenant_id,
             AISystemTable.id == aisystem_id,
