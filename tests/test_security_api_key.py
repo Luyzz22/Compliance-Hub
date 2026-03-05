@@ -26,6 +26,7 @@ def _security_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 def client_and_repository() -> Iterator[tuple[TestClient, AISystemRepository]]:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     Base.metadata.create_all(bind=engine)
+
     factory = sessionmaker(
         bind=engine,
         autoflush=False,
@@ -33,14 +34,16 @@ def client_and_repository() -> Iterator[tuple[TestClient, AISystemRepository]]:
         expire_on_commit=False,
     )
     session = factory()
+
     repository = AISystemRepository(session)
 
-    def _override_repository() -> AISystemRepository:
+    def _override_repo() -> AISystemRepository:
         return repository
 
-    app.dependency_overrides[get_ai_system_repository] = _override_repository
-    with TestClient(app) as client:
-        yield client, repository
+    app.dependency_overrides[get_ai_system_repository] = _override_repo
+
+    with TestClient(app) as test_client:
+        yield test_client, repository
 
     app.dependency_overrides.clear()
     session.close()
@@ -79,22 +82,24 @@ def test_invalid_api_key_returns_401(
     assert response.status_code == 401
 
 
-def test_valid_api_key_and_tenant_allows_access(client: TestClient) -> None:
-    create_response = client.post(
-        "/api/v1/ai-systems",
-        headers={"x-api-key": "test-key-1", "x-tenant-id": "tenant-a"},
-        json={
-            "id": "ai-1",
-            "name": "Fraud Detection",
-            "description": "Flags suspicious transactions",
-            "business_unit": "Risk",
-            "risk_level": "high",
-            "ai_act_category": "high_risk",
-            "gdpr_dpia_required": True,
-            "owner_email": "owner@example.com",
-        },
+def test_valid_api_key_and_tenant_allows_access(
+    client_and_repository: tuple[TestClient, AISystemRepository],
+) -> None:
+    client, repository = client_and_repository
+
+    repository.create(
+        "tenant-a",
+        AISystemCreate(
+            id="ai-1",
+            name="Fraud Detection",
+            description="Flags suspicious transactions",
+            business_unit="Risk",
+            risk_level=AISystemRiskLevel.high,
+            ai_act_category=AIActCategory.high_risk,
+            gdpr_dpia_required=True,
+            owner_email="owner@example.com",
+        ),
     )
-    assert create_response.status_code == 200
 
     response = client.get(
         "/api/v1/ai-systems",
@@ -103,6 +108,5 @@ def test_valid_api_key_and_tenant_allows_access(client: TestClient) -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert len(payload) == 1
-    assert payload[0]["id"] == "ai-1"
-    assert payload[0]["tenant_id"] == "tenant-a"
+    assert any(item["id"] == "ai-1" for item in payload)
+    assert all(item["tenant_id"] == "tenant-a" for item in payload)

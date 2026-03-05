@@ -1,10 +1,14 @@
-from __future__ import annotations
-
 from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
+from app.main import app, get_ai_system_repository, get_audit_log_repository
+from app.models_db import Base
+from app.repositories.ai_systems import AISystemRepository
+from app.repositories.audit_logs import AuditLogRepository
 from app.security import get_settings
 
 
@@ -16,6 +20,36 @@ def _security_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     get_settings.cache_clear()
 
 
+@pytest.fixture
+def client() -> TestClient:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(bind=engine)
+
+    factory = sessionmaker(
+        bind=engine,
+        autoflush=False,
+        autocommit=False,
+        expire_on_commit=False,
+    )
+    session = factory()
+
+    ai_repo = AISystemRepository(session)
+    audit_repo = AuditLogRepository(session)
+
+    def _override_ai_repo() -> AISystemRepository:
+        return ai_repo
+
+    def _override_audit_repo() -> AuditLogRepository:
+        return audit_repo
+
+    app.dependency_overrides[get_audit_log_repository] = _override_audit_repo
+    app.dependency_overrides[get_ai_system_repository] = _override_ai_repo
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+    session.close()
 
 
 def test_audit_log_created_when_ai_system_created(client: TestClient) -> None:
