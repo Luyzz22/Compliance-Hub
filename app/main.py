@@ -168,3 +168,25 @@ def list_audit_logs(
 ) -> list[AuditLog]:
     return audit_repo.list_for_tenant(tenant_id=tenant_id)
 
+def _enterprise_status_payload() -> dict[str, object]:
+    return {
+        "status": "ok",
+        "product": "ComplianceHub",
+        "region": "DACH",
+        "version": "0.1.0",
+        "environment": "dev",
+        "features_enabled": [
+            "document_intake",
+            "ai_system_registry",
+            "audit_logging",
+        ],
+        "compliance_profiles": [
+            "EU_AI_ACT_FOUNDATION",
+            "GDPR_MINIMAL",
+        ],
+    }
+
+
+@app.get("/api/v1/enterprise/status")
+def enterprise_status() -> dict[str, object]:
+    return _enterprise_status_payload()
