@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -45,7 +45,7 @@ class AuditLogRepository:
             entity_id=entity_id,
             before=before,
             after=after,
-            created_at_utc=datetime.now(UTC),
+            created_at_utc=datetime.utcnow(),
         )
         self._session.add(row)
         self._session.commit()
