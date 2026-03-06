@@ -88,13 +88,22 @@ def _model_to_json(model: BaseModel) -> str:
     return json.dumps(payload)
 
 
-@app.get("/api/v1/health")
-def health() -> dict[str, str]:
+def _health_payload() -> dict[str, str]:
     return {
         "status": "ok",
         "product": "ComplianceHub",
         "region": "DACH",
     }
+
+
+@app.get("/api/v1/health")
+def health_v1() -> dict[str, str]:
+    return _health_payload()
+
+
+@app.get("/health")
+def health_root() -> dict[str, str]:
+    return _health_payload()
 
 
 @app.post("/api/v1/documents/intake", response_model=DocumentIntakeResponse)
@@ -158,3 +167,4 @@ def list_audit_logs(
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> list[AuditLog]:
     return audit_repo.list_for_tenant(tenant_id=tenant_id)
+
