@@ -33,7 +33,7 @@ class AISystemTable(Base):
         Enum(AIActCategory, name="ai_act_category", native_enum=False)
     )
     gdpr_dpia_required: Mapped[bool] = mapped_column(Boolean)
-    owner_email: Mapped[str] = mapped_column(String(320))
+    owner_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
     criticality: Mapped[AISystemCriticality] = mapped_column(
         Enum(AISystemCriticality, name="aisystem_criticality", native_enum=False),
         nullable=False,
@@ -69,4 +69,37 @@ class AuditLogTable(Base):
     after: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
+
+class PolicyTable(Base):
+    __tablename__ = "policies"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class RuleTable(Base):
+    __tablename__ = "rules"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    policy_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    condition_type: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
+class ViolationTable(Base):
+    __tablename__ = "violations"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    ai_system_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    rule_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
