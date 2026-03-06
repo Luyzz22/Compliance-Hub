@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.ai_system_models import AISystem, AISystemCreate, AISystemStatus
+from app.ai_system_models import AISystem, AISystemComplianceReport, AISystemCreate, AISystemStatus
 from app.audit_models import AuditLog
 from app.db import engine, get_session
 from app.models import (
@@ -226,3 +226,12 @@ def _enterprise_status_payload() -> dict[str, object]:
 @app.get("/api/v1/enterprise/status")
 def enterprise_status() -> dict[str, object]:
     return _enterprise_status_payload()
+
+@app.get("/api/v1/compliance/reports/ai-systems", response_model=AISystemComplianceReport)
+def get_aisystem_compliance_report(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> AISystemComplianceReport:
+    summary = repository.compliance_summary_for_tenant(tenant_id)
+    return AISystemComplianceReport(**summary)
+
