@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
+from datetime import UTC, datetime
 
 from app.models import (
     ComplianceAction,
@@ -27,7 +27,7 @@ def build_audit_hash(payload: DocumentIngestRequest) -> str:
         f"{payload.tenant_id}|{payload.document_id}|{payload.document_type.value}|"
         f"{payload.supplier_name}|{payload.supplier_country}|{payload.amount_eur}|"
         f"{payload.e_invoice_format.value}|{payload.xml_valid_en16931}|"
-        f"{payload.contains_personal_data}|{datetime.now(timezone.utc).isoformat()}"
+        f"{payload.contains_personal_data}|{datetime.now(UTC).isoformat()}"
     )
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 

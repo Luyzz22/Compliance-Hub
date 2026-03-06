@@ -76,7 +76,7 @@ def test_audit_logs_are_tenant_isolated(client: TestClient) -> None:
         "/api/v1/ai-systems",
         headers={"x-api-key": "test-key-1", "x-tenant-id": "tenant-a"},
         json={
-            "id": "ai-a-1",
+            "id": "ai-a-tenant-isolation-1",
             "name": "Model A",
             "description": "A",
             "business_unit": "Risk",
@@ -90,7 +90,7 @@ def test_audit_logs_are_tenant_isolated(client: TestClient) -> None:
         "/api/v1/ai-systems",
         headers={"x-api-key": "test-key-1", "x-tenant-id": "tenant-b"},
         json={
-            "id": "ai-b-1",
+            "id": "ai-b-tenant-isolation-1",
             "name": "Model B",
             "description": "B",
             "business_unit": "Finance",

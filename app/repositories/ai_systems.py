@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -50,7 +50,7 @@ class AISystemRepository:
         return [self._to_domain(row) for row in rows]
 
     def create(self, tenant_id: str, payload: AISystemCreate) -> AISystem:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         row = AISystemTable(
             id=payload.id,
             tenant_id=tenant_id,
@@ -70,14 +70,19 @@ class AISystemRepository:
         self._session.refresh(row)
         return self._to_domain(row)
 
-    def update_status(self, tenant_id: str, aisystem_id: str, new_status: AISystemStatus) -> AISystem:
+    def update_status(
+        self,
+        tenant_id: str,
+        aisystem_id: str,
+        new_status: AISystemStatus,
+    ) -> AISystem:
         stmt = select(AISystemTable).where(
             AISystemTable.tenant_id == tenant_id,
             AISystemTable.id == aisystem_id,
         )
         row = self._session.execute(stmt).scalar_one()
         row.status = new_status
-        row.updated_at_utc = datetime.now(timezone.utc)
+        row.updated_at_utc = datetime.now(UTC)
         self._session.commit()
         self._session.refresh(row)
         return self._to_domain(row)
