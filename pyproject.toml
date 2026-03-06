@@ -16,7 +16,11 @@ classifiers = [
   "License :: Other/Proprietary License",
 ]
 
-dependencies = []
+dependencies = [
+  "fastapi>=0.115",
+  "sqlalchemy>=2.0",
+  "pydantic[email]>=2.0",
+  "uvicorn[standard]>=0.30",]
 
 [project.optional-dependencies]
 api = [
