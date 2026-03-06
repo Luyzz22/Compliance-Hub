@@ -25,6 +25,8 @@ class AISystemRepository:
             ai_act_category=row.ai_act_category,
             gdpr_dpia_required=row.gdpr_dpia_required,
             owner_email=row.owner_email,
+            criticality=row.criticality,
+            data_sensitivity=row.data_sensitivity,
             status=row.status,
             created_at_utc=row.created_at_utc,
             updated_at_utc=row.updated_at_utc,
@@ -61,6 +63,8 @@ class AISystemRepository:
             ai_act_category=payload.ai_act_category,
             gdpr_dpia_required=payload.gdpr_dpia_required,
             owner_email=str(payload.owner_email),
+            criticality=payload.criticality,
+            data_sensitivity=payload.data_sensitivity,
             status=AISystemStatus.draft,
             created_at_utc=now,
             updated_at_utc=now,
@@ -86,3 +90,4 @@ class AISystemRepository:
         self._session.commit()
         self._session.refresh(row)
         return self._to_domain(row)
+

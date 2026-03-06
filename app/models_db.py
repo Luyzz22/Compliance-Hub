@@ -5,7 +5,13 @@ from datetime import datetime
 from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from app.ai_system_models import AIActCategory, AISystemRiskLevel, AISystemStatus
+from app.ai_system_models import (
+    AIActCategory,
+    AISystemCriticality,
+    AISystemRiskLevel,
+    AISystemStatus,
+    DataSensitivity,
+)
 
 
 class Base(DeclarativeBase):
@@ -28,6 +34,16 @@ class AISystemTable(Base):
     )
     gdpr_dpia_required: Mapped[bool] = mapped_column(Boolean)
     owner_email: Mapped[str] = mapped_column(String(320))
+    criticality: Mapped[AISystemCriticality] = mapped_column(
+        Enum(AISystemCriticality, name="aisystem_criticality", native_enum=False),
+        nullable=False,
+        default=AISystemCriticality.medium,
+    )
+    data_sensitivity: Mapped[DataSensitivity] = mapped_column(
+        Enum(DataSensitivity, name="data_sensitivity", native_enum=False),
+        nullable=False,
+        default=DataSensitivity.internal,
+    )
     status: Mapped[AISystemStatus] = mapped_column(
         Enum(AISystemStatus, name="aisystem_status", native_enum=False),
         default=AISystemStatus.draft,
@@ -52,3 +68,5 @@ class AuditLogTable(Base):
     before: Mapped[str | None] = mapped_column(Text, nullable=True)
     after: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
