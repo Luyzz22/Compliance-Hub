@@ -102,7 +102,7 @@ class AISystemRepository:
             risk_level=payload.risk_level,
             ai_act_category=payload.ai_act_category,
             gdpr_dpia_required=payload.gdpr_dpia_required,
-            owner_email=str(payload.owner_email),
+            owner_email=payload.owner_email,
             criticality=payload.criticality,
             data_sensitivity=payload.data_sensitivity,
             status=AISystemStatus.draft,
