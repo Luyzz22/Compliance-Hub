@@ -27,6 +27,20 @@ class AISystemStatus(StrEnum):
     retired = "retired"
 
 
+class AISystemCriticality(StrEnum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    very_high = "very_high"
+
+
+class DataSensitivity(StrEnum):
+    public = "public"
+    internal = "internal"
+    confidential = "confidential"
+    restricted = "restricted"
+
+
 class Tenant(BaseModel):
     id: str
     name: str
@@ -41,6 +55,8 @@ class AISystemCreate(BaseModel):
     ai_act_category: AIActCategory
     gdpr_dpia_required: bool
     owner_email: EmailStr
+    criticality: AISystemCriticality = AISystemCriticality.medium
+    data_sensitivity: DataSensitivity = DataSensitivity.internal
 
 
 class AISystem(BaseModel):
@@ -53,6 +69,9 @@ class AISystem(BaseModel):
     ai_act_category: AIActCategory
     gdpr_dpia_required: bool
     owner_email: EmailStr
+    criticality: AISystemCriticality = AISystemCriticality.medium
+    data_sensitivity: DataSensitivity = DataSensitivity.internal
     status: AISystemStatus = AISystemStatus.draft
     created_at_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
