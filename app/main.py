@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
@@ -24,6 +25,8 @@ from app.security import get_api_key_and_tenant
 from app.services.compliance_engine import build_audit_hash, derive_actions
 
 app = FastAPI(title="ComplianceHub API", version="0.1.0")
+APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
+APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
 
 
 @app.on_event("startup")
@@ -173,8 +176,8 @@ def _enterprise_status_payload() -> dict[str, object]:
         "status": "ok",
         "product": "ComplianceHub",
         "region": "DACH",
-        "version": "0.1.0",
-        "environment": "dev",
+        "version": APP_VERSION,
+        "environment": APP_ENVIRONMENT,
         "features_enabled": [
             "document_intake",
             "ai_system_registry",
@@ -185,7 +188,6 @@ def _enterprise_status_payload() -> dict[str, object]:
             "GDPR_MINIMAL",
         ],
     }
-
 
 @app.get("/api/v1/enterprise/status")
 def enterprise_status() -> dict[str, object]:
