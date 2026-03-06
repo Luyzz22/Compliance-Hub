@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class AISystemRiskLevel(StrEnum):
@@ -54,7 +54,7 @@ class AISystemCreate(BaseModel):
     risk_level: AISystemRiskLevel
     ai_act_category: AIActCategory
     gdpr_dpia_required: bool
-    owner_email: EmailStr
+    owner_email: str | None = None
     criticality: AISystemCriticality = AISystemCriticality.medium
     data_sensitivity: DataSensitivity = DataSensitivity.internal
 
@@ -68,7 +68,7 @@ class AISystem(BaseModel):
     risk_level: AISystemRiskLevel
     ai_act_category: AIActCategory
     gdpr_dpia_required: bool
-    owner_email: EmailStr
+    owner_email: str | None = None
     criticality: AISystemCriticality = AISystemCriticality.medium
     data_sensitivity: DataSensitivity = DataSensitivity.internal
     status: AISystemStatus = AISystemStatus.draft

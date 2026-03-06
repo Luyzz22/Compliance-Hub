@@ -19,8 +19,11 @@ from app.models import (
     EInvoiceFormat,
 )
 from app.models_db import Base
+from app.policy_models import Violation
+from app.policy_service import PolicyEvaluationService
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit_logs import AuditLogRepository
+from app.repositories.policies import PolicyRepository, ViolationRepository
 from app.security import get_api_key_and_tenant
 from app.services.compliance_engine import build_audit_hash, derive_actions
 
@@ -80,6 +83,25 @@ def get_audit_log_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> AuditLogRepository:
     return AuditLogRepository(session)
+
+
+def get_policy_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> PolicyRepository:
+    return PolicyRepository(session)
+
+
+def get_violation_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> ViolationRepository:
+    return ViolationRepository(session)
+
+
+def get_policy_evaluation_service(
+    policy_repository: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
+) -> PolicyEvaluationService:
+    return PolicyEvaluationService(policy_repository, violation_repository)
 
 
 def _model_to_json(model: BaseModel) -> str:
@@ -149,6 +171,7 @@ def create_ai_system(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+    policy_service: Annotated[PolicyEvaluationService, Depends(get_policy_evaluation_service)],
 ) -> AISystem:
     created = repository.create(tenant_id, payload)
     # TODO: replace synthetic actor with authenticated user id once JWT auth is introduced.
@@ -161,7 +184,9 @@ def create_ai_system(
         before=None,
         after=_model_to_json(created),
     )
+    policy_service.evaluate_policies_for_ai_system(tenant_id=tenant_id, ai_system=created)
     return created
+
 
 @app.patch("/api/v1/ai-systems/{aisystem_id}/status", response_model=AISystem)
 def update_ai_system_status(
@@ -170,6 +195,7 @@ def update_ai_system_status(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+    policy_service: Annotated[PolicyEvaluationService, Depends(get_policy_evaluation_service)],
 ) -> AISystem:
     existing = repository.get_by_id(tenant_id=tenant_id, aisystem_id=aisystem_id)
     if existing is None:
@@ -195,8 +221,10 @@ def update_ai_system_status(
         before=before_json,
         after=after_json,
     )
+    policy_service.evaluate_policies_for_ai_system(tenant_id=tenant_id, ai_system=updated)
 
     return updated
+
 
 @app.get("/api/v1/audit-logs", response_model=list[AuditLog])
 def list_audit_logs(
@@ -204,6 +232,7 @@ def list_audit_logs(
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> list[AuditLog]:
     return audit_repo.list_for_tenant(tenant_id=tenant_id)
+
 
 def _enterprise_status_payload() -> dict[str, object]:
     return {
@@ -223,9 +252,11 @@ def _enterprise_status_payload() -> dict[str, object]:
         ],
     }
 
+
 @app.get("/api/v1/enterprise/status")
 def enterprise_status() -> dict[str, object]:
     return _enterprise_status_payload()
+
 
 @app.get("/api/v1/compliance/reports/ai-systems", response_model=AISystemComplianceReport)
 def get_aisystem_compliance_report(
@@ -235,3 +266,21 @@ def get_aisystem_compliance_report(
     summary = repository.compliance_summary_for_tenant(tenant_id)
     return AISystemComplianceReport(**summary)
 
+
+@app.get("/api/v1/violations", response_model=list[Violation])
+def list_violations(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
+) -> list[Violation]:
+    return violation_repository.list_violations_for_tenant(tenant_id=tenant_id)
+
+
+@app.get("/api/v1/ai-systems/{ai_system_id}/violations", response_model=list[Violation])
+def list_ai_system_violations(
+    ai_system_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
+) -> list[Violation]:
+    return violation_repository.list_violations_for_ai_system(
+        tenant_id=tenant_id, ai_system_id=ai_system_id
+    )
