@@ -64,3 +64,17 @@ def test_compliance_report_ai_systems_returns_aggregated_data():
     assert AISystemRiskLevel.high.value in risk_levels
     assert AISystemRiskLevel.limited.value in risk_levels
 
+    report = report_resp.json()
+    assert report["tenant_id"] == "tenant-report-001"
+    assert report["total_systems"] == 2
+
+    risk_levels = {item["risk_level"] for item in report["by_risk_level"]}
+    assert AISystemRiskLevel.high.value in risk_levels
+    assert AISystemRiskLevel.limited.value in risk_levels
+
+    criticalities = {item["criticality"] for item in report["by_criticality"]}
+    assert AISystemCriticality.medium.value in criticalities
+
+    sensitivities = {item["data_sensitivity"] for item in report["by_data_sensitivity"]}
+    assert DataSensitivity.internal.value in sensitivities
+

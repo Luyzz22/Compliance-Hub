@@ -85,9 +85,34 @@ class AISystemAIActSummary(BaseModel):
     count: int
 
 
+
+
+class AISystemDataSensitivitySummary(BaseModel):
+    data_sensitivity: DataSensitivity
+    count: int
+
+class AISystemCriticalitySummary(BaseModel):
+    criticality: AISystemCriticality
+    count: int
+
+
+class AISystemDataSensitivitySummary(BaseModel):
+    data_sensitivity: DataSensitivity
+    count: int
+
 class AISystemComplianceReport(BaseModel):
     tenant_id: str
     total_systems: int
     by_risk_level: list[AISystemRiskSummary]
     by_ai_act_category: list[AISystemAIActSummary]
+    by_criticality: list[AISystemCriticalitySummary]
+    by_data_sensitivity: list[AISystemDataSensitivitySummary]
+
+class AISystemComplianceReport(BaseModel):
+    tenant_id: str
+    total_systems: int
+    by_risk_level: list[AISystemRiskSummary]
+    by_ai_act_category: list[AISystemAIActSummary]
+    by_criticality: list[AISystemCriticalitySummary]
+    by_data_sensitivity: list[AISystemDataSensitivitySummary]
 

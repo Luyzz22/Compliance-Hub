@@ -82,6 +82,78 @@ class AISystemRepository:
             for category, count in ai_act_rows
         ]
 
+        # Anzahl pro Criticality
+        criticality_stmt = (
+            select(AISystemTable.criticality, func.count())
+            .where(AISystemTable.tenant_id == tenant_id)
+            .group_by(AISystemTable.criticality)
+        )
+        criticality_rows = self._session.execute(criticality_stmt).all()
+        by_criticality = [
+            {
+                "criticality": criticality,
+                "count": count,
+            }
+            for criticality, count in criticality_rows
+        ]
+
+        # Anzahl pro Data Sensitivity
+        data_sensitivity_stmt = (
+            select(AISystemTable.data_sensitivity, func.count())
+            .where(AISystemTable.tenant_id == tenant_id)
+            .group_by(AISystemTable.data_sensitivity)
+        )
+        data_sensitivity_rows = self._session.execute(data_sensitivity_stmt).all()
+        by_data_sensitivity = [
+            {
+                "data_sensitivity": sensitivity,
+                "count": count,
+            }
+            for sensitivity, count in data_sensitivity_rows
+        ]
+
+        total = sum(item["count"] for item in by_risk_level)
+
+        return {
+            "tenant_id": tenant_id,
+            "total_systems": total,
+            "by_risk_level": by_risk_level,
+            "by_ai_act_category": by_ai_act_category,
+            "by_criticality": by_criticality,
+            "by_data_sensitivity": by_data_sensitivity,
+        }
+
+
+        # Anzahl pro Risk Level
+        risk_stmt = (
+            select(AISystemTable.risk_level, func.count())
+            .where(AISystemTable.tenant_id == tenant_id)
+            .group_by(AISystemTable.risk_level)
+        )
+        risk_rows = self._session.execute(risk_stmt).all()
+        by_risk_level = [
+            {
+                "risk_level": risk_level,
+                "count": count,
+            }
+            for risk_level, count in risk_rows
+        ]
+
+        # Anzahl pro AI Act Category
+        ai_act_stmt = (
+            select(AISystemTable.ai_act_category, func.count())
+            .where(AISystemTable.tenant_id == tenant_id)
+            .group_by(AISystemTable.ai_act_category)
+        )
+        ai_act_rows = self._session.execute(ai_act_stmt).all()
+        by_ai_act_category = [
+            {
+                "ai_act_category": category,
+                "count": count,
+            }
+            for category, count in ai_act_rows
+        ]
+
         total = sum(item["count"] for item in by_risk_level)
 
         return {
