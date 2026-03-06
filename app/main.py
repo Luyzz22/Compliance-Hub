@@ -5,11 +5,11 @@ import os
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.ai_system_models import AISystem, AISystemCreate
+from app.ai_system_models import AISystem, AISystemCreate, AISystemStatus
 from app.audit_models import AuditLog
 from app.db import engine, get_session
 from app.models import (
@@ -163,6 +163,40 @@ def create_ai_system(
     )
     return created
 
+@app.patch("/api/v1/ai-systems/{aisystem_id}/status", response_model=AISystem)
+def update_ai_system_status(
+    aisystem_id: str,
+    new_status: AISystemStatus,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> AISystem:
+    existing = repository.get_by_id(tenant_id=tenant_id, aisystem_id=aisystem_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AISystem not found",
+        )
+
+    before_json = _model_to_json(existing)
+    updated = repository.update_status(
+        tenant_id=tenant_id,
+        aisystem_id=aisystem_id,
+        new_status=new_status,
+    )
+    after_json = _model_to_json(updated)
+
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="system",  # später: authentifizierter Benutzer
+        action="update_ai_system_status",
+        entity_type="AISystem",
+        entity_id=updated.id,
+        before=before_json,
+        after=after_json,
+    )
+
+    return updated
 
 @app.get("/api/v1/audit-logs", response_model=list[AuditLog])
 def list_audit_logs(
