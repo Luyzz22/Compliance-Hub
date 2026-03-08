@@ -22,7 +22,8 @@ def _headers() -> dict[str, str]:
 
 
 def test_compliance_report_ai_systems_returns_aggregated_data():
-    # Zwei AISysteme mit verschiedenen Risk Levels, Kategorien, Criticality und Data Sensitivity anlegen
+    # Zwei AISysteme mit verschiedenen Risk Levels und Kategorien
+    # sowie Criticality und Data Sensitivity anlegen
     systems = [
         (
             "ai-system-1",
