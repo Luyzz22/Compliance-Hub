@@ -1,11 +1,13 @@
-from __future__ import annotations
-
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.ai_system_models import AISystem, AISystemCreate, AISystemStatus
+from app.ai_system_models import (
+    AISystem,
+    AISystemCreate,
+    AISystemStatus,
+)
 from app.models_db import AISystemTable
 
 
@@ -82,6 +84,36 @@ class AISystemRepository:
             for category, count in ai_act_rows
         ]
 
+        # Anzahl pro Criticality
+        criticality_stmt = (
+            select(AISystemTable.criticality, func.count())
+            .where(AISystemTable.tenant_id == tenant_id)
+            .group_by(AISystemTable.criticality)
+        )
+        criticality_rows = self._session.execute(criticality_stmt).all()
+        by_criticality = [
+            {
+                "criticality": criticality,
+                "count": count,
+            }
+            for criticality, count in criticality_rows
+        ]
+
+        # Anzahl pro Data Sensitivity
+        data_sensitivity_stmt = (
+            select(AISystemTable.data_sensitivity, func.count())
+            .where(AISystemTable.tenant_id == tenant_id)
+            .group_by(AISystemTable.data_sensitivity)
+        )
+        data_sensitivity_rows = self._session.execute(data_sensitivity_stmt).all()
+        by_data_sensitivity = [
+            {
+                "data_sensitivity": data_sensitivity,
+                "count": count,
+            }
+            for data_sensitivity, count in data_sensitivity_rows
+        ]
+
         total = sum(item["count"] for item in by_risk_level)
 
         return {
@@ -89,6 +121,8 @@ class AISystemRepository:
             "total_systems": total,
             "by_risk_level": by_risk_level,
             "by_ai_act_category": by_ai_act_category,
+            "by_criticality": by_criticality,
+            "by_data_sensitivity": by_data_sensitivity,
         }
 
     def create(self, tenant_id: str, payload: AISystemCreate) -> AISystem:
