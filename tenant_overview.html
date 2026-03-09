@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Tenant Compliance Overview</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 2rem; background: #f3f4f6; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .card { background: white; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .card h2 { margin: 0 0 0.5rem; font-size: 0.9rem; text-transform: uppercase; color: #6b7280; }
+    .card .value { font-size: 1.8rem; font-weight: 600; }
+    .card.total { border-left: 4px solid #3b82f6; }
+    .card.compliant { border-left: 4px solid #10b981; }
+    .card.partial { border-left: 4px solid #f59e0b; }
+    .card.noncompliant { border-left: 4px solid #ef4444; }
+    h1 { margin-bottom: 1rem; }
+    h3 { margin-top: 0; margin-bottom: 0.5rem; }
+    ul { margin: 0; padding-left: 1.2rem; }
+    .muted { color: #6b7280; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>Tenant Compliance Overview</h1>
+  <p class="muted" id="meta">Lade Daten…</p>
+
+  <div class="grid">
+    <div class="card total">
+      <h2>Total Systems</h2>
+      <div class="value" id="totalSystems">–</div>
+    </div>
+    <div class="card compliant">
+      <h2>Compliant</h2>
+      <div class="value" id="compliantSystems">–</div>
+    </div>
+    <div class="card partial">
+      <h2>Partially compliant</h2>
+      <div class="value" id="partialSystems">–</div>
+    </div>
+    <div class="card noncompliant">
+      <h2>Non-compliant</h2>
+      <div class="value" id="nonCompliantSystems">–</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 1.5rem;">
+    <div class="card">
+      <h3>Violations by Rule</h3>
+      <ul id="violationsByRule"><li class="muted">Keine Daten</li></ul>
+    </div>
+    <div class="card">
+      <h3>Violations by Severity</h3>
+      <ul id="violationsBySeverity"><li class="muted">Keine Daten</li></ul>
+    </div>
+  </div>
+
+  <script>
+    async function loadOverview() {
+      const res = await fetch("http://localhost:8000/api/v1/tenant/compliance-overview", {
+        headers: {
+          "x-api-key": "tenant-overview-key",
+          "x-tenant-id": "tenant-overview-001"
+        }
+      });
+      if (!res.ok) {
+        document.getElementById("meta").textContent = "Fehler: " + res.status + " " + res.statusText;
+        return;
+      }
+      const data = await res.json();
+
+      document.getElementById("totalSystems").textContent = data.total_systems;
+      document.getElementById("compliantSystems").textContent = data.compliant_systems;
+      document.getElementById("partialSystems").textContent = data.partially_compliant_systems;
+      document.getElementById("nonCompliantSystems").textContent = data.non_compliant_systems;
+
+      const meta = document.getElementById("meta");
+      meta.textContent = `Tenant: ${data.tenant_id} · Last evaluated at: ${data.last_evaluated_at ?? "n/a"}`;
+
+      const ruleList = document.getElementById("violationsByRule");
+      ruleList.innerHTML = "";
+      const ruleEntries = Object.entries(data.violations_by_rule);
+      if (ruleEntries.length === 0) {
+        ruleList.innerHTML = '<li class="muted">Keine Violations</li>';
+      } else {
+        for (const [rule, count] of ruleEntries) {
+          const li = document.createElement("li");
+          li.textContent = `${rule}: ${count}`;
+          ruleList.appendChild(li);
+        }
+      }
+
+      const sevList = document.getElementById("violationsBySeverity");
+      sevList.innerHTML = "";
+      const sevEntries = Object.entries(data.violations_by_severity);
+      if (sevEntries.length === 0) {
+        sevList.innerHTML = '<li class="muted">Keine Violations</li>';
+      } else {
+        for (const [sev, count] of sevEntries) {
+          const li = document.createElement("li");
+          li.textContent = `${sev}: ${count}`;
+          sevList.appendChild(li);
+        }
+      }
+    }
+
+    loadOverview().catch(err => {
+      document.getElementById("meta").textContent = "Fehler beim Laden: " + err;
+    });
+  </script>
+</body>
+</html>
+
