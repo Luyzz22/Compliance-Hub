@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 import os
-import uuid
 
 from fastapi.testclient import TestClient
 
@@ -9,30 +6,27 @@ from app.ai_system_models import (
     AIActCategory,
     AISystemCriticality,
     AISystemRiskLevel,
+    AISystemStatus,
     DataSensitivity,
 )
 from app.main import app
-from app.security import get_settings
 
 client = TestClient(app)
 
 
-def _headers(tenant_id: str) -> dict[str, str]:
+def _headers() -> dict[str, str]:
     os.environ["COMPLIANCEHUB_API_KEYS"] = "test-api-key"
-    get_settings.cache_clear()
     return {
         "x-api-key": "test-api-key",
-        "x-tenant-id": tenant_id,
+        "x-tenant-id": "tenant-policy-001",
     }
 
 
-def test_create_high_risk_ai_system_creates_dpia_violation() -> None:
-    tenant_id = f"tenant-policy-{uuid.uuid4()}"
-
+def test_create_high_risk_without_dpia_creates_violation():
     payload = {
-        "id": f"ai-system-{uuid.uuid4()}",
-        "name": "Credit Decisioning",
-        "description": "High risk system",
+        "id": "ai-policy-risk-1",
+        "name": "Policy Risk System",
+        "description": "High risk no DPIA",
         "business_unit": "Risk",
         "risk_level": AISystemRiskLevel.high.value,
         "ai_act_category": AIActCategory.high_risk.value,
@@ -42,48 +36,111 @@ def test_create_high_risk_ai_system_creates_dpia_violation() -> None:
         "data_sensitivity": DataSensitivity.internal.value,
     }
 
-    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers(tenant_id))
+    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
     assert create_resp.status_code == 200
 
-    violations_resp = client.get("/api/v1/violations", headers=_headers(tenant_id))
+    violations_resp = client.get("/api/v1/violations", headers=_headers())
     assert violations_resp.status_code == 200
     violations = violations_resp.json()
 
-    assert len(violations) >= 1
-    assert any("requires gdpr_dpia_required=true" in item["message"] for item in violations)
+    matching = [
+        item
+        for item in violations
+        if item["ai_system_id"] == "ai-policy-risk-1"
+        and "DPIA" in item["message"]
+    ]
+    assert matching
 
 
-def test_create_high_criticality_without_owner_email_creates_violation() -> None:
-    tenant_id = f"tenant-policy-{uuid.uuid4()}"
-    ai_system_id = f"ai-system-{uuid.uuid4()}"
-
+def test_high_criticality_without_owner_email_creates_violation():
     payload = {
-        "id": ai_system_id,
-        "name": "Ops Automation",
-        "description": "Critical system",
-        "business_unit": "Operations",
+        "id": "ai-policy-criticality-1",
+        "name": "Criticality System",
+        "description": "High criticality no owner mail",
+        "business_unit": "Ops",
         "risk_level": AISystemRiskLevel.limited.value,
         "ai_act_category": AIActCategory.limited_risk.value,
         "gdpr_dpia_required": True,
         "owner_email": "",
         "criticality": AISystemCriticality.high.value,
-        "data_sensitivity": DataSensitivity.confidential.value,
+        "data_sensitivity": DataSensitivity.internal.value,
     }
 
-    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers(tenant_id))
+    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
     assert create_resp.status_code == 200
 
-    all_violations_resp = client.get("/api/v1/violations", headers=_headers(tenant_id))
-    assert all_violations_resp.status_code == 200
-    all_violations = all_violations_resp.json()
-    assert any("requires a valid owner_email" in item["message"] for item in all_violations)
-
-    per_system_resp = client.get(
-        f"/api/v1/ai-systems/{ai_system_id}/violations",
-        headers=_headers(tenant_id),
+    violations_resp = client.get(
+        "/api/v1/ai-systems/ai-policy-criticality-1/violations",
+        headers=_headers(),
     )
-    assert per_system_resp.status_code == 200
-    per_system_violations = per_system_resp.json()
+    assert violations_resp.status_code == 200
 
-    assert len(per_system_violations) >= 1
-    assert all(item["ai_system_id"] == ai_system_id for item in per_system_violations)
+    violations = violations_resp.json()
+    assert any("valid owner email" in item["message"] for item in violations)
+
+
+def test_list_violations_filters_by_ai_system_and_is_idempotent_on_update():
+    payload = {
+        "id": "ai-policy-idempotent-1",
+        "name": "Idempotent System",
+        "description": "High risk no DPIA",
+        "business_unit": "Risk",
+        "risk_level": AISystemRiskLevel.high.value,
+        "ai_act_category": AIActCategory.high_risk.value,
+        "gdpr_dpia_required": False,
+        "owner_email": "owner@example.com",
+        "criticality": AISystemCriticality.medium.value,
+        "data_sensitivity": DataSensitivity.internal.value,
+    }
+
+    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
+    assert create_resp.status_code == 200
+
+    initial = client.get(
+        "/api/v1/ai-systems/ai-policy-idempotent-1/violations",
+        headers=_headers(),
+    )
+    assert initial.status_code == 200
+    initial_count = len(initial.json())
+    assert initial_count >= 1
+
+    patch_resp = client.patch(
+        "/api/v1/ai-systems/ai-policy-idempotent-1/status",
+        params={"new_status": AISystemStatus.active.value},
+        headers=_headers(),
+    )
+    assert patch_resp.status_code == 200
+
+    after_update = client.get(
+        "/api/v1/ai-systems/ai-policy-idempotent-1/violations",
+        headers=_headers(),
+    )
+    assert after_update.status_code == 200
+    assert len(after_update.json()) == initial_count
+
+    unrelated_payload = {
+        "id": "ai-policy-other-1",
+        "name": "Other System",
+        "description": "No violation expected",
+        "business_unit": "Ops",
+        "risk_level": AISystemRiskLevel.low.value,
+        "ai_act_category": AIActCategory.minimal_risk.value,
+        "gdpr_dpia_required": True,
+        "owner_email": "other@example.com",
+        "criticality": AISystemCriticality.low.value,
+        "data_sensitivity": DataSensitivity.public.value,
+    }
+    other_create = client.post("/api/v1/ai-systems", json=unrelated_payload, headers=_headers())
+    assert other_create.status_code == 200
+
+    tenant_violations = client.get("/api/v1/violations", headers=_headers())
+    assert tenant_violations.status_code == 200
+    all_ids = {item["ai_system_id"] for item in tenant_violations.json()}
+    assert "ai-policy-idempotent-1" in all_ids
+
+    system_filtered = client.get(
+        "/api/v1/ai-systems/ai-policy-other-1/violations",
+        headers=_headers(),
+    )
+    assert system_filtered.status_code == 200
+    assert system_filtered.json() == []

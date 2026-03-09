@@ -2,15 +2,21 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.ai_system_models import AISystem, AISystemComplianceReport, AISystemCreate, AISystemStatus
-from app.audit_models import AuditLog
+from app.ai_system_models import (
+    AISystem,
+    AISystemComplianceReport,
+    AISystemCreate,
+    AISystemStatus,
+    AISystemUpdate,
+)
+from app.audit_models import AuditEvent, AuditLog
 from app.db import engine, get_session
 from app.models import (
     ComplianceAction,
@@ -20,11 +26,13 @@ from app.models import (
 )
 from app.models_db import Base
 from app.policy_models import Violation
-from app.policy_service import PolicyEvaluationService
+from app.policy_service import evaluate_policies_for_ai_system
 from app.repositories.ai_systems import AISystemRepository
+from app.repositories.audit import AuditRepository
 from app.repositories.audit_logs import AuditLogRepository
-from app.repositories.policies import PolicyRepository, ViolationRepository
-from app.security import get_api_key_and_tenant
+from app.repositories.policies import PolicyRepository
+from app.repositories.violations import ViolationRepository
+from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
 from app.services.compliance_engine import build_audit_hash, derive_actions
 
 app = FastAPI(title="ComplianceHub API", version="0.1.0")
@@ -85,6 +93,12 @@ def get_audit_log_repository(
     return AuditLogRepository(session)
 
 
+def get_audit_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> AuditRepository:
+    return AuditRepository(session)
+
+
 def get_policy_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> PolicyRepository:
@@ -95,13 +109,6 @@ def get_violation_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> ViolationRepository:
     return ViolationRepository(session)
-
-
-def get_policy_evaluation_service(
-    policy_repository: Annotated[PolicyRepository, Depends(get_policy_repository)],
-    violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
-) -> PolicyEvaluationService:
-    return PolicyEvaluationService(policy_repository, violation_repository)
 
 
 def _model_to_json(model: BaseModel) -> str:
@@ -151,7 +158,7 @@ def intake(payload: DocumentIntakeRequest) -> DocumentIntakeResponse:
     return DocumentIntakeResponse(
         document_id=payload.document_id,
         accepted=True,
-        timestamp_utc=datetime.now(UTC),
+        timestamp_utc=datetime.utcnow(),
         actions=[ComplianceActionModel.from_domain(action) for action in actions],
         audit_hash=audit_hash,
     )
@@ -168,13 +175,16 @@ def list_ai_systems(
 @app.post("/api/v1/ai-systems", response_model=AISystem)
 def create_ai_system(
     payload: AISystemCreate,
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    policy_service: Annotated[PolicyEvaluationService, Depends(get_policy_evaluation_service)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    audit_event_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
 ) -> AISystem:
+    tenant_id = auth_context.tenant_id
     created = repository.create(tenant_id, payload)
-    # TODO: replace synthetic actor with authenticated user id once JWT auth is introduced.
+
     audit_repo.record_event(
         tenant_id=tenant_id,
         actor="system",
@@ -184,19 +194,79 @@ def create_ai_system(
         before=None,
         after=_model_to_json(created),
     )
-    policy_service.evaluate_policies_for_ai_system(tenant_id=tenant_id, ai_system=created)
+    audit_event_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+        entity_type="ai_system",
+        entity_id=created.id,
+        action="created",
+        metadata={"status": created.status.value},
+    )
+    evaluate_policies_for_ai_system(
+        tenant_id=tenant_id,
+        ai_system=created,
+        policy_repository=policy_repo,
+        violation_repository=violation_repo,
+        audit_repository=audit_event_repo,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+    )
     return created
+
+
+@app.patch("/api/v1/ai-systems/{aisystem_id}", response_model=AISystem)
+def update_ai_system(
+    aisystem_id: str,
+    payload: AISystemUpdate,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    audit_event_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> AISystem:
+    tenant_id = auth_context.tenant_id
+    existing = repository.get_by_id(tenant_id=tenant_id, aisystem_id=aisystem_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AISystem not found",
+        )
+
+    updated = repository.update(tenant_id=tenant_id, aisystem_id=aisystem_id, payload=payload)
+    audit_event_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+        entity_type="ai_system",
+        entity_id=updated.id,
+        action="updated",
+        metadata={"status": updated.status.value},
+    )
+    evaluate_policies_for_ai_system(
+        tenant_id=tenant_id,
+        ai_system=updated,
+        policy_repository=policy_repo,
+        violation_repository=violation_repo,
+        audit_repository=audit_event_repo,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+    )
+    return updated
 
 
 @app.patch("/api/v1/ai-systems/{aisystem_id}/status", response_model=AISystem)
 def update_ai_system_status(
     aisystem_id: str,
     new_status: AISystemStatus,
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    policy_service: Annotated[PolicyEvaluationService, Depends(get_policy_evaluation_service)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    audit_event_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
 ) -> AISystem:
+    tenant_id = auth_context.tenant_id
     existing = repository.get_by_id(tenant_id=tenant_id, aisystem_id=aisystem_id)
     if existing is None:
         raise HTTPException(
@@ -214,14 +284,31 @@ def update_ai_system_status(
 
     audit_repo.record_event(
         tenant_id=tenant_id,
-        actor="system",  # später: authentifizierter Benutzer
+        actor="system",
         action="update_ai_system_status",
         entity_type="AISystem",
         entity_id=updated.id,
         before=before_json,
         after=after_json,
     )
-    policy_service.evaluate_policies_for_ai_system(tenant_id=tenant_id, ai_system=updated)
+    audit_event_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+        entity_type="ai_system",
+        entity_id=updated.id,
+        action="status_changed",
+        metadata={"status": updated.status.value},
+    )
+    evaluate_policies_for_ai_system(
+        tenant_id=tenant_id,
+        ai_system=updated,
+        policy_repository=policy_repo,
+        violation_repository=violation_repo,
+        audit_repository=audit_event_repo,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+    )
 
     return updated
 
@@ -232,6 +319,48 @@ def list_audit_logs(
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> list[AuditLog]:
     return audit_repo.list_for_tenant(tenant_id=tenant_id)
+
+
+@app.get("/api/v1/audit-events", response_model=list[AuditEvent])
+def list_audit_events(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    entity_type: str | None = None,
+    entity_id: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[AuditEvent]:
+    tenant_id = auth_context.tenant_id
+    if entity_type is not None and entity_id is not None:
+        return audit_repo.list_events_for_entity(
+            tenant_id=tenant_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            limit=limit,
+            offset=offset,
+        )
+    return audit_repo.list_events_for_tenant(
+        tenant_id=tenant_id,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.get("/api/v1/audit-events/ai-systems/{ai_system_id}", response_model=list[AuditEvent])
+def list_ai_system_audit_events(
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[AuditEvent]:
+    return audit_repo.list_events_for_entity(
+        tenant_id=auth_context.tenant_id,
+        entity_type="ai_system",
+        entity_id=ai_system_id,
+        limit=limit,
+        offset=offset,
+    )
 
 
 def _enterprise_status_payload() -> dict[str, object]:
@@ -270,17 +399,18 @@ def get_aisystem_compliance_report(
 @app.get("/api/v1/violations", response_model=list[Violation])
 def list_violations(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
 ) -> list[Violation]:
-    return violation_repository.list_violations_for_tenant(tenant_id=tenant_id)
+    return violation_repo.list_violations_for_tenant(tenant_id=tenant_id)
 
 
 @app.get("/api/v1/ai-systems/{ai_system_id}/violations", response_model=list[Violation])
-def list_ai_system_violations(
+def list_violations_for_ai_system(
     ai_system_id: str,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
 ) -> list[Violation]:
-    return violation_repository.list_violations_for_ai_system(
-        tenant_id=tenant_id, ai_system_id=ai_system_id
+    return violation_repo.list_violations_for_ai_system(
+        tenant_id=tenant_id,
+        ai_system_id=ai_system_id,
     )

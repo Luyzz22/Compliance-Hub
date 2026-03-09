@@ -1,13 +1,11 @@
-from datetime import UTC, datetime
+from __future__ import annotations
+
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.ai_system_models import (
-    AISystem,
-    AISystemCreate,
-    AISystemStatus,
-)
+from app.ai_system_models import AISystem, AISystemCreate, AISystemStatus, AISystemUpdate
 from app.models_db import AISystemTable
 
 
@@ -126,7 +124,7 @@ class AISystemRepository:
         }
 
     def create(self, tenant_id: str, payload: AISystemCreate) -> AISystem:
-        now = datetime.now(UTC)
+        now = datetime.utcnow()
         row = AISystemTable(
             id=payload.id,
             tenant_id=tenant_id,
@@ -148,6 +146,28 @@ class AISystemRepository:
         self._session.refresh(row)
         return self._to_domain(row)
 
+
+    def update(
+        self,
+        tenant_id: str,
+        aisystem_id: str,
+        payload: AISystemUpdate,
+    ) -> AISystem:
+        stmt = select(AISystemTable).where(
+            AISystemTable.tenant_id == tenant_id,
+            AISystemTable.id == aisystem_id,
+        )
+        row = self._session.execute(stmt).scalar_one()
+
+        updates = payload.model_dump(exclude_unset=True)
+        for field_name, value in updates.items():
+            setattr(row, field_name, value)
+
+        row.updated_at_utc = datetime.utcnow()
+        self._session.commit()
+        self._session.refresh(row)
+        return self._to_domain(row)
+
     def update_status(
         self,
         tenant_id: str,
@@ -160,7 +180,7 @@ class AISystemRepository:
         )
         row = self._session.execute(stmt).scalar_one()
         row.status = new_status
-        row.updated_at_utc = datetime.now(UTC)
+        row.updated_at_utc = datetime.utcnow()
         self._session.commit()
         self._session.refresh(row)
         return self._to_domain(row)
