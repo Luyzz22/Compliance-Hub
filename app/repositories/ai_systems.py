@@ -124,7 +124,7 @@ class AISystemRepository:
         }
 
     def create(self, tenant_id: str, payload: AISystemCreate) -> AISystem:
-        now = datetime.now(UTC)
+        now = datetime.now()
         row = AISystemTable(
             id=payload.id,
             tenant_id=tenant_id,
@@ -158,7 +158,6 @@ class AISystemRepository:
             AISystemTable.id == aisystem_id,
         )
         row = self._session.execute(stmt).scalar_one()
-
         updates = payload.model_dump(exclude_unset=True)
         for field_name, value in updates.items():
             setattr(row, field_name, value)
