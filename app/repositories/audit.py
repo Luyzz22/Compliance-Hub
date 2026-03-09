@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import JSON, DateTime, String, select
@@ -56,7 +56,7 @@ class AuditRepository:
         row = AuditEventTable(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             actor_type=actor_type,
             actor_id=actor_id,
             entity_type=entity_type,
