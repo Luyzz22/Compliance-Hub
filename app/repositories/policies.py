@@ -103,6 +103,81 @@ class PolicyRepository:
                                 expected=False,
                             ),
                         ],
+                    ),
+                    Rule(
+                        id="high-risk-without-human-oversight",
+                        policy_id="builtin-high-risk-dpia",
+                        tenant_id=tenant_id,
+                        name="High risk requires human oversight",
+                        description=(
+                            "If risk_level is high, human_oversight_enabled must not be false."
+                        ),
+                        severity=Severity.high,
+                        message="High risk AI system without human oversight enabled.",
+                        conditions=[
+                            PolicyRuleCondition(
+                                field_path="risk_level",
+                                expected="high",
+                            ),
+                            PolicyRuleCondition(
+                                field_path="human_oversight_enabled",
+                                expected=False,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            Policy(
+                id="builtin-production-governance",
+                tenant_id=tenant_id,
+                name="Builtin: Production governance",
+                description="Flags production AI systems without owner email.",
+                rules=[
+                    Rule(
+                        id="production-without-owner",
+                        policy_id="builtin-production-governance",
+                        tenant_id=tenant_id,
+                        name="Production requires valid owner email",
+                        description=(
+                            "If environment is production, owner_email must be present."
+                        ),
+                        severity=Severity.medium,
+                        message="Production AI system without valid owner email.",
+                        conditions=[
+                            PolicyRuleCondition(
+                                field_path="environment",
+                                expected="production",
+                            ),
+                            PolicyRuleCondition(
+                                field_path="owner_email",
+                                expected=True,
+                                operator="is_blank",
+                            ),
+                        ],
+                    )
+                ],
+            ),
+            Policy(
+                id="builtin-documentation",
+                tenant_id=tenant_id,
+                name="Builtin: Documentation completeness",
+                description="Flags AI systems without documented business purpose.",
+                rules=[
+                    Rule(
+                        id="missing-business-purpose",
+                        policy_id="builtin-documentation",
+                        tenant_id=tenant_id,
+                        name="Business purpose must be documented",
+                        description="business_purpose must be present.",
+                        severity=Severity.medium,
+                        message="AI system without documented business purpose.",
+                        conditions=[
+                            PolicyRuleCondition(
+                                field_path="business_purpose",
+                                expected=True,
+                                operator="is_blank",
+                            )
+                        ],
                     )
                 ],
             ),

@@ -144,3 +144,108 @@ def test_list_violations_filters_by_ai_system_and_is_idempotent_on_update():
     )
     assert system_filtered.status_code == 200
     assert system_filtered.json() == []
+
+
+def test_high_risk_without_human_oversight_creates_violation_with_exact_message():
+    payload = {
+        "id": "ai-policy-human-oversight-1",
+        "name": "Human Oversight System",
+        "description": "High risk no human oversight",
+        "business_unit": "Risk",
+        "risk_level": AISystemRiskLevel.high.value,
+        "ai_act_category": AIActCategory.high_risk.value,
+        "gdpr_dpia_required": True,
+        "human_oversight_enabled": False,
+        "owner_email": "owner@example.com",
+        "criticality": AISystemCriticality.medium.value,
+        "data_sensitivity": DataSensitivity.internal.value,
+    }
+
+    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
+    assert create_resp.status_code == 200
+
+    violations_resp = client.get(
+        "/api/v1/ai-systems/ai-policy-human-oversight-1/violations",
+        headers=_headers(),
+    )
+    assert violations_resp.status_code == 200
+
+    violations = violations_resp.json()
+    matching = [
+        item
+        for item in violations
+        if item["rule_id"] == "high-risk-without-human-oversight"
+        and item["message"] == "High risk AI system without human oversight enabled."
+    ]
+    assert matching
+
+
+def test_production_without_owner_email_creates_violation():
+    payload = {
+        "id": "ai-policy-production-owner-1",
+        "name": "Production Owner System",
+        "description": "Production no owner",
+        "business_unit": "Ops",
+        "risk_level": AISystemRiskLevel.limited.value,
+        "ai_act_category": AIActCategory.limited_risk.value,
+        "gdpr_dpia_required": True,
+        "environment": "production",
+        "owner_email": "",
+        "criticality": AISystemCriticality.medium.value,
+        "data_sensitivity": DataSensitivity.internal.value,
+    }
+
+    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
+    assert create_resp.status_code == 200
+
+    violations_resp = client.get(
+        "/api/v1/ai-systems/ai-policy-production-owner-1/violations",
+        headers=_headers(),
+    )
+    assert violations_resp.status_code == 200
+
+    violations = violations_resp.json()
+    assert any(item["rule_id"] == "production-without-owner" for item in violations)
+
+
+def test_missing_business_purpose_creates_violation_and_is_idempotent_on_repeated_updates():
+    payload = {
+        "id": "ai-policy-business-purpose-1",
+        "name": "Business Purpose System",
+        "description": "No business purpose",
+        "business_unit": "Ops",
+        "risk_level": AISystemRiskLevel.low.value,
+        "ai_act_category": AIActCategory.minimal_risk.value,
+        "gdpr_dpia_required": True,
+        "business_purpose": "",
+        "owner_email": "owner@example.com",
+        "criticality": AISystemCriticality.low.value,
+        "data_sensitivity": DataSensitivity.public.value,
+    }
+
+    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
+    assert create_resp.status_code == 200
+
+    initial = client.get(
+        "/api/v1/ai-systems/ai-policy-business-purpose-1/violations",
+        headers=_headers(),
+    )
+    assert initial.status_code == 200
+    initial_violations = initial.json()
+    assert any(item["rule_id"] == "missing-business-purpose" for item in initial_violations)
+    initial_count = len(initial_violations)
+
+    for _ in range(2):
+        patch_resp = client.patch(
+            "/api/v1/ai-systems/ai-policy-business-purpose-1/status",
+            params={"new_status": AISystemStatus.active.value},
+            headers=_headers(),
+        )
+        assert patch_resp.status_code == 200
+
+    after_updates = client.get(
+        "/api/v1/ai-systems/ai-policy-business-purpose-1/violations",
+        headers=_headers(),
+    )
+    assert after_updates.status_code == 200
+    assert len(after_updates.json()) == initial_count

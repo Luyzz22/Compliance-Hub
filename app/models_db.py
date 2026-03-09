@@ -34,6 +34,9 @@ class AISystemTable(Base):
     )
     gdpr_dpia_required: Mapped[bool] = mapped_column(Boolean)
     owner_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    human_oversight_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    environment: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    business_purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
     criticality: Mapped[AISystemCriticality] = mapped_column(
         Enum(AISystemCriticality, name="aisystem_criticality", native_enum=False),
         nullable=False,
