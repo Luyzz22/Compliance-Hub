@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -65,12 +65,15 @@ def test_update_status_changes_only_status_and_updated_at() -> None:
     repository.create("tenant-a", _create_payload("ai-1"))
     before_row = session.get(AISystemTable, "ai-1")
     assert before_row is not None
-    old_updated_at = before_row.updated_at_utc
     old_created_at = before_row.created_at_utc
     old_name = before_row.name
 
-    before_row.updated_at_utc = datetime.now(UTC) - timedelta(days=1)
+    before_row.updated_at_utc = datetime.utcnow() - timedelta(days=1)
     session.commit()
+
+    before_row = session.get(AISystemTable, "ai-1")
+    assert before_row is not None
+    old_updated_at = before_row.updated_at_utc
 
     updated = repository.update_status("tenant-a", "ai-1", AISystemStatus.active)
     after_row = session.get(AISystemTable, "ai-1")
