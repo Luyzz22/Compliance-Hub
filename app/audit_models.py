@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AuditLog(BaseModel):
@@ -20,7 +20,7 @@ class AuditLog(BaseModel):
 
 class AuditEventBase(BaseModel):
     tenant_id: str
-    timestamp: datetime
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
     actor_type: str
     actor_id: str | None = None
     entity_type: str

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import JSON, DateTime, String, select
@@ -16,13 +16,13 @@ class AuditEventTable(Base):
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    actor_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    actor_type: Mapped[str] = mapped_column(String(64), nullable=False)
     actor_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    entity_type: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
-    entity_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
-    action: Mapped[str] = mapped_column(String(255), nullable=False)
-    metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    entity_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    entity_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(128), nullable=False)
+    metadata_json: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSON, nullable=True)
 
 
 class AuditRepository:
@@ -47,16 +47,16 @@ class AuditRepository:
         self,
         tenant_id: str,
         actor_type: str,
-        actor_id: str | None,
         entity_type: str,
         entity_id: str,
         action: str,
+        actor_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> AuditEvent:
         row = AuditEventTable(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             actor_type=actor_type,
             actor_id=actor_id,
             entity_type=entity_type,
@@ -106,8 +106,3 @@ class AuditRepository:
         )
         rows = self._session.execute(stmt).scalars().all()
         return [self._to_domain(row) for row in rows]
-
-
-    def flush_pending(self) -> None:
-        """No-op hook for future evidence flushes (NIS2/ISO-27001)."""
-        return None

@@ -8,7 +8,7 @@ from fastapi import Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 
-class APIAuthContext(BaseModel):
+class AuthContext(BaseModel):
     tenant_id: str
     api_key: str
 
@@ -54,9 +54,9 @@ def get_api_key_and_tenant(
     return x_tenant_id
 
 
-def get_api_auth_context(
+def get_auth_context(
     x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
     x_tenant_id: Annotated[str | None, Header(alias="x-tenant-id")] = None,
-) -> APIAuthContext:
+) -> AuthContext:
     tenant_id = get_api_key_and_tenant(x_api_key=x_api_key, x_tenant_id=x_tenant_id)
-    return APIAuthContext(tenant_id=tenant_id, api_key=x_api_key or "")
+    return AuthContext(tenant_id=tenant_id, api_key=x_api_key or "")

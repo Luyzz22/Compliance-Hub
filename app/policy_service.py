@@ -72,6 +72,7 @@ def evaluate_policies_for_ai_system(
         )
         violations.append(created)
 
+
     if audit_repository is not None:
         audit_repository.log_event(
             tenant_id=tenant_id,
