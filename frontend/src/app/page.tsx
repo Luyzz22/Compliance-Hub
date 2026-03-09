@@ -24,7 +24,7 @@ const layout = {
 // Hero-Slides
 const heroSlides = [
   {
-    label: 'EU AI Act & ISO 42001',
+    label: 'EU AI Act, ISO 42001',
     title: 'AI‑Governance ohne Excel‑Chaos.',
     body: 'AI‑System‑Register, Risikoklassifizierung und Technical File in einer gemeinsamen Oberfläche.',
   },
@@ -62,7 +62,7 @@ const miniStats = [
   { label: 'AI‑Systeme im Register', value: '27' },
   { label: 'Offene Violations', value: '9', warn: true },
   { label: 'NIS2‑Risiken high+', value: '5' },
-  { label: 'Evidence Coverage', value: '91 %' },
+  { label: 'Evidence Coverage (Cross‑Framework)', value: '91 %' },
 ];
 
 function Page() {
@@ -89,6 +89,7 @@ function Page() {
         <Divider />
         <CTASection />
       </main>
+      <SecuritySection />
       <Footer />
     </div>
   );
@@ -219,7 +220,7 @@ function BrandMark() {
           Compliance Hub
         </div>
         <div style={{ fontSize: 11, color: colors.textMuted }}>
-          Policy Engine für EU AI Act &amp; NIS2
+          Policy Engine für EU AI Act, NIS2, ISO &amp; DSGVO
         </div>
       </div>
     </div>
@@ -373,8 +374,8 @@ function HeroVisual({
           marginBottom: 8,
         }}
       >
-        <span>Mandant: Compliance Demo GmbH</span>
-        <span style={{ color: colors.accentBlue }}>Policy Engine · Preview</span>
+        <span>Musterindustrie Demo GmbH</span>
+        <span style={{ color: colors.accentBlue }}>Policy Engine</span>
       </div>
 
       <div
@@ -1051,6 +1052,176 @@ function CTASection() {
           >
             Produkt‑Deck ansehen
           </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+/* Security & Hosting */
+
+function SecuritySection() {
+  const bullets = [
+    'EU‑Hosting mit DACH‑Fokus: Frontend auf Vercel (EU‑Regionen), Backend & Orchestrierung wahlweise auf Hetzner in Deutschland.',
+    'PostgreSQL mit Verschlüsselung at Rest, täglichen Backups und getrennten Umgebungen (Dev/Staging/Prod) je Mandant.',
+    'Mandanten‑Isolation via PostgreSQL RLS, SSO‑Integration (SAML 2.0, Azure AD, SAP IAS) und Audit‑Logs für Board & Prüfer.',
+  ];
+
+  return (
+    <section style={{ padding: '26px 0 24px' }}>
+      <div
+        style={{
+          maxWidth: layout.maxWidth,
+          margin: '0 auto',
+          padding: `0 ${layout.sidePadding}`,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 0.9fr)',
+          gap: 20,
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              fontSize: 16,
+              marginBottom: 8,
+              fontWeight: 500,
+            }}
+          >
+            Security, DSGVO & Hosting in der EU.
+          </h2>
+          <p
+            style={{
+              fontSize: 13,
+              color: colors.textMuted,
+              maxWidth: 620,
+              marginBottom: 14,
+            }}
+          >
+            Compliance Hub ist für Industrie‑Mittelstand und Kanzleien im
+            DACH‑Raum gebaut: EU‑Hosting, deutsche Server‑Optionen und ein
+            Setup, das NIS2, EU AI Act, DSGVO sowie ISO‑27001/42001 abdeckt.
+          </p>
+          <ul
+            style={{
+              listStyle: 'none',
+              padding: 0,
+              margin: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            {bullets.map((b) => (
+              <li
+                key={b}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  fontSize: 13,
+                  color: colors.textSoft,
+                  lineHeight: 1.5,
+                }}
+              >
+                <span
+                  style={{
+                    marginTop: 4,
+                    width: 7,
+                    height: 7,
+                    borderRadius: '999px',
+                    backgroundColor: colors.accentGreen,
+                    boxShadow: '0 0 10px rgba(34,197,94,0.8)',
+                    flexShrink: 0,
+                  }}
+                />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div
+          style={{
+            borderRadius: 18,
+            border: `1px solid ${colors.border}`,
+            background:
+              'radial-gradient(circle at top, rgba(56,189,248,0.16), rgba(2,6,23,0.98))',
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            fontSize: 11,
+            maxWidth: 760,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span style={{ color: colors.textMuted }}>Infrastruktur‑Snapshot</span>
+            <span style={{ color: colors.textMuted }}> Architektur</span>
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gap: 10,
+              marginTop: 8,
+            }}
+          >
+            <div
+              style={{
+                borderRadius: 12,
+                padding: 10,
+                backgroundColor: colors.bgPanel,
+                border: `1px solid ${colors.borderSubtle}`,
+              }}
+            >
+              <div style={{ fontSize: 11, marginBottom: 6 }}>Vercel</div>
+              <div style={{ fontSize: 12, marginBottom: 2 }}>
+                Frontend &amp; Edge
+              </div>
+              <div style={{ fontSize: 10, color: colors.textMuted }}>
+                EU‑Regionen, TLS.
+              </div>
+            </div>
+            <div
+              style={{
+                borderRadius: 12,
+                padding: 10,
+                backgroundColor: colors.bgPanel,
+                border: `1px solid ${colors.borderSubtle}`,
+              }}
+            >
+              <div style={{ fontSize: 11, marginBottom: 6 }}>Postgres</div>
+              <div style={{ fontSize: 12, marginBottom: 2 }}>
+                Supabase / Neon
+              </div>
+              <div style={{ fontSize: 10, color: colors.textMuted }}>
+                Postgres mit RLS.
+              </div>
+            </div>
+            <div
+              style={{
+                borderRadius: 12,
+                padding: 10,
+                backgroundColor: colors.bgPanel,
+                border: `1px solid ${colors.borderSubtle}`,
+              }}
+            >
+              <div style={{ fontSize: 11, marginBottom: 6 }}>Hetzner (DE)</div>
+              <div style={{ fontSize: 12, marginBottom: 2 }}>
+                Compute &amp; Storage
+              </div>
+              <div style={{ fontSize: 10, color: colors.textMuted }}>
+                DE/EU‑Hosting.
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
