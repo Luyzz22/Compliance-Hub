@@ -12,6 +12,7 @@ from app.repositories.audit import AuditRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 
+
 class AISystemPolicyReport(NamedTuple):
     ai_system_id: str
     status: str
