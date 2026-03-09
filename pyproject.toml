@@ -44,3 +44,8 @@ select = [
 ]
 ignore = []
 
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app"]
+exclude = ["frontend"]
