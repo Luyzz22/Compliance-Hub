@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -69,7 +69,7 @@ def test_update_status_changes_only_status_and_updated_at() -> None:
     old_created_at = before_row.created_at_utc
     old_name = before_row.name
 
-    before_row.updated_at_utc = datetime.utcnow() - timedelta(days=1)
+    before_row.updated_at_utc = datetime.now(UTC) - timedelta(days=1)
     session.commit()
 
     updated = repository.update_status("tenant-a", "ai-1", AISystemStatus.active)
