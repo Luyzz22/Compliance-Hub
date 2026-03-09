@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from app.ai_system_models import AISystem
 from app.models import ComplianceAction
-from app.policy_models import Policy, Severity, Violation
+from app.policy_models import Policy, PolicyRule, PolicyRuleCondition, Severity, Violation
 from app.repositories.audit import AuditRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
@@ -33,7 +33,6 @@ def evaluate_policies_for_ai_system(
     actor_type: str,
     actor_id: str,
 ) -> PolicyEvaluationResult:
-    # Policies werden später genutzt; aktuell reichen die Hardcoded-Regeln
     policies: Sequence[Policy] = policy_repository.list_policies_for_tenant(tenant_id)
 
     core_result = evaluate_policies_for_ai_system_core(
@@ -41,8 +40,6 @@ def evaluate_policies_for_ai_system(
         policies=policies,
     )
 
-    # Idempotenz: gleiche Violation (gleiches ai_system_id, rule_id, message)
-    # nicht erneut anlegen
     for violation in core_result.violations:
         existing = violation_repository.get_by_ai_system_and_rule(
             tenant_id=tenant_id,
@@ -93,49 +90,21 @@ def evaluate_policies_for_ai_system_core(
 ) -> PolicyEvaluationResult:
     violations: list[Violation] = []
 
-    # 1) High risk + gdpr_dpia_required == False -> DPIA-Violation
-    risk = getattr(ai_system, "risk_level", None)
-    risk_value = getattr(risk, "value", risk)
-    dpia_required = getattr(ai_system, "gdpr_dpia_required", None)
-
-    if risk_value == "high" and dpia_required is False:
-        msg = "High risk AI system without required DPIA."
-        violations.append(
-            Violation(
-                id=None,
-                tenant_id=ai_system.tenant_id,
-                ai_system_id=ai_system.id,
-                rule_id="high-risk-without-dpia",
-                message=msg,
-                description=msg,
-                severity=Severity.high,
-                created_at=None,
-            )
-        )
-
-    # 2) High criticality + leerer owner_email -> Owner-Email-Violation
-    crit = getattr(ai_system, "criticality", None)
-    crit_value = getattr(crit, "value", crit)
-    owner_email = getattr(ai_system, "owner_email", "")
-    if crit_value == "high" and not owner_email.strip():
-        msg = "High criticality AI system without valid owner email."
-        violations.append(
-            Violation(
-                id=None,
-                tenant_id=ai_system.tenant_id,
-                ai_system_id=ai_system.id,
-                rule_id="high-criticality-without-owner",
-                message=msg,
-                description=msg,
-                severity=Severity.medium,
-                created_at=None,
-            )
-        )
-
-    # (Optional) später: deklarative Policies auswerten
     for policy in policies:
-        # placeholder – aktuell keine zusätzlichen Violations
-        _ = policy
+        for rule in policy.rules:
+            if _matches_rule(ai_system, rule):
+                violations.append(
+                    Violation(
+                        id=None,
+                        tenant_id=ai_system.tenant_id,
+                        ai_system_id=ai_system.id,
+                        rule_id=rule.id,
+                        message=rule.message,
+                        description=rule.description,
+                        severity=rule.severity,
+                        created_at=None,
+                    )
+                )
 
     actions: list[ComplianceAction] = derive_actions(violations)
     report = _build_compliance_report(ai_system, violations, actions)
@@ -147,8 +116,27 @@ def evaluate_policies_for_ai_system_core(
     )
 
 
+def _matches_rule(ai_system: AISystem, rule: PolicyRule) -> bool:
+    return all(_matches_condition(ai_system, condition) for condition in rule.conditions)
+
+
+def _matches_condition(ai_system: AISystem, condition: PolicyRuleCondition) -> bool:
+    value = _read_field_value(ai_system, condition.field_path)
+    if condition.operator == "equals":
+        return value == condition.expected
+    if condition.operator == "is_blank":
+        if not condition.expected:
+            return False
+        return not isinstance(value, str) or not value.strip()
+    return False
+
+
+def _read_field_value(ai_system: AISystem, field_path: str) -> Any:
+    value = getattr(ai_system, field_path, None)
+    return getattr(value, "value", value)
+
+
 def derive_actions(violations: list[Violation]) -> list[ComplianceAction]:
-    # Aktuell keine konkreten Actions; Tests erwarten nur Violations
     return []
 
 
