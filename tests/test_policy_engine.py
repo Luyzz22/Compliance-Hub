@@ -127,9 +127,11 @@ def test_list_violations_filters_by_ai_system_and_is_idempotent_on_update():
         "ai_act_category": AIActCategory.minimal_risk.value,
         "gdpr_dpia_required": True,
         "owner_email": "other@example.com",
+        "business_purpose": "Just a dummy purpose",  # NEU
         "criticality": AISystemCriticality.low.value,
         "data_sensitivity": DataSensitivity.public.value,
     }
+
     other_create = client.post("/api/v1/ai-systems", json=unrelated_payload, headers=_headers())
     assert other_create.status_code == 200
 
