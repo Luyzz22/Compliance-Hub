@@ -1121,7 +1121,7 @@ function SecuritySection() {
                   alignItems: 'flex-start',
                   gap: 8,
                   fontSize: 13,
-                  color: colors.textSoft,
+                  color: colors.text,
                   lineHeight: 1.5,
                 }}
               >
@@ -1178,7 +1178,7 @@ function SecuritySection() {
                 borderRadius: 12,
                 padding: 10,
                 backgroundColor: colors.bgPanel,
-                border: `1px solid ${colors.borderSubtle}`,
+                border: `1px solid ${colors.border}`,
               }}
             >
               <div style={{ fontSize: 11, marginBottom: 6 }}>Vercel</div>
@@ -1194,7 +1194,7 @@ function SecuritySection() {
                 borderRadius: 12,
                 padding: 10,
                 backgroundColor: colors.bgPanel,
-                border: `1px solid ${colors.borderSubtle}`,
+                border: `1px solid ${colors.border}`,
               }}
             >
               <div style={{ fontSize: 11, marginBottom: 6 }}>Postgres</div>
@@ -1210,7 +1210,7 @@ function SecuritySection() {
                 borderRadius: 12,
                 padding: 10,
                 backgroundColor: colors.bgPanel,
-                border: `1px solid ${colors.borderSubtle}`,
+                border: `1px solid ${colors.border}`,
               }}
             >
               <div style={{ fontSize: 11, marginBottom: 6 }}>Hetzner (DE)</div>
