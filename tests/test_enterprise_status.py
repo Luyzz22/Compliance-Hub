@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -19,3 +21,13 @@ def test_enterprise_status_ok():
     assert "ai_system_registry" in body["features_enabled"]
     assert "audit_logging" in body["features_enabled"]
 
+    assert isinstance(body["timestamp_utc"], str)
+    parsed = datetime.fromisoformat(body["timestamp_utc"])
+    assert parsed.tzinfo is not None
+
+    assert body["db_status"] in {"ok", "error"}
+    assert isinstance(body["policy_engine_ready"], bool)
+
+    assert "blueprints_available" in body
+    assert "NIS2_BASELINE_MIDMARKET" in body["blueprints_available"]
+    assert "AI_GOVERNANCE_STARTER" in body["blueprints_available"]

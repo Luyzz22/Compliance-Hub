@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -19,7 +21,7 @@ from app.ai_system_models import (
     AISystemUpdate,
 )
 from app.audit_models import AuditEvent, AuditLog
-from app.db import engine, get_session
+from app.db import check_connection, engine, get_session
 from app.models import (
     ComplianceAction,
     DocumentIngestRequest,
@@ -36,6 +38,7 @@ from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
 from app.services.compliance_engine import build_audit_hash, derive_actions
+from app.tenant_blueprints import list_blueprint_ids, preload_blueprints
 
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
@@ -141,6 +144,32 @@ def _health_payload() -> dict[str, str]:
         "status": "ok",
         "product": "ComplianceHub",
         "region": "DACH",
+    }
+
+
+def _enterprise_status_payload() -> dict[str, object]:
+    policy_engine_ready = True
+    db_status = "ok" if check_connection() else "error"
+
+    return {
+        "status": "ok",
+        "product": "ComplianceHub",
+        "region": "DACH",
+        "version": APP_VERSION,
+        "environment": APP_ENVIRONMENT,
+        "timestamp_utc": datetime.now(UTC).isoformat(),
+        "features_enabled": [
+            "document_intake",
+            "ai_system_registry",
+            "audit_logging",
+        ],
+        "compliance_profiles": [
+            "EU_AI_ACT_FOUNDATION",
+            "GDPR_MINIMAL",
+        ],
+        "blueprints_available": list_blueprint_ids(),
+        "db_status": db_status,
+        "policy_engine_ready": policy_engine_ready,
     }
 
 
