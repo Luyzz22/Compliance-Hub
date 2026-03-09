@@ -36,10 +36,13 @@ from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
 from app.services.compliance_engine import build_audit_hash, derive_actions
+from app.services.tenant_compliance_overview import (
+    TenantComplianceOverview,
+    compute_tenant_compliance_overview,
+)
 
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -414,6 +417,15 @@ def get_aisystem_compliance_report(
     summary = repository.compliance_summary_for_tenant(tenant_id)
     return AISystemComplianceReport(**summary)
 
+@app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)
+def get_tenant_compliance_overview(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> TenantComplianceOverview:
+    return compute_tenant_compliance_overview(
+        tenant_id=auth_context.tenant_id,
+        session=session,
+    )
 
 @app.get("/api/v1/violations", response_model=list[Violation])
 def list_violations(
