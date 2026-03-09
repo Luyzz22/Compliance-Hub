@@ -21,6 +21,35 @@ def _headers() -> dict[str, str]:
         "x-tenant-id": "tenant-policy-001",
     }
 
+def test_policy_report_endpoint_returns_violations():
+    payload = {
+        "id": "ai-policy-report-1",
+        "name": "Report System",
+        "description": "High risk no DPIA",
+        "business_unit": "Risk",
+        "risk_level": AISystemRiskLevel.high.value,
+        "ai_act_category": AIActCategory.high_risk.value,
+        "gdpr_dpia_required": False,
+        "owner_email": "owner@example.com",
+        "criticality": AISystemCriticality.medium.value,
+        "data_sensitivity": DataSensitivity.internal.value,
+    }
+
+    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
+    assert create_resp.status_code == 200
+
+    report_resp = client.get(
+        "/api/v1/ai-systems/ai-policy-report-1/policy-report",
+        headers=_headers(),
+    )
+    assert report_resp.status_code == 200
+
+    body = report_resp.json()
+    assert body["ai_system"]["id"] == "ai-policy-report-1"
+    assert any(
+        v["rule_id"] == "high-risk-without-dpia"
+        for v in body["violations"]
+    )
 
 def test_create_high_risk_without_dpia_creates_violation():
     payload = {
