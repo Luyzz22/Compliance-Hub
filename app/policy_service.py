@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, NamedTuple
 
+from pydantic import BaseModel
+
 from app.ai_system_models import AISystem
 from app.models import ComplianceAction
 from app.policy_models import Policy, PolicyRule, PolicyRuleCondition, Severity, Violation
@@ -17,6 +19,9 @@ class AISystemPolicyReport(NamedTuple):
     violation_count: int
     action_count: int
 
+class AISystemPolicyReportResponse(BaseModel):
+    report: AISystemPolicyReport
+    violations: list[Violation]
 
 class PolicyEvaluationResult(NamedTuple):
     report: AISystemPolicyReport

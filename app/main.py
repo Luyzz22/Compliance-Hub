@@ -72,6 +72,9 @@ class DocumentIntakeRequest(BaseModel):
     xml_valid_en16931: bool = False
     amount_eur: float = 0.0
 
+class AISystemPolicyReportResponse(BaseModel):
+    ai_system: AISystem
+    violations: list[Violation]
 
 class ComplianceActionModel(BaseModel):
     action: str
@@ -430,3 +433,42 @@ def list_violations_for_ai_system(
         tenant_id=tenant_id,
         ai_system_id=ai_system_id,
     )
+
+@app.get(
+    "/api/v1/ai-systems/{ai_system_id}/policy-report",
+    response_model=AISystemPolicyReportResponse,
+)
+def get_ai_system_policy_report(
+    ai_system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Session = Depends(get_session),
+) -> AISystemPolicyReportResponse:
+    tenant_id = auth.tenant_id
+
+    ai_repo = AISystemRepository(session)
+    policy_repo = PolicyRepository(session)
+    violation_repo = ViolationRepository(session)
+    audit_repo = AuditRepository(session)
+
+    ai_system = ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id)
+    if ai_system is None:
+        raise HTTPException(status_code=404, detail="AI system not found")
+
+    result = evaluate_policies_for_ai_system(
+        tenant_id=tenant_id,
+        ai_system=ai_system,
+        policy_repository=policy_repo,
+        violation_repository=violation_repo,
+        audit_repository=audit_repo,
+        actor_type="api_key",
+        actor_id=auth.api_key,
+    )
+
+
+    # Optional: zusätzliche Actions aus Violations ableiten
+
+    return AISystemPolicyReportResponse(
+        ai_system=ai_system,
+        violations=result.violations,
+    )
+
