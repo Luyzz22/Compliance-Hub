@@ -2,16 +2,23 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.ai_system_models import AISystem, AISystemComplianceReport, AISystemCreate, AISystemStatus
-from app.audit_models import AuditLog
-from app.db import engine, get_session
+from app.ai_system_models import (
+    AISystem,
+    AISystemComplianceReport,
+    AISystemCreate,
+    AISystemStatus,
+    AISystemUpdate,
+)
+from app.audit_models import AuditEvent, AuditLog
+from app.db import check_connection, engine, get_session
 from app.models import (
     ComplianceAction,
     DocumentIngestRequest,
@@ -19,19 +26,37 @@ from app.models import (
     EInvoiceFormat,
 )
 from app.models_db import Base
+from app.policy_models import Violation
+from app.policy_service import evaluate_policies_for_ai_system
 from app.repositories.ai_systems import AISystemRepository
+from app.repositories.audit import AuditRepository
 from app.repositories.audit_logs import AuditLogRepository
-from app.security import get_api_key_and_tenant
+from app.repositories.policies import PolicyRepository
+from app.repositories.violations import ViolationRepository
+from app.security import APIAuthContext, get_api_auth_context, get_api_key_and_tenant
 from app.services.compliance_engine import build_audit_hash, derive_actions
+from app.tenant_blueprints import list_blueprint_ids, preload_blueprints
 
-app = FastAPI(title="ComplianceHub API", version="0.1.0")
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
 
 
-@app.on_event("startup")
-def create_database_schema() -> None:
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Startup phase
     Base.metadata.create_all(bind=engine)
+    preload_blueprints()
+    # TODO: optional warmup for DB/rule graph
+    try:
+        yield
+    finally:
+        # Shutdown phase (no-op hooks for now)
+        # TODO: hook for audit-log flush
+        # TODO: hook for metrics snapshot export
+        pass
+
+
+app = FastAPI(title="ComplianceHub API", version="0.1.0", lifespan=lifespan)
 
 
 class DocumentIntakeRequest(BaseModel):
@@ -82,6 +107,24 @@ def get_audit_log_repository(
     return AuditLogRepository(session)
 
 
+def get_policy_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> PolicyRepository:
+    return PolicyRepository(session)
+
+
+def get_violation_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> ViolationRepository:
+    return ViolationRepository(session)
+
+
+def get_audit_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> AuditRepository:
+    return AuditRepository(session)
+
+
 def _model_to_json(model: BaseModel) -> str:
     payload: dict[str, Any]
     if hasattr(model, "model_dump"):
@@ -96,6 +139,32 @@ def _health_payload() -> dict[str, str]:
         "status": "ok",
         "product": "ComplianceHub",
         "region": "DACH",
+    }
+
+
+def _enterprise_status_payload() -> dict[str, object]:
+    policy_engine_ready = True
+    db_status = "ok" if check_connection() else "error"
+
+    return {
+        "status": "ok",
+        "product": "ComplianceHub",
+        "region": "DACH",
+        "version": APP_VERSION,
+        "environment": APP_ENVIRONMENT,
+        "timestamp_utc": datetime.now(UTC).isoformat(),
+        "features_enabled": [
+            "document_intake",
+            "ai_system_registry",
+            "audit_logging",
+        ],
+        "compliance_profiles": [
+            "EU_AI_ACT_FOUNDATION",
+            "GDPR_MINIMAL",
+        ],
+        "blueprints_available": list_blueprint_ids(),
+        "db_status": db_status,
+        "policy_engine_ready": policy_engine_ready,
     }
 
 
@@ -146,12 +215,15 @@ def list_ai_systems(
 @app.post("/api/v1/ai-systems", response_model=AISystem)
 def create_ai_system(
     payload: AISystemCreate,
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    auth_context: Annotated[APIAuthContext, Depends(get_api_auth_context)],
     repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    structured_audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
 ) -> AISystem:
+    tenant_id = auth_context.tenant_id
     created = repository.create(tenant_id, payload)
-    # TODO: replace synthetic actor with authenticated user id once JWT auth is introduced.
     audit_repo.record_event(
         tenant_id=tenant_id,
         actor="system",
@@ -161,16 +233,83 @@ def create_ai_system(
         before=None,
         after=_model_to_json(created),
     )
+    structured_audit_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+        entity_type="ai_system",
+        entity_id=created.id,
+        action="created",
+        metadata={"status": created.status},
+    )
+    evaluate_policies_for_ai_system(
+        tenant_id=tenant_id,
+        ai_system=created,
+        policy_repository=policy_repo,
+        violation_repository=violation_repo,
+        audit_repository=structured_audit_repo,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+    )
     return created
+
+
+@app.patch("/api/v1/ai-systems/{aisystem_id}", response_model=AISystem)
+def update_ai_system(
+    aisystem_id: str,
+    payload: AISystemUpdate,
+    auth_context: Annotated[APIAuthContext, Depends(get_api_auth_context)],
+    repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    structured_audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> AISystem:
+    tenant_id = auth_context.tenant_id
+    existing = repository.get_by_id(tenant_id=tenant_id, aisystem_id=aisystem_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AISystem not found",
+        )
+
+    updated = repository.update(
+        tenant_id=tenant_id,
+        aisystem_id=aisystem_id,
+        payload=payload,
+    )
+    structured_audit_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+        entity_type="ai_system",
+        entity_id=updated.id,
+        action="updated",
+        metadata={"status": updated.status},
+    )
+    evaluate_policies_for_ai_system(
+        tenant_id=tenant_id,
+        ai_system=updated,
+        policy_repository=policy_repo,
+        violation_repository=violation_repo,
+        audit_repository=structured_audit_repo,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+    )
+    return updated
+
 
 @app.patch("/api/v1/ai-systems/{aisystem_id}/status", response_model=AISystem)
 def update_ai_system_status(
     aisystem_id: str,
     new_status: AISystemStatus,
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    auth_context: Annotated[APIAuthContext, Depends(get_api_auth_context)],
     repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    structured_audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
 ) -> AISystem:
+    tenant_id = auth_context.tenant_id
     existing = repository.get_by_id(tenant_id=tenant_id, aisystem_id=aisystem_id)
     if existing is None:
         raise HTTPException(
@@ -188,15 +327,34 @@ def update_ai_system_status(
 
     audit_repo.record_event(
         tenant_id=tenant_id,
-        actor="system",  # später: authentifizierter Benutzer
+        actor="system",
         action="update_ai_system_status",
         entity_type="AISystem",
         entity_id=updated.id,
         before=before_json,
         after=after_json,
     )
+    structured_audit_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+        entity_type="ai_system",
+        entity_id=updated.id,
+        action="status_changed",
+        metadata={"status": updated.status},
+    )
+    evaluate_policies_for_ai_system(
+        tenant_id=tenant_id,
+        ai_system=updated,
+        policy_repository=policy_repo,
+        violation_repository=violation_repo,
+        audit_repository=structured_audit_repo,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+    )
 
     return updated
+
 
 @app.get("/api/v1/audit-logs", response_model=list[AuditLog])
 def list_audit_logs(
@@ -205,27 +363,53 @@ def list_audit_logs(
 ) -> list[AuditLog]:
     return audit_repo.list_for_tenant(tenant_id=tenant_id)
 
-def _enterprise_status_payload() -> dict[str, object]:
-    return {
-        "status": "ok",
-        "product": "ComplianceHub",
-        "region": "DACH",
-        "version": APP_VERSION,
-        "environment": APP_ENVIRONMENT,
-        "features_enabled": [
-            "document_intake",
-            "ai_system_registry",
-            "audit_logging",
-        ],
-        "compliance_profiles": [
-            "EU_AI_ACT_FOUNDATION",
-            "GDPR_MINIMAL",
-        ],
-    }
+
+@app.get("/api/v1/audit-events", response_model=list[AuditEvent])
+def list_audit_events(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    entity_type: str | None = Query(default=None),
+    entity_id: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[AuditEvent]:
+    if entity_type and entity_id:
+        return audit_repo.list_events_for_entity(
+            tenant_id=tenant_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            limit=limit,
+            offset=offset,
+        )
+
+    return audit_repo.list_events_for_tenant(
+        tenant_id=tenant_id,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.get("/api/v1/audit-events/ai-systems/{ai_system_id}", response_model=list[AuditEvent])
+def list_audit_events_for_ai_system(
+    ai_system_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> list[AuditEvent]:
+    return audit_repo.list_events_for_entity(
+        tenant_id=tenant_id,
+        entity_type="ai_system",
+        entity_id=ai_system_id,
+        limit=limit,
+        offset=offset,
+    )
+
 
 @app.get("/api/v1/enterprise/status")
 def enterprise_status() -> dict[str, object]:
     return _enterprise_status_payload()
+
 
 @app.get("/api/v1/compliance/reports/ai-systems", response_model=AISystemComplianceReport)
 def get_aisystem_compliance_report(
@@ -235,3 +419,22 @@ def get_aisystem_compliance_report(
     summary = repository.compliance_summary_for_tenant(tenant_id)
     return AISystemComplianceReport(**summary)
 
+
+@app.get("/api/v1/violations", response_model=list[Violation])
+def list_violations(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+) -> list[Violation]:
+    return violation_repo.list_violations_for_tenant(tenant_id=tenant_id)
+
+
+@app.get("/api/v1/ai-systems/{ai_system_id}/violations", response_model=list[Violation])
+def list_violations_for_ai_system(
+    ai_system_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+) -> list[Violation]:
+    return violation_repo.list_violations_for_ai_system(
+        tenant_id=tenant_id,
+        ai_system_id=ai_system_id,
+    )

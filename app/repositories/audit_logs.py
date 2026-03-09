@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -45,7 +45,7 @@ class AuditLogRepository:
             entity_id=entity_id,
             before=before,
             after=after,
-            created_at_utc=datetime.now(UTC),
+            created_at_utc=datetime.utcnow(),
         )
         self._session.add(row)
         self._session.commit()
@@ -61,3 +61,8 @@ class AuditLogRepository:
         )
         rows = self._session.execute(stmt).scalars().all()
         return [self._to_domain(row) for row in rows]
+
+
+    def flush_pending(self) -> None:
+        """No-op hook for future evidence flushes (NIS2/ISO-27001)."""
+        return None

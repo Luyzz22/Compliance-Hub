@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class AISystemRiskLevel(StrEnum):
@@ -54,9 +54,21 @@ class AISystemCreate(BaseModel):
     risk_level: AISystemRiskLevel
     ai_act_category: AIActCategory
     gdpr_dpia_required: bool
-    owner_email: EmailStr
+    owner_email: str | None = None
     criticality: AISystemCriticality = AISystemCriticality.medium
     data_sensitivity: DataSensitivity = DataSensitivity.internal
+
+
+class AISystemUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    business_unit: str | None = None
+    risk_level: AISystemRiskLevel | None = None
+    ai_act_category: AIActCategory | None = None
+    gdpr_dpia_required: bool | None = None
+    owner_email: str | None = None
+    criticality: AISystemCriticality | None = None
+    data_sensitivity: DataSensitivity | None = None
 
 
 class AISystem(BaseModel):
@@ -68,12 +80,12 @@ class AISystem(BaseModel):
     risk_level: AISystemRiskLevel
     ai_act_category: AIActCategory
     gdpr_dpia_required: bool
-    owner_email: EmailStr
+    owner_email: str | None = None
     criticality: AISystemCriticality = AISystemCriticality.medium
     data_sensitivity: DataSensitivity = DataSensitivity.internal
     status: AISystemStatus = AISystemStatus.draft
-    created_at_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at_utc: datetime = Field(default_factory=lambda: datetime.utcnow())
+    updated_at_utc: datetime = Field(default_factory=lambda: datetime.utcnow())
 
 class AISystemRiskSummary(BaseModel):
     risk_level: AISystemRiskLevel
