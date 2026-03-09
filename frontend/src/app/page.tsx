@@ -1,7 +1,7 @@
 // src/app/page.tsx
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 // Farben: Dark SaaS + klare Akzente, angelehnt an Enterprise/Apple UI
 const colors = {
@@ -86,6 +86,8 @@ function Page() {
         <FlowSection />
         <Divider />
         <IntegrationsSection />
+        <Divider />
+        <SecuritySection />
         <Divider />
         <CTASection />
       </main>
@@ -230,6 +232,13 @@ function BrandMark() {
 
 function Hero() {
   const [active, setActive] = React.useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActive((prev) => (prev + 1) % heroSlides.length);
+    }, 6000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <section
@@ -868,14 +877,14 @@ function FlowSection() {
 
 function IntegrationsSection() {
   const tools = [
-    { icon: '🤖', name: 'OpenAI', cat: 'Foundation Models' },
-    { icon: '🧠', name: 'Anthropic', cat: 'LLMs' },
-    { icon: '⚙️', name: 'Vertex AI', cat: 'Cloud AI' },
-    { icon: '☁️', name: 'Azure AI', cat: 'Cloud AI' },
-    { icon: '📊', name: 'Snowflake', cat: 'Data Platform' },
-    { icon: '📈', name: 'Databricks', cat: 'Lakehouse' },
-    { icon: '🛡️', name: 'OneTrust', cat: 'GRC' },
-    { icon: '📋', name: 'Jira', cat: 'Tickets' },
+    { icon: '🤖', name: 'OpenAI', cat: 'LLM / API', status: 'Nativ' },
+    { icon: '🧠', name: 'Claude', cat: 'LLM / API', status: 'Nativ' },
+    { icon: '✨', name: 'Gemini', cat: 'LLM / API', status: 'API' },
+    { icon: '⚙️', name: 'n8n', cat: 'Workflow Engine', status: 'Nativ' },
+    { icon: '💬', name: 'Slack', cat: 'Kommunikation', status: 'API' },
+    { icon: '📦', name: 'GitHub', cat: 'Code & PRs', status: 'API' },
+    { icon: '📋', name: 'Jira', cat: 'Tickets', status: 'Geplant' },
+    { icon: '☁️', name: 'Azure', cat: 'Cloud & Identity', status: 'Geplant' },
   ];
 
   return (
@@ -955,6 +964,32 @@ function IntegrationsSection() {
               >
                 {t.cat}
               </div>
+              {t.status && (
+                <div
+                  style={{
+                    marginTop: 6,
+                    fontSize: 9,
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: 999,
+                    display: 'inline-block',
+                    backgroundColor:
+                      t.status === 'Nativ'
+                        ? 'rgba(34,197,94,0.18)'
+                        : t.status === 'API'
+                        ? 'rgba(14,165,233,0.18)'
+                        : 'rgba(148,163,184,0.24)',
+                    color:
+                      t.status === 'Nativ'
+                        ? colors.accentGreen
+                        : t.status === 'API'
+                        ? colors.accentBlue
+                        : colors.textMuted,
+                  }}
+                >
+                  {t.status}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -978,6 +1013,171 @@ function IntegrationsSection() {
 }
 
 /* CTA */
+
+function SecuritySection() {
+  const bullets = [
+    'Frontend auf Vercel (EU-Regionen), Backend & APIs auf dedizierten Servern/Containern.',
+    'Datenbanken auf Neon & Hetzner mit Verschlüsselung at Rest und regelmäßigen Backups.',
+    'Mandanten‑Isolation auf Datenbank- und Anwendungsebene, fein granulare Rollen & Rechte.',
+    'TLS überall (in Transit), HSTS, Secret‑Management über Umgebungsvariablen & Vaults.',
+    'Vollständiger Audit‑Trail für kritische Aktionen (Änderungen an AI‑Systemen, Policies, Rollen).',
+  ];
+
+  return (
+    <section style={{ padding: '26px 0' }}>
+      <div
+        style={{
+          maxWidth: layout.maxWidth,
+          margin: '0 auto',
+          padding: `0 ${layout.sidePadding}`,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 0.9fr)',
+          gap: 20,
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              fontSize: 16,
+              marginBottom: 8,
+              fontWeight: 500,
+            }}
+          >
+            Security &amp; Trust – von Anfang an mitgedacht.
+          </h2>
+          <p
+            style={{
+              fontSize: 13,
+              color: colors.textMuted,
+              maxWidth: 620,
+              marginBottom: 14,
+            }}
+          >
+            Compliance Hub wird so aufgebaut, wie Sie es von einer Governance‑Plattform
+            erwarten: klare Verantwortlichkeiten, europäische Infrastruktur und
+            durchgängige Nachvollziehbarkeit.
+          </p>
+          <ul
+            style={{
+              listStyle: 'none',
+              padding: 0,
+              margin: 0,
+              display: 'grid',
+              gap: 8,
+              fontSize: 12,
+              color: colors.textMuted,
+            }}
+          >
+            {bullets.map((b) => (
+              <li key={b} style={{ display: 'flex', gap: 8 }}>
+                <span
+                  style={{
+                    marginTop: 5,
+                    width: 7,
+                    height: 7,
+                    borderRadius: 999,
+                    backgroundColor: colors.accentGreen,
+                  }}
+                />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div
+          style={{
+            borderRadius: 16,
+            border: `1px solid ${colors.border}`,
+            background:
+              'linear-gradient(135deg, rgba(15,118,110,0.18), rgba(2,6,23,0.98))',
+            padding: 14,
+            fontSize: 11,
+          }}
+        >
+          <div
+            style={{
+              marginBottom: 8,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span style={{ color: colors.textMuted }}>Infrastruktur‑Snapshot</span>
+            <span style={{ color: colors.accentGreen }}>Preview Architektur</span>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gap: 8,
+            }}
+          >
+            <div
+              style={{
+                borderRadius: 12,
+                border: `1px solid ${colors.border}`,
+                backgroundColor: colors.bgPanelSoft,
+                padding: 10,
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: 18, marginBottom: 4 }}>▲</div>
+              <div style={{ fontSize: 11, fontWeight: 600 }}>Vercel</div>
+              <div style={{ fontSize: 10, color: colors.textMuted }}>
+                Frontend &amp; Edge‑Funktionen
+              </div>
+            </div>
+            <div
+              style={{
+                borderRadius: 12,
+                border: `1px solid ${colors.border}`,
+                backgroundColor: colors.bgPanelSoft,
+                padding: 10,
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: 18, marginBottom: 4 }}>🟦</div>
+              <div style={{ fontSize: 11, fontWeight: 600 }}>Neon</div>
+              <div style={{ fontSize: 10, color: colors.textMuted }}>
+                Postgres‑DB, Branching &amp; Backups
+              </div>
+            </div>
+            <div
+              style={{
+                borderRadius: 12,
+                border: `1px solid ${colors.border}`,
+                backgroundColor: colors.bgPanelSoft,
+                padding: 10,
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: 18, marginBottom: 4 }}>💾</div>
+              <div style={{ fontSize: 11, fontWeight: 600 }}>Hetzner</div>
+              <div style={{ fontSize: 10, color: colors.textMuted }}>
+                Compute‑Ressourcen &amp; Storage in der EU
+              </div>
+            </div>
+          </div>
+
+          <p
+            style={{
+              marginTop: 10,
+              fontSize: 10,
+              color: colors.textMuted,
+            }}
+          >
+            Zielbild: ein Setup, das zu NIS2‑, ISO 27001‑ und DORA‑Erwartungen passt –
+            inklusive klarer Trennung von Umgebungen und Audit‑fähigen Logs.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 
 function CTASection() {
   return (
