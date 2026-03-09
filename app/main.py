@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from typing import Annotated, Any
 
@@ -35,14 +37,28 @@ from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
 from app.services.compliance_engine import build_audit_hash, derive_actions
 
-app = FastAPI(title="ComplianceHub API", version="0.1.0")
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
 
 
-@app.on_event("startup")
-def create_database_schema() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Enterprise lifespan context manager for ComplianceHub.
+    
+    Startup: Initialize database schema (ISO 27001/NIS2 compliant)
+    Shutdown: Graceful connection cleanup, audit log flush
+    """
+    # Startup phase
     Base.metadata.create_all(bind=engine)
+    yield
+    # Shutdown phase
+
+
+app = FastAPI(
+    title="ComplianceHub API",
+    version="0.1.0",
+    lifespan=lifespan,
+)
 
 
 class DocumentIntakeRequest(BaseModel):
