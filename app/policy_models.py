@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -32,17 +30,24 @@ class PolicyRuleCondition(BaseModel):
 
 class PolicyRule(BaseModel):
     id: str
+    policy_id: str | None = None
+    tenant_id: str | None = None
+    name: str | None = None
     description: str
     severity: Severity
+    message: str
     norm_references: list[NormReference] = []
     conditions: list[PolicyRuleCondition]
 
 
 class Policy(BaseModel):
     id: str
+    tenant_id: str | None = None
     name: str
+    description: str | None = None
+    active: bool = True
     scope: PolicyScope = PolicyScope.ai_system
-    rules: list[PolicyRule]
+    rules: list[PolicyRule] = []
 
 
 class Violation(BaseModel):
@@ -57,9 +62,11 @@ class Violation(BaseModel):
 
 
 # Backwards-compat aliases for existing repository code
-
 Rule = PolicyRule
 
 
 class RuleConditionType(StrEnum):
     equals = "equals"
+    high_risk_requires_dpia = "high_risk_requires_dpia"
+    high_criticality_requires_owner_email = "high_criticality_requires_owner_email"
+
