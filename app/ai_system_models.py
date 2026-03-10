@@ -55,6 +55,9 @@ class AISystemCreate(BaseModel):
     ai_act_category: AIActCategory
     gdpr_dpia_required: bool
     owner_email: str | None = None
+    human_oversight_enabled: bool | None = None
+    environment: str | None = None
+    business_purpose: str | None = None
     criticality: AISystemCriticality = AISystemCriticality.medium
     data_sensitivity: DataSensitivity = DataSensitivity.internal
 
@@ -67,6 +70,9 @@ class AISystemUpdate(BaseModel):
     ai_act_category: AIActCategory | None = None
     gdpr_dpia_required: bool | None = None
     owner_email: str | None = None
+    human_oversight_enabled: bool | None = None
+    environment: str | None = None
+    business_purpose: str | None = None
     criticality: AISystemCriticality | None = None
     data_sensitivity: DataSensitivity | None = None
 
@@ -80,6 +86,9 @@ class AISystem(BaseModel):
     ai_act_category: AIActCategory
     gdpr_dpia_required: bool
     owner_email: str | None = None
+    human_oversight_enabled: bool | None = None
+    environment: str | None = None
+    business_purpose: str | None = None
     criticality: AISystemCriticality = AISystemCriticality.medium
     data_sensitivity: DataSensitivity = DataSensitivity.internal
     status: AISystemStatus = AISystemStatus.draft
@@ -114,4 +123,3 @@ class AISystemComplianceReport(BaseModel):
     by_ai_act_category: list[AISystemAIActSummary]
     by_criticality: list[AISystemCriticalitySummary]
     by_data_sensitivity: list[AISystemDataSensitivitySummary]
-
