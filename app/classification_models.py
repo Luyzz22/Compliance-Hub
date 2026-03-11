@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     prohibited = "prohibited"
     high_risk = "high_risk"
     limited_risk = "limited_risk"
     minimal_risk = "minimal_risk"
 
 
-class ClassificationPath(str, Enum):
+class ClassificationPath(StrEnum):
     none = "none"
     annex_i = "annex_i"
     annex_iii = "annex_iii"

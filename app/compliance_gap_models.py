@@ -28,8 +28,8 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         article="Art. 10",
         name="Datengovernance",
         description=(
-            "Anforderungen an Trainings-, Validierungs- und Testdatensätze "
-            "gemäß Art. 10 EU AI Act."
+            "Anforderungen an Trainings-, Validierungs- und "
+            "Testdatensätze gemäß Art. 10 EU AI Act."
         ),
         applies_to=["high_risk"],
     ),
@@ -49,8 +49,8 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         article="Art. 12",
         name="Aufzeichnungspflicht",
         description=(
-            "Automatische Aufzeichnung von Ereignissen (Logging) während "
-            "des Betriebs gemäß Art. 12 EU AI Act."
+            "Automatische Aufzeichnung von Ereignissen (Logging) "
+            "während des Betriebs gemäß Art. 12 EU AI Act."
         ),
         applies_to=["high_risk"],
     ),
@@ -59,8 +59,8 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         article="Art. 13",
         name="Transparenz / Gebrauchsanweisung",
         description=(
-            "Bereitstellung hinreichend transparenter Informationen für "
-            "Betreiber gemäß Art. 13 EU AI Act."
+            "Bereitstellung hinreichend transparenter Informationen "
+            "für Betreiber gemäß Art. 13 EU AI Act."
         ),
         applies_to=["high_risk"],
     ),
@@ -69,8 +69,8 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         article="Art. 14",
         name="Menschliche Aufsicht",
         description=(
-            "Konzeption für wirksame menschliche Aufsicht während der Nutzung "
-            "gemäß Art. 14 EU AI Act."
+            "Konzeption für wirksame menschliche Aufsicht während der "
+            "Nutzung gemäß Art. 14 EU AI Act."
         ),
         applies_to=["high_risk"],
     ),
@@ -79,8 +79,8 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         article="Art. 15",
         name="Genauigkeit, Robustheit, Cybersicherheit",
         description=(
-            "Sicherstellung von Genauigkeit, Robustheit und Cybersicherheit "
-            "gemäß Art. 15 EU AI Act."
+            "Sicherstellung von Genauigkeit, Robustheit und "
+            "Cybersicherheit gemäß Art. 15 EU AI Act."
         ),
         applies_to=["high_risk"],
     ),
@@ -99,8 +99,8 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         article="Art. 49",
         name="EU-Datenbankregistrierung",
         description=(
-            "Registrierung des Hochrisiko-KI-Systems in der EU-Datenbank "
-            "gemäß Art. 49 EU AI Act."
+            "Registrierung des Hochrisiko-KI-Systems in der "
+            "EU-Datenbank gemäß Art. 49 EU AI Act."
         ),
         applies_to=["high_risk"],
     ),

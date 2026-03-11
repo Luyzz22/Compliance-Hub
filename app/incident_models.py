@@ -33,7 +33,10 @@ class Incident(BaseModel):
         None,
         description="Quell-Modul (policy_engine, manual, nis2_scan, ...)",
     )
-    summary: str | None = Field(None, description="Regulatorische Kurzbeschreibung")
+    summary: str | None = Field(
+        None,
+        description="Regulatorische Kurzbeschreibung",
+    )
     metadata: dict[str, Any] | None = Field(
         None,
         description="Zusätzliche Key-Value-Daten",
