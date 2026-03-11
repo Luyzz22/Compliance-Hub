@@ -1,0 +1,842 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type EURiskLevel = "prohibited" | "high_risk" | "limited_risk" | "minimal_risk";
+
+interface ClassificationSummary {
+  prohibited: number;
+  high_risk: number;
+  limited_risk: number;
+  minimal_risk: number;
+  total: number;
+}
+
+interface SystemReadiness {
+  ai_system_id: string;
+  ai_system_name: string;
+  risk_level: string;
+  readiness_score: number;
+  total_requirements: number;
+  completed: number;
+  in_progress: number;
+  not_started: number;
+}
+
+interface ComplianceDashboard {
+  tenant_id: string;
+  overall_readiness: number;
+  systems: SystemReadiness[];
+  deadline: string;
+  days_remaining: number;
+  urgent_gaps: {
+    ai_system_id: string;
+    ai_system_name: string;
+    requirement_id: string;
+    requirement_name: string;
+    article: string;
+  }[];
+}
+
+interface ComplianceRequirement {
+  id: string;
+  article: string;
+  name: string;
+  description: string;
+  applies_to: string[];
+  weight: number;
+}
+
+interface ComplianceStatusEntry {
+  ai_system_id: string;
+  requirement_id: string;
+  status: "not_started" | "in_progress" | "completed" | "not_applicable";
+  evidence_notes?: string;
+  last_updated: string;
+  updated_by: string;
+}
+
+interface RiskClassification {
+  ai_system_id: string;
+  risk_level: EURiskLevel;
+  classification_path: string;
+  annex_iii_category?: number;
+  annex_i_legislation?: string;
+  is_safety_component: boolean;
+  requires_third_party_assessment: boolean;
+  exception_applies: boolean;
+  exception_reason?: string;
+  profiles_natural_persons: boolean;
+  classification_rationale: string;
+  classified_at: string;
+  classified_by: string;
+  confidence_score: number;
+}
+
+interface AISystem {
+  id: string;
+  name: string;
+  business_unit?: string;
+  risk_level?: string;
+  ai_act_category?: string;
+  status?: string;
+}
+
+// ─── API helpers (client-side) ───────────────────────────────────────────────
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "tenant-overview-key";
+const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || "tenant-overview-001";
+
+async function api(path: string, init?: RequestInit) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "x-api-key": API_KEY,
+      "x-tenant-id": TENANT_ID,
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function cn(...values: (string | false | null | undefined)[]) {
+  return values.filter(Boolean).join(" ");
+}
+
+const RISK_BADGE: Record<string, string> = {
+  prohibited:
+    "bg-red-500/10 text-red-300 border border-red-500/40",
+  high_risk:
+    "bg-rose-500/10 text-rose-300 border border-rose-500/40",
+  limited_risk:
+    "bg-amber-500/10 text-amber-300 border border-amber-500/40",
+  minimal_risk:
+    "bg-emerald-500/10 text-emerald-300 border border-emerald-500/40",
+  unclassified:
+    "bg-slate-500/10 text-slate-400 border border-slate-500/40",
+};
+
+const RISK_LABEL: Record<string, string> = {
+  prohibited: "Verboten",
+  high_risk: "Hochrisiko",
+  limited_risk: "Begrenztes Risiko",
+  minimal_risk: "Minimales Risiko",
+  unclassified: "Nicht klassifiziert",
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  not_started: "bg-red-500/10 text-red-300 border border-red-500/40",
+  in_progress: "bg-amber-500/10 text-amber-300 border border-amber-500/40",
+  completed: "bg-emerald-500/10 text-emerald-300 border border-emerald-500/40",
+  not_applicable: "bg-slate-500/10 text-slate-400 border border-slate-500/40",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  not_started: "Nicht begonnen",
+  in_progress: "In Bearbeitung",
+  completed: "Abgeschlossen",
+  not_applicable: "N/A",
+};
+
+// ─── Questionnaire Steps (Classification Wizard) ────────────────────────────
+
+type WizardStep = 1 | 2 | 3 | 4 | 5;
+
+const STEP_TITLES: Record<WizardStep, string> = {
+  1: "Verbotene Praktiken",
+  2: "Anhang I – Sicherheitskomponente",
+  3: "Anhang III – Anwendungsbereich",
+  4: "Art. 6(3) – Ausnahmen",
+  5: "Transparenzpflichten",
+};
+
+// ─── Components ─────────────────────────────────────────────────────────────
+
+function ProgressBar({ value, className }: { value: number; className?: string }) {
+  return (
+    <div className={cn("h-2 w-full rounded-full bg-slate-800", className)}>
+      <div
+        className="h-full rounded-full bg-emerald-500 transition-all"
+        style={{ width: `${Math.round(value * 100)}%` }}
+      />
+    </div>
+  );
+}
+
+function CircularProgress({ value, size = 80 }: { value: number; size?: number }) {
+  const pct = Math.round(value * 100);
+  const r = (size - 8) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (value * c);
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <svg width={size} height={size}>
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke="#1e293b" strokeWidth={6}
+        />
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke="#10b981" strokeWidth={6}
+          strokeDasharray={c} strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </svg>
+      <span className="absolute text-sm font-semibold text-emerald-300">
+        {pct}%
+      </span>
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
+
+type View = "dashboard" | "wizard" | "gap";
+
+export default function EUAIActPage() {
+  const [view, setView] = useState<View>("dashboard");
+  const [dashboard, setDashboard] = useState<ComplianceDashboard | null>(null);
+  const [summary, setSummary] = useState<ClassificationSummary | null>(null);
+  const [systems, setSystems] = useState<AISystem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Wizard state
+  const [wizardSystemId, setWizardSystemId] = useState("");
+  const [wizardStep, setWizardStep] = useState<WizardStep>(1);
+  const [wizardData, setWizardData] = useState<Record<string, unknown>>({});
+  const [wizardResult, setWizardResult] = useState<RiskClassification | null>(null);
+
+  // Gap analysis state
+  const [gapSystemId, setGapSystemId] = useState("");
+  const [gapStatuses, setGapStatuses] = useState<ComplianceStatusEntry[]>([]);
+  const [requirements, setRequirements] = useState<ComplianceRequirement[]>([]);
+
+  const loadDashboard = async () => {
+    setLoading(true);
+    const [d, s, sys, reqs] = await Promise.all([
+      api("/api/v1/compliance/dashboard"),
+      api("/api/v1/classifications/summary"),
+      api("/api/v1/ai-systems"),
+      api("/api/v1/compliance/requirements"),
+    ]);
+    if (d) setDashboard(d);
+    if (s) setSummary(s);
+    if (sys) setSystems(sys);
+    if (reqs) setRequirements(reqs);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadDashboard(); }, []);
+
+  const openWizard = (systemId: string) => {
+    setWizardSystemId(systemId);
+    setWizardStep(1);
+    setWizardData({});
+    setWizardResult(null);
+    setView("wizard");
+  };
+
+  const openGap = async (systemId: string) => {
+    setGapSystemId(systemId);
+    const statuses = await api(`/api/v1/ai-systems/${systemId}/compliance`);
+    if (statuses) setGapStatuses(statuses);
+    setView("gap");
+  };
+
+  const submitClassification = async () => {
+    const result = await api(`/api/v1/ai-systems/${wizardSystemId}/classify`, {
+      method: "POST",
+      body: JSON.stringify(wizardData),
+    });
+    if (result) setWizardResult(result);
+  };
+
+  const updateStatus = async (
+    requirementId: string,
+    newStatus: string
+  ) => {
+    const result = await api(
+      `/api/v1/ai-systems/${gapSystemId}/compliance/${requirementId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ status: newStatus }),
+      }
+    );
+    if (result) {
+      setGapStatuses((prev) =>
+        prev.map((s) => (s.requirement_id === requirementId ? result : s))
+      );
+    }
+  };
+
+  // ─── Dashboard View ──────────────────────────────────────────────────────
+
+  if (view === "dashboard") {
+    return (
+      <>
+        <header className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              EU AI Act – Compliance Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Risikoeinstufung und Lückenanalyse aller AI-Systeme gemäß EU AI Act.
+            </p>
+          </div>
+          {dashboard && (
+            <div className="flex items-center gap-4">
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center">
+                <div className="text-xs text-amber-300 font-medium">
+                  Frist: 2. August 2026
+                </div>
+                <div className="text-lg font-semibold text-amber-200">
+                  {dashboard.days_remaining} Tage
+                </div>
+              </div>
+            </div>
+          )}
+        </header>
+
+        {loading ? (
+          <div className="text-center text-slate-500 py-16">Laden…</div>
+        ) : (
+          <>
+            {/* KPI Row */}
+            <section className="mb-8 grid gap-4 md:grid-cols-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 text-center">
+                <div className="text-xs font-medium text-slate-400">
+                  Gesamtbereitschaft
+                </div>
+                <div className="mt-3 flex justify-center">
+                  <CircularProgress value={dashboard?.overall_readiness ?? 0} />
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+                <div className="text-xs font-medium text-slate-400">Verboten</div>
+                <div className="mt-2 text-3xl font-semibold text-red-300">
+                  {summary?.prohibited ?? 0}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+                <div className="text-xs font-medium text-slate-400">Hochrisiko</div>
+                <div className="mt-2 text-3xl font-semibold text-rose-300">
+                  {summary?.high_risk ?? 0}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+                <div className="text-xs font-medium text-slate-400">
+                  Begrenztes / Minimales Risiko
+                </div>
+                <div className="mt-2 text-3xl font-semibold text-emerald-300">
+                  {(summary?.limited_risk ?? 0) + (summary?.minimal_risk ?? 0)}
+                </div>
+              </div>
+            </section>
+
+            {/* Systems Table */}
+            <section className="mb-8 rounded-xl border border-slate-800 bg-slate-900/60">
+              <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
+                <h2 className="text-sm font-semibold">AI-Systeme Übersicht</h2>
+                <span className="text-xs text-slate-500">
+                  {systems.length} Systeme
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
+                    <tr>
+                      <th className="px-5 py-2 font-medium">Name</th>
+                      <th className="px-3 py-2 font-medium">Risikostufe</th>
+                      <th className="px-3 py-2 font-medium">Bereitschaft</th>
+                      <th className="px-3 py-2 font-medium">Aktionen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {systems.map((sys) => {
+                      const sr = dashboard?.systems.find(
+                        (s) => s.ai_system_id === sys.id
+                      );
+                      const rl = sr?.risk_level || "unclassified";
+                      return (
+                        <tr
+                          key={sys.id}
+                          className="border-t border-slate-800/80 hover:bg-slate-900"
+                        >
+                          <td className="px-5 py-2">
+                            <div className="font-medium text-slate-50">
+                              {sys.name}
+                            </div>
+                            <div className="text-xs text-slate-500">{sys.id}</div>
+                          </td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={cn(
+                                "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                                RISK_BADGE[rl] || RISK_BADGE.unclassified
+                              )}
+                            >
+                              {RISK_LABEL[rl] || rl}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 w-48">
+                            {sr && sr.total_requirements > 0 ? (
+                              <div>
+                                <ProgressBar value={sr.readiness_score} />
+                                <div className="mt-1 text-xs text-slate-400">
+                                  {Math.round(sr.readiness_score * 100)}% –{" "}
+                                  {sr.completed}/{sr.total_requirements} erledigt
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-500">–</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => openWizard(sys.id)}
+                                className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
+                              >
+                                Klassifizieren
+                              </button>
+                              <button
+                                onClick={() => openGap(sys.id)}
+                                className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
+                              >
+                                Lückenanalyse
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {systems.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-5 py-6 text-center text-xs text-slate-500"
+                        >
+                          Keine AI-Systeme registriert.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Urgent Gaps */}
+            {dashboard && dashboard.urgent_gaps.length > 0 && (
+              <section className="rounded-xl border border-slate-800 bg-slate-900/60">
+                <div className="border-b border-slate-800 px-5 py-3">
+                  <h2 className="text-sm font-semibold">
+                    Dringendste Lücken (Top 3)
+                  </h2>
+                </div>
+                <div className="space-y-3 p-5">
+                  {dashboard.urgent_gaps.map((gap, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3"
+                    >
+                      <div className="text-sm text-rose-200 font-medium">
+                        {gap.article}: {gap.requirement_name}
+                      </div>
+                      <div className="text-xs text-rose-300/80 mt-1">
+                        System: {gap.ai_system_name} ({gap.ai_system_id})
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </>
+    );
+  }
+
+  // ─── Wizard View ──────────────────────────────────────────────────────────
+
+  if (view === "wizard") {
+    const setField = (key: string, val: unknown) =>
+      setWizardData((d) => ({ ...d, [key]: val }));
+
+    const systemName =
+      systems.find((s) => s.id === wizardSystemId)?.name || wizardSystemId;
+
+    if (wizardResult) {
+      return (
+        <>
+          <header className="mb-6">
+            <button
+              onClick={() => { setView("dashboard"); loadDashboard(); }}
+              className="text-xs text-slate-400 hover:text-slate-200 mb-2 inline-block"
+            >
+              ← Zurück zum Dashboard
+            </button>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Klassifizierungsergebnis – {systemName}
+            </h1>
+          </header>
+
+          <div className="max-w-2xl space-y-6">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 text-center">
+              <div className="text-xs text-slate-400 mb-2">Risikostufe</div>
+              <span
+                className={cn(
+                  "inline-flex rounded-full px-4 py-1.5 text-sm font-semibold",
+                  RISK_BADGE[wizardResult.risk_level]
+                )}
+              >
+                {RISK_LABEL[wizardResult.risk_level]}
+              </span>
+              <div className="mt-4 text-sm text-slate-300">
+                {wizardResult.classification_rationale}
+              </div>
+              {wizardResult.classification_path !== "none" && (
+                <div className="mt-3 text-xs text-slate-500">
+                  Pfad: {wizardResult.classification_path} | Konfidenz:{" "}
+                  {Math.round(wizardResult.confidence_score * 100)}%
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => { setView("dashboard"); loadDashboard(); }}
+              className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20"
+            >
+              Zurück zum Dashboard
+            </button>
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <header className="mb-6">
+          <button
+            onClick={() => setView("dashboard")}
+            className="text-xs text-slate-400 hover:text-slate-200 mb-2 inline-block"
+          >
+            ← Zurück zum Dashboard
+          </button>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Klassifizierungs-Assistent – {systemName}
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Schritt {wizardStep} von 5: {STEP_TITLES[wizardStep]}
+          </p>
+        </header>
+
+        {/* Steps indicator */}
+        <div className="mb-6 flex gap-2">
+          {([1, 2, 3, 4, 5] as WizardStep[]).map((s) => (
+            <div
+              key={s}
+              className={cn(
+                "h-1.5 flex-1 rounded-full",
+                s <= wizardStep ? "bg-emerald-500" : "bg-slate-800"
+              )}
+            />
+          ))}
+        </div>
+
+        <div className="max-w-2xl rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+          {wizardStep === 1 && (
+            <>
+              <h3 className="text-sm font-semibold mb-3">
+                Prüfung auf verbotene Praktiken (Art. 5)
+              </h3>
+              {[
+                { key: "involves_social_scoring", label: "Social Scoring (Sozialkreditsystem)" },
+                { key: "involves_subliminal_manipulation", label: "Unterschwellige Manipulation" },
+                { key: "exploits_vulnerabilities", label: "Ausnutzung von Schwachstellen (Alter, Behinderung)" },
+                { key: "involves_realtime_biometric_public", label: "Biometrische Echtzeit-Fernidentifizierung in öffentlichen Räumen" },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-3 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={!!wizardData[key]}
+                    onChange={(e) => setField(key, e.target.checked)}
+                    className="rounded border-slate-600 bg-slate-800"
+                  />
+                  {label}
+                </label>
+              ))}
+            </>
+          )}
+
+          {wizardStep === 2 && (
+            <>
+              <h3 className="text-sm font-semibold mb-3">
+                Anhang I – Sicherheitskomponente unter EU-Harmonisierungsrecht
+              </h3>
+              {[
+                { key: "is_product_or_safety_component", label: "Ist Produkt oder Sicherheitskomponente eines Produkts" },
+                { key: "covered_by_eu_harmonisation_legislation", label: "Fällt unter EU-Harmonisierungsrecht" },
+                { key: "requires_third_party_conformity", label: "Drittanbieter-Konformitätsbewertung erforderlich" },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-3 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={!!wizardData[key]}
+                    onChange={(e) => setField(key, e.target.checked)}
+                    className="rounded border-slate-600 bg-slate-800"
+                  />
+                  {label}
+                </label>
+              ))}
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">
+                  Gesetzesreferenz (optional)
+                </label>
+                <input
+                  type="text"
+                  value={(wizardData.legislation_reference as string) || ""}
+                  onChange={(e) => setField("legislation_reference", e.target.value || null)}
+                  placeholder="z.B. Machinery Regulation 2023/1230"
+                  className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600"
+                />
+              </div>
+            </>
+          )}
+
+          {wizardStep === 3 && (
+            <>
+              <h3 className="text-sm font-semibold mb-3">
+                Anhang III – Anwendungsbereich
+              </h3>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">
+                  Einsatzbereich
+                </label>
+                <select
+                  value={(wizardData.use_case_domain as string) || ""}
+                  onChange={(e) => setField("use_case_domain", e.target.value || null)}
+                  className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-200"
+                >
+                  <option value="">– Keiner der aufgeführten Bereiche –</option>
+                  <option value="biometrics">Biometrie</option>
+                  <option value="critical_infra">Kritische Infrastruktur</option>
+                  <option value="education">Bildung</option>
+                  <option value="employment">Beschäftigung</option>
+                  <option value="essential_services">Grundlegende Dienste</option>
+                  <option value="law_enforcement">Strafverfolgung</option>
+                  <option value="migration">Migration</option>
+                  <option value="justice">Justiz</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">
+                  Spezifischer Anwendungsfall (optional)
+                </label>
+                <input
+                  type="text"
+                  value={(wizardData.specific_use_case as string) || ""}
+                  onChange={(e) => setField("specific_use_case", e.target.value || null)}
+                  className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-200"
+                />
+              </div>
+            </>
+          )}
+
+          {wizardStep === 4 && (
+            <>
+              <h3 className="text-sm font-semibold mb-3">
+                Art. 6(3) – Ausnahmen von der Hochrisiko-Einstufung
+              </h3>
+              {[
+                { key: "is_narrow_procedural_task", label: "Enge verfahrensbezogene Aufgabe" },
+                { key: "improves_prior_human_activity", label: "Verbessert zuvor abgeschlossene menschliche Tätigkeit" },
+                { key: "detects_patterns_without_replacing_human", label: "Erkennt Muster ohne menschliche Bewertung zu ersetzen" },
+                { key: "is_preparatory_task_only", label: "Rein vorbereitende Aufgabe" },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-3 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={!!wizardData[key]}
+                    onChange={(e) => setField(key, e.target.checked)}
+                    className="rounded border-slate-600 bg-slate-800"
+                  />
+                  {label}
+                </label>
+              ))}
+              <div className="border-t border-slate-800 pt-3 mt-3">
+                <label className="flex items-center gap-3 text-sm text-rose-300">
+                  <input
+                    type="checkbox"
+                    checked={!!wizardData.profiles_natural_persons}
+                    onChange={(e) => setField("profiles_natural_persons", e.target.checked)}
+                    className="rounded border-slate-600 bg-slate-800"
+                  />
+                  Profiliert natürliche Personen (Ausnahme entfällt!)
+                </label>
+              </div>
+            </>
+          )}
+
+          {wizardStep === 5 && (
+            <>
+              <h3 className="text-sm font-semibold mb-3">
+                Transparenzpflichten
+              </h3>
+              {[
+                { key: "is_chatbot_or_conversational", label: "Chatbot / Konversations-KI" },
+                { key: "generates_deepfakes", label: "Erzeugt Deepfakes" },
+                { key: "involves_emotion_recognition", label: "Emotionserkennung" },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-3 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={!!wizardData[key]}
+                    onChange={(e) => setField(key, e.target.checked)}
+                    className="rounded border-slate-600 bg-slate-800"
+                  />
+                  {label}
+                </label>
+              ))}
+            </>
+          )}
+
+          {/* Nav buttons */}
+          <div className="flex justify-between pt-4 border-t border-slate-800">
+            <button
+              onClick={() => setWizardStep((s) => Math.max(1, s - 1) as WizardStep)}
+              disabled={wizardStep === 1}
+              className="rounded border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+            >
+              Zurück
+            </button>
+            {wizardStep < 5 ? (
+              <button
+                onClick={() => setWizardStep((s) => Math.min(5, s + 1) as WizardStep)}
+                className="rounded border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+              >
+                Weiter
+              </button>
+            ) : (
+              <button
+                onClick={submitClassification}
+                className="rounded border border-emerald-500/50 bg-emerald-500/10 px-4 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+              >
+                Klassifizierung abschließen
+              </button>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ─── Gap Analysis View ────────────────────────────────────────────────────
+
+  if (view === "gap") {
+    const systemName =
+      systems.find((s) => s.id === gapSystemId)?.name || gapSystemId;
+    const sr = dashboard?.systems.find((s) => s.ai_system_id === gapSystemId);
+
+    return (
+      <>
+        <header className="mb-6">
+          <button
+            onClick={() => { setView("dashboard"); loadDashboard(); }}
+            className="text-xs text-slate-400 hover:text-slate-200 mb-2 inline-block"
+          >
+            ← Zurück zum Dashboard
+          </button>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Lückenanalyse – {systemName}
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Compliance-Status der einzelnen Anforderungen (Art. 9–49) für dieses System.
+          </p>
+        </header>
+
+        {sr && (
+          <div className="mb-6 flex items-center gap-6">
+            <CircularProgress value={sr.readiness_score} size={90} />
+            <div>
+              <div className="text-sm text-slate-400">Gesamtbereitschaft</div>
+              <div className="text-2xl font-semibold">
+                {Math.round(sr.readiness_score * 100)}%
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                {sr.completed} abgeschlossen, {sr.in_progress} in Bearbeitung,{" "}
+                {sr.not_started} offen
+              </div>
+            </div>
+          </div>
+        )}
+
+        {gapStatuses.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm text-slate-500">
+            Keine Anforderungen für dieses System vorhanden.
+            Bitte zuerst eine Klassifizierung durchführen.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {gapStatuses.map((entry) => {
+              const req = requirements.find((r) => r.id === entry.requirement_id);
+              return (
+                <div
+                  key={entry.requirement_id}
+                  className="rounded-xl border border-slate-800 bg-slate-900/60 p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-slate-50">
+                        {req?.article}: {req?.name || entry.requirement_id}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        {req?.description}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={entry.status}
+                        onChange={(e) =>
+                          updateStatus(entry.requirement_id, e.target.value)
+                        }
+                        className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200"
+                      >
+                        <option value="not_started">Nicht begonnen</option>
+                        <option value="in_progress">In Bearbeitung</option>
+                        <option value="completed">Abgeschlossen</option>
+                        <option value="not_applicable">N/A</option>
+                      </select>
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                          STATUS_BADGE[entry.status]
+                        )}
+                      >
+                        {STATUS_LABEL[entry.status]}
+                      </span>
+                    </div>
+                  </div>
+                  {entry.evidence_notes && (
+                    <div className="mt-2 text-xs text-slate-500 bg-slate-800/50 rounded p-2">
+                      {entry.evidence_notes}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return null;
+}

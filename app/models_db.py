@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum, Float, Integer, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.ai_system_models import (
@@ -12,6 +12,8 @@ from app.ai_system_models import (
     AISystemStatus,
     DataSensitivity,
 )
+from app.classification_models import ClassificationPath, RiskLevel
+from app.compliance_gap_models import ComplianceStatus
 
 
 class Base(DeclarativeBase):
@@ -102,4 +104,50 @@ class ViolationTable(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class RiskClassificationTable(Base):
+    __tablename__ = "risk_classifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    ai_system_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    risk_level: Mapped[RiskLevel] = mapped_column(
+        Enum(RiskLevel, name="risk_level_enum", native_enum=False), nullable=False
+    )
+    classification_path: Mapped[ClassificationPath] = mapped_column(
+        Enum(ClassificationPath, name="classification_path_enum", native_enum=False), nullable=False
+    )
+    annex_iii_category: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    annex_i_legislation: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_safety_component: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    requires_third_party_assessment: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    exception_applies: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    exception_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profiles_natural_persons: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    classification_rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    classified_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    classified_by: Mapped[str] = mapped_column(String(255), default="auto", nullable=False)
+    confidence_score: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+
+
+class ComplianceStatusTable(Base):
+    __tablename__ = "compliance_statuses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    ai_system_id: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    requirement_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[ComplianceStatus] = mapped_column(
+        Enum(ComplianceStatus, name="compliance_status_enum", native_enum=False),
+        default=ComplianceStatus.not_started,
+        nullable=False,
+    )
+    evidence_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_updated: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_by: Mapped[str] = mapped_column(String(255), default="system", nullable=False)
 

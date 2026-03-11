@@ -19,6 +19,22 @@ from app.ai_system_models import (
     AISystemUpdate,
 )
 from app.audit_models import AuditEvent, AuditLog
+from app.classification_models import (
+    ClassificationOverrideRequest,
+    ClassificationQuestionnaire,
+    ClassificationSummary,
+    RiskClassification,
+)
+from app.compliance_gap_models import (
+    ComplianceDashboard,
+    ComplianceRequirement,
+    ComplianceStatus,
+    ComplianceStatusEntry,
+    ComplianceStatusUpdate,
+    REQUIREMENTS,
+    REQUIREMENTS_BY_ID,
+    SystemReadiness,
+)
 from app.db import engine, get_session
 from app.models import (
     ComplianceAction,
@@ -32,9 +48,12 @@ from app.policy_service import evaluate_policies_for_ai_system
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
 from app.repositories.audit_logs import AuditLogRepository
+from app.repositories.classifications import ClassificationRepository
+from app.repositories.compliance_gap import ComplianceGapRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
+from app.services.classification_engine import classify_ai_system
 from app.services.compliance_engine import build_audit_hash, derive_actions
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
@@ -131,6 +150,18 @@ def get_violation_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> ViolationRepository:
     return ViolationRepository(session)
+
+
+def get_classification_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> ClassificationRepository:
+    return ClassificationRepository(session)
+
+
+def get_compliance_gap_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> ComplianceGapRepository:
+    return ComplianceGapRepository(session)
 
 
 def _model_to_json(model: BaseModel) -> str:
@@ -482,5 +513,255 @@ def get_ai_system_policy_report(
     return AISystemPolicyReportResponse(
         ai_system=ai_system,
         violations=result.violations,
+    )
+
+
+# ─── EU AI Act Classification Endpoints ────────────────────────────────────────
+
+
+@app.post("/api/v1/ai-systems/{ai_system_id}/classify", response_model=RiskClassification)
+def classify_system(
+    ai_system_id: str,
+    questionnaire: ClassificationQuestionnaire,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> RiskClassification:
+    tenant_id = auth_context.tenant_id
+    ai_system = ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id)
+    if ai_system is None:
+        raise HTTPException(status_code=404, detail="AI system not found")
+
+    result = classify_ai_system(ai_system_id, questionnaire)
+    saved = cls_repo.save(tenant_id, result)
+
+    # Auto-create compliance requirements for high-risk systems
+    if saved.risk_level == "high_risk":
+        gap_repo.ensure_requirements_exist(tenant_id, ai_system_id, "high_risk")
+
+    audit_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+        entity_type="ai_system",
+        entity_id=ai_system_id,
+        action="classified",
+        metadata={"risk_level": saved.risk_level, "path": saved.classification_path},
+    )
+    return saved
+
+
+@app.get("/api/v1/ai-systems/{ai_system_id}/classification", response_model=RiskClassification)
+def get_classification(
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+) -> RiskClassification:
+    result = cls_repo.get_for_system(auth_context.tenant_id, ai_system_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="No classification found for this AI system")
+    return result
+
+
+@app.put("/api/v1/ai-systems/{ai_system_id}/classification", response_model=RiskClassification)
+def override_classification(
+    ai_system_id: str,
+    override: ClassificationOverrideRequest,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> RiskClassification:
+    tenant_id = auth_context.tenant_id
+    ai_system = ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id)
+    if ai_system is None:
+        raise HTTPException(status_code=404, detail="AI system not found")
+
+    previous = cls_repo.get_for_system(tenant_id, ai_system_id)
+    saved = cls_repo.save_override(tenant_id, ai_system_id, override, auth_context.api_key)
+
+    if saved.risk_level == "high_risk":
+        gap_repo.ensure_requirements_exist(tenant_id, ai_system_id, "high_risk")
+
+    audit_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+        entity_type="ai_system",
+        entity_id=ai_system_id,
+        action="classification_overridden",
+        metadata={
+            "previous_risk_level": previous.risk_level if previous else None,
+            "new_risk_level": saved.risk_level,
+            "rationale": override.rationale,
+        },
+    )
+    return saved
+
+
+@app.get("/api/v1/classifications/summary", response_model=ClassificationSummary)
+def get_classification_summary(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+) -> ClassificationSummary:
+    return cls_repo.summary_for_tenant(auth_context.tenant_id)
+
+
+# ─── Gap Analysis / Compliance Status Endpoints ────────────────────────────────
+
+
+@app.get("/api/v1/ai-systems/{ai_system_id}/compliance", response_model=list[ComplianceStatusEntry])
+def get_system_compliance(
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+) -> list[ComplianceStatusEntry]:
+    return gap_repo.list_for_system(auth_context.tenant_id, ai_system_id)
+
+
+@app.put(
+    "/api/v1/ai-systems/{ai_system_id}/compliance/{requirement_id}",
+    response_model=ComplianceStatusEntry,
+)
+def update_compliance_status(
+    ai_system_id: str,
+    requirement_id: str,
+    update: ComplianceStatusUpdate,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> ComplianceStatusEntry:
+    if requirement_id not in REQUIREMENTS_BY_ID:
+        raise HTTPException(status_code=400, detail=f"Unknown requirement: {requirement_id}")
+
+    result = gap_repo.update_status(
+        auth_context.tenant_id, ai_system_id, requirement_id, update, auth_context.api_key
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Compliance status entry not found")
+
+    audit_repo.log_event(
+        tenant_id=auth_context.tenant_id,
+        actor_type="api_key",
+        actor_id=auth_context.api_key,
+        entity_type="compliance_status",
+        entity_id=f"{ai_system_id}/{requirement_id}",
+        action="compliance_updated",
+        metadata={"status": update.status, "requirement": requirement_id},
+    )
+    return result
+
+
+@app.get("/api/v1/compliance/requirements", response_model=list[ComplianceRequirement])
+def list_compliance_requirements() -> list[ComplianceRequirement]:
+    return REQUIREMENTS
+
+
+@app.get("/api/v1/compliance/dashboard", response_model=ComplianceDashboard)
+def get_compliance_dashboard(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+) -> ComplianceDashboard:
+    tenant_id = auth_context.tenant_id
+    systems = ai_repo.list_for_tenant(tenant_id)
+    all_statuses = gap_repo.list_all_for_tenant(tenant_id)
+
+    # Group statuses by ai_system_id
+    status_map: dict[str, list[ComplianceStatusEntry]] = {}
+    for s in all_statuses:
+        status_map.setdefault(s.ai_system_id, []).append(s)
+
+    system_readiness_list: list[SystemReadiness] = []
+    total_weighted_score = 0.0
+    total_weight = 0.0
+
+    for sys in systems:
+        classification = cls_repo.get_for_system(tenant_id, sys.id)
+        risk_level = classification.risk_level if classification else "unclassified"
+
+        statuses = status_map.get(sys.id, [])
+        if not statuses:
+            system_readiness_list.append(
+                SystemReadiness(
+                    ai_system_id=sys.id,
+                    ai_system_name=sys.name,
+                    risk_level=risk_level,
+                    readiness_score=0.0,
+                    total_requirements=0,
+                    completed=0,
+                    in_progress=0,
+                    not_started=0,
+                )
+            )
+            continue
+
+        completed = sum(1 for s in statuses if s.status == ComplianceStatus.completed)
+        in_progress = sum(1 for s in statuses if s.status == ComplianceStatus.in_progress)
+        not_started = sum(1 for s in statuses if s.status == ComplianceStatus.not_started)
+
+        # Weighted readiness score
+        weighted_completed = 0.0
+        weighted_total = 0.0
+        for s in statuses:
+            req = REQUIREMENTS_BY_ID.get(s.requirement_id)
+            weight = req.weight if req else 1.0
+            weighted_total += weight
+            if s.status == ComplianceStatus.completed:
+                weighted_completed += weight
+
+        readiness = weighted_completed / weighted_total if weighted_total > 0 else 0.0
+        total_weighted_score += weighted_completed
+        total_weight += weighted_total
+
+        system_readiness_list.append(
+            SystemReadiness(
+                ai_system_id=sys.id,
+                ai_system_name=sys.name,
+                risk_level=risk_level,
+                readiness_score=round(readiness, 3),
+                total_requirements=len(statuses),
+                completed=completed,
+                in_progress=in_progress,
+                not_started=not_started,
+            )
+        )
+
+    overall = round(total_weighted_score / total_weight, 3) if total_weight > 0 else 0.0
+
+    # Deadline countdown
+    from datetime import date
+    deadline = date(2026, 8, 2)
+    today = date.today()
+    days_remaining = max(0, (deadline - today).days)
+
+    # Top urgent gaps: not_started requirements for high_risk systems
+    urgent_gaps: list[dict[str, str]] = []
+    for sys in systems:
+        classification = cls_repo.get_for_system(tenant_id, sys.id)
+        if classification and classification.risk_level == "high_risk":
+            for s in status_map.get(sys.id, []):
+                if s.status == ComplianceStatus.not_started:
+                    req = REQUIREMENTS_BY_ID.get(s.requirement_id)
+                    if req:
+                        urgent_gaps.append({
+                            "ai_system_id": sys.id,
+                            "ai_system_name": sys.name,
+                            "requirement_id": req.id,
+                            "requirement_name": req.name,
+                            "article": req.article,
+                        })
+    urgent_gaps = urgent_gaps[:3]
+
+    return ComplianceDashboard(
+        tenant_id=tenant_id,
+        overall_readiness=overall,
+        systems=system_readiness_list,
+        days_remaining=days_remaining,
+        urgent_gaps=urgent_gaps,
     )
 

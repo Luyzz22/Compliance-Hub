@@ -28,6 +28,12 @@ export default function TenantLayout({
             Tenant Compliance
           </a>
           <a
+            href="/tenant/eu-ai-act"
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-slate-400 hover:bg-slate-900 hover:text-slate-50"
+          >
+            EU AI Act
+          </a>
+          <a
             href="/tenant/ai-systems"
             className="flex items-center gap-2 rounded-md px-2 py-1.5 text-slate-400 hover:bg-slate-900 hover:text-slate-50"
           >
