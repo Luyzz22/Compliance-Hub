@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 import jwt
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-logger = logging.getLogger(__name__)
-
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 ALGORITHM = "HS256"
 
@@ -41,8 +41,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 tenant_id = payload.get("tenant_id")
             except jwt.ExpiredSignatureError:
                 logger.warning("TenantMiddleware: JWT expired")
-            except jwt.InvalidTokenError as e:
-                logger.warning("TenantMiddleware: JWT invalid – %s", e)
+            except jwt.InvalidTokenError as exc:
+                logger.warning("TenantMiddleware: JWT invalid – %s", exc)
 
         # 2) Fallback: expliziter Header (z.B. für Service-to-Service)
         if not tenant_id:
