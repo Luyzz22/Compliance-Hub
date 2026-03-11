@@ -6,11 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.compliance_gap_models import (
+    REQUIREMENTS,
     ComplianceStatus,
     ComplianceStatusEntry,
     ComplianceStatusUpdate,
-    REQUIREMENTS,
-    REQUIREMENTS_BY_ID,
 )
 from app.models_db import ComplianceStatusTable
 

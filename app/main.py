@@ -26,13 +26,13 @@ from app.classification_models import (
     RiskClassification,
 )
 from app.compliance_gap_models import (
+    REQUIREMENTS,
+    REQUIREMENTS_BY_ID,
     ComplianceDashboard,
     ComplianceRequirement,
     ComplianceStatus,
     ComplianceStatusEntry,
     ComplianceStatusUpdate,
-    REQUIREMENTS,
-    REQUIREMENTS_BY_ID,
     SystemReadiness,
 )
 from app.db import engine, get_session

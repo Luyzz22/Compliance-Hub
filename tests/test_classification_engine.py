@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from app.classification_models import ClassificationQuestionnaire, RiskLevel, ClassificationPath
+from app.classification_models import (
+    ClassificationPath,
+    ClassificationQuestionnaire,
+    RiskLevel,
+)
 from app.services.classification_engine import classify_ai_system
-
 
 # ─── Step 1: Prohibited practices ───────────────────────────────────────────────
 

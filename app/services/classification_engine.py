@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from app.classification_models import (
     ANNEX_III_DOMAIN_TO_CATEGORY,
     ClassificationPath,
