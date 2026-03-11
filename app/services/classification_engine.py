@@ -50,9 +50,10 @@ def classify_ai_system(
             requires_third_party_assessment=True,
             profiles_natural_persons=questionnaire.profiles_natural_persons,
             classification_rationale=(
-                f"Hochrisiko via Anhang I (Art. 6 Abs. 1): Sicherheitskomponente unter "
-                f"EU-Harmonisierungsrecht ({questionnaire.legislation_reference or 'nicht angegeben'}), "
-                f"Drittanbieter-Konformitätsbewertung erforderlich."
+                "Hochrisiko via Anhang I (Art. 6 Abs. 1): Sicherheitskomponente unter "
+                f"EU-Harmonisierungsrecht "
+                f"({questionnaire.legislation_reference or 'nicht angegeben'}), "
+                "Drittanbieter-Konformitätsbewertung erforderlich."
             ),
             confidence_score=1.0,
         )
@@ -75,8 +76,9 @@ def classify_ai_system(
                 exception_reason=exception_reason,
                 profiles_natural_persons=False,
                 classification_rationale=(
-                    f"Anhang III Kategorie {category} ({domain}), aber Art. 6 Abs. 3 Ausnahme greift: "
-                    f"{exception_reason}. Kein Profiling natürlicher Personen."
+                    f"Anhang III Kategorie {category} ({domain}), aber Art. 6 Abs. 3 "
+                    f"Ausnahme greift: {exception_reason}. "
+                    "Kein Profiling natürlicher Personen."
                 ),
                 confidence_score=0.9,
             )
@@ -95,8 +97,8 @@ def classify_ai_system(
             annex_iii_category=category,
             profiles_natural_persons=questionnaire.profiles_natural_persons,
             classification_rationale=(
-                f"Hochrisiko via Anhang III (Art. 6 Abs. 2): Kategorie {category} "
-                f"({domain}).{profiling_note}"
+                "Hochrisiko via Anhang III (Art. 6 Abs. 2): Kategorie "
+                f"{category} ({domain}).{profiling_note}"
             ),
             confidence_score=1.0,
         )
@@ -120,7 +122,8 @@ def classify_ai_system(
             classification_path=ClassificationPath.transparency,
             profiles_natural_persons=questionnaire.profiles_natural_persons,
             classification_rationale=(
-                f"Begrenztes Risiko mit Transparenzpflichten: {', '.join(reasons)}."
+                "Begrenztes Risiko mit Transparenzpflichten: "
+                f"{', '.join(reasons)}."
             ),
             confidence_score=1.0,
         )
@@ -131,7 +134,10 @@ def classify_ai_system(
         risk_level=RiskLevel.minimal_risk,
         classification_path=ClassificationPath.none,
         profiles_natural_persons=questionnaire.profiles_natural_persons,
-        classification_rationale="Minimales Risiko: Keine der Hochrisiko- oder Transparenzkriterien erfüllt.",
+        classification_rationale=(
+            "Minimales Risiko: Keine der Hochrisiko- oder "
+            "Transparenzkriterien erfüllt."
+        ),
         confidence_score=1.0,
     )
 
@@ -145,7 +151,10 @@ def _check_prohibited(q: ClassificationQuestionnaire) -> list[str]:
     if q.exploits_vulnerabilities:
         reasons.append("Ausnutzung von Schwachstellen (Alter, Behinderung)")
     if q.involves_realtime_biometric_public:
-        reasons.append("Biometrische Echtzeit-Fernidentifizierung in öffentlich zugänglichen Räumen")
+        reasons.append(
+            "Biometrische Echtzeit-Fernidentifizierung in öffentlich "
+            "zugänglichen Räumen"
+        )
     return reasons
 
 
@@ -155,7 +164,10 @@ def _check_exception(q: ClassificationQuestionnaire) -> tuple[bool, str | None]:
     if q.is_narrow_procedural_task:
         reasons.append("enge verfahrensbezogene Aufgabe")
     if q.improves_prior_human_activity:
-        reasons.append("Verbesserung eines zuvor abgeschlossenen menschlichen Tätigkeitsergebnisses")
+        reasons.append(
+            "Verbesserung eines zuvor abgeschlossenen menschlichen "
+            "Tätigkeitsergebnisses"
+        )
     if q.detects_patterns_without_replacing_human:
         reasons.append("Mustererkennung ohne Ersatz menschlicher Bewertung")
     if q.is_preparatory_task_only:
