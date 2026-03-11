@@ -77,3 +77,20 @@ class RiskClassification(BaseModel):
     classification_rationale: str | None = None
     confidence_score: float = 1.0
     classified_by: str = "auto"
+
+class ClassificationOverrideRequest(BaseModel):
+    ai_system_id: str
+    target_risk_level: RiskLevel
+    rationale: str
+    requested_by: str | None = None
+
+class ClassificationSummary(BaseModel):
+    total_systems: int
+    classified_systems: int
+    unclassified_systems: int
+    prohibited: int
+    high_risk: int
+    limited_risk: int
+    minimal_risk: int
+
+

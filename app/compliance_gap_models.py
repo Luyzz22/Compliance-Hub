@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from enum import StrEnum
 
+from pydantic import BaseModel
 
 class GapRequirement(BaseModel):
     id: str
@@ -11,6 +12,45 @@ class GapRequirement(BaseModel):
     applies_to: list[str]
     weight: float = 1.0
 
+class ComplianceRequirement(BaseModel):
+    id: str
+    article: str
+    name: str
+    description: str
+    weight: float = 1.0
+
+class ComplianceStatus(StrEnum):
+    not_started = "not_started"
+    in_progress = "in_progress"
+    completed = "completed"
+
+class ComplianceStatusEntry(BaseModel):
+    tenant_id: str
+    ai_system_id: str
+    requirement_id: str
+    status: ComplianceStatus
+    updated_by: str | None = None
+
+
+class ComplianceStatusUpdate(BaseModel):
+    status: ComplianceStatus
+
+class SystemReadiness(BaseModel):
+    ai_system_id: str
+    ai_system_name: str
+    risk_level: str
+    readiness_score: float
+    total_requirements: int
+    completed: int
+    in_progress: int
+    not_started: int
+
+class ComplianceDashboard(BaseModel):
+    tenant_id: str
+    overall_readiness: float
+    systems: list[SystemReadiness]
+    days_remaining: int
+    urgent_gaps: list[dict[str, str]]
 
 GAP_REQUIREMENTS: list[GapRequirement] = [
     GapRequirement(
@@ -105,3 +145,19 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         applies_to=["high_risk"],
     ),
 ]
+
+REQUIREMENTS: list[ComplianceRequirement] = [
+    ComplianceRequirement(
+        id=req.id,
+        article=req.article,
+        name=req.name,
+        description=req.description,
+        weight=req.weight,
+    )
+    for req in GAP_REQUIREMENTS
+]
+
+REQUIREMENTS_BY_ID: dict[str, ComplianceRequirement] = {
+    req.id: req for req in REQUIREMENTS
+}
+

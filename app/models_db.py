@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, declarative_base, mapped_column
 
 Base = declarative_base()
 
-
 class RiskClassificationDB(Base):
     __tablename__ = "risk_classifications"
 
@@ -45,3 +44,95 @@ class RiskClassificationDB(Base):
         DateTime(timezone=True),
         default=datetime.utcnow,
     )
+
+class AISystemTable(Base):
+    __tablename__ = "ai_systems"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    business_unit: Mapped[str] = mapped_column(String(255), nullable=False)
+    risk_level: Mapped[str] = mapped_column(String(50), nullable=False)
+    ai_act_category: Mapped[str] = mapped_column(String(50), nullable=False)
+    gdpr_dpia_required: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    owner_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    criticality: Mapped[str] = mapped_column(String(50), nullable=False, default="medium")
+    data_sensitivity: Mapped[str] = mapped_column(String(50), nullable=False, default="internal")
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="draft")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+class PolicyTable(Base):
+    __tablename__ = "policies"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class RuleTable(Base):
+    __tablename__ = "rules"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    policy_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    condition_type: Mapped[str] = mapped_column(String(255), nullable=False)
+
+class ViolationTable(Base):
+    __tablename__ = "violations"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    rule_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+class ComplianceStatusTable(Base):
+    __tablename__ = "compliance_status"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    requirement_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False)
+    updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+class AuditLogTable(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    actor: Mapped[str] = mapped_column(String(255), nullable=False)
+    action: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    before: Mapped[str | None] = mapped_column(Text, nullable=True)
+    after: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
