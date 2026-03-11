@@ -1,29 +1,26 @@
 from __future__ import annotations
 
-from datetime import datetime
-from enum import StrEnum
+from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
-class RiskLevel(StrEnum):
+class RiskLevel(str, Enum):
     prohibited = "prohibited"
     high_risk = "high_risk"
     limited_risk = "limited_risk"
     minimal_risk = "minimal_risk"
 
 
-class ClassificationPath(StrEnum):
+class ClassificationPath(str, Enum):
+    none = "none"
     annex_i = "annex_i"
     annex_iii = "annex_iii"
     transparency = "transparency"
-    none = "none"
 
-
-# --- Questionnaire (input) ---
 
 class ClassificationQuestionnaire(BaseModel):
-    # Step 1: Prohibited check
+    # Step 1: Prohibited practices
     involves_social_scoring: bool = False
     involves_subliminal_manipulation: bool = False
     exploits_vulnerabilities: bool = False
@@ -36,7 +33,9 @@ class ClassificationQuestionnaire(BaseModel):
     requires_third_party_conformity: bool = False
 
     # Step 3: Annex III (Use Case) check
-    use_case_domain: str | None = None  # biometrics, critical_infra, education, employment, essential_services, law_enforcement, migration, justice
+    use_case_domain: str | None = None
+    # biometrics, critical_infra, education, employment,
+    # essential_services, law_enforcement, migration, justice
     specific_use_case: str | None = None
 
     # Step 4: Exception check (Art. 6(3))
@@ -51,8 +50,6 @@ class ClassificationQuestionnaire(BaseModel):
     generates_deepfakes: bool = False
     involves_emotion_recognition: bool = False
 
-
-# --- Classification result ---
 
 ANNEX_III_DOMAIN_TO_CATEGORY: dict[str, int] = {
     "biometrics": 1,
@@ -70,31 +67,13 @@ class RiskClassification(BaseModel):
     ai_system_id: str
     risk_level: RiskLevel
     classification_path: ClassificationPath
-    annex_iii_category: int | None = None  # 1-8
     annex_i_legislation: str | None = None
     is_safety_component: bool = False
     requires_third_party_assessment: bool = False
+    annex_iii_category: int | None = None
+    profiles_natural_persons: bool = False
     exception_applies: bool = False
     exception_reason: str | None = None
-    profiles_natural_persons: bool = False
-    classification_rationale: str
-    classified_at: datetime = Field(default_factory=datetime.utcnow)
-    classified_by: str = "auto"
+    classification_rationale: str | None = None
     confidence_score: float = 1.0
-
-
-class ClassificationOverrideRequest(BaseModel):
-    risk_level: RiskLevel
-    classification_path: ClassificationPath
-    rationale: str
-    annex_iii_category: int | None = None
-    annex_i_legislation: str | None = None
-
-
-class ClassificationSummary(BaseModel):
-    tenant_id: str
-    prohibited: int = 0
-    high_risk: int = 0
-    limited_risk: int = 0
-    minimal_risk: int = 0
-    total: int = 0
+    classified_by: str = "auto"
