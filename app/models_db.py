@@ -59,6 +59,9 @@ class AISystemTable(Base):
     owner_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
     criticality: Mapped[str] = mapped_column(String(50), nullable=False, default="medium")
     data_sensitivity: Mapped[str] = mapped_column(String(50), nullable=False, default="internal")
+    has_incident_runbook: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_supplier_risk_register: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_backup_runbook: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="draft")
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

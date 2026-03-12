@@ -11,6 +11,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.ai_governance_models import AIGovernanceKpiSummary
 from app.ai_system_models import (
     AISystem,
     AISystemComplianceReport,
@@ -53,6 +54,7 @@ from app.repositories.compliance_gap import ComplianceGapRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
+from app.services.ai_governance_kpis import compute_ai_governance_kpis
 from app.services.classification_engine import classify_ai_system
 from app.services.compliance_engine import build_audit_hash, derive_actions
 from app.services.tenant_compliance_overview import (
@@ -447,6 +449,31 @@ def get_aisystem_compliance_report(
 ) -> AISystemComplianceReport:
     summary = repository.compliance_summary_for_tenant(tenant_id)
     return AISystemComplianceReport(**summary)
+
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/ai-governance-kpis",
+    response_model=AIGovernanceKpiSummary,
+)
+def get_ai_governance_kpis(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    policy_repository: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    audit_repository: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> AIGovernanceKpiSummary:
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+
+    return compute_ai_governance_kpis(
+        tenant_id=tenant_id,
+        ai_system_repository=ai_repository,
+        policy_repository=policy_repository,
+        violation_repository=violation_repository,
+        audit_repository=audit_repository,
+    )
 
 @app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)
 def get_tenant_compliance_overview(

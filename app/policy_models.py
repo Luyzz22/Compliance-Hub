@@ -69,4 +69,6 @@ class RuleConditionType(StrEnum):
     equals = "equals"
     high_risk_requires_dpia = "high_risk_requires_dpia"
     high_criticality_requires_owner_email = "high_criticality_requires_owner_email"
-
+    incident_response_runbook_required = "incident_response_runbook_required"
+    supplier_risk_assessment_required = "supplier_risk_assessment_required"
+    backup_and_recovery_plan_required = "backup_and_recovery_plan_required"
