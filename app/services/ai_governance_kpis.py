@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
-from typing import Iterable
 
 from app.ai_governance_models import AIGovernanceKpiSummary
 from app.repositories.ai_systems import AISystemRepository
