@@ -33,6 +33,9 @@ def test_policy_report_endpoint_returns_violations():
         "owner_email": "owner@example.com",
         "criticality": AISystemCriticality.medium.value,
         "data_sensitivity": DataSensitivity.internal.value,
+        "has_incident_runbook": False,
+        "has_supplier_risk_register": False,
+        "has_backup_runbook": False,
     }
 
     create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
@@ -63,6 +66,9 @@ def test_create_high_risk_without_dpia_creates_violation():
         "owner_email": "owner@example.com",
         "criticality": AISystemCriticality.medium.value,
         "data_sensitivity": DataSensitivity.internal.value,
+        "has_incident_runbook": False,
+        "has_supplier_risk_register": False,
+        "has_backup_runbook": False,
     }
 
     create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
@@ -93,6 +99,9 @@ def test_high_criticality_without_owner_email_creates_violation():
         "owner_email": "",
         "criticality": AISystemCriticality.high.value,
         "data_sensitivity": DataSensitivity.internal.value,
+        "has_incident_runbook": False,
+        "has_supplier_risk_register": False,
+        "has_backup_runbook": False,
     }
 
     create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
@@ -120,6 +129,9 @@ def test_list_violations_filters_by_ai_system_and_is_idempotent_on_update():
         "owner_email": "owner@example.com",
         "criticality": AISystemCriticality.medium.value,
         "data_sensitivity": DataSensitivity.internal.value,
+        "has_incident_runbook": False,
+        "has_supplier_risk_register": False,
+        "has_backup_runbook": False,
     }
 
     create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
@@ -159,6 +171,9 @@ def test_list_violations_filters_by_ai_system_and_is_idempotent_on_update():
         "business_purpose": "Just a dummy purpose",  # NEU
         "criticality": AISystemCriticality.low.value,
         "data_sensitivity": DataSensitivity.public.value,
+        "has_incident_runbook": True,
+        "has_supplier_risk_register": True,
+        "has_backup_runbook": True,
     }
 
     other_create = client.post("/api/v1/ai-systems", json=unrelated_payload, headers=_headers())
@@ -175,3 +190,74 @@ def test_list_violations_filters_by_ai_system_and_is_idempotent_on_update():
     )
     assert system_filtered.status_code == 200
     assert system_filtered.json() == []
+
+
+def test_nis2_iso27001_missing_controls_create_violations_and_audit_event_metadata():
+    payload = {
+        "id": "ai-policy-nis2-1",
+        "name": "NIS2 Coverage",
+        "description": "Missing operational controls",
+        "business_unit": "SecOps",
+        "risk_level": AISystemRiskLevel.limited.value,
+        "ai_act_category": AIActCategory.limited_risk.value,
+        "gdpr_dpia_required": True,
+        "owner_email": "security@example.com",
+        "criticality": AISystemCriticality.high.value,
+        "data_sensitivity": DataSensitivity.confidential.value,
+        "has_incident_runbook": False,
+        "has_supplier_risk_register": False,
+        "has_backup_runbook": False,
+    }
+
+    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
+    assert create_resp.status_code == 200
+
+    violations_resp = client.get(
+        "/api/v1/ai-systems/ai-policy-nis2-1/violations",
+        headers=_headers(),
+    )
+    assert violations_resp.status_code == 200
+    rule_ids = {item["rule_id"] for item in violations_resp.json()}
+
+    assert "nis2-incident-runbook-missing" in rule_ids
+    assert "nis2-supplier-risk-register-missing" in rule_ids
+    assert "nis2-backup-recovery-missing" in rule_ids
+
+    events_resp = client.get("/api/v1/audit-events", headers=_headers())
+    assert events_resp.status_code == 200
+    evaluation_events = [
+        event
+        for event in events_resp.json()
+        if event["entity_type"] == "policy_evaluation"
+    ]
+    assert evaluation_events
+    frameworks = evaluation_events[0].get("metadata", {}).get("frameworks", [])
+    assert "NIS2" in frameworks
+    assert "ISO27001" in frameworks
+
+
+def test_policy_evaluation_is_tenant_isolated_for_violations():
+    payload = {
+        "id": "ai-policy-tenant-iso-1",
+        "name": "Tenant Isolated System",
+        "description": "Only visible in tenant A",
+        "business_unit": "Risk",
+        "risk_level": AISystemRiskLevel.high.value,
+        "ai_act_category": AIActCategory.high_risk.value,
+        "gdpr_dpia_required": False,
+        "owner_email": "owner@example.com",
+        "criticality": AISystemCriticality.high.value,
+        "data_sensitivity": DataSensitivity.internal.value,
+        "has_incident_runbook": False,
+        "has_supplier_risk_register": False,
+        "has_backup_runbook": False,
+    }
+    tenant_a_headers = _headers()
+
+    create_resp = client.post("/api/v1/ai-systems", json=payload, headers=tenant_a_headers)
+    assert create_resp.status_code == 200
+
+    tenant_b_headers = {**tenant_a_headers, "x-tenant-id": "tenant-policy-002"}
+    other_tenant_violations = client.get("/api/v1/violations", headers=tenant_b_headers)
+    assert other_tenant_violations.status_code == 200
+    assert other_tenant_violations.json() == []

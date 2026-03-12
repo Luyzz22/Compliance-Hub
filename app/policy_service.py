@@ -83,6 +83,7 @@ def evaluate_policies_for_ai_system(
         action="evaluated",
         metadata={
             "violations_count": len(core_result.violations),
+            "frameworks": _frameworks_for_violations(core_result.violations),
         },
     )
 
@@ -140,6 +141,20 @@ def _read_field_value(ai_system: AISystem, field_path: str) -> Any:
     value = getattr(ai_system, field_path, None)
     return getattr(value, "value", value)
 
+
+
+def _frameworks_for_violations(violations: Sequence[Violation]) -> list[str]:
+    frameworks = {"EU_AI_ACT"}
+    nis2_iso_rule_ids = {
+        "nis2-incident-runbook-missing",
+        "nis2-supplier-risk-register-missing",
+        "nis2-backup-recovery-missing",
+    }
+
+    if any(v.rule_id in nis2_iso_rule_ids for v in violations):
+        frameworks.update({"NIS2", "ISO27001"})
+
+    return sorted(frameworks)
 
 def derive_actions(violations: list[Violation]) -> list[ComplianceAction]:
     return []

@@ -57,6 +57,9 @@ class AISystemCreate(BaseModel):
     owner_email: str | None = None
     criticality: AISystemCriticality = AISystemCriticality.medium
     data_sensitivity: DataSensitivity = DataSensitivity.internal
+    has_incident_runbook: bool = False
+    has_supplier_risk_register: bool = False
+    has_backup_runbook: bool = False
 
 
 class AISystemUpdate(BaseModel):
@@ -69,6 +72,9 @@ class AISystemUpdate(BaseModel):
     owner_email: str | None = None
     criticality: AISystemCriticality | None = None
     data_sensitivity: DataSensitivity | None = None
+    has_incident_runbook: bool | None = None
+    has_supplier_risk_register: bool | None = None
+    has_backup_runbook: bool | None = None
 
 class AISystem(BaseModel):
     id: str
@@ -82,6 +88,9 @@ class AISystem(BaseModel):
     owner_email: str | None = None
     criticality: AISystemCriticality = AISystemCriticality.medium
     data_sensitivity: DataSensitivity = DataSensitivity.internal
+    has_incident_runbook: bool = False
+    has_supplier_risk_register: bool = False
+    has_backup_runbook: bool = False
     status: AISystemStatus = AISystemStatus.draft
     created_at_utc: datetime = Field(default_factory=lambda: datetime.utcnow())
     updated_at_utc: datetime = Field(default_factory=lambda: datetime.utcnow())
