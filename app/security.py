@@ -32,9 +32,11 @@ _original_get_settings_cache_clear = get_settings.cache_clear
 
 
 def _clear_settings_cache() -> None:
+    # Kompatibel zu Tests, die get_settings.cache_clear() aufrufen wollen.
     _original_get_settings_cache_clear()
 
 
+# Hook, damit Tests get_settings.cache_clear() verwenden können
 get_settings.cache_clear = _clear_settings_cache  # type: ignore[attr-defined]
 
 

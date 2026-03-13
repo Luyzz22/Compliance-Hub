@@ -95,10 +95,15 @@ def compute_ai_board_kpis(
     ai_systems = ai_system_repository.list_for_tenant(tenant_id)
     violations = violation_repository.list_violations_for_tenant(tenant_id)
 
+    total_systems = len(ai_systems)
+    active_systems = sum(1 for s in ai_systems if s.status == "active")
+    high_risk_systems = sum(1 for s in ai_systems if s.risk_level == "high")
+    open_violations = len(violations)
+
     return AIBoardKpiSummary(
         tenant_id=tenant_id,
-        ai_systems_total=len(ai_systems),
-        active_ai_systems=sum(1 for s in ai_systems if s.status == "active"),
-        high_risk_systems=sum(1 for s in ai_systems if s.risk_level == "high"),
-        open_policy_violations=len(violations),
+        ai_systems_total=total_systems,
+        active_ai_systems=active_systems,
+        high_risk_systems=high_risk_systems,
+        open_policy_violations=open_violations,
     )

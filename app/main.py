@@ -54,7 +54,10 @@ from app.repositories.compliance_gap import ComplianceGapRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
-from app.services.ai_governance_kpis import compute_ai_board_kpis, compute_ai_governance_kpis
+from app.services.ai_governance_kpis import (
+    compute_ai_board_kpis,
+    compute_ai_governance_kpis,
+)
 from app.services.classification_engine import classify_ai_system
 from app.services.compliance_engine import build_audit_hash, derive_actions
 from app.services.tenant_compliance_overview import (
