@@ -14,3 +14,12 @@ class AIGovernanceKpiSummary(BaseModel):
     audit_events_last_30_days: int
     has_documented_ai_policy: bool = False
     has_ai_risk_register: bool = False
+
+
+class AIBoardKpiSummary(BaseModel):
+    tenant_id: str
+    ai_systems_total: int
+    active_ai_systems: int
+    high_risk_systems: int
+    open_policy_violations: int
+

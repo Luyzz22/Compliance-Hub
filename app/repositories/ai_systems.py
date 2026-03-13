@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.ai_system_models import AISystem, AISystemCreate, AISystemStatus, AISystemUpdate
+from app.datetime_compat import UTC
 from app.models_db import AISystemTable
 
 

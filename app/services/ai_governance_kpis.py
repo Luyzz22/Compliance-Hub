@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
-from app.ai_governance_models import AIGovernanceKpiSummary
+from app.ai_governance_models import AIBoardKpiSummary, AIGovernanceKpiSummary
+from app.datetime_compat import UTC
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
 from app.repositories.policies import PolicyRepository
@@ -84,3 +85,20 @@ def compute_ai_governance_kpis(
         has_ai_risk_register=has_ai_risk_register,
     )
 
+
+
+def compute_ai_board_kpis(
+    tenant_id: str,
+    ai_system_repository: AISystemRepository,
+    violation_repository: ViolationRepository,
+) -> AIBoardKpiSummary:
+    ai_systems = ai_system_repository.list_for_tenant(tenant_id)
+    violations = violation_repository.list_violations_for_tenant(tenant_id)
+
+    return AIBoardKpiSummary(
+        tenant_id=tenant_id,
+        ai_systems_total=len(ai_systems),
+        active_ai_systems=sum(1 for s in ai_systems if s.status == "active"),
+        high_risk_systems=sum(1 for s in ai_systems if s.risk_level == "high"),
+        open_policy_violations=len(violations),
+    )
