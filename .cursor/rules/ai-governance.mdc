@@ -1,0 +1,34 @@
+---
+description: KI-Governance und EU AI Act Implementierungsregeln
+globs: ["app/ai_*.py", "app/classification_*.py"]
+---
+
+# KI-Governance Rules – EU AI Act Compliance
+
+## Pflichtfelder für KI-System-Registry (Art. 51 EU AI Act)
+Jedes registrierte KI-System MUSS enthalten:
+- `system_name`, `version`, `risk_level` (RiskLevel Enum)
+- `intended_purpose` (Verwendungszweck)
+- `provider_name` (Anbieter)
+- `deployment_date`, `last_review_date`
+- `technical_documentation_url` (Art. 11)
+- `conformity_assessment_status` (Art. 43)
+- `post_market_monitoring_plan` (Art. 61)
+
+## High-Risk AI Systeme (Anhang III EU AI Act)
+Bei `risk_level = HIGH` automatisch triggern:
+1. Konformitätsbewertungsverfahren (Art. 43)
+2. Technische Dokumentation (Art. 11)
+3. Transparenzanforderungen (Art. 13)
+4. Human Oversight Maßnahmen (Art. 14)
+5. Genauigkeits- und Robustheitstests (Art. 15)
+
+## ISO 42001 Cross-Mapping
+- ISO 42001 Kap. 6.1 ↔ EU AI Act Art. 9 (Risikomanagement)
+- ISO 42001 Kap. 8.4 ↔ EU AI Act Art. 10 (Daten-Governance)
+- ISO 42001 Kap. 9.1 ↔ EU AI Act Art. 61 (Post-Market-Monitoring)
+- ISO 42001 Kap. 10.2 ↔ EU AI Act Art. 73 (Meldepflicht schwerwiegender Vorfälle)
+
+## Deadline Alert: 2. August 2026
+Alle High-Risk-Systeme müssen bis 02.08.2026 konform sein.
+Automatische Reminder ab 90 Tage vor Deadline implementieren.

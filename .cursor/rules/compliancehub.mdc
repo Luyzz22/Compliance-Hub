@@ -1,0 +1,79 @@
+---
+description: ComplianceHub – Hauptregeln für KI-gestützte GRC-Plattform (DACH)
+alwaysApply: true
+---
+
+# ComplianceHub – Cursor AI Rules
+
+## Projekt-Kontext
+Du arbeitest an **ComplianceHub**, einer mandantenfähigen Enterprise-SaaS-GRC-Plattform für den DACH-Markt.
+- **Stack:** FastAPI (Python 3.11+) · SQLAlchemy 2.0 · Pydantic v2 · Next.js 15 · Supabase (PostgreSQL + pgvector + RLS)
+- **KI-Modelle:** Claude Sonnet 4 (Legal Reasoning), GPT-4o (Structured Output), Gemini 2.0 Flash (High-Volume/Chat)
+- **Orchestrierung:** n8n (self-hosted, DSGVO-konform) · LangChain + LangSmith (Observability)
+- **Linting:** Ruff (line-length 100, target py311), Pytest 8+
+
+## Regulatorischer Rahmen (IMMER berücksichtigen)
+Alle generierten Artefakte müssen diese vier Compliance-Säulen abdecken:
+1. **EU AI Act** – ab 2. August 2026 vollständig anwendbar; High-Risk-Klassifizierung, KI-Register, Post-Market-Surveillance
+2. **ISO 42001** – AI-Managementsystem; Cross-Mapping zu ISO 27001/27701 und EU AI Act-Artikeln
+3. **NIS2 / KRITIS-Dachgesetz** – persönliche Geschäftsleiterhaftung, keine Übergangsfrist
+4. **DSGVO / BDSG / GoBD / E-Rechnung EN-16931** – DACH-Spezifika
+
+## Architektur-Prinzipien
+- **Multi-Tenancy:** PostgreSQL Row Level Security (RLS) via `db_tenant.py` und `tenant_middleware.py` – NIEMALS tenant_id weglassen
+- **Sicherheit:** JWT-basiert via `app/security.py`; alle Endpunkte müssen Tenant-Kontext validieren
+- **Repository-Pattern:** Business-Logik in `app/repositories/`, Services in `app/services/`
+- **Modell-Trennung:** DB-Modelle in `models_db.py`, Pydantic-Schemas in domänenspezifischen `*_models.py`-Dateien
+- **SAP-Integration:** SAP S/4HANA via BTP-Standard-APIs; DATEV-Export als Killer-Feature für Steuerberater
+- **SSO:** SAML 2.0 / Azure AD / SAP IAS für Enterprise-Onboarding
+
+## Code-Konventionen
+```python
+# FastAPI Router – immer mit Prefix und Tags
+router = APIRouter(prefix="/api/v1/resource", tags=["resource"])
+
+# Tenant-Dependency – PFLICHT bei allen geschützten Routen
+async def get_tenant_db(tenant_id: str = Header(...)) -> AsyncSession:
+    ...
+
+# Ruff-konforme Imports: stdlib → third-party → local (isort)
+from __future__ import annotations
+
+from uuid import UUID
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db_tenant import get_tenant_session
+```
+
+## Naming Conventions
+- Endpunkte: `snake_case`, Plural-Ressourcen (`/ai-systems`, `/audit-logs`)
+- Pydantic-Schemas: `EntityBase`, `EntityCreate`, `EntityRead`, `EntityUpdate`
+- DB-Modelle (SQLAlchemy): `EntityDB` Suffix
+- Services: `entity_service.py`, Repositories: `entity_repository.py`
+
+## Compliance-spezifische Regeln
+- KI-Systeme IMMER mit `risk_level` (UNACCEPTABLE / HIGH / LIMITED / MINIMAL) klassifizieren
+- Audit-Logs sind IMMUTABLE – niemals DELETE auf `audit_logs`-Tabelle generieren
+- DSGVO-Pflichtfelder: `created_at`, `updated_at`, `tenant_id`, `created_by` bei allen Entitäten
+- GoBD-konforme Aufbewahrung: 10 Jahre für steuerrelevante Dokumente
+- Alle Fehlermeldungen auf Deutsch (für DACH-Endnutzer), API-Errors auf Englisch
+
+## LLM-Kosten-Optimierung (40-57% Ersparnis)
+- Claude Sonnet 4 → nur für komplexes Legal/Compliance Reasoning
+- GPT-4o → strukturierter Output (JSON Schemas, E-Rechnung EN-16931)
+- Gemini 2.0 Flash → High-Volume-Anfragen, Chat, einfache Klassifizierungen
+- Supabase pgvector → RAG für Normen-Dokumente (EU AI Act, ISO 42001, NIS2)
+
+## Testing
+- Pytest mit `pythonpath = ["app"]` – Tests in `tests/`
+- Jeder neue Endpoint braucht mindestens: Happy Path + Tenant-Isolation-Test + Validation-Error-Test
+- Keine echten DB-Connections in Unit-Tests: SQLite in-memory via `test_compliancehub.db`
+
+## Verbotene Patterns
+- ❌ `SELECT *` ohne tenant_id-Filter
+- ❌ Synchrone SQLAlchemy-Sessions (immer `AsyncSession`)
+- ❌ Hardcodierte Tenant-IDs oder API-Keys im Code
+- ❌ Business-Logik direkt in FastAPI-Route-Funktionen
+- ❌ `print()` statt `logging.getLogger(__name__)`

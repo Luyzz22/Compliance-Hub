@@ -1,0 +1,26 @@
+---
+description: ComplianceHub Frontend – Next.js 15 Regeln
+globs: ["frontend/**/*.ts", "frontend/**/*.tsx"]
+---
+
+# Frontend Rules – Next.js 15
+
+## Stack
+- **Framework:** Next.js 15 (App Router)
+- **Sprache:** TypeScript (strict mode)
+- **Styling:** Tailwind CSS
+- **State:** Zustand oder React Query für Server State
+- **Auth:** Supabase Auth mit SSO (SAML 2.0 / Azure AD)
+
+## Konventionen
+- Server Components by default; `'use client'` nur wenn nötig
+- API-Calls ausschließlich über `/app/api/` Route Handlers oder React Query
+- Alle UI-Texte auf Deutsch (DACH-Markt)
+- WCAG 2.1 AA Accessibility-Standard einhalten
+- Tenant-Kontext immer aus Supabase Auth Session lesen
+
+## Compliance UI-Anforderungen
+- Risk-Level-Badges: Farbkodierung UNACCEPTABLE=rot, HIGH=orange, LIMITED=gelb, MINIMAL=grün
+- Audit-Log-Tabellen: read-only, mit Export (CSV/PDF) für GoBD-Konformität
+- Board-Level-Dashboards: Executive Summary zuerst, Details on Demand
+- E-Rechnung EN-16931: Validierungs-Feedback direkt im Upload-Formular
