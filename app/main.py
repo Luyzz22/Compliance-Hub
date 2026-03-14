@@ -11,7 +11,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.ai_governance_models import AIGovernanceKpiSummary
+from app.ai_governance_models import AIBoardKpiSummary, AIGovernanceKpiSummary
 from app.ai_system_models import (
     AISystem,
     AISystemComplianceReport,
@@ -54,7 +54,10 @@ from app.repositories.compliance_gap import ComplianceGapRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
-from app.services.ai_governance_kpis import compute_ai_governance_kpis
+from app.services.ai_governance_kpis import (
+    compute_ai_board_kpis,
+    compute_ai_governance_kpis,
+)
 from app.services.classification_engine import classify_ai_system
 from app.services.compliance_engine import build_audit_hash, derive_actions
 from app.services.tenant_compliance_overview import (
@@ -473,6 +476,19 @@ def get_ai_governance_kpis(
         policy_repository=policy_repository,
         violation_repository=violation_repository,
         audit_repository=audit_repository,
+    )
+
+
+@app.get("/api/v1/ai-governance/board-kpis", response_model=AIBoardKpiSummary)
+def get_ai_board_kpis(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
+) -> AIBoardKpiSummary:
+    return compute_ai_board_kpis(
+        tenant_id=auth_context.tenant_id,
+        ai_system_repository=ai_repository,
+        violation_repository=violation_repository,
     )
 
 @app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)

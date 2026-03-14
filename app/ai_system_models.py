@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import StrEnum
 
 from pydantic import BaseModel, Field
+
+from app.enum_compat import StrEnum
 
 
 class AISystemRiskLevel(StrEnum):

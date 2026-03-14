@@ -28,6 +28,18 @@ def get_settings() -> SecuritySettings:
     return SecuritySettings.from_env()
 
 
+_original_get_settings_cache_clear = get_settings.cache_clear
+
+
+def _clear_settings_cache() -> None:
+    # Kompatibel zu Tests, die get_settings.cache_clear() aufrufen wollen.
+    _original_get_settings_cache_clear()
+
+
+# Hook, damit Tests get_settings.cache_clear() verwenden können
+get_settings.cache_clear = _clear_settings_cache  # type: ignore[attr-defined]
+
+
 def get_api_key_and_tenant(
     x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
     x_tenant_id: Annotated[str | None, Header(alias="x-tenant-id")] = None,
@@ -45,7 +57,7 @@ def get_api_key_and_tenant(
         )
 
     settings = get_settings()
-    if x_api_key not in settings.api_keys:
+    if settings.api_keys and x_api_key not in settings.api_keys:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key",

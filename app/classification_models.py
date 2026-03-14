@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from enum import StrEnum
-
 from pydantic import BaseModel
+
+from app.enum_compat import StrEnum
 
 
 class RiskLevel(StrEnum):

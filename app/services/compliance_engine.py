@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, datetime
+from datetime import datetime
 
+from app.datetime_compat import UTC
 from app.models import (
     ComplianceAction,
     DocumentIngestRequest,

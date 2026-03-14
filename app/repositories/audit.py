@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import JSON, DateTime, String, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from app.audit_models import AuditEvent
+from app.datetime_compat import UTC
 from app.models_db import Base
 
 

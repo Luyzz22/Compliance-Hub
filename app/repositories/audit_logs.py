@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit_models import AuditLog
+from app.datetime_compat import UTC
 from app.models_db import AuditLogTable
 
 
