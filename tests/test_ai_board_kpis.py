@@ -42,4 +42,3 @@ def test_ai_board_kpis_endpoint_returns_summary():
     assert data["high_risk_systems_without_dpia"] >= 1
     assert data["critical_systems_without_owner"] >= 1
     assert data["nis2_control_gaps"] >= 1
-

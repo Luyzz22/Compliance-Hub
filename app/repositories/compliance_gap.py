@@ -45,12 +45,9 @@ class ComplianceGapRepository:
         self, tenant_id: str, ai_system_id: str, risk_level: str
     ) -> list[ComplianceStatusEntry]:
         """Ensure all applicable requirements are tracked for this system."""
-        existing_stmt = (
-            select(ComplianceStatusTable.requirement_id)
-            .where(
-                ComplianceStatusTable.tenant_id == tenant_id,
-                ComplianceStatusTable.ai_system_id == ai_system_id,
-            )
+        existing_stmt = select(ComplianceStatusTable.requirement_id).where(
+            ComplianceStatusTable.tenant_id == tenant_id,
+            ComplianceStatusTable.ai_system_id == ai_system_id,
         )
         existing_ids = set(self._session.execute(existing_stmt).scalars().all())
 

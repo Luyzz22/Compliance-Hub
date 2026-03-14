@@ -19,9 +19,11 @@ class AISystemPolicyReport(NamedTuple):
     violation_count: int
     action_count: int
 
+
 class AISystemPolicyReportResponse(BaseModel):
     report: AISystemPolicyReport
     violations: list[Violation]
+
 
 class PolicyEvaluationResult(NamedTuple):
     report: AISystemPolicyReport
@@ -142,7 +144,6 @@ def _read_field_value(ai_system: AISystem, field_path: str) -> Any:
     return getattr(value, "value", value)
 
 
-
 def _frameworks_for_violations(violations: Sequence[Violation]) -> list[str]:
     frameworks = {"EU_AI_ACT"}
     nis2_iso_rule_ids = {
@@ -155,6 +156,7 @@ def _frameworks_for_violations(violations: Sequence[Violation]) -> list[str]:
         frameworks.update({"NIS2", "ISO27001"})
 
     return sorted(frameworks)
+
 
 def derive_actions(violations: list[Violation]) -> list[ComplianceAction]:
     return []
@@ -178,4 +180,3 @@ def _build_compliance_report(
         violation_count=len(violations),
         action_count=len(actions),
     )
-

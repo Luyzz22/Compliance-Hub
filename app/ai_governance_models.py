@@ -41,4 +41,3 @@ class AIBoardKpiSummary(BaseModel):
     score_change_vs_last_quarter: float
     incidents_last_quarter: int
     complaints_last_quarter: int
-

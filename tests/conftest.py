@@ -10,7 +10,6 @@ from app.main import app
 from app.models_db import Base
 from app.security import get_settings
 
-
 # Alle API-Keys, die Tests in _headers() verwenden – get_settings().api_keys wird
 # einmal pro Session gecacht; damit alle Tests grün bleiben, hier Superset setzen.
 _TEST_API_KEYS = "board-kpi-key,test-key,test-api-key,tenant-overview-key,test-key-1,test-key-2"

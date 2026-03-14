@@ -19,7 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0.0",
-  "ruff>=0.3.0",
+  "ruff>=0.15.0",
 ]
 api = []
 
@@ -36,12 +36,10 @@ addopts = "-q"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-select = [
-  "E",
-  "F",
-  "I",
-  "UP",
-]
+extend-exclude = ["frontend", "node_modules", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
 ignore = []
 
 

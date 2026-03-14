@@ -47,9 +47,7 @@ def compute_ai_governance_kpis(
 
     # Basiszahlen
     ai_systems_total = len(ai_systems)
-    ai_systems_with_owner = sum(
-        1 for s in ai_systems if s.owner_email and s.owner_email.strip()
-    )
+    ai_systems_with_owner = sum(1 for s in ai_systems if s.owner_email and s.owner_email.strip())
 
     # High-Risk-Fokus (EU AI Act / ISO 42001 / ISO 27001 Kontext)
     high_risk_systems = [s for s in ai_systems if s.risk_level == "high"]
@@ -85,6 +83,7 @@ def compute_ai_governance_kpis(
         has_ai_risk_register=has_ai_risk_register,
     )
 
+
 def compute_ai_board_kpis(
     tenant_id: str,
     ai_system_repository: AISystemRepository,
@@ -104,8 +103,7 @@ def compute_ai_board_kpis(
     critical_systems_without_owner = sum(
         1
         for s in ai_systems
-        if s.criticality in ("high", "very_high")
-        and not (s.owner_email and s.owner_email.strip())
+        if s.criticality in ("high", "very_high") and not (s.owner_email and s.owner_email.strip())
     )
     nis2_control_gaps = sum(
         (1 if not s.has_incident_runbook else 0)
@@ -115,8 +113,7 @@ def compute_ai_board_kpis(
     )
 
     owner_ratio = (
-        sum(1 for s in ai_systems if s.owner_email and s.owner_email.strip())
-        / total_systems
+        sum(1 for s in ai_systems if s.owner_email and s.owner_email.strip()) / total_systems
         if total_systems
         else 1.0
     )
@@ -170,4 +167,3 @@ def compute_ai_board_kpis(
         incidents_last_quarter=0,
         complaints_last_quarter=0,
     )
-

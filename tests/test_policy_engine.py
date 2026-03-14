@@ -21,6 +21,7 @@ def _headers() -> dict[str, str]:
         "x-tenant-id": "tenant-policy-001",
     }
 
+
 def test_policy_report_endpoint_returns_violations():
     payload = {
         "id": "ai-policy-report-1",
@@ -49,10 +50,8 @@ def test_policy_report_endpoint_returns_violations():
 
     body = report_resp.json()
     assert body["ai_system"]["id"] == "ai-policy-report-1"
-    assert any(
-        v["rule_id"] == "high-risk-without-dpia"
-        for v in body["violations"]
-    )
+    assert any(v["rule_id"] == "high-risk-without-dpia" for v in body["violations"])
+
 
 def test_create_high_risk_without_dpia_creates_violation():
     payload = {
@@ -81,8 +80,7 @@ def test_create_high_risk_without_dpia_creates_violation():
     matching = [
         item
         for item in violations
-        if item["ai_system_id"] == "ai-policy-risk-1"
-        and "DPIA" in item["message"]
+        if item["ai_system_id"] == "ai-policy-risk-1" and "DPIA" in item["message"]
     ]
     assert matching
 
@@ -226,9 +224,7 @@ def test_nis2_iso27001_missing_controls_create_violations_and_audit_event_metada
     events_resp = client.get("/api/v1/audit-events", headers=_headers())
     assert events_resp.status_code == 200
     evaluation_events = [
-        event
-        for event in events_resp.json()
-        if event["entity_type"] == "policy_evaluation"
+        event for event in events_resp.json() if event["entity_type"] == "policy_evaluation"
     ]
     assert evaluation_events
     frameworks = evaluation_events[0].get("metadata", {}).get("frameworks", [])

@@ -18,4 +18,3 @@ def test_enterprise_status_ok():
     assert "document_intake" in body["features_enabled"]
     assert "ai_system_registry" in body["features_enabled"]
     assert "audit_logging" in body["features_enabled"]
-

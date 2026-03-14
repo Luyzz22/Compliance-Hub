@@ -65,10 +65,11 @@ from app.services.tenant_compliance_overview import (
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Enterprise lifespan context manager for ComplianceHub.
-    
+
     Startup: Initialize database schema (ISO 27001/NIS2 compliant)
     Shutdown: Graceful connection cleanup, audit log flush
     """
@@ -84,6 +85,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 class DocumentIntakeRequest(BaseModel):
     tenant_id: str = Field(..., examples=["tenant-001"])
     document_id: str = Field(..., examples=["doc-001"])
@@ -95,9 +97,11 @@ class DocumentIntakeRequest(BaseModel):
     xml_valid_en16931: bool = False
     amount_eur: float = 0.0
 
+
 class AISystemPolicyReportResponse(BaseModel):
     ai_system: AISystem
     violations: list[Violation]
+
 
 class ComplianceActionModel(BaseModel):
     action: str
@@ -450,7 +454,6 @@ def get_aisystem_compliance_report(
     return AISystemComplianceReport(**summary)
 
 
-
 @app.get("/api/v1/ai-governance/board-kpis", response_model=AIBoardKpiSummary)
 def get_ai_governance_board_kpis(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
@@ -487,6 +490,7 @@ def get_ai_governance_kpis(
         audit_repository=audit_repository,
     )
 
+
 @app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)
 def get_tenant_compliance_overview(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
@@ -496,6 +500,7 @@ def get_tenant_compliance_overview(
         tenant_id=auth_context.tenant_id,
         session=session,
     )
+
 
 @app.get("/api/v1/violations", response_model=list[Violation])
 def list_violations(
@@ -515,6 +520,7 @@ def list_violations_for_ai_system(
         tenant_id=tenant_id,
         ai_system_id=ai_system_id,
     )
+
 
 @app.get(
     "/api/v1/ai-systems/{ai_system_id}/policy-report",
@@ -545,7 +551,6 @@ def get_ai_system_policy_report(
         actor_type="api_key",
         actor_id=auth.api_key,
     )
-
 
     # Optional: zusätzliche Actions aus Violations ableiten
 
@@ -774,6 +779,7 @@ def get_compliance_dashboard(
 
     # Deadline countdown
     from datetime import date
+
     deadline = date(2026, 8, 2)
     today = date.today()
     days_remaining = max(0, (deadline - today).days)
@@ -787,13 +793,15 @@ def get_compliance_dashboard(
                 if s.status == ComplianceStatus.not_started:
                     req = REQUIREMENTS_BY_ID.get(s.requirement_id)
                     if req:
-                        urgent_gaps.append({
-                            "ai_system_id": sys.id,
-                            "ai_system_name": sys.name,
-                            "requirement_id": req.id,
-                            "requirement_name": req.name,
-                            "article": req.article,
-                        })
+                        urgent_gaps.append(
+                            {
+                                "ai_system_id": sys.id,
+                                "ai_system_name": sys.name,
+                                "requirement_id": req.id,
+                                "requirement_name": req.name,
+                                "article": req.article,
+                            }
+                        )
     urgent_gaps = urgent_gaps[:3]
 
     return ComplianceDashboard(
@@ -803,4 +811,3 @@ def get_compliance_dashboard(
         days_remaining=days_remaining,
         urgent_gaps=urgent_gaps,
     )
-

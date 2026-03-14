@@ -89,4 +89,3 @@ class ClassificationRepository:
         stmt = select(RiskClassificationDB.risk_level)
         rows = self.session.execute(stmt).scalars().all()
         return ClassificationSummary.from_risk_levels(rows)
-

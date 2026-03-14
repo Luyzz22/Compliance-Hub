@@ -92,4 +92,3 @@ def test_tenant_compliance_overview_aggregates_status_and_violations():
         "medium": 1,
     }
     assert overview["last_evaluated_at"] is not None
-

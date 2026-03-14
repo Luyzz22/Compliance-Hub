@@ -13,4 +13,3 @@ def test_health_ok():
         "product": "ComplianceHub",
         "region": "DACH",
     }
-

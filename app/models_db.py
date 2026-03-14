@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, declarative_base, mapped_column
 
 Base = declarative_base()
 
+
 class RiskClassificationDB(Base):
     __tablename__ = "risk_classifications"
 
@@ -45,6 +46,7 @@ class RiskClassificationDB(Base):
         default=datetime.utcnow,
     )
 
+
 class AISystemTable(Base):
     __tablename__ = "ai_systems"
 
@@ -74,6 +76,7 @@ class AISystemTable(Base):
         nullable=False,
     )
 
+
 class PolicyTable(Base):
     __tablename__ = "policies"
 
@@ -94,6 +97,7 @@ class RuleTable(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     condition_type: Mapped[str] = mapped_column(String(255), nullable=False)
 
+
 class ViolationTable(Base):
     __tablename__ = "violations"
 
@@ -107,6 +111,8 @@ class ViolationTable(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
+
 class ComplianceStatusTable(Base):
     __tablename__ = "compliance_status"
 
@@ -121,6 +127,7 @@ class ComplianceStatusTable(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
 
 class AuditLogTable(Base):
     __tablename__ = "audit_logs"
@@ -138,4 +145,3 @@ class AuditLogTable(Base):
         default=datetime.utcnow,
         nullable=False,
     )
-

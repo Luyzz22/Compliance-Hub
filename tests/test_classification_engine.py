@@ -1,4 +1,5 @@
 """Tests for the EU AI Act risk classification decision tree logic."""
+
 from __future__ import annotations
 
 import pytest
@@ -11,6 +12,7 @@ from app.classification_models import (
 from app.services.classification_engine import classify_ai_system
 
 # ─── Step 1: Prohibited practices ───────────────────────────────────────────────
+
 
 class TestProhibitedClassification:
     def test_social_scoring(self) -> None:
@@ -59,6 +61,7 @@ class TestProhibitedClassification:
 
 # ─── Step 2: Annex I (safety component) path ────────────────────────────────────
 
+
 class TestAnnexIClassification:
     def test_full_annex_i_path(self) -> None:
         q = ClassificationQuestionnaire(
@@ -96,6 +99,7 @@ class TestAnnexIClassification:
 
 # ─── Step 3: Annex III (use case) path ──────────────────────────────────────────
 
+
 class TestAnnexIIIClassification:
     @pytest.mark.parametrize(
         "domain,expected_category",
@@ -124,6 +128,7 @@ class TestAnnexIIIClassification:
 
 
 # ─── Step 3b: Art. 6(3) exception ───────────────────────────────────────────────
+
 
 class TestArt6_3Exception:
     def test_narrow_procedural_task_exception(self) -> None:
@@ -176,6 +181,7 @@ class TestArt6_3Exception:
 
 # ─── Step 4: Transparency / limited risk ─────────────────────────────────────────
 
+
 class TestLimitedRiskClassification:
     def test_chatbot(self) -> None:
         q = ClassificationQuestionnaire(is_chatbot_or_conversational=True)
@@ -196,6 +202,7 @@ class TestLimitedRiskClassification:
 
 # ─── Step 5: Minimal risk (default) ─────────────────────────────────────────────
 
+
 class TestMinimalRiskClassification:
     def test_empty_questionnaire(self) -> None:
         q = ClassificationQuestionnaire()
@@ -211,6 +218,7 @@ class TestMinimalRiskClassification:
 
 
 # ─── Priority ordering ──────────────────────────────────────────────────────────
+
 
 class TestClassificationPriority:
     def test_prohibited_over_high_risk_annex_iii(self) -> None:

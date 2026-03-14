@@ -91,4 +91,3 @@ def test_compliance_report_ai_systems_returns_aggregated_data():
     sensitivities = {item["data_sensitivity"] for item in report["by_data_sensitivity"]}
     assert DataSensitivity.confidential.value in sensitivities
     assert DataSensitivity.internal.value in sensitivities
-

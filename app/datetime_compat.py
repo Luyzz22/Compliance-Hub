@@ -9,4 +9,3 @@ except ImportError:  # pragma: no cover - Python < 3.11 fallback
 
 
 __all__ = ["UTC"]
-

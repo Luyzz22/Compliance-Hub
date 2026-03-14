@@ -53,9 +53,7 @@ class PolicyRepository:
                 policy_id=row.policy_id,
                 tenant_id=row.tenant_id,
                 name=row.name,
-                description=(
-                    row.description or "High criticality requires valid owner email"
-                ),
+                description=(row.description or "High criticality requires valid owner email"),
                 severity=Severity.medium,
                 message="High criticality AI system without valid owner email.",
                 conditions=[
@@ -67,7 +65,6 @@ class PolicyRepository:
                     ),
                 ],
             )
-
 
         if condition_type == RuleConditionType.incident_response_runbook_required:
             return Rule(
@@ -112,8 +109,7 @@ class PolicyRepository:
                 tenant_id=row.tenant_id,
                 name=row.name,
                 description=(
-                    row.description
-                    or "NIS2/ISO27001: Backup and recovery runbook is required"
+                    row.description or "NIS2/ISO27001: Backup and recovery runbook is required"
                 ),
                 severity=Severity.high,
                 message="Missing backup and recovery runbook for AI system.",
@@ -171,9 +167,7 @@ class PolicyRepository:
                         policy_id="builtin-criticality-owner",
                         tenant_id=tenant_id,
                         name="High criticality requires valid owner email",
-                        description=(
-                            "If criticality is high, owner_email must be present."
-                        ),
+                        description=("If criticality is high, owner_email must be present."),
                         severity=Severity.medium,
                         message="High criticality AI system without valid owner email.",
                         conditions=[
@@ -190,7 +184,6 @@ class PolicyRepository:
                     )
                 ],
             ),
-
             Policy(
                 id="builtin-nis2-incident-runbook",
                 tenant_id=tenant_id,
@@ -281,11 +274,7 @@ class PolicyRepository:
         ]
 
     def list_rules_for_tenant(self, tenant_id: str) -> list[Rule]:
-        stmt = (
-            select(RuleTable)
-            .where(RuleTable.tenant_id == tenant_id)
-            .order_by(RuleTable.id)
-        )
+        stmt = select(RuleTable).where(RuleTable.tenant_id == tenant_id).order_by(RuleTable.id)
         rows = self._session.execute(stmt).scalars().all()
         return [self._to_rule(row) for row in rows]
 
@@ -336,4 +325,3 @@ class PolicyRepository:
                         active=True,
                     )
                 )
-

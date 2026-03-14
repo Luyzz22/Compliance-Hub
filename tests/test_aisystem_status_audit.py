@@ -74,4 +74,3 @@ def test_update_ai_system_status_creates_audit_log():
     assert log["entity_id"] == "ai-credit-scoring-v1"
     assert log["before"] is not None
     assert log["after"] is not None
-
