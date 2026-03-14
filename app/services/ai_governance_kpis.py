@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
-from app.ai_governance_models import AIGovernanceKpiSummary
+from app.ai_governance_models import AIBoardKpiSummary, AIGovernanceKpiSummary
+from app.datetime_compat import UTC
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
 from app.repositories.policies import PolicyRepository
@@ -82,5 +83,91 @@ def compute_ai_governance_kpis(
         audit_events_last_30_days=audit_events_last_30_days,
         has_documented_ai_policy=has_documented_ai_policy,
         has_ai_risk_register=has_ai_risk_register,
+    )
+
+def compute_ai_board_kpis(
+    tenant_id: str,
+    ai_system_repository: AISystemRepository,
+    violation_repository: ViolationRepository,
+) -> AIBoardKpiSummary:
+    ai_systems = ai_system_repository.list_for_tenant(tenant_id)
+    violations = violation_repository.list_violations_for_tenant(tenant_id)
+
+    total_systems = len(ai_systems)
+    active_systems = sum(1 for s in ai_systems if s.status == "active")
+    high_risk_systems = sum(1 for s in ai_systems if s.risk_level == "high")
+    open_violations = len(violations)
+
+    high_risk_systems_without_dpia = sum(
+        1 for s in ai_systems if s.risk_level == "high" and not s.gdpr_dpia_required
+    )
+    critical_systems_without_owner = sum(
+        1
+        for s in ai_systems
+        if s.criticality in ("high", "very_high")
+        and not (s.owner_email and s.owner_email.strip())
+    )
+    nis2_control_gaps = sum(
+        (1 if not s.has_incident_runbook else 0)
+        + (1 if not s.has_backup_runbook else 0)
+        + (1 if not s.has_supplier_risk_register else 0)
+        for s in ai_systems
+    )
+
+    owner_ratio = (
+        sum(1 for s in ai_systems if s.owner_email and s.owner_email.strip())
+        / total_systems
+        if total_systems
+        else 1.0
+    )
+    dpia_ratio = (
+        sum(1 for s in ai_systems if s.risk_level == "high" and s.gdpr_dpia_required)
+        / high_risk_systems
+        if high_risk_systems
+        else 1.0
+    )
+    runbook_ratio = (
+        sum(
+            1
+            for s in ai_systems
+            if s.has_incident_runbook and s.has_backup_runbook and s.has_supplier_risk_register
+        )
+        / total_systems
+        if total_systems
+        else 1.0
+    )
+    violation_penalty = min(1.0, open_violations / max(total_systems, 1))
+    board_maturity_score = max(
+        0.0,
+        min(
+            1.0,
+            0.35 * owner_ratio
+            + 0.35 * dpia_ratio
+            + 0.2 * runbook_ratio
+            + 0.1 * (1 - violation_penalty),
+        ),
+    )
+    compliance_coverage_score = dpia_ratio
+    risk_governance_score = owner_ratio
+    operational_resilience_score = runbook_ratio
+    responsible_ai_score = 1.0 - violation_penalty
+
+    return AIBoardKpiSummary(
+        tenant_id=tenant_id,
+        ai_systems_total=total_systems,
+        active_ai_systems=active_systems,
+        high_risk_systems=high_risk_systems,
+        open_policy_violations=open_violations,
+        board_maturity_score=round(board_maturity_score, 3),
+        compliance_coverage_score=round(compliance_coverage_score, 3),
+        risk_governance_score=round(risk_governance_score, 3),
+        operational_resilience_score=round(operational_resilience_score, 3),
+        responsible_ai_score=round(responsible_ai_score, 3),
+        high_risk_systems_without_dpia=high_risk_systems_without_dpia,
+        critical_systems_without_owner=critical_systems_without_owner,
+        nis2_control_gaps=nis2_control_gaps,
+        score_change_vs_last_quarter=0.0,
+        incidents_last_quarter=0,
+        complaints_last_quarter=0,
     )
 

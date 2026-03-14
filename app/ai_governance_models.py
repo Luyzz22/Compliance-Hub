@@ -14,3 +14,31 @@ class AIGovernanceKpiSummary(BaseModel):
     audit_events_last_30_days: int
     has_documented_ai_policy: bool = False
     has_ai_risk_register: bool = False
+
+
+class AIBoardKpiSummary(BaseModel):
+    tenant_id: str
+    ai_systems_total: int
+    active_ai_systems: int
+    high_risk_systems: int
+    open_policy_violations: int
+
+    # Aggregierter Board-Score (0..1)
+    board_maturity_score: float
+
+    # Cluster-Scores (0..1)
+    compliance_coverage_score: float
+    risk_governance_score: float
+    operational_resilience_score: float
+    responsible_ai_score: float
+
+    # Kerntreiber für das Board
+    high_risk_systems_without_dpia: int
+    critical_systems_without_owner: int
+    nis2_control_gaps: int  # Summe offener NIS2-Kontrollen (Runbook, Backup, Supplier-Risiko)
+
+    # Trends optional (im ersten Schritt statisch 0)
+    score_change_vs_last_quarter: float
+    incidents_last_quarter: int
+    complaints_last_quarter: int
+
