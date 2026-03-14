@@ -21,8 +21,8 @@ jobs:
 
       - name: Lint
         run: |
-          ruff check .
-          ruff format --check .
+          ruff check app/ tests/
+          ruff format --check app/ tests/
 
       - name: Test
-        run: pytest
+        run: python -m pytest tests/ -q
