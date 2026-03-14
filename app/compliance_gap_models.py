@@ -13,6 +13,7 @@ class GapRequirement(BaseModel):
     applies_to: list[str]
     weight: float = 1.0
 
+
 class ComplianceRequirement(BaseModel):
     id: str
     article: str
@@ -20,10 +21,12 @@ class ComplianceRequirement(BaseModel):
     description: str
     weight: float = 1.0
 
+
 class ComplianceStatus(StrEnum):
     not_started = "not_started"
     in_progress = "in_progress"
     completed = "completed"
+
 
 class ComplianceStatusEntry(BaseModel):
     tenant_id: str
@@ -36,6 +39,7 @@ class ComplianceStatusEntry(BaseModel):
 class ComplianceStatusUpdate(BaseModel):
     status: ComplianceStatus
 
+
 class SystemReadiness(BaseModel):
     ai_system_id: str
     ai_system_name: str
@@ -46,12 +50,14 @@ class SystemReadiness(BaseModel):
     in_progress: int
     not_started: int
 
+
 class ComplianceDashboard(BaseModel):
     tenant_id: str
     overall_readiness: float
     systems: list[SystemReadiness]
     days_remaining: int
     urgent_gaps: list[dict[str, str]]
+
 
 GAP_REQUIREMENTS: list[GapRequirement] = [
     GapRequirement(
@@ -69,8 +75,7 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         article="Art. 10",
         name="Datengovernance",
         description=(
-            "Anforderungen an Trainings-, Validierungs- und "
-            "Testdatensätze gemäß Art. 10 EU AI Act."
+            "Anforderungen an Trainings-, Validierungs- und Testdatensätze gemäß Art. 10 EU AI Act."
         ),
         applies_to=["high_risk"],
     ),
@@ -79,8 +84,7 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         article="Art. 11",
         name="Technische Dokumentation",
         description=(
-            "Erstellung der technischen Dokumentation gemäß Art. 11 "
-            "und Anhang IV EU AI Act."
+            "Erstellung der technischen Dokumentation gemäß Art. 11 und Anhang IV EU AI Act."
         ),
         applies_to=["high_risk"],
         weight=2.0,
@@ -140,8 +144,7 @@ GAP_REQUIREMENTS: list[GapRequirement] = [
         article="Art. 49",
         name="EU-Datenbankregistrierung",
         description=(
-            "Registrierung des Hochrisiko-KI-Systems in der "
-            "EU-Datenbank gemäß Art. 49 EU AI Act."
+            "Registrierung des Hochrisiko-KI-Systems in der EU-Datenbank gemäß Art. 49 EU AI Act."
         ),
         applies_to=["high_risk"],
     ),
@@ -158,7 +161,4 @@ REQUIREMENTS: list[ComplianceRequirement] = [
     for req in GAP_REQUIREMENTS
 ]
 
-REQUIREMENTS_BY_ID: dict[str, ComplianceRequirement] = {
-    req.id: req for req in REQUIREMENTS
-}
-
+REQUIREMENTS_BY_ID: dict[str, ComplianceRequirement] = {req.id: req for req in REQUIREMENTS}

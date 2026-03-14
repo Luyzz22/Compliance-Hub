@@ -52,9 +52,7 @@ def compute_tenant_compliance_overview(
             continue
 
         violations_by_severity_counter[severity.value] += 1
-        system_severities = violations_by_system_severity.setdefault(
-            violation.ai_system_id, set()
-        )
+        system_severities = violations_by_system_severity.setdefault(violation.ai_system_id, set())
         system_severities.add(severity)
 
     compliant_systems = 0
@@ -72,11 +70,16 @@ def compute_tenant_compliance_overview(
         else:
             partially_compliant_systems += 1
 
-    last_eval_stmt = select(AuditEventTable.timestamp).where(
-        AuditEventTable.tenant_id == tenant_id,
-        AuditEventTable.action == "policy_evaluated",
-        AuditEventTable.entity_type == "ai_system",
-    ).order_by(AuditEventTable.timestamp.desc()).limit(1)
+    last_eval_stmt = (
+        select(AuditEventTable.timestamp)
+        .where(
+            AuditEventTable.tenant_id == tenant_id,
+            AuditEventTable.action == "policy_evaluated",
+            AuditEventTable.entity_type == "ai_system",
+        )
+        .order_by(AuditEventTable.timestamp.desc())
+        .limit(1)
+    )
     last_evaluated_at = session.execute(last_eval_stmt).scalar_one_or_none()
 
     return TenantComplianceOverview(

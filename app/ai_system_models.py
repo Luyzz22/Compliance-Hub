@@ -76,6 +76,7 @@ class AISystemUpdate(BaseModel):
     has_supplier_risk_register: bool | None = None
     has_backup_runbook: bool | None = None
 
+
 class AISystem(BaseModel):
     id: str
     tenant_id: str
@@ -123,4 +124,3 @@ class AISystemComplianceReport(BaseModel):
     by_ai_act_category: list[AISystemAIActSummary]
     by_criticality: list[AISystemCriticalitySummary]
     by_data_sensitivity: list[AISystemDataSensitivitySummary]
-

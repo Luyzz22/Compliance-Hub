@@ -59,8 +59,7 @@ def derive_actions(
                     module="tax",
                     severity=Severity.high,
                     rationale=(
-                        "EN-16931 Validierung fehlgeschlagen; "
-                        "Buchung wird bis Korrektur gestoppt."
+                        "EN-16931 Validierung fehlgeschlagen; Buchung wird bis Korrektur gestoppt."
                     ),
                 )
             )
@@ -72,8 +71,7 @@ def derive_actions(
                 module="gdpr",
                 severity=Severity.medium,
                 rationale=(
-                    "Dokument enthält personenbezogene Daten; "
-                    "VVT-Eintrag wird aktualisiert."
+                    "Dokument enthält personenbezogene Daten; VVT-Eintrag wird aktualisiert."
                 ),
             )
         )
@@ -84,8 +82,7 @@ def derive_actions(
                     module="ai-governance",
                     severity=Severity.medium,
                     rationale=(
-                        "EU-AI-Act-konformer Human-Review wird vor finaler "
-                        "Freigabe erzwungen."
+                        "EU-AI-Act-konformer Human-Review wird vor finaler Freigabe erzwungen."
                     ),
                 )
             )
@@ -96,10 +93,7 @@ def derive_actions(
                 action="trigger_transfer_impact_assessment",
                 module="gdpr",
                 severity=Severity.high,
-                rationale=(
-                    "Drittstaatenbezug erkannt; "
-                    "Transfer Impact Assessment erforderlich."
-                ),
+                rationale=("Drittstaatenbezug erkannt; Transfer Impact Assessment erforderlich."),
             )
         )
 
@@ -108,10 +102,7 @@ def derive_actions(
             action="append_worm_archive_record",
             module="gobd",
             severity=Severity.low,
-            rationale=(
-                "Dokument wurde revisionssicher mit Hash und "
-                "Zeitstempel archiviert."
-            ),
+            rationale=("Dokument wurde revisionssicher mit Hash und Zeitstempel archiviert."),
         )
     )
 
@@ -175,18 +166,13 @@ def run_platform_audit() -> list[PlatformAuditFinding]:
             domain="Regulatory",
             status="implemented",
             severity=Severity.low,
-            recommendation=(
-                "GoBD Audit-Trail inkl. Hash/Timestamp regelmäßig stichprobenprüfen."
-            ),
+            recommendation=("GoBD Audit-Trail inkl. Hash/Timestamp regelmäßig stichprobenprüfen."),
         ),
         PlatformAuditFinding(
             control_id="AI-009",
             domain="AI Governance",
             status="implemented",
             severity=Severity.medium,
-            recommendation=(
-                "Human-approval checkpoint bei personenbezogenen "
-                "Daten beibehalten."
-            ),
+            recommendation=("Human-approval checkpoint bei personenbezogenen Daten beibehalten."),
         ),
     ]

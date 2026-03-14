@@ -7,8 +7,8 @@ except ImportError:  # pragma: no cover - Python < 3.11 fallback
 
     class StrEnum(str, Enum):  # noqa: UP042
         """Backport von enum.StrEnum für Python 3.10-Testumgebungen."""
+
         pass
 
 
 __all__ = ["StrEnum"]
-

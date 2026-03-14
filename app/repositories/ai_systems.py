@@ -152,7 +152,6 @@ class AISystemRepository:
         self._session.refresh(row)
         return self._to_domain(row)
 
-
     def update(
         self,
         tenant_id: str,
@@ -189,4 +188,3 @@ class AISystemRepository:
         self._session.commit()
         self._session.refresh(row)
         return self._to_domain(row)
-

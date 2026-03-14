@@ -122,8 +122,7 @@ def classify_ai_system(
             classification_path=ClassificationPath.transparency,
             profiles_natural_persons=questionnaire.profiles_natural_persons,
             classification_rationale=(
-                "Begrenztes Risiko mit Transparenzpflichten: "
-                f"{', '.join(reasons)}."
+                f"Begrenztes Risiko mit Transparenzpflichten: {', '.join(reasons)}."
             ),
             confidence_score=1.0,
         )
@@ -135,8 +134,7 @@ def classify_ai_system(
         classification_path=ClassificationPath.none,
         profiles_natural_persons=questionnaire.profiles_natural_persons,
         classification_rationale=(
-            "Minimales Risiko: Keine der Hochrisiko- oder "
-            "Transparenzkriterien erfüllt."
+            "Minimales Risiko: Keine der Hochrisiko- oder Transparenzkriterien erfüllt."
         ),
         confidence_score=1.0,
     )
@@ -152,8 +150,7 @@ def _check_prohibited(q: ClassificationQuestionnaire) -> list[str]:
         reasons.append("Ausnutzung von Schwachstellen (Alter, Behinderung)")
     if q.involves_realtime_biometric_public:
         reasons.append(
-            "Biometrische Echtzeit-Fernidentifizierung in öffentlich "
-            "zugänglichen Räumen"
+            "Biometrische Echtzeit-Fernidentifizierung in öffentlich zugänglichen Räumen"
         )
     return reasons
 
@@ -165,8 +162,7 @@ def _check_exception(q: ClassificationQuestionnaire) -> tuple[bool, str | None]:
         reasons.append("enge verfahrensbezogene Aufgabe")
     if q.improves_prior_human_activity:
         reasons.append(
-            "Verbesserung eines zuvor abgeschlossenen menschlichen "
-            "Tätigkeitsergebnisses"
+            "Verbesserung eines zuvor abgeschlossenen menschlichen Tätigkeitsergebnisses"
         )
     if q.detects_patterns_without_replacing_human:
         reasons.append("Mustererkennung ohne Ersatz menschlicher Bewertung")
