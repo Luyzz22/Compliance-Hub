@@ -37,6 +37,7 @@ from app.compliance_gap_models import (
     SystemReadiness,
 )
 from app.db import engine, get_session
+from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.models import (
     ComplianceAction,
     DocumentIngestRequest,
@@ -51,9 +52,14 @@ from app.repositories.audit import AuditRepository
 from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
+from app.repositories.incidents import IncidentRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
+from app.services.ai_governance_incidents import (
+    compute_ai_incident_overview,
+    compute_ai_incidents_by_system,
+)
 from app.services.ai_governance_kpis import compute_ai_board_kpis, compute_ai_governance_kpis
 from app.services.classification_engine import classify_ai_system
 from app.services.compliance_engine import build_audit_hash, derive_actions
@@ -155,6 +161,12 @@ def get_violation_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> ViolationRepository:
     return ViolationRepository(session)
+
+
+def get_incident_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> IncidentRepository:
+    return IncidentRepository(session)
 
 
 def get_classification_repository(
@@ -464,6 +476,38 @@ def get_ai_governance_board_kpis(
         tenant_id=auth_context.tenant_id,
         ai_system_repository=ai_repository,
         violation_repository=violation_repository,
+    )
+
+
+@app.get(
+    "/api/v1/ai-governance/incidents/overview",
+    response_model=AIIncidentOverview,
+)
+def get_ai_governance_incidents_overview(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    incident_repository: Annotated[IncidentRepository, Depends(get_incident_repository)],
+) -> AIIncidentOverview:
+    """NIS2 Art. 21/23, ISO 42001 Incident Management – Board-Drilldown."""
+    return compute_ai_incident_overview(
+        tenant_id=auth_context.tenant_id,
+        incident_repository=incident_repository,
+    )
+
+
+@app.get(
+    "/api/v1/ai-governance/incidents/by-system",
+    response_model=list[AIIncidentBySystemEntry],
+)
+def get_ai_governance_incidents_by_system(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    incident_repository: Annotated[IncidentRepository, Depends(get_incident_repository)],
+    ai_repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> list[AIIncidentBySystemEntry]:
+    """Incidents pro KI-System für Board-Drilldown (Top-Systeme)."""
+    return compute_ai_incidents_by_system(
+        tenant_id=auth_context.tenant_id,
+        incident_repository=incident_repository,
+        ai_system_repository=ai_repository,
     )
 
 

@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 import { fetchBoardKpis, type BoardKpiSummary } from "@/lib/api";
 
@@ -159,6 +160,15 @@ export default async function BoardKpisPage() {
           <p className="mt-1 text-xs text-slate-500">
             {formatPercent(kpis.nis2_incident_readiness_ratio)} der
             KI-Systeme mit Incident- &amp; Backup-Runbook.
+          </p>
+          <p className="mt-3">
+            <Link
+              href="/board/incidents"
+              className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
+              aria-label="Incident-Drilldown öffnen"
+            >
+              Incident-Details anzeigen
+            </Link>
           </p>
         </div>
 
