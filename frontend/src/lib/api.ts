@@ -227,4 +227,38 @@ export async function fetchBoardKpis(): Promise<BoardKpiSummary> {
   return apiFetch("/api/v1/ai-governance/board-kpis");
 }
 
+// ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
+
+export type IncidentSeverityLevel = "low" | "medium" | "high";
+
+export interface BySeverityEntry {
+  severity: IncidentSeverityLevel;
+  count: number;
+}
+
+export interface AIIncidentOverview {
+  tenant_id: string;
+  total_incidents_last_12_months: number;
+  open_incidents: number;
+  major_incidents_last_12_months: number;
+  mean_time_to_ack_hours: number | null;
+  mean_time_to_recover_hours: number | null;
+  by_severity: BySeverityEntry[];
+}
+
+export interface AIIncidentBySystem {
+  ai_system_id: string;
+  ai_system_name: string;
+  incident_count: number;
+  last_incident_at: string | null;
+}
+
+export async function fetchIncidentOverview(): Promise<AIIncidentOverview> {
+  return apiFetch("/api/v1/ai-governance/incidents/overview");
+}
+
+export async function fetchIncidentsBySystem(): Promise<AIIncidentBySystem[]> {
+  return apiFetch("/api/v1/ai-governance/incidents/by-system");
+}
+
 
