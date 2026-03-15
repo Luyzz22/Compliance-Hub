@@ -199,3 +199,32 @@ export async function fetchComplianceDashboard(): Promise<ComplianceDashboard> {
   return apiFetch("/api/v1/compliance/dashboard");
 }
 
+// ─── Board-Level AI Governance KPIs ────────────────────────────────────────────
+
+export interface BoardKpiSummary {
+  tenant_id: string;
+  ai_systems_total: number;
+  active_ai_systems: number;
+  high_risk_systems: number;
+  open_policy_violations: number;
+  board_maturity_score: number;
+  compliance_coverage_score: number;
+  risk_governance_score: number;
+  operational_resilience_score: number;
+  responsible_ai_score: number;
+  high_risk_systems_without_dpia: number;
+  critical_systems_without_owner: number;
+  nis2_control_gaps: number;
+  nis2_incident_readiness_ratio: number;
+  nis2_supplier_risk_coverage_ratio: number;
+  iso42001_governance_score: number;
+  score_change_vs_last_quarter: number;
+  incidents_last_quarter: number;
+  complaints_last_quarter: number;
+}
+
+export async function fetchBoardKpis(): Promise<BoardKpiSummary> {
+  return apiFetch("/api/v1/ai-governance/board-kpis");
+}
+
+
