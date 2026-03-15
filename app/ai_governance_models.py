@@ -37,6 +37,25 @@ class AIBoardKpiSummary(BaseModel):
     critical_systems_without_owner: int
     nis2_control_gaps: int  # Summe offener NIS2-Kontrollen (Runbook, Backup, Supplier-Risiko)
 
+    # NIS2-spezifische KPIs (Incident- und Supplier-Risiko, Art. 21 / Art. 24)
+    nis2_incident_readiness_ratio: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Anteil KI-Systeme mit Incident- und Backup-Runbook (NIS2 Art. 21)",
+    )
+    nis2_supplier_risk_coverage_ratio: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Anteil KI-Systeme mit Lieferanten-Risiko-Register (NIS2 Art. 24)",
+    )
+
+    # ISO 42001 – AI-Governance-Reife (AI-Managementsystem)
+    iso42001_governance_score: float = Field(
+        ge=0.0,
+        le=1.0,
+        description=("Abgeleiteter Reifegrad-Score für ISO 42001 AI-MS (Kontext, Risiko, Betrieb)"),
+    )
+
     # Trends optional (im ersten Schritt statisch 0)
     score_change_vs_last_quarter: float
     incidents_last_quarter: int

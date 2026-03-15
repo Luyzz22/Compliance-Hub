@@ -133,7 +133,35 @@ def compute_ai_board_kpis(
         if total_systems
         else 1.0
     )
+    # NIS2 Art. 21 – Incident/BCM: Anteil Systeme mit Incident- und Backup-Runbook
+    nis2_incident_readiness_ratio = (
+        sum(1 for s in ai_systems if s.has_incident_runbook and s.has_backup_runbook)
+        / total_systems
+        if total_systems
+        else 1.0
+    )
+    # NIS2 Art. 24 – Supply Chain: Anteil Systeme mit Lieferanten-Risiko-Register
+    nis2_supplier_risk_coverage_ratio = (
+        sum(1 for s in ai_systems if s.has_supplier_risk_register) / total_systems
+        if total_systems
+        else 1.0
+    )
     violation_penalty = min(1.0, open_violations / max(total_systems, 1))
+    # ISO 42001 – AI-MS-Reife: Kontext, Führung, Risikobewertung, Betrieb, Verbesserung.
+    # Für die operative Fähigkeit werden hier Incident-Readiness (Incident- + Backup-Runbook)
+    # und Lieferanten-Risikomanagement getrennt gewichtet.
+    supplier_ratio = nis2_supplier_risk_coverage_ratio
+    iso42001_governance_score = max(
+        0.0,
+        min(
+            1.0,
+            0.2 * owner_ratio
+            + 0.2 * dpia_ratio
+            + 0.25 * nis2_incident_readiness_ratio
+            + 0.2 * supplier_ratio
+            + 0.15 * (1 - violation_penalty),
+        ),
+    )
     board_maturity_score = max(
         0.0,
         min(
@@ -163,6 +191,9 @@ def compute_ai_board_kpis(
         high_risk_systems_without_dpia=high_risk_systems_without_dpia,
         critical_systems_without_owner=critical_systems_without_owner,
         nis2_control_gaps=nis2_control_gaps,
+        nis2_incident_readiness_ratio=round(nis2_incident_readiness_ratio, 3),
+        nis2_supplier_risk_coverage_ratio=round(nis2_supplier_risk_coverage_ratio, 3),
+        iso42001_governance_score=round(iso42001_governance_score, 3),
         score_change_vs_last_quarter=0.0,
         incidents_last_quarter=0,
         complaints_last_quarter=0,
