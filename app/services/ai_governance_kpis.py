@@ -147,7 +147,9 @@ def compute_ai_board_kpis(
         else 1.0
     )
     violation_penalty = min(1.0, open_violations / max(total_systems, 1))
-    # ISO 42001 – AI-MS-Reife: Kontext, Führung, Risikobewertung, Betrieb, Verbesserung
+    # ISO 42001 – AI-MS-Reife: Kontext, Führung, Risikobewertung, Betrieb, Verbesserung.
+    # Für die operative Fähigkeit werden hier Incident-Readiness (Incident- + Backup-Runbook)
+    # und Lieferanten-Risikomanagement getrennt gewichtet.
     supplier_ratio = nis2_supplier_risk_coverage_ratio
     iso42001_governance_score = max(
         0.0,
@@ -155,7 +157,7 @@ def compute_ai_board_kpis(
             1.0,
             0.2 * owner_ratio
             + 0.2 * dpia_ratio
-            + 0.25 * runbook_ratio
+            + 0.25 * nis2_incident_readiness_ratio
             + 0.2 * supplier_ratio
             + 0.15 * (1 - violation_penalty),
         ),
