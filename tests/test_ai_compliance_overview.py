@@ -1,4 +1,4 @@
-"""Tests für GET /api/v1/ai-governance/compliance/overview (EU AI Act / ISO 42001 Board-Readiness)."""
+"""Tests für GET /api/v1/ai-governance/compliance/overview (EU AI Act / ISO 42001)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ def _headers(tenant_id: str = "board-kpi-tenant", api_key: str = "board-kpi-key"
 
 
 def test_compliance_overview_happy_path():
-    """Happy Path: Overview liefert overall_readiness, Zähler, deadline, top_critical_requirements."""
+    """Happy Path: Overview liefert readiness, Zähler, deadline, top_critical_requirements."""
     create = client.post(
         "/api/v1/ai-systems",
         json={

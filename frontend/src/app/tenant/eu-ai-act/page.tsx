@@ -234,7 +234,10 @@ export default function EUAIActPage() {
     setLoading(false);
   };
 
-  useEffect(() => { loadDashboard(); }, []);
+  useEffect(() => {
+    const id = setTimeout(() => void loadDashboard(), 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const openWizard = (systemId: string) => {
     setWizardSystemId(systemId);
