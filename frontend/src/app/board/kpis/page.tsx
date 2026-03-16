@@ -13,6 +13,7 @@ import {
   type BoardKpiSummary,
 } from "@/lib/api";
 
+import { BoardReportAuditSection } from "./BoardReportAuditSection";
 import { BoardReportExportForm } from "./BoardReportExportForm";
 
 function scoreColor(score: number): string {
@@ -471,6 +472,11 @@ export default async function BoardKpisPage() {
       {/* Externer Export (Webhook / DMS / SAP BTP) */}
       <section className="mb-8">
         <BoardReportExportForm />
+      </section>
+
+      {/* Audit-Ready (Prüfungsdokumentation) */}
+      <section className="mb-8">
+        <BoardReportAuditSection />
       </section>
 
       <ManagementSummary kpis={kpis} />

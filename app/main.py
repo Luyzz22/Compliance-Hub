@@ -19,6 +19,9 @@ from app.ai_governance_models import (
     AIGovernanceKpiSummary,
     AIKpiAlert,
     AIKpiAlertExport,
+    BoardReportAuditRecord,
+    BoardReportAuditRecordCreate,
+    BoardReportAuditRecordWithJobs,
     BoardReportExportJob,
     BoardReportExportJobCreate,
 )
@@ -74,6 +77,11 @@ from app.services.ai_governance_kpis import compute_ai_board_kpis, compute_ai_go
 from app.services.ai_governance_suppliers import (
     compute_ai_supplier_risk_by_system,
     compute_ai_supplier_risk_overview,
+)
+from app.services.board_report_audit_records import (
+    create_audit_record,
+    get_record,
+    list_records,
 )
 from app.services.board_report_export_jobs import get_job, run_export_job
 from app.services.board_report_markdown import render_board_report_markdown
@@ -800,6 +808,90 @@ def get_board_report_export_job(
             detail="Export job not found",
         )
     return job
+
+
+# --- Board-Report Audit-Records (WP-/Prüfungsdokumentation, Audit-Ready) ---
+
+
+@app.post(
+    "/api/v1/ai-governance/report/board/audit-records",
+    response_model=BoardReportAuditRecord,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_board_report_audit_record(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
+    body: BoardReportAuditRecordCreate,
+) -> BoardReportAuditRecord:
+    """Legt einen Audit-Record für den aktuellen Board-Report an (Version = Hash)."""
+    tenant_id = auth_context.tenant_id
+    created_by = (auth_context.api_key[:8] + "…") if auth_context.api_key else "api"
+    report = _build_board_report(
+        tenant_id=tenant_id,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+        violation_repo=violation_repo,
+        incident_repo=incident_repo,
+    )
+    record = create_audit_record(
+        tenant_id=tenant_id,
+        report=report,
+        body=body,
+        created_by=created_by,
+    )
+    return record
+
+
+@app.get(
+    "/api/v1/ai-governance/report/board/audit-records",
+    response_model=list[BoardReportAuditRecord],
+)
+def list_board_report_audit_records(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    status_filter: Annotated[
+        str | None, Query(alias="status", description="Filter nach status")
+    ] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[BoardReportAuditRecord]:
+    """Listet Audit-Records des Tenants (paginiert, optional nach status)."""
+    return list_records(
+        auth_context.tenant_id,
+        status=status_filter,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.get(
+    "/api/v1/ai-governance/report/board/audit-records/{audit_id}",
+    response_model=BoardReportAuditRecordWithJobs,
+)
+def get_board_report_audit_record(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_id: str,
+) -> BoardReportAuditRecordWithJobs:
+    """Details eines Audit-Records inkl. referenzierter Export-Jobs."""
+    record = get_record(audit_id, auth_context.tenant_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Audit record not found",
+        )
+    linked_jobs: list[BoardReportExportJob] = []
+    for jid in record.linked_export_job_ids:
+        job = get_job(jid, auth_context.tenant_id)
+        if job is not None:
+            linked_jobs.append(job)
+    return BoardReportAuditRecordWithJobs(
+        **record.model_dump(),
+        linked_export_jobs=linked_jobs,
+    )
 
 
 # --- Beispiel-Payload-Endpoint (NUR DEV/DOCS – nicht für Produktion) ---
