@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -60,3 +63,15 @@ class AIBoardKpiSummary(BaseModel):
     score_change_vs_last_quarter: float
     incidents_last_quarter: int
     complaints_last_quarter: int
+
+
+class AIKpiAlert(BaseModel):
+    """Einzelalert für Board-KPIs (NIS2 / EU AI Act / ISO 42001)."""
+
+    id: str
+    tenant_id: str
+    kpi_key: str
+    severity: Literal["info", "warning", "critical"]
+    message: str
+    created_at: datetime
+    resolved_at: datetime | None = None

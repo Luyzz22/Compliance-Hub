@@ -248,6 +248,23 @@ export async function fetchBoardKpis(): Promise<BoardKpiSummary> {
   return apiFetch("/api/v1/ai-governance/board-kpis");
 }
 
+/** Board-KPI-Alert (NIS2 / EU AI Act / ISO 42001 Schwellenwerte) */
+export type AIKpiAlertSeverity = "info" | "warning" | "critical";
+
+export interface AIKpiAlert {
+  id: string;
+  tenant_id: string;
+  kpi_key: string;
+  severity: AIKpiAlertSeverity;
+  message: string;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export async function fetchBoardAlerts(): Promise<AIKpiAlert[]> {
+  return apiFetch("/api/v1/ai-governance/alerts/board");
+}
+
 // ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
 
 export type IncidentSeverityLevel = "low" | "medium" | "high";

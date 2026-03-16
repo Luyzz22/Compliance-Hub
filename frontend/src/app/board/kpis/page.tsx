@@ -3,8 +3,10 @@ import Link from "next/link";
 
 import {
   fetchAIComplianceOverview,
+  fetchBoardAlerts,
   fetchBoardKpis,
   type AIComplianceOverview,
+  type AIKpiAlert,
   type BoardKpiSummary,
 } from "@/lib/api";
 
@@ -75,17 +77,31 @@ function ManagementSummary({ kpis }: { kpis: BoardKpiSummary }) {
   );
 }
 
+function alertSeverityStyles(severity: AIKpiAlert["severity"]): string {
+  switch (severity) {
+    case "critical":
+      return "border-red-200 bg-red-50 text-red-800";
+    case "warning":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+}
+
 export default async function BoardKpisPage() {
   let kpis: BoardKpiSummary | null = null;
   let complianceOverview: AIComplianceOverview | null = null;
+  let alerts: AIKpiAlert[] = [];
 
   try {
-    const [kpisRes, overviewRes] = await Promise.all([
+    const [kpisRes, overviewRes, alertsRes] = await Promise.all([
       fetchBoardKpis(),
       fetchAIComplianceOverview(),
+      fetchBoardAlerts(),
     ]);
     kpis = kpisRes;
     complianceOverview = overviewRes;
+    alerts = alertsRes;
   } catch (error) {
     console.error("Board KPI API error:", error);
   }
@@ -126,17 +142,50 @@ export default async function BoardKpisPage() {
         </p>
       </header>
 
-      {/* Hero: ISO 42001 Governance Score */}
-      <section
-        aria-label="AI-Governance-Reife nach ISO 42001"
-        className={`mb-8 flex flex-col justify-between gap-4 rounded-2xl border p-6 shadow-sm ${scoreColor(
-          isoScore,
-        )}`}
-      >
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide">
-            AI-Governance-Reife (ISO 42001)
+      {/* Alerts & Hinweise (max 5) */}
+      {alerts.length > 0 && (
+        <section
+          aria-label="Alerts und Hinweise"
+          className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+            Alerts &amp; Hinweise
           </h2>
+          <ul className="mt-3 space-y-2">
+            {alerts.slice(0, 5).map((alert) => (
+              <li
+                key={alert.id}
+                className={`rounded-lg border px-3 py-2 text-sm ${alertSeverityStyles(alert.severity)}`}
+              >
+                {alert.message}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Hero: ISO 42001 Governance Score */}
+      {(() => {
+        const hasCriticalForIso = alerts.some(
+          (a) => a.severity === "critical" && a.kpi_key === "iso42001_governance_score",
+        );
+        return (
+          <section
+            aria-label="AI-Governance-Reife nach ISO 42001"
+            className={`relative mb-8 flex flex-col justify-between gap-4 rounded-2xl border p-6 shadow-sm ${scoreColor(
+              isoScore,
+            )} ${hasCriticalForIso ? "ring-2 ring-red-300" : ""}`}
+          >
+            {hasCriticalForIso && (
+              <span
+                className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-red-500"
+                aria-hidden
+              />
+            )}
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide">
+                AI-Governance-Reife (ISO 42001)
+              </h2>
           <p className="mt-1 text-xs text-slate-700">
             Aggregierter Reifegrad des AI-Managementsystems (Kontext, Führung,
             Risikobewertung, Betrieb, Verbesserung).
@@ -151,6 +200,8 @@ export default async function BoardKpisPage() {
           </span>
         </div>
       </section>
+        );
+      })()}
 
       {/* KPI Grid */}
       <section
@@ -158,10 +209,25 @@ export default async function BoardKpisPage() {
         className="mb-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
         {/* NIS2 Incident Readiness */}
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            NIS2 Incident Readiness
-          </h3>
+        {(() => {
+          const hasCritical = alerts.some(
+            (a) =>
+              a.severity === "critical" &&
+              a.kpi_key === "nis2_incident_readiness_ratio",
+          );
+          return (
+            <div
+              className={`relative flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm ${hasCritical ? "ring-2 ring-red-300" : ""}`}
+            >
+              {hasCritical && (
+                <span
+                  className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500"
+                  aria-hidden
+                />
+              )}
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                NIS2 Incident Readiness
+              </h3>
           <p className="mt-1 text-xs text-slate-500">
             Anteil KI-Systeme mit Incident- und Backup-Runbook.
           </p>
@@ -181,13 +247,30 @@ export default async function BoardKpisPage() {
               Incident-Details anzeigen
             </Link>
           </p>
-        </div>
+            </div>
+          );
+        })()}
 
         {/* NIS2 Supplier Risk Coverage */}
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            NIS2 Supplier Risk Coverage
-          </h3>
+        {(() => {
+          const hasCritical = alerts.some(
+            (a) =>
+              a.severity === "critical" &&
+              a.kpi_key === "nis2_supplier_risk_coverage_ratio",
+          );
+          return (
+            <div
+              className={`relative flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm ${hasCritical ? "ring-2 ring-red-300" : ""}`}
+            >
+              {hasCritical && (
+                <span
+                  className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500"
+                  aria-hidden
+                />
+              )}
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                NIS2 Supplier Risk Coverage
+              </h3>
           <p className="mt-1 text-xs text-slate-500">
             Anteil KI-Systeme mit dokumentiertem Lieferanten-Risikoregister.
           </p>
@@ -207,7 +290,9 @@ export default async function BoardKpisPage() {
               Details anzeigen
             </Link>
           </p>
-        </div>
+            </div>
+          );
+        })()}
 
         {/* High-Risk KI-Systeme gesamt */}
         <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
