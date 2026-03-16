@@ -11,7 +11,11 @@ from fastapi import Depends, FastAPI, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.ai_governance_models import AIBoardKpiSummary, AIGovernanceKpiSummary
+from app.ai_governance_models import (
+    AIBoardKpiSummary,
+    AIGovernanceKpiSummary,
+    AIKpiAlert,
+)
 from app.ai_system_models import (
     AISystem,
     AISystemComplianceReport,
@@ -55,6 +59,7 @@ from app.repositories.incidents import IncidentRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
+from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_governance_incidents import (
     compute_ai_incident_overview,
     compute_ai_incidents_by_system,
@@ -506,6 +511,37 @@ def get_ai_compliance_overview(
         ai_repo=ai_repo,
         cls_repo=cls_repo,
         gap_repo=gap_repo,
+    )
+
+
+@app.get(
+    "/api/v1/ai-governance/alerts/board",
+    response_model=list[AIKpiAlert],
+)
+def get_board_alerts(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+) -> list[AIKpiAlert]:
+    """Aktuelle Board-KPI-Alerts (NIS2 / EU AI Act / ISO 42001) für den Tenant."""
+    tenant_id = auth_context.tenant_id
+    board_kpis = compute_ai_board_kpis(
+        tenant_id=tenant_id,
+        ai_system_repository=ai_repo,
+        violation_repository=violation_repo,
+    )
+    compliance_overview = compute_ai_compliance_overview(
+        tenant_id=tenant_id,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+    )
+    return compute_board_alerts(
+        tenant_id=tenant_id,
+        board_kpis=board_kpis,
+        compliance_overview=compliance_overview,
     )
 
 
