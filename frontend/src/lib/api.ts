@@ -301,9 +301,15 @@ export function getBoardReportMarkdownDownloadUrl(): string {
 export type BoardReportTargetSystem =
   | "generic_webhook"
   | "sap_btp"
-  | "sharepoint";
+  | "sharepoint"
+  | "sap_btp_http"
+  | "dms_generic";
 
-export type BoardReportExportJobStatus = "pending" | "sent" | "failed";
+export type BoardReportExportJobStatus =
+  | "pending"
+  | "sent"
+  | "failed"
+  | "not_implemented";
 
 export interface BoardReportExportJobCreate {
   target_system: BoardReportTargetSystem;

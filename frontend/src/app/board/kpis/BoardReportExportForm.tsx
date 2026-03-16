@@ -11,6 +11,8 @@ const TARGET_LABELS: Record<BoardReportTargetSystem, string> = {
   generic_webhook: "Generischer Webhook",
   sap_btp: "SAP BTP",
   sharepoint: "SharePoint",
+  sap_btp_http: "SAP BTP HTTP",
+  dms_generic: "DMS (generisch – vorbereitet)",
 };
 
 export function BoardReportExportForm() {
@@ -26,8 +28,14 @@ export function BoardReportExportForm() {
     setError(null);
     setLastJob(null);
 
-    if (targetSystem === "generic_webhook" && !callbackUrl.trim()) {
-      setError("Bei „Generischer Webhook“ ist eine Callback-URL erforderlich.");
+    const needsCallback =
+      targetSystem === "generic_webhook" || targetSystem === "sap_btp_http";
+    if (needsCallback && !callbackUrl.trim()) {
+      setError(
+        targetSystem === "sap_btp_http"
+          ? "Bei „SAP BTP HTTP“ ist eine Callback-URL erforderlich."
+          : "Bei „Generischer Webhook“ ist eine Callback-URL erforderlich."
+      );
       return;
     }
 
@@ -36,7 +44,9 @@ export function BoardReportExportForm() {
       const job = await createBoardReportExportJob({
         target_system: targetSystem,
         callback_url:
-          targetSystem === "generic_webhook" ? callbackUrl.trim() || null : null,
+          targetSystem === "generic_webhook" || targetSystem === "sap_btp_http"
+            ? callbackUrl.trim() || null
+            : null,
       });
       setLastJob(job);
     } catch (err) {
@@ -81,10 +91,22 @@ export function BoardReportExportForm() {
             <option value="generic_webhook">
               {TARGET_LABELS.generic_webhook}
             </option>
+            <option value="sap_btp_http">{TARGET_LABELS.sap_btp_http}</option>
+            <option value="dms_generic">{TARGET_LABELS.dms_generic}</option>
           </select>
+          {targetSystem === "sap_btp_http" && (
+            <p className="mt-1 text-xs text-slate-500">
+              Für Anbindung an SAP Cloud Integration / BTP HTTP-Inbound-Flows.
+            </p>
+          )}
+          {targetSystem === "dms_generic" && (
+            <p className="mt-1 text-xs text-slate-500">
+              DMS-/Archiv-Anbindung vorbereitet; Integration folgt.
+            </p>
+          )}
         </div>
 
-        {targetSystem === "generic_webhook" && (
+        {(targetSystem === "generic_webhook" || targetSystem === "sap_btp_http") && (
           <div>
             <label
               htmlFor="board-export-callback-url"
@@ -99,7 +121,10 @@ export function BoardReportExportForm() {
               onChange={(e) => setCallbackUrl(e.target.value)}
               placeholder="https://..."
               className="mt-1 block w-full max-w-md rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-              required={targetSystem === "generic_webhook"}
+              required={
+                targetSystem === "generic_webhook" ||
+                targetSystem === "sap_btp_http"
+              }
             />
           </div>
         )}
@@ -118,13 +143,17 @@ export function BoardReportExportForm() {
             className={`rounded-lg border px-3 py-2 text-sm ${
               lastJob.status === "failed"
                 ? "border-red-200 bg-red-50 text-red-800"
-                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : lastJob.status === "not_implemented"
+                  ? "border-amber-200 bg-amber-50 text-amber-800"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
             }`}
           >
             <p className="font-medium">
               {lastJob.status === "sent"
                 ? "Export erfolgreich gesendet."
-                : "Export fehlgeschlagen."}
+                : lastJob.status === "not_implemented"
+                  ? "Zielsystem noch nicht implementiert."
+                  : "Export fehlgeschlagen."}
             </p>
             <p className="mt-1 text-xs">
               Job-ID: {lastJob.id} · Status: {lastJob.status}
