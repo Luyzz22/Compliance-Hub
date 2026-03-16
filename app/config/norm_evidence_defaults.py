@@ -56,8 +56,7 @@ DEFAULT_NORM_EVIDENCE_MAPPINGS: list[dict[str, str]] = [
         "reference": "6.2",
         "evidence_type": "board_report",
         "note": (
-            "Board-Report als Evidenz für AI-Governance-Ziele, Messung "
-            "und Managementbewertung."
+            "Board-Report als Evidenz für AI-Governance-Ziele, Messung und Managementbewertung."
         ),
     },
     {
@@ -74,9 +73,7 @@ DEFAULT_NORM_EVIDENCE_MAPPINGS: list[dict[str, str]] = [
         "reference": "9.1",
         "evidence_type": "board_report",
         "note": (
-            "Board-Report als Evidenz für Monitoring, Measurement & Evaluation "
-            "der AI-Governance."
+            "Board-Report als Evidenz für Monitoring, Measurement & Evaluation der AI-Governance."
         ),
     },
 ]
-

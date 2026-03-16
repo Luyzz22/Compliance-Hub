@@ -42,4 +42,3 @@ def test_norm_evidence_defaults_401_no_api_key() -> None:
         headers={"x-tenant-id": "board-kpi-tenant"},
     )
     assert resp.status_code == 401
-
