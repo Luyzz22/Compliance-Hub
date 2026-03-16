@@ -168,3 +168,29 @@ class BoardReportAuditRecordWithJobs(BoardReportAuditRecord):
     """Audit-Record inkl. aufgelöster verknüpfter Export-Jobs (für GET by id)."""
 
     linked_export_jobs: list[BoardReportExportJob] = Field(default_factory=list)
+
+
+# Norm-Nachweise: Verknüpfung von Audit-Records/Reports mit Norm-Referenzen
+NormFramework = Literal["EU_AI_ACT", "NIS2", "ISO_42001"]
+EvidenceType = Literal["board_report", "export_job", "other"]
+
+
+class NormEvidenceLinkCreate(BaseModel):
+    """Request-Body für Anlage eines Norm-Nachweis-Links."""
+
+    framework: NormFramework
+    reference: str
+    evidence_type: EvidenceType = "board_report"
+    note: str | None = None
+
+
+class NormEvidenceLink(BaseModel):
+    """Norm-Nachweis-Link zwischen Audit-Record und Norm-Referenz."""
+
+    id: str
+    tenant_id: str
+    audit_record_id: str
+    framework: NormFramework
+    reference: str
+    evidence_type: EvidenceType
+    note: str | None = None

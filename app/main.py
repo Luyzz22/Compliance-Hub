@@ -24,6 +24,9 @@ from app.ai_governance_models import (
     BoardReportAuditRecordWithJobs,
     BoardReportExportJob,
     BoardReportExportJobCreate,
+    NormEvidenceLink,
+    NormEvidenceLinkCreate,
+    NormFramework,
 )
 from app.ai_system_models import (
     AISystem,
@@ -85,6 +88,11 @@ from app.services.board_report_audit_records import (
 )
 from app.services.board_report_export_jobs import get_job, run_export_job
 from app.services.board_report_markdown import render_board_report_markdown
+from app.services.board_report_norm_evidence import (
+    create_links,
+    list_by_audit,
+    query_by_norm,
+)
 from app.services.classification_engine import classify_ai_system
 from app.services.compliance_dashboard import (
     compute_ai_compliance_overview,
@@ -233,6 +241,15 @@ def _health_payload() -> dict[str, str]:
 @app.get("/api/v1/health")
 def health_v1() -> dict[str, str]:
     return _health_payload()
+
+
+class NormEvidenceWithAudit(BaseModel):
+    """Response-Objekt für Norm-Nachweise inkl. Audit-Record-Metadaten."""
+
+    evidence: NormEvidenceLink
+    audit_record_id: str
+    report_generated_at: datetime
+    purpose: str
 
 
 @app.get("/health")
@@ -892,6 +909,76 @@ def get_board_report_audit_record(
         **record.model_dump(),
         linked_export_jobs=linked_jobs,
     )
+
+
+@app.post(
+    "/api/v1/ai-governance/report/board/audit-records/{audit_id}/norm-evidence",
+    response_model=list[NormEvidenceLink],
+    status_code=status.HTTP_201_CREATED,
+)
+def create_norm_evidence_for_audit_record(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_id: str,
+    body: NormEvidenceLinkCreate | list[NormEvidenceLinkCreate],
+) -> list[NormEvidenceLink]:
+    """Legt einen oder mehrere NormEvidenceLinks für einen Audit-Record an."""
+    record = get_record(audit_id, auth_context.tenant_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Audit record not found",
+        )
+    payloads = body if isinstance(body, list) else [body]
+    return create_links(
+        tenant_id=auth_context.tenant_id,
+        audit_record_id=audit_id,
+        payloads=payloads,
+    )
+
+
+@app.get(
+    "/api/v1/ai-governance/report/board/audit-records/{audit_id}/norm-evidence",
+    response_model=list[NormEvidenceLink],
+)
+def list_norm_evidence_for_audit_record(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_id: str,
+) -> list[NormEvidenceLink]:
+    """Liefert alle Norm-Nachweise für einen Audit-Record (Tenant-isoliert)."""
+    record = get_record(audit_id, auth_context.tenant_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Audit record not found",
+        )
+    return list_by_audit(auth_context.tenant_id, audit_id)
+
+
+@app.get(
+    "/api/v1/ai-governance/norm-evidence",
+    response_model=list[NormEvidenceWithAudit],
+)
+def query_norm_evidence(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    framework: NormFramework | None = Query(default=None),
+    reference: str | None = Query(default=None),
+) -> list[NormEvidenceWithAudit]:
+    """Liefert Norm-Nachweise nach Framework/Referenz mit Basis-Audit-Infos."""
+    matches = query_by_norm(auth_context.tenant_id, framework, reference)
+    results: list[NormEvidenceWithAudit] = []
+    for ev in matches:
+        record = get_record(ev.audit_record_id, auth_context.tenant_id)
+        if record is None:
+            continue
+        results.append(
+            NormEvidenceWithAudit(
+                evidence=ev,
+                audit_record_id=record.id,
+                report_generated_at=record.report_generated_at,
+                purpose=record.purpose,
+            ),
+        )
+    return results
 
 
 # --- Beispiel-Payload-Endpoint (NUR DEV/DOCS – nicht für Produktion) ---
