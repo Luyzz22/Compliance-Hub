@@ -261,4 +261,38 @@ export async function fetchIncidentsBySystem(): Promise<AIIncidentBySystem[]> {
   return apiFetch("/api/v1/ai-governance/incidents/by-system");
 }
 
+// ─── AI Governance Supplier Risk Drilldown (NIS2 Art. 21/24, Supply-Chain) ─────
+
+export type SupplierRiskLevel = "high" | "medium" | "low";
+
+export interface BySupplierRiskLevelEntry {
+  risk_level: SupplierRiskLevel;
+  systems_with_register: number;
+  systems_without_register: number;
+}
+
+export interface AISupplierRiskOverview {
+  tenant_id: string;
+  total_systems_with_suppliers: number;
+  systems_without_supplier_risk_register: number;
+  critical_suppliers_total: number;
+  critical_suppliers_without_controls: number;
+  by_risk_level: BySupplierRiskLevelEntry[];
+}
+
+export interface AISupplierRiskBySystem {
+  ai_system_id: string;
+  ai_system_name: string;
+  has_supplier_risk_register: boolean;
+  supplier_risk_score: number;
+}
+
+export async function fetchSupplierRiskOverview(): Promise<AISupplierRiskOverview> {
+  return apiFetch("/api/v1/ai-governance/suppliers/overview");
+}
+
+export async function fetchSupplierRiskBySystem(): Promise<AISupplierRiskBySystem[]> {
+  return apiFetch("/api/v1/ai-governance/suppliers/by-system");
+}
+
 

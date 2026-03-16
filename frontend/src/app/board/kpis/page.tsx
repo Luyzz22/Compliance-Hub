@@ -187,6 +187,15 @@ export default async function BoardKpisPage() {
             {formatPercent(kpis.nis2_supplier_risk_coverage_ratio)} der Systeme
             mit Supplier-Risikoregister.
           </p>
+          <p className="mt-3">
+            <Link
+              href="/board/suppliers"
+              className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
+              aria-label="Supplier-Risiko-Drilldown öffnen"
+            >
+              Details anzeigen
+            </Link>
+          </p>
         </div>
 
         {/* High-Risk KI-Systeme gesamt */}
