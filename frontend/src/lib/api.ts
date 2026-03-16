@@ -405,6 +405,49 @@ export async function fetchBoardReportAuditRecordById(
   );
 }
 
+// ─── Norm-Nachweise (NormEvidenceLinks) ──────────────────────────────────────
+
+export type NormFramework = "EU_AI_ACT" | "NIS2" | "ISO_42001";
+export type EvidenceType = "board_report" | "export_job" | "other";
+
+export interface NormEvidenceLink {
+  id: string;
+  tenant_id: string;
+  audit_record_id: string;
+  framework: NormFramework;
+  reference: string;
+  evidence_type: EvidenceType;
+  note: string | null;
+}
+
+export interface NormEvidenceLinkCreate {
+  framework: NormFramework;
+  reference: string;
+  evidence_type?: EvidenceType;
+  note?: string;
+}
+
+export async function createNormEvidence(
+  auditId: string,
+  payload: NormEvidenceLinkCreate | NormEvidenceLinkCreate[]
+): Promise<NormEvidenceLink[]> {
+  return apiFetch(
+    `/api/v1/ai-governance/report/board/audit-records/${auditId}/norm-evidence`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+export async function fetchNormEvidenceByAudit(
+  auditId: string
+): Promise<NormEvidenceLink[]> {
+  return apiFetch(
+    `/api/v1/ai-governance/report/board/audit-records/${auditId}/norm-evidence`
+  );
+}
+
 // ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
 
 export type IncidentSeverityLevel = "low" | "medium" | "high";
