@@ -13,6 +13,8 @@ import {
   type BoardKpiSummary,
 } from "@/lib/api";
 
+import { BoardReportExportForm } from "./BoardReportExportForm";
+
 function scoreColor(score: number): string {
   if (score < 0.4) return "bg-red-50 text-red-800 border-red-100";
   if (score <= 0.7) return "bg-amber-50 text-amber-800 border-amber-100";
@@ -465,6 +467,11 @@ export default async function BoardKpisPage() {
           </p>
         </section>
       )}
+
+      {/* Externer Export (Webhook / DMS / SAP BTP) */}
+      <section className="mb-8">
+        <BoardReportExportForm />
+      </section>
 
       <ManagementSummary kpis={kpis} />
     </main>

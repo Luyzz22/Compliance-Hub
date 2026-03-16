@@ -19,6 +19,8 @@ from app.ai_governance_models import (
     AIGovernanceKpiSummary,
     AIKpiAlert,
     AIKpiAlertExport,
+    BoardReportExportJob,
+    BoardReportExportJobCreate,
 )
 from app.ai_system_models import (
     AISystem,
@@ -73,6 +75,7 @@ from app.services.ai_governance_suppliers import (
     compute_ai_supplier_risk_by_system,
     compute_ai_supplier_risk_overview,
 )
+from app.services.board_report_export_jobs import get_job, run_export_job
 from app.services.board_report_markdown import render_board_report_markdown
 from app.services.classification_engine import classify_ai_system
 from app.services.compliance_dashboard import (
@@ -648,45 +651,13 @@ def get_board_governance_report(
     incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
 ) -> AIBoardGovernanceReport:
     """Vorstands-/Aufsichtsreport: alle AI-Governance-Kennzahlen gebündelt (nur JSON)."""
-    from app.datetime_compat import UTC
-
-    tenant_id = auth_context.tenant_id
-    generated_at = datetime.now(UTC)
-
-    kpis = compute_ai_board_kpis(
-        tenant_id=tenant_id,
-        ai_system_repository=ai_repo,
-        violation_repository=violation_repo,
-    )
-    compliance_overview = compute_ai_compliance_overview(
-        tenant_id=tenant_id,
+    return _build_board_report(
+        tenant_id=auth_context.tenant_id,
         ai_repo=ai_repo,
         cls_repo=cls_repo,
         gap_repo=gap_repo,
-    )
-    incidents_overview = compute_ai_incident_overview(
-        tenant_id=tenant_id,
-        incident_repository=incident_repo,
-    )
-    supplier_risk_overview = compute_ai_supplier_risk_overview(
-        tenant_id=tenant_id,
-        ai_system_repository=ai_repo,
-    )
-    alerts = compute_board_alerts(
-        tenant_id=tenant_id,
-        board_kpis=kpis,
-        compliance_overview=compliance_overview,
-    )
-
-    return AIBoardGovernanceReport(
-        tenant_id=tenant_id,
-        generated_at=generated_at,
-        period="last_12_months",
-        kpis=kpis,
-        compliance_overview=compliance_overview,
-        incidents_overview=incidents_overview,
-        supplier_risk_overview=supplier_risk_overview,
-        alerts=alerts,
+        violation_repo=violation_repo,
+        incident_repo=incident_repo,
     )
 
 
@@ -703,9 +674,36 @@ def get_board_governance_report_markdown(
     incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
 ) -> Response:
     """Board-Report als Markdown (template-fähig, für PDF/Word-Weiterverarbeitung)."""
+    report = _build_board_report(
+        tenant_id=auth_context.tenant_id,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+        violation_repo=violation_repo,
+        incident_repo=incident_repo,
+    )
+    markdown_content = render_board_report_markdown(report)
+    filename = f"ai-board-report-{report.tenant_id}-{report.generated_at.strftime('%Y%m%d')}.md"
+    return Response(
+        content=markdown_content.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+def _build_board_report(
+    tenant_id: str,
+    ai_repo: AISystemRepository,
+    cls_repo: ClassificationRepository,
+    gap_repo: ComplianceGapRepository,
+    violation_repo: ViolationRepository,
+    incident_repo: IncidentRepository,
+) -> AIBoardGovernanceReport:
+    """Orchestriert alle Services und liefert AIBoardGovernanceReport."""
     from app.datetime_compat import UTC
 
-    tenant_id = auth_context.tenant_id
     generated_at = datetime.now(UTC)
     kpis = compute_ai_board_kpis(
         tenant_id=tenant_id,
@@ -731,7 +729,7 @@ def get_board_governance_report_markdown(
         board_kpis=kpis,
         compliance_overview=compliance_overview,
     )
-    report = AIBoardGovernanceReport(
+    return AIBoardGovernanceReport(
         tenant_id=tenant_id,
         generated_at=generated_at,
         period="last_12_months",
@@ -741,15 +739,57 @@ def get_board_governance_report_markdown(
         supplier_risk_overview=supplier_risk_overview,
         alerts=alerts,
     )
-    markdown_content = render_board_report_markdown(report)
-    filename = f"ai-board-report-{tenant_id}-{generated_at.strftime('%Y%m%d')}.md"
-    return Response(
-        content=markdown_content.encode("utf-8"),
-        media_type="text/markdown; charset=utf-8",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-        },
+
+
+@app.post(
+    "/api/v1/ai-governance/report/board/export-jobs",
+    response_model=BoardReportExportJob,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_board_report_export_job(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
+    body: BoardReportExportJobCreate,
+) -> BoardReportExportJob:
+    """Erstellt Export-Job (Report + Markdown), optional Webhook-POST an callback_url."""
+    if body.target_system == "generic_webhook" and not body.callback_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="callback_url required for target_system generic_webhook",
+        )
+    tenant_id = auth_context.tenant_id
+    report = _build_board_report(
+        tenant_id=tenant_id,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+        violation_repo=violation_repo,
+        incident_repo=incident_repo,
     )
+    job = run_export_job(tenant_id=tenant_id, report=report, body=body)
+    return job
+
+
+@app.get(
+    "/api/v1/ai-governance/report/board/export-jobs/{job_id}",
+    response_model=BoardReportExportJob,
+)
+def get_board_report_export_job(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    job_id: str,
+) -> BoardReportExportJob:
+    """Liefert Export-Job-Status (Tenant-isoliert)."""
+    job = get_job(job_id, auth_context.tenant_id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Export job not found",
+        )
+    return job
 
 
 @app.get(
