@@ -136,3 +136,35 @@ class BoardReportExportJob(BaseModel):
     metadata: dict[str, str] | None = None
     error_message: str | None = None
     completed_at: datetime | None = None
+
+
+# Audit-Ready: Versionierung, Freigaben, Referenzen auf Export-Jobs (WP-/Prüfungsdokumentation)
+AuditRecordStatus = Literal["draft", "final"]
+
+
+class BoardReportAuditRecordCreate(BaseModel):
+    """Request-Body für Anlage eines Board-Report-Audit-Records."""
+
+    purpose: str = Field(..., min_length=1, max_length=200)
+    status: AuditRecordStatus = "draft"
+    linked_export_job_ids: list[str] = Field(default_factory=list, max_length=50)
+
+
+class BoardReportAuditRecord(BaseModel):
+    """Audit-Trail-Eintrag für Board-Report (Versionierung, verknüpfte Export-Jobs)."""
+
+    id: str
+    tenant_id: str
+    report_generated_at: datetime
+    report_version: str
+    created_at: datetime
+    created_by: str
+    purpose: str
+    linked_export_job_ids: list[str]
+    status: AuditRecordStatus
+
+
+class BoardReportAuditRecordWithJobs(BoardReportAuditRecord):
+    """Audit-Record inkl. aufgelöster verknüpfter Export-Jobs (für GET by id)."""
+
+    linked_export_jobs: list[BoardReportExportJob] = Field(default_factory=list)

@@ -347,6 +347,64 @@ export async function fetchBoardReportExportJobStatus(
   );
 }
 
+// ─── Board-Report Audit-Records (WP-/Prüfungsdokumentation, Audit-Ready) ────────
+
+export type AuditRecordStatus = "draft" | "final";
+
+export interface BoardReportAuditRecord {
+  id: string;
+  tenant_id: string;
+  report_generated_at: string;
+  report_version: string;
+  created_at: string;
+  created_by: string;
+  purpose: string;
+  linked_export_job_ids: string[];
+  status: AuditRecordStatus;
+}
+
+export interface BoardReportAuditRecordWithJobs extends BoardReportAuditRecord {
+  linked_export_jobs: BoardReportExportJob[];
+}
+
+export interface BoardReportAuditRecordCreate {
+  purpose: string;
+  status?: AuditRecordStatus;
+  linked_export_job_ids?: string[];
+}
+
+export async function createBoardReportAuditRecord(
+  payload: BoardReportAuditRecordCreate
+): Promise<BoardReportAuditRecord> {
+  return apiFetch("/api/v1/ai-governance/report/board/audit-records", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchBoardReportAuditRecords(params?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<BoardReportAuditRecord[]> {
+  const search = new URLSearchParams();
+  if (params?.status) search.set("status", params.status);
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  if (params?.offset != null) search.set("offset", String(params.offset));
+  const q = search.toString();
+  return apiFetch(
+    `/api/v1/ai-governance/report/board/audit-records${q ? `?${q}` : ""}`
+  );
+}
+
+export async function fetchBoardReportAuditRecordById(
+  auditId: string
+): Promise<BoardReportAuditRecordWithJobs> {
+  return apiFetch(
+    `/api/v1/ai-governance/report/board/audit-records/${auditId}`
+  );
+}
+
 // ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
 
 export type IncidentSeverityLevel = "low" | "medium" | "high";
