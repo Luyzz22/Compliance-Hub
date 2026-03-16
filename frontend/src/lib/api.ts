@@ -291,6 +291,11 @@ export function getBoardReportDownloadUrl(): string {
   return "/api/board/report";
 }
 
+/** Download-URL für Board-Report als Markdown (Vorstand/Aufsicht, template-fähig). */
+export function getBoardReportMarkdownDownloadUrl(): string {
+  return "/api/board/report/markdown";
+}
+
 // ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
 
 export type IncidentSeverityLevel = "low" | "medium" | "high";
