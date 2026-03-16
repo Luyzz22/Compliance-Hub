@@ -61,11 +61,19 @@ from app.services.ai_governance_incidents import (
     compute_ai_incidents_by_system,
 )
 from app.services.ai_governance_kpis import compute_ai_board_kpis, compute_ai_governance_kpis
+from app.services.ai_governance_suppliers import (
+    compute_ai_supplier_risk_by_system,
+    compute_ai_supplier_risk_overview,
+)
 from app.services.classification_engine import classify_ai_system
 from app.services.compliance_engine import build_audit_hash, derive_actions
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
     compute_tenant_compliance_overview,
+)
+from app.supplier_risk_models import (
+    AISupplierRiskBySystemEntry,
+    AISupplierRiskOverview,
 )
 
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
@@ -507,6 +515,36 @@ def get_ai_governance_incidents_by_system(
     return compute_ai_incidents_by_system(
         tenant_id=auth_context.tenant_id,
         incident_repository=incident_repository,
+        ai_system_repository=ai_repository,
+    )
+
+
+@app.get(
+    "/api/v1/ai-governance/suppliers/overview",
+    response_model=AISupplierRiskOverview,
+)
+def get_ai_governance_suppliers_overview(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> AISupplierRiskOverview:
+    """NIS2 Art. 21/24 Supply-Chain-Risiko – Board-Drilldown."""
+    return compute_ai_supplier_risk_overview(
+        tenant_id=auth_context.tenant_id,
+        ai_system_repository=ai_repository,
+    )
+
+
+@app.get(
+    "/api/v1/ai-governance/suppliers/by-system",
+    response_model=list[AISupplierRiskBySystemEntry],
+)
+def get_ai_governance_suppliers_by_system(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> list[AISupplierRiskBySystemEntry]:
+    """Supplier-Risiko pro KI-System für Board-Drilldown."""
+    return compute_ai_supplier_risk_by_system(
+        tenant_id=auth_context.tenant_id,
         ai_system_repository=ai_repository,
     )
 
