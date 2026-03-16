@@ -75,3 +75,12 @@ class AIKpiAlert(BaseModel):
     message: str
     created_at: datetime
     resolved_at: datetime | None = None
+
+
+class AIKpiAlertExport(BaseModel):
+    """Export-Objekt für Board-Alerts (Reporting / CISO / Vorstand)."""
+
+    tenant_id: str
+    generated_at: datetime
+    format_version: str = "1.0"
+    alerts: list[AIKpiAlert]
