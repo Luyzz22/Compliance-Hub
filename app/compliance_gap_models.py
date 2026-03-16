@@ -59,6 +59,26 @@ class ComplianceDashboard(BaseModel):
     urgent_gaps: list[dict[str, str]]
 
 
+class TopCriticalRequirement(BaseModel):
+    """Kritisches Anforderung (EU AI Act) mit Anzahl betroffener KI-Systeme."""
+
+    article: str
+    name: str
+    affected_systems_count: int
+
+
+class AIComplianceOverview(BaseModel):
+    """Board-fähiger Compliance-/Readiness-Überblick (EU AI Act, ISO 42001)."""
+
+    tenant_id: str
+    overall_readiness: float
+    high_risk_systems_with_full_controls: int
+    high_risk_systems_with_critical_gaps: int
+    top_critical_requirements: list[TopCriticalRequirement]
+    deadline: str
+    days_remaining: int
+
+
 GAP_REQUIREMENTS: list[GapRequirement] = [
     GapRequirement(
         id="art9_risk_management",

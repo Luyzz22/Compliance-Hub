@@ -2,8 +2,8 @@ import React from "react";
 
 export default async function TenantPoliciesPage() {
   // Hier später: fetch aus /api/v1/policies & /api/v1/rules
-  const policies: any[] = [];
-  const rules: any[] = [];
+  const policies: Record<string, unknown>[] = [];
+  const rules: Record<string, unknown>[] = [];
 
   return (
     <>

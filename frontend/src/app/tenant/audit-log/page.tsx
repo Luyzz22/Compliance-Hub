@@ -2,7 +2,7 @@ import React from "react";
 
 export default async function TenantAuditLogPage() {
   // Später: fetch aus /api/v1/audit-events & /api/v1/audit-logs
-  const events: any[] = [];
+  const events: Record<string, unknown>[] = [];
 
   return (
     <>
@@ -24,8 +24,9 @@ export default async function TenantAuditLogPage() {
           </button>
         </div>
         <div className="px-5 py-4 text-xs text-slate-500">
-          Audit‑Einträge werden angezeigt, sobald die Audit‑APIs angebunden
-          sind.
+          {events.length === 0
+            ? "Audit‑Einträge werden angezeigt, sobald die Audit‑APIs angebunden sind."
+            : `${events.length} Einträge`}
         </div>
       </section>
 
