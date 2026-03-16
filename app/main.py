@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.ai_governance_models import (
+    AIBoardGovernanceReport,
     AIBoardKpiSummary,
     AIGovernanceKpiSummary,
     AIKpiAlert,
@@ -630,6 +631,61 @@ def get_board_alerts_export(
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
+    )
+
+
+@app.get(
+    "/api/v1/ai-governance/report/board",
+    response_model=AIBoardGovernanceReport,
+)
+def get_board_governance_report(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
+) -> AIBoardGovernanceReport:
+    """Vorstands-/Aufsichtsreport: alle AI-Governance-Kennzahlen gebündelt (nur JSON)."""
+    from app.datetime_compat import UTC
+
+    tenant_id = auth_context.tenant_id
+    generated_at = datetime.now(UTC)
+
+    kpis = compute_ai_board_kpis(
+        tenant_id=tenant_id,
+        ai_system_repository=ai_repo,
+        violation_repository=violation_repo,
+    )
+    compliance_overview = compute_ai_compliance_overview(
+        tenant_id=tenant_id,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+    )
+    incidents_overview = compute_ai_incident_overview(
+        tenant_id=tenant_id,
+        incident_repository=incident_repo,
+    )
+    supplier_risk_overview = compute_ai_supplier_risk_overview(
+        tenant_id=tenant_id,
+        ai_system_repository=ai_repo,
+    )
+    alerts = compute_board_alerts(
+        tenant_id=tenant_id,
+        board_kpis=kpis,
+        compliance_overview=compliance_overview,
+    )
+
+    return AIBoardGovernanceReport(
+        tenant_id=tenant_id,
+        generated_at=generated_at,
+        period="last_12_months",
+        kpis=kpis,
+        compliance_overview=compliance_overview,
+        incidents_overview=incidents_overview,
+        supplier_risk_overview=supplier_risk_overview,
+        alerts=alerts,
     )
 
 
