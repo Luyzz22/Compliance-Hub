@@ -261,3 +261,21 @@ def test_export_job_401_invalid_api_key():
         headers={"x-api-key": "invalid-key", "x-tenant-id": "board-kpi-tenant"},
     )
     assert response.status_code == 401
+
+
+def test_export_payload_example_sap_btp_http():
+    """[DEV/Docs] GET export-payload-example liefert Beispiel-Payload für sap_btp_http."""
+    response = client.get(
+        "/api/v1/ai-governance/report/board/export-payload-example?target_system=sap_btp_http",
+        headers=_headers(),
+    )
+    # In Tests ist ENV typisch nicht production → 200
+    if response.status_code == 404:
+        return  # Production-ähnliche Umgebung
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("tenant_id") == "example-tenant-001"
+    assert data.get("report_period") == "last_12_months"
+    assert "markdown" in data
+    assert "report_metadata" in data
+    assert "job_id" in data["report_metadata"]

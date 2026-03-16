@@ -797,6 +797,61 @@ def get_board_report_export_job(
     return job
 
 
+# --- Beispiel-Payload-Endpoint (NUR DEV/DOCS – nicht für Produktion) ---
+def _get_export_payload_example(target_system: str) -> dict:
+    """Statisches Beispiel-Payload für sap_btp_http (1:1 in SAP Cloud Integration testbar)."""
+    if target_system != "sap_btp_http":
+        return {}
+    example_md = (
+        "# AI Governance Board Report – example-tenant-001\n\n"
+        "*Berichtszeitraum: last_12_months*\n\n---\n\n"
+        "## 1. Executive Summary\n\n"
+        "- AI-Systeme gesamt: 0 (aktiv: 0).\n"
+        "- High-Risk-Systeme: 0; davon ohne DPIA: 0.\n\n"
+        "## 2. KPIs & Compliance\n\n"
+        "(Beispiel – keine echten personenbezogenen Daten.)\n"
+    )
+    return {
+        "_comment": "Beispiel-Payload (DEV/Docs only). Keine echten Daten.",
+        "tenant_id": "example-tenant-001",
+        "report_period": "last_12_months",
+        "markdown": example_md,
+        "report_metadata": {
+            "job_id": "00000000-0000-0000-0000-000000000001",
+            "generated_at": "2026-03-14T12:00:00+00:00",
+            "period": "last_12_months",
+        },
+    }
+
+
+@app.get(
+    "/api/v1/ai-governance/report/board/export-payload-example",
+    summary="[DEV/Docs only] Beispiel-Payload für Export-Integration",
+)
+def get_board_report_export_payload_example(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    target_system: Annotated[
+        str, Query(description="target_system (z.B. sap_btp_http)")
+    ] = "sap_btp_http",
+) -> dict:
+    """
+    Beispiel-Payload-JSON für target_system (z.B. sap_btp_http).
+    DEV/Docs only – erzeugt keinen Job. In Produktion deaktiviert.
+    """
+    if APP_ENVIRONMENT == "production":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Export payload example not available in production",
+        )
+    payload = _get_export_payload_example(target_system)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Example not available for target_system={target_system}",
+        )
+    return payload
+
+
 @app.get(
     "/api/v1/ai-governance/incidents/overview",
     response_model=AIIncidentOverview,

@@ -1,0 +1,11 @@
+{
+  "_comment": "Beispiel-Payload für SAP BTP HTTP-Inbound (Board-Report). Nur Blueprint – keine echten personenbezogenen Daten.",
+  "tenant_id": "beispiel-mandant-001",
+  "report_period": "last_12_months",
+  "markdown": "# AI Governance Board Report – beispiel-mandant-001 (14.03.2026)\n\n*Berichtszeitraum: last_12_months*\n\n---\n\n## 1. Executive Summary\n\n- AI-Systeme gesamt: 12 (aktiv: 10).\n- High-Risk-Systeme: 3; davon ohne DPIA: 1.\n- ISO 42001 Governance-Score: 72 %; NIS2 Incident Readiness: 85 %; Supplier Risk Coverage: 78 %.\n\n## 2. KPIs & Compliance\n\n… (gekürztes Beispiel)\n",
+  "report_metadata": {
+    "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "generated_at": "2026-03-14T10:00:00+00:00",
+    "period": "last_12_months"
+  }
+}
