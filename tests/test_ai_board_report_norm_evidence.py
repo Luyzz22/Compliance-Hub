@@ -161,4 +161,3 @@ def test_norm_evidence_401_invalid_api_key() -> None:
         headers={"x-api-key": "invalid", "x-tenant-id": "board-kpi-tenant"},
     )
     assert resp.status_code == 401
-
