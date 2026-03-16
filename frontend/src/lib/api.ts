@@ -448,6 +448,12 @@ export async function fetchNormEvidenceByAudit(
   );
 }
 
+export type NormEvidenceSuggestion = NormEvidenceLinkCreate;
+
+export async function fetchNormEvidenceDefaults(): Promise<NormEvidenceSuggestion[]> {
+  return apiFetch("/api/v1/ai-governance/report/board/norm-evidence-defaults");
+}
+
 // ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
 
 export type IncidentSeverityLevel = "low" | "medium" | "high";
