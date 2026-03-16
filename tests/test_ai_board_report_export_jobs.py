@@ -102,6 +102,73 @@ def test_create_export_job_generic_webhook_success():
     assert data.get("callback_url") == "https://example.com/webhook"
 
 
+def test_create_export_job_sap_btp_http_missing_callback():
+    """sap_btp_http ohne callback_url → 400."""
+    response = client.post(
+        "/api/v1/ai-governance/report/board/export-jobs",
+        json={"target_system": "sap_btp_http"},
+        headers=_headers(),
+    )
+    assert response.status_code == 400
+    assert "callback_url" in response.json().get("detail", "").lower()
+
+
+def test_create_export_job_sap_btp_http_success():
+    """Happy Path sap_btp_http: Header X-ComplianceHub-Integration + stabiles Payload-Schema."""
+    _jobs.clear()
+    setup_ai_system(system_id="export-job-sap-btp")
+
+    captured_headers: dict[str, str] = {}
+    captured_payload: dict = {}
+
+    def fake_post_with_headers(
+        url: str, payload: dict, headers: dict[str, str]
+    ) -> tuple[bool, str]:
+        captured_payload.update(payload)
+        captured_headers.update(headers)
+        return (True, "")
+
+    with patch(
+        "app.services.board_report_export_jobs._post_with_headers",
+        side_effect=fake_post_with_headers,
+    ):
+        resp = client.post(
+            "/api/v1/ai-governance/report/board/export-jobs",
+            json={
+                "target_system": "sap_btp_http",
+                "callback_url": "https://btp.example.com/inbound",
+            },
+            headers=_headers(),
+        )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["status"] == "sent"
+    assert data["target_system"] == "sap_btp_http"
+    assert captured_headers.get("X-ComplianceHub-Integration") == "sap_btp_http"
+    assert captured_payload.get("tenant_id") == "board-kpi-tenant"
+    assert "report_period" in captured_payload
+    assert "markdown" in captured_payload
+    assert "report_metadata" in captured_payload
+    assert "job_id" in (captured_payload.get("report_metadata") or {})
+
+
+def test_create_export_job_dms_generic_not_implemented():
+    """dms_generic führt nicht zu Fehlern, Job-Status not_implemented."""
+    _jobs.clear()
+    setup_ai_system(system_id="export-job-dms")
+
+    response = client.post(
+        "/api/v1/ai-governance/report/board/export-jobs",
+        json={"target_system": "dms_generic"},
+        headers=_headers(),
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["status"] == "not_implemented"
+    assert data["target_system"] == "dms_generic"
+    assert "not yet implemented" in (data.get("error_message") or "")
+
+
 def test_create_export_job_webhook_failure():
     """Webhook schlägt fehl → Job status failed, error_message gesetzt."""
     _jobs.clear()

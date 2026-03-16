@@ -103,9 +103,16 @@ class AIBoardGovernanceReport(BaseModel):
     alerts: list[AIKpiAlert]
 
 
-# Export-Job für PDF-/DMS-Integration (Webhook, SAP BTP, SharePoint)
-TargetSystem = Literal["generic_webhook", "sap_btp", "sharepoint"]
-ExportJobStatus = Literal["pending", "sent", "failed"]
+# Export-Job für PDF-/DMS-Integration (Webhook, SAP BTP, DMS)
+# Backward-kompatibel: sap_btp, sharepoint weiterhin gültig (kein HTTP-Call).
+TargetSystem = Literal[
+    "generic_webhook",
+    "sap_btp",
+    "sharepoint",
+    "sap_btp_http",  # SAP BTP HTTP-Inbound / Cloud Integration
+    "dms_generic",  # DMS/Archiv (Platzhalter)
+]
+ExportJobStatus = Literal["pending", "sent", "failed", "not_implemented"]
 
 
 class BoardReportExportJobCreate(BaseModel):
