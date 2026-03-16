@@ -1,7 +1,12 @@
 import React from "react";
 import Link from "next/link";
 
-import { fetchBoardKpis, type BoardKpiSummary } from "@/lib/api";
+import {
+  fetchAIComplianceOverview,
+  fetchBoardKpis,
+  type AIComplianceOverview,
+  type BoardKpiSummary,
+} from "@/lib/api";
 
 function scoreColor(score: number): string {
   if (score < 0.4) return "bg-red-50 text-red-800 border-red-100";
@@ -72,9 +77,15 @@ function ManagementSummary({ kpis }: { kpis: BoardKpiSummary }) {
 
 export default async function BoardKpisPage() {
   let kpis: BoardKpiSummary | null = null;
+  let complianceOverview: AIComplianceOverview | null = null;
 
   try {
-    kpis = await fetchBoardKpis();
+    const [kpisRes, overviewRes] = await Promise.all([
+      fetchBoardKpis(),
+      fetchAIComplianceOverview(),
+    ]);
+    kpis = kpisRes;
+    complianceOverview = overviewRes;
   } catch (error) {
     console.error("Board KPI API error:", error);
   }
@@ -230,6 +241,102 @@ export default async function BoardKpisPage() {
           </p>
         </div>
       </section>
+
+      {/* EU AI Act / ISO 42001 Readiness */}
+      {complianceOverview && (
+        <section
+          aria-label="EU AI Act und ISO 42001 Readiness"
+          className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <h2 className="text-lg font-semibold text-slate-900">
+            EU AI Act / ISO 42001 Readiness
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Readiness für High-Risk-Anforderungen bis Anwendungsbeginn EU AI Act
+            (2. August 2026) und ISO 42001 AI-Managementsystem.
+          </p>
+          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div
+              className={`flex flex-col rounded-xl border p-4 ${scoreColor(
+                complianceOverview.overall_readiness,
+              )}`}
+            >
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Gesamt-Readiness
+              </h3>
+              <p className="mt-2 text-3xl font-semibold">
+                {formatPercent(complianceOverview.overall_readiness)}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                EU AI Act &amp; ISO 42001 Anforderungen gewichtet.
+              </p>
+            </div>
+            <div className="flex flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Frist High-Risk
+              </h3>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {complianceOverview.days_remaining} Tage
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Bis 2. August 2026 (Vollanwendung High-Risk).
+              </p>
+            </div>
+            <div className="flex flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                High-Risk voll kontrolliert
+              </h3>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {complianceOverview.high_risk_systems_with_full_controls}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Systeme mit vollständig erfüllten Anforderungen.
+              </p>
+            </div>
+            <div className="flex flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                High-Risk mit kritischen Lücken
+              </h3>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {complianceOverview.high_risk_systems_with_critical_gaps}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Systeme mit offenen Anforderungen (nicht begonnen).
+              </p>
+            </div>
+          </div>
+          {complianceOverview.top_critical_requirements.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-slate-700">
+                Top kritische Anforderungen (betroffene Systeme)
+              </h3>
+              <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+                {complianceOverview.top_critical_requirements.map((req, i) => (
+                  <li key={i} className="flex justify-between gap-4">
+                    <span>
+                      <strong className="text-slate-800">{req.article}</strong>{" "}
+                      {req.name}
+                    </span>
+                    <span className="font-medium text-slate-700">
+                      {req.affected_systems_count} System
+                      {req.affected_systems_count !== 1 ? "e" : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="mt-4">
+            <Link
+              href="/tenant/eu-ai-act"
+              className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+              aria-label="EU AI Act Tenant-Details öffnen"
+            >
+              Details anzeigen
+            </Link>
+          </p>
+        </section>
+      )}
 
       <ManagementSummary kpis={kpis} />
     </main>

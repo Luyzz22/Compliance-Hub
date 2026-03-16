@@ -29,12 +29,11 @@ from app.classification_models import (
 from app.compliance_gap_models import (
     REQUIREMENTS,
     REQUIREMENTS_BY_ID,
+    AIComplianceOverview,
     ComplianceDashboard,
     ComplianceRequirement,
-    ComplianceStatus,
     ComplianceStatusEntry,
     ComplianceStatusUpdate,
-    SystemReadiness,
 )
 from app.db import engine, get_session
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
@@ -66,6 +65,10 @@ from app.services.ai_governance_suppliers import (
     compute_ai_supplier_risk_overview,
 )
 from app.services.classification_engine import classify_ai_system
+from app.services.compliance_dashboard import (
+    compute_ai_compliance_overview,
+    compute_compliance_dashboard,
+)
 from app.services.compliance_engine import build_audit_hash, derive_actions
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
@@ -488,6 +491,25 @@ def get_ai_governance_board_kpis(
 
 
 @app.get(
+    "/api/v1/ai-governance/compliance/overview",
+    response_model=AIComplianceOverview,
+)
+def get_ai_compliance_overview(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+) -> AIComplianceOverview:
+    """Board-fähiger EU AI Act / ISO 42001 Readiness-Überblick."""
+    return compute_ai_compliance_overview(
+        tenant_id=auth_context.tenant_id,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+    )
+
+
+@app.get(
     "/api/v1/ai-governance/incidents/overview",
     response_model=AIIncidentOverview,
 )
@@ -793,103 +815,9 @@ def get_compliance_dashboard(
     cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
 ) -> ComplianceDashboard:
-    tenant_id = auth_context.tenant_id
-    systems = ai_repo.list_for_tenant(tenant_id)
-    all_statuses = gap_repo.list_all_for_tenant(tenant_id)
-
-    # Group statuses by ai_system_id
-    status_map: dict[str, list[ComplianceStatusEntry]] = {}
-    for s in all_statuses:
-        status_map.setdefault(s.ai_system_id, []).append(s)
-
-    system_readiness_list: list[SystemReadiness] = []
-    total_weighted_score = 0.0
-    total_weight = 0.0
-
-    for sys in systems:
-        classification = cls_repo.get_for_system(tenant_id, sys.id)
-        risk_level = classification.risk_level if classification else "unclassified"
-
-        statuses = status_map.get(sys.id, [])
-        if not statuses:
-            system_readiness_list.append(
-                SystemReadiness(
-                    ai_system_id=sys.id,
-                    ai_system_name=sys.name,
-                    risk_level=risk_level,
-                    readiness_score=0.0,
-                    total_requirements=0,
-                    completed=0,
-                    in_progress=0,
-                    not_started=0,
-                )
-            )
-            continue
-
-        completed = sum(1 for s in statuses if s.status == ComplianceStatus.completed)
-        in_progress = sum(1 for s in statuses if s.status == ComplianceStatus.in_progress)
-        not_started = sum(1 for s in statuses if s.status == ComplianceStatus.not_started)
-
-        # Weighted readiness score
-        weighted_completed = 0.0
-        weighted_total = 0.0
-        for s in statuses:
-            req = REQUIREMENTS_BY_ID.get(s.requirement_id)
-            weight = req.weight if req else 1.0
-            weighted_total += weight
-            if s.status == ComplianceStatus.completed:
-                weighted_completed += weight
-
-        readiness = weighted_completed / weighted_total if weighted_total > 0 else 0.0
-        total_weighted_score += weighted_completed
-        total_weight += weighted_total
-
-        system_readiness_list.append(
-            SystemReadiness(
-                ai_system_id=sys.id,
-                ai_system_name=sys.name,
-                risk_level=risk_level,
-                readiness_score=round(readiness, 3),
-                total_requirements=len(statuses),
-                completed=completed,
-                in_progress=in_progress,
-                not_started=not_started,
-            )
-        )
-
-    overall = round(total_weighted_score / total_weight, 3) if total_weight > 0 else 0.0
-
-    # Deadline countdown
-    from datetime import date
-
-    deadline = date(2026, 8, 2)
-    today = date.today()
-    days_remaining = max(0, (deadline - today).days)
-
-    # Top urgent gaps: not_started requirements for high_risk systems
-    urgent_gaps: list[dict[str, str]] = []
-    for sys in systems:
-        classification = cls_repo.get_for_system(tenant_id, sys.id)
-        if classification and classification.risk_level == "high_risk":
-            for s in status_map.get(sys.id, []):
-                if s.status == ComplianceStatus.not_started:
-                    req = REQUIREMENTS_BY_ID.get(s.requirement_id)
-                    if req:
-                        urgent_gaps.append(
-                            {
-                                "ai_system_id": sys.id,
-                                "ai_system_name": sys.name,
-                                "requirement_id": req.id,
-                                "requirement_name": req.name,
-                                "article": req.article,
-                            }
-                        )
-    urgent_gaps = urgent_gaps[:3]
-
-    return ComplianceDashboard(
-        tenant_id=tenant_id,
-        overall_readiness=overall,
-        systems=system_readiness_list,
-        days_remaining=days_remaining,
-        urgent_gaps=urgent_gaps,
+    return compute_compliance_dashboard(
+        tenant_id=auth_context.tenant_id,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
     )

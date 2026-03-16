@@ -199,6 +199,27 @@ export async function fetchComplianceDashboard(): Promise<ComplianceDashboard> {
   return apiFetch("/api/v1/compliance/dashboard");
 }
 
+/** Board-fähiger EU AI Act / ISO 42001 Compliance-Readiness-Überblick */
+export interface TopCriticalRequirement {
+  article: string;
+  name: string;
+  affected_systems_count: number;
+}
+
+export interface AIComplianceOverview {
+  tenant_id: string;
+  overall_readiness: number;
+  high_risk_systems_with_full_controls: number;
+  high_risk_systems_with_critical_gaps: number;
+  top_critical_requirements: TopCriticalRequirement[];
+  deadline: string;
+  days_remaining: number;
+}
+
+export async function fetchAIComplianceOverview(): Promise<AIComplianceOverview> {
+  return apiFetch("/api/v1/ai-governance/compliance/overview");
+}
+
 // ─── Board-Level AI Governance KPIs ────────────────────────────────────────────
 
 export interface BoardKpiSummary {
