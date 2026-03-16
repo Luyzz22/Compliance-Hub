@@ -101,3 +101,30 @@ class AIBoardGovernanceReport(BaseModel):
     incidents_overview: AIIncidentOverview
     supplier_risk_overview: AISupplierRiskOverview
     alerts: list[AIKpiAlert]
+
+
+# Export-Job für PDF-/DMS-Integration (Webhook, SAP BTP, SharePoint)
+TargetSystem = Literal["generic_webhook", "sap_btp", "sharepoint"]
+ExportJobStatus = Literal["pending", "sent", "failed"]
+
+
+class BoardReportExportJobCreate(BaseModel):
+    """Request-Body für Anlage eines Board-Report-Export-Jobs."""
+
+    target_system: TargetSystem
+    callback_url: str | None = None
+    metadata: dict[str, str] | None = None
+
+
+class BoardReportExportJob(BaseModel):
+    """Export-Job für Board-Report (in-memory, Tenant-isoliert)."""
+
+    id: str
+    tenant_id: str
+    created_at: datetime
+    status: ExportJobStatus
+    target_system: TargetSystem
+    callback_url: str | None = None
+    metadata: dict[str, str] | None = None
+    error_message: str | None = None
+    completed_at: datetime | None = None

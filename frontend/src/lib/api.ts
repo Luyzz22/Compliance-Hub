@@ -296,6 +296,50 @@ export function getBoardReportMarkdownDownloadUrl(): string {
   return "/api/board/report/markdown";
 }
 
+// ─── Board-Report Export-Jobs (PDF-/DMS-/SAP-BTP-Integration) ─────────────────
+
+export type BoardReportTargetSystem =
+  | "generic_webhook"
+  | "sap_btp"
+  | "sharepoint";
+
+export type BoardReportExportJobStatus = "pending" | "sent" | "failed";
+
+export interface BoardReportExportJobCreate {
+  target_system: BoardReportTargetSystem;
+  callback_url?: string | null;
+  metadata?: Record<string, string> | null;
+}
+
+export interface BoardReportExportJob {
+  id: string;
+  tenant_id: string;
+  created_at: string;
+  status: BoardReportExportJobStatus;
+  target_system: BoardReportTargetSystem;
+  callback_url: string | null;
+  metadata: Record<string, string> | null;
+  error_message: string | null;
+  completed_at: string | null;
+}
+
+export async function createBoardReportExportJob(
+  payload: BoardReportExportJobCreate
+): Promise<BoardReportExportJob> {
+  return apiFetch("/api/v1/ai-governance/report/board/export-jobs", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchBoardReportExportJobStatus(
+  jobId: string
+): Promise<BoardReportExportJob> {
+  return apiFetch(
+    `/api/v1/ai-governance/report/board/export-jobs/${jobId}`
+  );
+}
+
 // ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
 
 export type IncidentSeverityLevel = "low" | "medium" | "high";
