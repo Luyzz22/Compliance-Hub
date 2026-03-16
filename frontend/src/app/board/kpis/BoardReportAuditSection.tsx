@@ -3,12 +3,14 @@
 import React, { useCallback, useState } from "react";
 import {
   createBoardReportAuditRecord,
+  fetchNormEvidenceDefaults,
   fetchBoardReportAuditRecords,
   createNormEvidence,
   fetchNormEvidenceByAudit,
   type BoardReportAuditRecord,
   type NormEvidenceLink,
   type NormFramework,
+  type NormEvidenceSuggestion,
 } from "@/lib/api";
 
 const LIST_LIMIT = 5;
@@ -35,6 +37,7 @@ export function BoardReportAuditSection() {
   const [normForm, setNormForm] = useState<{
     [auditId: string]: { framework: NormFramework; reference: string; note: string };
   }>({});
+  const [defaults, setDefaults] = useState<NormEvidenceSuggestion[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +170,10 @@ export function BoardReportAuditSection() {
                     type="button"
                     onClick={async () => {
                       try {
+                        if (defaults === null) {
+                          const def = await fetchNormEvidenceDefaults();
+                          setDefaults(def);
+                        }
                         const items = await fetchNormEvidenceByAudit(r.id);
                         setNormEvidence((prev) => ({
                           ...prev,
@@ -184,6 +191,40 @@ export function BoardReportAuditSection() {
                   >
                     Norm-Nachweise anzeigen
                   </button>
+                  {defaults && defaults.length > 0 && (
+                    <div className="mt-2 rounded border border-slate-100 bg-white p-2">
+                      <p className="text-[11px] font-semibold text-slate-600">
+                        Empfohlene Norm-Nachweise für Board-Reports
+                      </p>
+                      <ul className="mt-1 flex flex-wrap gap-1">
+                        {defaults.map((d) => (
+                          <li key={`${d.framework}-${d.reference}`}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNormForm((prev) => ({
+                                  ...prev,
+                                  [r.id]: {
+                                    framework: d.framework,
+                                    reference: d.reference,
+                                    note: d.note ?? "",
+                                  },
+                                }));
+                              }}
+                              className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-100"
+                              title={d.note ?? ""}
+                            >
+                              Übernehmen: {d.framework} – {d.reference}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        Hinweis: „Übernehmen“ füllt nur das Formular. Erst
+                        „Hinzufügen“ legt einen echten Norm-Nachweis an.
+                      </p>
+                    </div>
+                  )}
                   {normEvidence[r.id] && normEvidence[r.id].length > 0 && (
                     <ul className="mt-1 space-y-0.5 text-xs text-slate-600">
                       {normEvidence[r.id].map((ev) => (

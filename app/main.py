@@ -90,6 +90,7 @@ from app.services.board_report_export_jobs import get_job, run_export_job
 from app.services.board_report_markdown import render_board_report_markdown
 from app.services.board_report_norm_evidence import (
     create_links,
+    get_default_norm_evidence_suggestions,
     list_by_audit,
     query_by_norm,
 )
@@ -979,6 +980,18 @@ def query_norm_evidence(
             ),
         )
     return results
+
+
+@app.get(
+    "/api/v1/ai-governance/report/board/norm-evidence-defaults",
+    response_model=list[NormEvidenceLinkCreate],
+)
+def get_norm_evidence_defaults(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> list[NormEvidenceLinkCreate]:
+    """Liefert vordefinierte Norm-Nachweis-Vorschläge (nur Lesen, keine Anlage)."""
+    _ = auth_context.tenant_id  # Auth/Tenant-Kontext erzwingen (keine Tenant-spezifischen Defaults)
+    return get_default_norm_evidence_suggestions()
 
 
 # --- Beispiel-Payload-Endpoint (NUR DEV/DOCS – nicht für Produktion) ---

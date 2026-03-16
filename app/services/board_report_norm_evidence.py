@@ -10,6 +10,7 @@ from app.ai_governance_models import (
     NormEvidenceLinkCreate,
     NormFramework,
 )
+from app.config.norm_evidence_defaults import DEFAULT_NORM_EVIDENCE_MAPPINGS
 
 _links: dict[str, NormEvidenceLink] = {}
 
@@ -58,3 +59,18 @@ def query_by_norm(
     if reference is not None:
         matches = [link for link in matches if link.reference == reference]
     return matches
+
+
+def get_default_norm_evidence_suggestions() -> list[NormEvidenceLinkCreate]:
+    """Maps statische Defaults in NormEvidenceLinkCreate-Vorschläge (keine Anlage)."""
+    suggestions: list[NormEvidenceLinkCreate] = []
+    for item in DEFAULT_NORM_EVIDENCE_MAPPINGS:
+        suggestions.append(
+            NormEvidenceLinkCreate(
+                framework=item["framework"],  # type: ignore[arg-type]
+                reference=item["reference"],
+                evidence_type=item.get("evidence_type", "board_report"),  # type: ignore[arg-type]
+                note=item.get("note") or None,
+            )
+        )
+    return suggestions
