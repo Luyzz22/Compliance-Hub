@@ -5,6 +5,7 @@ import {
   fetchAIComplianceOverview,
   fetchBoardAlerts,
   fetchBoardKpis,
+  fetchBoardAlertsExport,
   type AIComplianceOverview,
   type AIKpiAlert,
   type BoardKpiSummary,
@@ -142,15 +143,15 @@ export default async function BoardKpisPage() {
         </p>
       </header>
 
-      {/* Alerts & Hinweise (max 5) */}
-      {alerts.length > 0 && (
-        <section
-          aria-label="Alerts und Hinweise"
-          className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-        >
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-            Alerts &amp; Hinweise
-          </h2>
+      {/* Alerts & Hinweise (max 5) + Export für CISO/ISB/Vorstand */}
+      <section
+        aria-label="Alerts und Hinweise"
+        className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+      >
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+          Alerts &amp; Hinweise
+        </h2>
+        {alerts.length > 0 ? (
           <ul className="mt-3 space-y-2">
             {alerts.slice(0, 5).map((alert) => (
               <li
@@ -161,8 +162,30 @@ export default async function BoardKpisPage() {
               </li>
             ))}
           </ul>
-        </section>
-      )}
+        ) : (
+          <p className="mt-3 text-sm text-slate-500">
+            Keine aktuellen Alerts.
+          </p>
+        )}
+        <p className="mt-4 text-xs text-slate-600">
+          Für Weiterleitung an CISO / ISB / Vorstand:{" "}
+          <a
+            href={fetchBoardAlertsExport("json")}
+            download
+            className="font-medium text-slate-800 underline hover:text-slate-600"
+          >
+            Alerts als JSON exportieren
+          </a>
+          {" · "}
+          <a
+            href={fetchBoardAlertsExport("csv")}
+            download
+            className="font-medium text-slate-800 underline hover:text-slate-600"
+          >
+            Alerts als CSV exportieren
+          </a>
+        </p>
+      </section>
 
       {/* Hero: ISO 42001 Governance Score */}
       {(() => {

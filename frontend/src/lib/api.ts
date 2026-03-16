@@ -265,6 +265,11 @@ export async function fetchBoardAlerts(): Promise<AIKpiAlert[]> {
   return apiFetch("/api/v1/ai-governance/alerts/board");
 }
 
+/** Export-URL für Board-Alerts (JSON/CSV) – für Weiterleitung an CISO/ISB/Vorstand. */
+export function fetchBoardAlertsExport(format?: "json" | "csv"): string {
+  return `/api/board/alerts/export?format=${format ?? "json"}`;
+}
+
 // ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
 
 export type IncidentSeverityLevel = "low" | "medium" | "high";

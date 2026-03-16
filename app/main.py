@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -15,6 +17,7 @@ from app.ai_governance_models import (
     AIBoardKpiSummary,
     AIGovernanceKpiSummary,
     AIKpiAlert,
+    AIKpiAlertExport,
 )
 from app.ai_system_models import (
     AISystem,
@@ -542,6 +545,91 @@ def get_board_alerts(
         tenant_id=tenant_id,
         board_kpis=board_kpis,
         compliance_overview=compliance_overview,
+    )
+
+
+def _alerts_export_csv(tenant_id: str, alerts: list[AIKpiAlert], generated_at: datetime) -> str:
+    """Eine Zeile pro Alert, CSV-konform (RFC 4180)."""
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(
+        ["id", "tenant_id", "kpi_key", "severity", "message", "created_at", "resolved_at"]
+    )
+    for a in alerts:
+        writer.writerow(
+            [
+                a.id,
+                a.tenant_id,
+                a.kpi_key,
+                a.severity,
+                a.message,
+                a.created_at.isoformat() if a.created_at else "",
+                a.resolved_at.isoformat() if a.resolved_at else "",
+            ]
+        )
+    return out.getvalue()
+
+
+@app.get(
+    "/api/v1/ai-governance/alerts/board/export",
+    response_class=Response,
+)
+def get_board_alerts_export(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    format: Annotated[
+        Literal["json", "csv"],
+        Query(description="Export-Format: json (Standard) oder csv"),
+    ] = "json",
+) -> Response:
+    """Board-Alerts als JSON oder CSV für Reporting / CISO / Vorstand (keine Personenbezogenen)."""
+    from app.datetime_compat import UTC
+
+    tenant_id = auth_context.tenant_id
+    board_kpis = compute_ai_board_kpis(
+        tenant_id=tenant_id,
+        ai_system_repository=ai_repo,
+        violation_repository=violation_repo,
+    )
+    compliance_overview = compute_ai_compliance_overview(
+        tenant_id=tenant_id,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+    )
+    alerts = compute_board_alerts(
+        tenant_id=tenant_id,
+        board_kpis=board_kpis,
+        compliance_overview=compliance_overview,
+    )
+    generated_at = datetime.now(UTC)
+
+    if format == "csv":
+        csv_content = _alerts_export_csv(tenant_id, alerts, generated_at)
+        filename = f"ai-governance-alerts-{tenant_id}-{generated_at.strftime('%Y%m%d')}.csv"
+        return Response(
+            content=csv_content,
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
+    export_data = AIKpiAlertExport(
+        tenant_id=tenant_id,
+        generated_at=generated_at,
+        format_version="1.0",
+        alerts=alerts,
+    )
+    filename = f"ai-governance-alerts-{tenant_id}-{generated_at.strftime('%Y%m%d')}.json"
+    return Response(
+        content=export_data.model_dump_json(),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )
 
 
