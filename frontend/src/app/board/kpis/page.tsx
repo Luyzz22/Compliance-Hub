@@ -7,6 +7,7 @@ import {
   fetchBoardKpis,
   fetchBoardAlertsExport,
   getBoardReportDownloadUrl,
+  getBoardReportMarkdownDownloadUrl,
   type AIComplianceOverview,
   type AIKpiAlert,
   type BoardKpiSummary,
@@ -194,6 +195,14 @@ export default async function BoardKpisPage() {
             className="font-medium text-slate-800 underline hover:text-slate-600"
           >
             Board-Report JSON
+          </a>
+          {" · "}
+          <a
+            href={getBoardReportMarkdownDownloadUrl()}
+            download
+            className="font-medium text-slate-800 underline hover:text-slate-600"
+          >
+            Board-Report als Markdown
           </a>
         </p>
       </section>
