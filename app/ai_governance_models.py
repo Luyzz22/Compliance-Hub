@@ -110,7 +110,7 @@ TargetSystem = Literal[
     "sap_btp",
     "sharepoint",
     "sap_btp_http",  # SAP BTP HTTP-Inbound / Cloud Integration
-    "dms_generic",   # DMS/Archiv (Platzhalter)
+    "dms_generic",  # DMS/Archiv (Platzhalter)
 ]
 ExportJobStatus = Literal["pending", "sent", "failed", "not_implemented"]
 

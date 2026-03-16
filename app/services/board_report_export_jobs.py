@@ -51,9 +51,7 @@ def _post_webhook(url: str, payload: dict) -> tuple[bool, str]:
         return False, str(e)[:200]
 
 
-def _post_with_headers(
-    url: str, payload: dict, headers: dict[str, str]
-) -> tuple[bool, str]:
+def _post_with_headers(url: str, payload: dict, headers: dict[str, str]) -> tuple[bool, str]:
     """POST mit zusätzlichen Headern. Returns (success, error_message)."""
     try:
         with httpx.Client(timeout=WEBHOOK_TIMEOUT_SEC) as client:
@@ -126,9 +124,7 @@ def dispatch_board_report_export_job(
         if not body.callback_url:
             return "failed", "callback_url required for target_system sap_btp_http"
         markdown = render_board_report_markdown(report)
-        payload = _build_sap_btp_http_payload(
-            job_id, tenant_id, created_at, report, markdown
-        )
+        payload = _build_sap_btp_http_payload(job_id, tenant_id, created_at, report, markdown)
         headers = {SAP_BTP_HTTP_HEADER: SAP_BTP_HTTP_HEADER_VALUE}
         ok, err = _post_with_headers(body.callback_url, payload, headers)
         return ("sent", None) if ok else ("failed", err)
@@ -152,9 +148,7 @@ def run_export_job(
 
     now = datetime.now(UTC)
     job_id = str(uuid.uuid4())
-    status, error_message = dispatch_board_report_export_job(
-        job_id, tenant_id, now, report, body
-    )
+    status, error_message = dispatch_board_report_export_job(job_id, tenant_id, now, report, body)
     completed_at = datetime.now(UTC)
     if status in ("sent", "failed", "not_implemented"):
         pass  # completed_at bereits gesetzt
