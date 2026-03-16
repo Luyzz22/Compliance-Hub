@@ -169,6 +169,81 @@ def test_create_export_job_dms_generic_not_implemented():
     assert "not yet implemented" in (data.get("error_message") or "")
 
 
+def test_create_export_job_datev_dms_prepared_missing_callback():
+    """datev_dms_prepared ohne callback_url → 400."""
+    response = client.post(
+        "/api/v1/ai-governance/report/board/export-jobs",
+        json={"target_system": "datev_dms_prepared"},
+        headers=_headers(),
+    )
+    assert response.status_code == 400
+    assert "callback_url" in response.json().get("detail", "").lower()
+
+
+def test_create_export_job_datev_dms_prepared_payload_structure():
+    """datev_dms_prepared: Payload hat mandant, bericht, content, technisch mit stabilen Keys."""
+    _jobs.clear()
+    setup_ai_system(system_id="export-job-datev")
+
+    captured_payload: dict = {}
+    captured_headers: dict = {}
+
+    def fake_post(url: str, payload: dict, headers: dict) -> tuple[bool, str]:
+        captured_payload.update(payload)
+        captured_headers.update(headers)
+        return (True, "")
+
+    with patch(
+        "app.services.board_report_export_jobs._post_with_headers",
+        side_effect=fake_post,
+    ):
+        response = client.post(
+            "/api/v1/ai-governance/report/board/export-jobs",
+            json={
+                "target_system": "datev_dms_prepared",
+                "callback_url": "https://datev-dms.example.com/inbound",
+                "metadata": {
+                    "mandant_nr": "M-001",
+                    "mandant_name": "Beispiel Kanzlei",
+                    "aktenzeichen": "AI-GOV-2026-001",
+                    "berichtszeitraum_von": "2025-01-01",
+                    "berichtszeitraum_bis": "2026-01-01",
+                    "normbezug": "EU AI Act,NIS2,ISO 42001",
+                    "dokument_typ": "AI Governance Board Report",
+                },
+            },
+            headers=_headers(),
+        )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["status"] == "sent"
+    assert data["target_system"] == "datev_dms_prepared"
+    assert captured_headers.get("X-ComplianceHub-Integration") == "datev_dms_prepared"
+
+    assert "mandant" in captured_payload
+    assert captured_payload["mandant"]["mandant_nr"] == "M-001"
+    assert captured_payload["mandant"]["mandant_name"] == "Beispiel Kanzlei"
+    assert captured_payload["mandant"]["aktenzeichen"] == "AI-GOV-2026-001"
+
+    assert "bericht" in captured_payload
+    assert captured_payload["bericht"]["typ"] == "AI Governance Board Report"
+    assert "zeitraum" in captured_payload["bericht"]
+    assert captured_payload["bericht"]["zeitraum"]["von"] == "2025-01-01"
+    assert captured_payload["bericht"]["zeitraum"]["bis"] == "2026-01-01"
+    assert "normbezug" in captured_payload["bericht"]
+    assert "EU AI Act" in captured_payload["bericht"]["normbezug"]
+
+    assert "content" in captured_payload
+    assert "markdown" in captured_payload["content"]
+    assert "summary" in captured_payload["content"]
+    assert "ai_systems_total" in captured_payload["content"]["summary"]
+    assert "risiko_level" in captured_payload["content"]["summary"]
+
+    assert "technisch" in captured_payload
+    assert captured_payload["technisch"]["tenant_id"] == "board-kpi-tenant"
+    assert "export_job_id" in captured_payload["technisch"]
+
+
 def test_create_export_job_webhook_failure():
     """Webhook schlägt fehl → Job status failed, error_message gesetzt."""
     _jobs.clear()

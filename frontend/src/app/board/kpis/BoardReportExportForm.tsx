@@ -13,40 +13,58 @@ const TARGET_LABELS: Record<BoardReportTargetSystem, string> = {
   sharepoint: "SharePoint",
   sap_btp_http: "SAP BTP HTTP",
   dms_generic: "DMS (generisch – vorbereitet)",
+  datev_dms_prepared: "Steuerkanzlei / DATEV-DMS (vorbereitet)",
 };
 
 export function BoardReportExportForm() {
   const [targetSystem, setTargetSystem] =
     useState<BoardReportTargetSystem>("generic_webhook");
   const [callbackUrl, setCallbackUrl] = useState("");
+  const [metadata, setMetadata] = useState({
+    mandant_nr: "",
+    mandant_name: "",
+    aktenzeichen: "",
+    berichtszeitraum_von: "",
+    berichtszeitraum_bis: "",
+  });
   const [loading, setLoading] = useState(false);
   const [lastJob, setLastJob] = useState<BoardReportExportJob | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const needsCallback =
+    targetSystem === "generic_webhook" ||
+    targetSystem === "sap_btp_http" ||
+    targetSystem === "datev_dms_prepared";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLastJob(null);
 
-    const needsCallback =
-      targetSystem === "generic_webhook" || targetSystem === "sap_btp_http";
     if (needsCallback && !callbackUrl.trim()) {
-      setError(
-        targetSystem === "sap_btp_http"
-          ? "Bei „SAP BTP HTTP“ ist eine Callback-URL erforderlich."
-          : "Bei „Generischer Webhook“ ist eine Callback-URL erforderlich."
-      );
+      const messages: Record<string, string> = {
+        generic_webhook: "Bei „Generischer Webhook“ ist eine Callback-URL erforderlich.",
+        sap_btp_http: "Bei „SAP BTP HTTP“ ist eine Callback-URL erforderlich.",
+        datev_dms_prepared:
+          "Bei „Steuerkanzlei / DATEV-DMS“ ist eine Callback-URL erforderlich.",
+      };
+      setError(messages[targetSystem] ?? "Callback-URL erforderlich.");
       return;
     }
+
+    const meta =
+      targetSystem === "datev_dms_prepared"
+        ? Object.fromEntries(
+            Object.entries(metadata).filter(([, v]) => v.trim() !== "")
+          )
+        : undefined;
 
     setLoading(true);
     try {
       const job = await createBoardReportExportJob({
         target_system: targetSystem,
-        callback_url:
-          targetSystem === "generic_webhook" || targetSystem === "sap_btp_http"
-            ? callbackUrl.trim() || null
-            : null,
+        callback_url: needsCallback ? callbackUrl.trim() || null : null,
+        metadata: meta && Object.keys(meta).length > 0 ? meta : undefined,
       });
       setLastJob(job);
     } catch (err) {
@@ -93,6 +111,9 @@ export function BoardReportExportForm() {
             </option>
             <option value="sap_btp_http">{TARGET_LABELS.sap_btp_http}</option>
             <option value="dms_generic">{TARGET_LABELS.dms_generic}</option>
+            <option value="datev_dms_prepared">
+              {TARGET_LABELS.datev_dms_prepared}
+            </option>
           </select>
           {targetSystem === "sap_btp_http" && (
             <p className="mt-1 text-xs text-slate-500">
@@ -104,9 +125,15 @@ export function BoardReportExportForm() {
               DMS-/Archiv-Anbindung vorbereitet; Integration folgt.
             </p>
           )}
+          {targetSystem === "datev_dms_prepared" && (
+            <p className="mt-1 text-xs text-slate-500">
+              Optimiert für Weiterleitung an DATEV-/Kanzlei-DMS (Mandanten-Akte,
+              Prüfungsdokumentation, EU-AI-Act-/NIS2-Nachweise).
+            </p>
+          )}
         </div>
 
-        {(targetSystem === "generic_webhook" || targetSystem === "sap_btp_http") && (
+        {needsCallback && (
           <div>
             <label
               htmlFor="board-export-callback-url"
@@ -121,11 +148,69 @@ export function BoardReportExportForm() {
               onChange={(e) => setCallbackUrl(e.target.value)}
               placeholder="https://..."
               className="mt-1 block w-full max-w-md rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-              required={
-                targetSystem === "generic_webhook" ||
-                targetSystem === "sap_btp_http"
-              }
+              required={needsCallback}
             />
+          </div>
+        )}
+
+        {targetSystem === "datev_dms_prepared" && (
+          <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/50 p-3">
+            <p className="text-xs font-medium text-slate-600">
+              Optionale Metadaten (Mandant, Aktenzeichen, Zeitraum)
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                type="text"
+                value={metadata.mandant_nr}
+                onChange={(e) =>
+                  setMetadata((m) => ({ ...m, mandant_nr: e.target.value }))
+                }
+                placeholder="Mandantennummer"
+                className="rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              />
+              <input
+                type="text"
+                value={metadata.mandant_name}
+                onChange={(e) =>
+                  setMetadata((m) => ({ ...m, mandant_name: e.target.value }))
+                }
+                placeholder="Mandantenname"
+                className="rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              />
+              <input
+                type="text"
+                value={metadata.aktenzeichen}
+                onChange={(e) =>
+                  setMetadata((m) => ({ ...m, aktenzeichen: e.target.value }))
+                }
+                placeholder="Aktenzeichen"
+                className="rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              />
+              <input
+                type="text"
+                value={metadata.berichtszeitraum_von}
+                onChange={(e) =>
+                  setMetadata((m) => ({
+                    ...m,
+                    berichtszeitraum_von: e.target.value,
+                  }))
+                }
+                placeholder="Zeitraum von (z. B. 2025-01-01)"
+                className="rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              />
+              <input
+                type="text"
+                value={metadata.berichtszeitraum_bis}
+                onChange={(e) =>
+                  setMetadata((m) => ({
+                    ...m,
+                    berichtszeitraum_bis: e.target.value,
+                  }))
+                }
+                placeholder="Zeitraum bis (z. B. 2026-01-01)"
+                className="rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              />
+            </div>
           </div>
         )}
 

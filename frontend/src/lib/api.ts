@@ -303,7 +303,8 @@ export type BoardReportTargetSystem =
   | "sap_btp"
   | "sharepoint"
   | "sap_btp_http"
-  | "dms_generic";
+  | "dms_generic"
+  | "datev_dms_prepared";
 
 export type BoardReportExportJobStatus =
   | "pending"

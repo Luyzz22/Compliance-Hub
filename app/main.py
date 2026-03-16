@@ -766,6 +766,11 @@ def create_board_report_export_job(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="callback_url required for target_system sap_btp_http",
         )
+    if body.target_system == "datev_dms_prepared" and not body.callback_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="callback_url required for target_system datev_dms_prepared",
+        )
     tenant_id = auth_context.tenant_id
     report = _build_board_report(
         tenant_id=tenant_id,

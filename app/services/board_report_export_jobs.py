@@ -24,6 +24,19 @@ _jobs: dict[str, BoardReportExportJob] = {}
 WEBHOOK_TIMEOUT_SEC = 10.0
 SAP_BTP_HTTP_HEADER = "X-ComplianceHub-Integration"
 SAP_BTP_HTTP_HEADER_VALUE = "sap_btp_http"
+DATEV_DMS_PREPARED_HEADER_VALUE = "datev_dms_prepared"
+
+# Steuerkanzlei/DATEV-DMS: erwartete Metadata-Keys (optional, aus body.metadata)
+DATEV_META_MANDANT_NR = "mandant_nr"
+DATEV_META_MANDANT_NAME = "mandant_name"
+DATEV_META_AKTENZEICHEN = "aktenzeichen"
+DATEV_META_PRUEFUNGSAUFTRAG_ID = "pruefungsauftrag_id"
+DATEV_META_BERICHTSZEITRAUM_VON = "berichtszeitraum_von"
+DATEV_META_BERICHTSZEITRAUM_BIS = "berichtszeitraum_bis"
+DATEV_META_NORMBEZUG = "normbezug"
+DATEV_META_DOKUMENT_TYP = "dokument_typ"
+DEFAULT_NORMBEZUG = ["EU AI Act", "NIS2", "ISO 42001"]
+DEFAULT_DOKUMENT_TYP = "AI Governance Board Report"
 
 
 def store_job(job: BoardReportExportJob) -> None:
@@ -87,6 +100,86 @@ def _build_sap_btp_http_payload(
     }
 
 
+def _parse_normbezug(meta: dict[str, str] | None) -> list[str]:
+    """Normbezug aus metadata: kommagetrennt oder Default-Liste."""
+    if not meta or DATEV_META_NORMBEZUG not in meta:
+        return list(DEFAULT_NORMBEZUG)
+    raw = meta.get(DATEV_META_NORMBEZUG, "").strip()
+    if not raw:
+        return list(DEFAULT_NORMBEZUG)
+    return [s.strip() for s in raw.split(",") if s.strip()]
+
+
+def _build_datev_dms_prepared_payload(
+    job_id: str,
+    tenant_id: str,
+    created_at: datetime,
+    report: AIBoardGovernanceReport,
+    markdown: str,
+    body: BoardReportExportJobCreate,
+) -> dict:
+    """
+    Deterministisches Payload-Schema für Steuerberater/WP-Kanzlei (DATEV-/DMS-Ready).
+    Nutzt body.metadata für Mandant, Aktenzeichen, Zeitraum, Normbezug, dokument_typ.
+    """
+    meta = body.metadata or {}
+    gen_at = report.generated_at
+    gen_at_str = gen_at.isoformat() if hasattr(gen_at, "isoformat") else str(gen_at)
+
+    mandant_nr = meta.get(DATEV_META_MANDANT_NR) or tenant_id
+    mandant_name = meta.get(DATEV_META_MANDANT_NAME) or ""
+    aktenzeichen = (
+        meta.get(DATEV_META_AKTENZEICHEN) or meta.get(DATEV_META_PRUEFUNGSAUFTRAG_ID) or ""
+    )
+    zeitraum_von = meta.get(DATEV_META_BERICHTSZEITRAUM_VON) or ""
+    zeitraum_bis = meta.get(DATEV_META_BERICHTSZEITRAUM_BIS) or ""
+    dokument_typ = meta.get(DATEV_META_DOKUMENT_TYP) or DEFAULT_DOKUMENT_TYP
+    normbezug = _parse_normbezug(meta)
+
+    k = report.kpis
+    # Risiko-Level vereinfacht aus Reifegrad (0–1): low/medium/high
+    if k.board_maturity_score >= 0.7:
+        risiko_level = "low"
+    elif k.board_maturity_score >= 0.4:
+        risiko_level = "medium"
+    else:
+        risiko_level = "high"
+
+    summary = {
+        "ai_systems_total": k.ai_systems_total,
+        "active_ai_systems": k.active_ai_systems,
+        "high_risk_systems": k.high_risk_systems,
+        "board_maturity_score": k.board_maturity_score,
+        "risiko_level": risiko_level,
+    }
+
+    return {
+        "mandant": {
+            "mandant_nr": mandant_nr,
+            "mandant_name": mandant_name,
+            "aktenzeichen": aktenzeichen,
+        },
+        "bericht": {
+            "typ": dokument_typ,
+            "zeitraum": {
+                "period": report.period,
+                "von": zeitraum_von,
+                "bis": zeitraum_bis,
+                "generated_at": gen_at_str,
+            },
+            "normbezug": normbezug,
+        },
+        "content": {
+            "markdown": markdown,
+            "summary": summary,
+        },
+        "technisch": {
+            "tenant_id": tenant_id,
+            "export_job_id": job_id,
+        },
+    }
+
+
 def dispatch_board_report_export_job(
     job_id: str,
     tenant_id: str,
@@ -98,8 +191,8 @@ def dispatch_board_report_export_job(
     Führt den Export je nach target_system aus.
     Returns (status, error_message).
     - generic_webhook: HTTP POST auf callback_url (Payload: job, report, markdown).
-    - sap_btp_http: HTTP POST mit Header X-ComplianceHub-Integration: sap_btp_http,
-      Payload tenant_id, report_period, markdown, report_metadata.
+    - sap_btp_http: HTTP POST mit Header, Payload tenant_id, report_period, markdown.
+    - datev_dms_prepared: HTTP POST mit Header, Payload mandant/bericht/content/technisch.
     - dms_generic: Platzhalter → not_implemented.
     - sap_btp / sharepoint: Kein Aufruf → sent (Backward-Kompatibilität).
     """
@@ -126,6 +219,17 @@ def dispatch_board_report_export_job(
         markdown = render_board_report_markdown(report)
         payload = _build_sap_btp_http_payload(job_id, tenant_id, created_at, report, markdown)
         headers = {SAP_BTP_HTTP_HEADER: SAP_BTP_HTTP_HEADER_VALUE}
+        ok, err = _post_with_headers(body.callback_url, payload, headers)
+        return ("sent", None) if ok else ("failed", err)
+
+    if body.target_system == "datev_dms_prepared":
+        if not body.callback_url:
+            return "failed", "callback_url required for target_system datev_dms_prepared"
+        markdown = render_board_report_markdown(report)
+        payload = _build_datev_dms_prepared_payload(
+            job_id, tenant_id, created_at, report, markdown, body
+        )
+        headers = {SAP_BTP_HTTP_HEADER: DATEV_DMS_PREPARED_HEADER_VALUE}
         ok, err = _post_with_headers(body.callback_url, payload, headers)
         return ("sent", None) if ok else ("failed", err)
 
