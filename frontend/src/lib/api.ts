@@ -270,6 +270,27 @@ export function fetchBoardAlertsExport(format?: "json" | "csv"): string {
   return `/api/board/alerts/export?format=${format ?? "json"}`;
 }
 
+/** Vorstands-/Aufsichtsreport: alle AI-Governance-Kennzahlen gebündelt. */
+export interface AIBoardGovernanceReport {
+  tenant_id: string;
+  generated_at: string;
+  period: string;
+  kpis: BoardKpiSummary;
+  compliance_overview: AIComplianceOverview;
+  incidents_overview: AIIncidentOverview;
+  supplier_risk_overview: AISupplierRiskOverview;
+  alerts: AIKpiAlert[];
+}
+
+export async function fetchBoardGovernanceReport(): Promise<AIBoardGovernanceReport> {
+  return apiFetch("/api/v1/ai-governance/report/board");
+}
+
+/** Download-URL für Board-Report JSON (für Vorstand/SVV/ISB-Reportings). */
+export function getBoardReportDownloadUrl(): string {
+  return "/api/board/report";
+}
+
 // ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
 
 export type IncidentSeverityLevel = "low" | "medium" | "high";

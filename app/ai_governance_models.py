@@ -5,6 +5,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.compliance_gap_models import AIComplianceOverview
+from app.incident_models import AIIncidentOverview
+from app.supplier_risk_models import AISupplierRiskOverview
+
 
 class AIGovernanceKpiSummary(BaseModel):
     tenant_id: str
@@ -83,4 +87,17 @@ class AIKpiAlertExport(BaseModel):
     tenant_id: str
     generated_at: datetime
     format_version: str = "1.0"
+    alerts: list[AIKpiAlert]
+
+
+class AIBoardGovernanceReport(BaseModel):
+    """Vorstands-/Aufsichtsreport: alle AI-Governance-Kennzahlen gebündelt (PDF/Word-Mapping)."""
+
+    tenant_id: str
+    generated_at: datetime
+    period: str = "last_12_months"
+    kpis: AIBoardKpiSummary
+    compliance_overview: AIComplianceOverview
+    incidents_overview: AIIncidentOverview
+    supplier_risk_overview: AISupplierRiskOverview
     alerts: list[AIKpiAlert]

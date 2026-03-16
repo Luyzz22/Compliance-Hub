@@ -6,6 +6,7 @@ import {
   fetchBoardAlerts,
   fetchBoardKpis,
   fetchBoardAlertsExport,
+  getBoardReportDownloadUrl,
   type AIComplianceOverview,
   type AIKpiAlert,
   type BoardKpiSummary,
@@ -183,6 +184,16 @@ export default async function BoardKpisPage() {
             className="font-medium text-slate-800 underline hover:text-slate-600"
           >
             Alerts als CSV exportieren
+          </a>
+        </p>
+        <p className="mt-2 text-xs text-slate-600">
+          Für Vorstand / SVV / ISB-Reportings:{" "}
+          <a
+            href={getBoardReportDownloadUrl()}
+            download
+            className="font-medium text-slate-800 underline hover:text-slate-600"
+          >
+            Board-Report JSON
           </a>
         </p>
       </section>
