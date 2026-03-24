@@ -261,6 +261,16 @@ export async function fetchBoardKpis(): Promise<BoardKpiSummary> {
 /** Board-KPI-Alert (NIS2 / EU AI Act / ISO 42001 Schwellenwerte) */
 export type AIKpiAlertSeverity = "info" | "warning" | "critical";
 
+/** Optionale Kennzahlen zu NIS2-/KRITIS-KPI-Alerts (Ist/Soll, KPI-Typ, Top-Systeme). */
+export interface AIKpiAlertMetadata {
+  current_percent?: number | null;
+  threshold_percent?: number | null;
+  kpi_type?: string | null;
+  affected_system_ids?: string[];
+  coverage_ratio_current?: number | null;
+  coverage_ratio_threshold?: number | null;
+}
+
 export interface AIKpiAlert {
   id: string;
   tenant_id: string;
@@ -269,6 +279,7 @@ export interface AIKpiAlert {
   message: string;
   created_at: string;
   resolved_at: string | null;
+  alert_metadata?: AIKpiAlertMetadata | null;
 }
 
 export async function fetchBoardAlerts(): Promise<AIKpiAlert[]> {
@@ -675,6 +686,10 @@ export interface ReadinessCriticalRequirement {
   affected_systems_count: number;
   traffic: ReadinessRequirementTraffic;
   priority: number;
+  requirement_id?: string | null;
+  related_ai_system_ids?: string[];
+  linked_governance_action_ids?: string[];
+  open_actions_count_for_requirement?: number;
 }
 
 export interface SuggestedGovernanceAction {

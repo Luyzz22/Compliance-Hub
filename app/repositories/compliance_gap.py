@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.compliance_gap_models import (
-    REQUIREMENTS,
+    GAP_REQUIREMENTS,
     ComplianceStatus,
     ComplianceStatusEntry,
     ComplianceStatusUpdate,
@@ -50,7 +50,7 @@ class ComplianceGapRepository:
         )
         existing_ids = set(self._session.execute(existing_stmt).scalars().all())
 
-        for req in REQUIREMENTS:
+        for req in GAP_REQUIREMENTS:
             if risk_level in req.applies_to and req.id not in existing_ids:
                 row = ComplianceStatusTable(
                     tenant_id=tenant_id,

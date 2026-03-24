@@ -94,6 +94,40 @@ class AIBoardKpiSummary(BaseModel):
     )
 
 
+class AIKpiAlertMetadata(BaseModel):
+    """Optionale Kennzahlen-Kontext für Board-Alerts (v. a. NIS2-/KRITIS-KPI-Alerts)."""
+
+    current_percent: float | None = Field(
+        default=None,
+        description="Ist-Wert in Prozent (0–100) oder Readiness-Anteil, je nach Alert.",
+    )
+    threshold_percent: float | None = Field(
+        default=None,
+        description="Verglichene Schwellwert-Angabe in Prozent (0–100), sofern anwendbar.",
+    )
+    kpi_type: str | None = Field(
+        default=None,
+        description="NIS2-/KRITIS-KPI-Typ, z. B. INCIDENT_RESPONSE_MATURITY.",
+    )
+    affected_system_ids: list[str] = Field(
+        default_factory=list,
+        description="Bis zu drei KI-System-IDs mit niedrigsten Werten / Fokus.",
+        max_length=10,
+    )
+    coverage_ratio_current: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Optional: aktueller KPI-Vollständigkeits-Anteil (0–1) je System.",
+    )
+    coverage_ratio_threshold: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Optional: Schwellwert für coverage_ratio_current.",
+    )
+
+
 class AIKpiAlert(BaseModel):
     """Einzelalert für Board-KPIs (NIS2 / EU AI Act / ISO 42001)."""
 
@@ -104,6 +138,7 @@ class AIKpiAlert(BaseModel):
     message: str
     created_at: datetime
     resolved_at: datetime | None = None
+    alert_metadata: AIKpiAlertMetadata | None = None
 
 
 class AIKpiAlertExport(BaseModel):
@@ -249,6 +284,14 @@ class BoardKpiExportEnvelope(BaseModel):
     tenant_id: str
     generated_at: datetime
     systems: list[BoardKpiExportSystemRow]
+    regulatory_scope: list[str] = Field(
+        default_factory=lambda: ["EU_AI_ACT", "NIS2", "ISO_42001"],
+        description="Normative Einordnung für DMS/DATEV-/SAP-BTP-Routing.",
+    )
+    generated_by: str = Field(
+        default="board_kpi_export_v1",
+        description="Export-Pipeline-Label für Downstream-Integrationen.",
+    )
 
 
 KpiExportTargetLabel = Literal["datev", "dms", "sap_btp_placeholder"]

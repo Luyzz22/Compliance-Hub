@@ -7,6 +7,13 @@ import {
   type ReadinessRequirementTraffic,
 } from "@/lib/api";
 
+function aiSystemsFilterHref(systemIds: string[]): string {
+  const q = systemIds.length
+    ? `?ids=${encodeURIComponent(systemIds.slice(0, 100).join(","))}`
+    : "";
+  return `/tenant/ai-systems${q}`;
+}
+
 function trafficDot(traffic: ReadinessRequirementTraffic): string {
   switch (traffic) {
     case "red":
@@ -141,20 +148,54 @@ export default async function EuAiActReadinessPage() {
           <ul className="mt-3 space-y-2">
             {data.critical_requirements.map((r) => (
               <li
-                key={`${r.code}-${r.name}`}
+                key={r.requirement_id ?? `${r.code}-${r.name}`}
                 className="flex items-start gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm shadow-sm"
               >
                 <span
                   className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${trafficDot(r.traffic)}`}
                   title={r.traffic}
                 />
-                <div>
-                  <span className="font-medium text-slate-900">
-                    {r.code}: {r.name}
-                  </span>
-                  <span className="ml-2 text-slate-500">
-                    {r.affected_systems_count} Systeme · Prio {r.priority}
-                  </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-medium text-slate-900">
+                      {r.code}: {r.name}
+                    </span>
+                    <span className="text-slate-500">
+                      {r.affected_systems_count} Systeme · Prio {r.priority}
+                    </span>
+                    {(r.open_actions_count_for_requirement ?? 0) > 0 ? (
+                      <span
+                        className="inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-900"
+                        title="Offene oder laufende Maßnahmen mit Bezug zu dieser Anforderung"
+                      >
+                        {r.open_actions_count_for_requirement} Maßnahme
+                        {(r.open_actions_count_for_requirement ?? 0) === 1 ? "" : "n"}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    {(r.related_ai_system_ids?.length ?? 0) > 0 ? (
+                      <Link
+                        href={aiSystemsFilterHref(r.related_ai_system_ids ?? [])}
+                        className="font-medium text-slate-600 underline hover:text-slate-900"
+                      >
+                        Zu den betroffenen Systemen
+                      </Link>
+                    ) : null}
+                    <Link
+                      href="/board/eu-ai-act-readiness#governance-actions"
+                      className="font-medium text-slate-600 underline hover:text-slate-900"
+                    >
+                      Maßnahmen ansehen
+                    </Link>
+                    <Link
+                      href="/board/eu-ai-act-readiness#governance-actions"
+                      className="font-medium text-slate-600 underline hover:text-slate-900"
+                      title="Neue Einträge z. B. über POST /api/v1/ai-governance/actions oder Ihr ITSM"
+                    >
+                      Maßnahme erfassen
+                    </Link>
+                  </div>
                 </div>
               </li>
             ))}
@@ -188,7 +229,7 @@ export default async function EuAiActReadinessPage() {
         )}
       </section>
 
-      <section aria-label="Offene Maßnahmen">
+      <section id="governance-actions" aria-label="Offene Maßnahmen">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
           Offene Maßnahmen
         </h2>

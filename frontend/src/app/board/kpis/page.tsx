@@ -6,7 +6,6 @@ import {
   fetchBoardAlerts,
   fetchBoardKpis,
   fetchBoardAlertsExport,
-  getBoardKpiExportUrl,
   getBoardReportDownloadUrl,
   getBoardReportMarkdownDownloadUrl,
   type AIComplianceOverview,
@@ -14,6 +13,7 @@ import {
   type BoardKpiSummary,
 } from "@/lib/api";
 
+import { BoardKpiAdvisorExport } from "./BoardKpiAdvisorExport";
 import { BoardReportAuditSection } from "./BoardReportAuditSection";
 import { BoardReportExportForm } from "./BoardReportExportForm";
 
@@ -226,24 +226,7 @@ export default async function BoardKpisPage() {
             Board-Report als Markdown
           </a>
         </p>
-        <p className="mt-2 text-xs text-slate-600">
-          Export Board-KPIs (DMS / DATEV / SAP-BTP-Vorbereitung):{" "}
-          <a
-            href={getBoardKpiExportUrl("json")}
-            download
-            className="font-medium text-slate-800 underline hover:text-slate-600"
-          >
-            JSON
-          </a>
-          {" · "}
-          <a
-            href={getBoardKpiExportUrl("csv")}
-            download
-            className="font-medium text-slate-800 underline hover:text-slate-600"
-          >
-            CSV
-          </a>
-        </p>
+        <BoardKpiAdvisorExport />
       </section>
 
       {/* Hero: ISO 42001 Governance Score */}

@@ -51,6 +51,8 @@ def build_board_kpi_export_envelope(
         tenant_id=tenant_id,
         generated_at=datetime.now(UTC),
         systems=rows,
+        regulatory_scope=["EU_AI_ACT", "NIS2", "ISO_42001"],
+        generated_by="board_kpi_export_v1",
     )
 
 
@@ -71,9 +73,12 @@ def board_kpi_export_csv(envelope: BoardKpiExportEnvelope) -> str:
             "nis2_kritis_ot_it_segregation_percent",
             "export_generated_at",
             "format_version",
+            "regulatory_scope",
+            "generated_by",
         ]
     )
     gen = envelope.generated_at.isoformat() if envelope.generated_at else ""
+    scope = "|".join(envelope.regulatory_scope)
     for r in envelope.systems:
         writer.writerow(
             [
@@ -95,6 +100,8 @@ def board_kpi_export_csv(envelope: BoardKpiExportEnvelope) -> str:
                 else "",
                 gen,
                 envelope.format_version,
+                scope,
+                envelope.generated_by,
             ]
         )
     return out.getvalue()
