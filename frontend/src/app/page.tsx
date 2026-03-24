@@ -1,154 +1,343 @@
 import Link from "next/link";
 import React from "react";
 
-import { HomeHeroSlides } from "@/components/home/HomeHeroSlides";
-import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD } from "@/lib/boardLayout";
+import { HomeProductPreview } from "@/components/home/HomeProductPreview";
+import { CH_BTN_PRIMARY, CH_BTN_SECONDARY } from "@/lib/boardLayout";
+
+function SectionTitle({
+  title,
+  subtitle,
+  id,
+}: {
+  title: string;
+  subtitle: string;
+  id?: string;
+}) {
+  return (
+    <div className="mb-8 max-w-2xl">
+      <h2
+        id={id}
+        className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl"
+      >
+        {title}
+      </h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-[0.95rem]">
+        {subtitle}
+      </p>
+    </div>
+  );
+}
 
 export default function HomePage() {
   return (
-    <div className="min-w-0 space-y-16 md:space-y-20">
-      <section className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-12">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
-            Board-ready · DACH · Enterprise
+    <div className="relative min-w-0">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-70"
+        style={{
+          background:
+            "radial-gradient(circle at 0% 0%, rgba(14,165,233,0.12), transparent 50%), radial-gradient(circle at 100% 0%, rgba(34,197,94,0.1), transparent 55%)",
+        }}
+      />
+
+      {/* Hero */}
+      <section className="relative pb-12 pt-2 md:pb-16">
+        <div className="grid items-center gap-10 lg:grid-cols-[1.12fr_1fr] lg:gap-12">
+          <div>
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-700 sm:text-xs">
+              DACH · Enterprise · AI Governance
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-[2.35rem] lg:leading-[1.12]">
+              Der Governance-Layer für Ihre{" "}
+              <span className="bg-gradient-to-r from-cyan-700 to-emerald-600 bg-clip-text text-transparent">
+                AI- und NIS2-Programme
+              </span>
+              .
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
+              Eine Plattform für Beratungen und Enterprise-Teams, um EU AI Act, NIS2 und
+              ISO-Standards nachvollziehbar umzusetzen – mit Board-KPIs, Evidence und
+              Mandantenfähigkeit.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                href="/board/kpis"
+                className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-900/15 transition hover:from-emerald-700 hover:to-emerald-600"
+              >
+                Live im Board starten
+              </Link>
+              <Link
+                href="/board/eu-ai-act-readiness"
+                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                5-Minuten Produkt-Tour
+              </Link>
+            </div>
+            <p className="mt-6 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs">
+              EU AI Act · NIS2 · ISO 27001/27701 · ISO 42001 · DSGVO
+            </p>
+          </div>
+          <HomeProductPreview />
+        </div>
+      </section>
+
+      <div className="border-t border-slate-200/80" />
+
+      {/* Drei Gründe */}
+      <section className="py-12 md:py-14" aria-labelledby="home-reasons">
+        <div className="mx-auto max-w-7xl">
+          <SectionTitle
+            id="home-reasons"
+            title="Drei Gründe, warum Teams auf Compliance Hub setzen."
+            subtitle="Gemeinsamer Policy-Layer, echte Mandantenfähigkeit und belastbare Evidence für Audits und Board."
+          />
+          <div className="grid gap-5 md:grid-cols-3">
+            {[
+              {
+                accent: "bg-cyan-500",
+                icon: "🧩",
+                title: "Ein Policy-Layer für alle Normen",
+                tag: "Framework Graph",
+                text: "EU AI Act, ISO 42001, ISO 27001/27701, NIS2 und DSGVO in einem gemeinsamen Kontrollmodell.",
+              },
+              {
+                accent: "bg-indigo-500",
+                icon: "👥",
+                title: "Berater-ready Plattform",
+                tag: "Mandanten-Engine",
+                text: "Mandantenfähigkeit, Rollenmodell und exportfähige Reports für skalierbare Beratungsprojekte.",
+              },
+              {
+                accent: "bg-emerald-500",
+                icon: "📄",
+                title: "Evidence auf Knopfdruck",
+                tag: "Evidence Engine",
+                text: "Gap-Analysen, KI-Register und Board-Reports aus einem zentralen Datenmodell.",
+              },
+            ].map((c) => (
+              <article
+                key={c.title}
+                className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-md shadow-slate-200/40"
+              >
+                <div className={`absolute inset-x-0 top-0 h-1 ${c.accent}`} aria-hidden />
+                <div className="mt-1 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-lg">
+                    {c.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 sm:text-[0.95rem]">
+                      {c.title}
+                    </h3>
+                    <p className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+                      {c.tag}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm leading-relaxed text-slate-600">{c.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="border-t border-slate-200/80" />
+
+      {/* Datenfluss */}
+      <section className="py-12 md:py-14" aria-labelledby="home-flow">
+        <div className="mx-auto max-w-7xl">
+          <SectionTitle
+            id="home-flow"
+            title="Ein klarer Datenfluss statt Projekt-Chaos."
+            subtitle="Vier Stationen, ein sauberer Flow: Scope, Inventory, Engine und Output – für AI- und Compliance-Daten."
+          />
+          <div className="relative grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-[8%] right-[8%] top-8 hidden h-0.5 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 lg:block"
+            />
+            {[
+              {
+                n: "1",
+                t: "Scope",
+                sub: "Normen, Standorte, KI-Systeme",
+                d: "Mandat, Geltungsbereich und kritische Systeme definieren.",
+                icon: "📥",
+                ring: "border-cyan-500",
+              },
+              {
+                n: "2",
+                t: "Inventory",
+                sub: "Assets, Controls, Evidence",
+                d: "Daten einspielen – per UI, Import oder API.",
+                icon: "📊",
+                ring: "border-cyan-500",
+              },
+              {
+                n: "3",
+                t: "Engine",
+                sub: "Policy & Risiko",
+                d: "Violations, Empfehlungen und Prioritäten berechnen.",
+                icon: "🤖",
+                ring: "border-cyan-500",
+              },
+              {
+                n: "4",
+                t: "Output",
+                sub: "Reports & Nachweise",
+                d: "Board-Reports, Auditor-Dossiers und Exporte erzeugen.",
+                icon: "📤",
+                ring: "border-emerald-500",
+              },
+            ].map((step) => (
+              <div key={step.n} className="relative z-[1] text-center">
+                <div
+                  className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border-2 bg-white text-2xl shadow-sm ${step.ring}`}
+                >
+                  {step.icon}
+                </div>
+                <div className="text-xs font-semibold text-slate-900 sm:text-sm">
+                  {step.n}. {step.t}
+                </div>
+                <div className="mt-1 text-[0.8rem] text-slate-600">{step.sub}</div>
+                <p className="mt-2 text-[0.75rem] leading-relaxed text-slate-500 sm:text-xs">
+                  {step.d}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="border-t border-slate-200/80" />
+
+      {/* Integrationen */}
+      <section className="py-12 md:py-14" aria-labelledby="home-integrations">
+        <div className="mx-auto max-w-7xl">
+          <SectionTitle
+            id="home-integrations"
+            title="Eingebettet in Ihre AI- und Tool-Landschaft."
+            subtitle="Anbindung per API, Webhooks oder Workflow-Engine – kompatibel mit gängigen Providern und GRC-Tools."
+          />
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:gap-4">
+            {[
+              { icon: "🤖", name: "OpenAI", sub: "Foundation Models" },
+              { icon: "🧠", name: "Anthropic", sub: "LLMs" },
+              { icon: "⚙️", name: "Vertex AI", sub: "Cloud AI" },
+              { icon: "☁️", name: "Azure AI", sub: "Cloud AI" },
+              { icon: "📊", name: "Snowflake", sub: "Data Platform" },
+              { icon: "📈", name: "Databricks", sub: "Lakehouse" },
+              { icon: "🛡️", name: "OneTrust", sub: "GRC" },
+              { icon: "📋", name: "Jira", sub: "Tickets" },
+            ].map((p) => (
+              <div
+                key={p.name}
+                className="rounded-xl border border-slate-200/90 bg-white px-3 py-4 text-center shadow-sm transition hover:border-cyan-200/80 hover:shadow-md"
+              >
+                <span className="text-2xl" aria-hidden>
+                  {p.icon}
+                </span>
+                <div className="mt-2 text-xs font-semibold text-slate-900 sm:text-sm">
+                  {p.name}
+                </div>
+                <div className="mt-0.5 text-[0.65rem] text-slate-500">{p.sub}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-center text-xs text-slate-500">
+            Ihre Plattform fehlt?{" "}
+            <span className="font-medium text-cyan-700">
+              Kontakt über Ihr Compliance-Team oder Partner
+            </span>
           </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.08]">
-            Board-ready AI Governance für EU AI Act &amp; NIS2
-          </h1>
-          <p className="mt-4 max-w-xl text-lg leading-relaxed text-slate-600">
-            Auditierbare Reifegrade, regulatorische KPIs und offene Maßnahmen – für
-            Vorstand, ISB und externe Prüfer. Stichtag High-Risk:{" "}
-            <time dateTime="2026-08-02" className="font-medium text-slate-800">
-              02.08.2026
-            </time>
-            .
+        </div>
+      </section>
+
+      <div className="border-t border-slate-200/80" />
+
+      {/* CTA */}
+      <section className="py-10 md:py-12">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-cyan-200/80 bg-gradient-to-br from-cyan-50/90 via-white to-emerald-50/50 px-6 py-8 text-center shadow-lg shadow-slate-200/50 sm:px-10">
+          <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
+            Integration in Ihre Governance-Landschaft besprechen?
+          </h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Wir zeigen, wie Compliance Hub in GRC-Tools, Ticketing, DMS und SIEM passt – und wo
+            der größte Hebel liegt.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/board/kpis" className={CH_BTN_PRIMARY}>
-              Board öffnen
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/tenant/compliance-overview"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:from-emerald-700 hover:to-emerald-600"
+            >
+              Mandant öffnen →
             </Link>
-            <Link href="/settings" className={CH_BTN_SECONDARY}>
-              Mandant &amp; Einstellungen
+            <Link href="/board/kpis" className={CH_BTN_SECONDARY}>
+              Board-Ansicht
             </Link>
           </div>
         </div>
-        <HomeHeroSlides />
       </section>
 
-      <section aria-label="Enterprise-Funktionen">
-        <h2 className="sr-only">Enterprise-Funktionen</h2>
-        <div className="grid gap-6 md:grid-cols-2">
-          <article className={CH_CARD}>
-            <div className="flex items-start gap-3">
-              <span className="text-2xl" aria-hidden>
-                📊
-              </span>
-              <div className="min-w-0 flex-1">
-                <span className="inline-block rounded-full bg-cyan-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-800">
-                  Board
-                </span>
-                <h4 className="mt-3 text-lg font-semibold text-slate-900">
-                  Board-Readiness &amp; Executive KPIs
-                </h4>
-                <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
-                  <li>Einheitliche KPI-Leiste für Aufsicht &amp; NIS2-Reporting</li>
-                  <li>Alerts mit Drilldown zu Incidents &amp; Systemen</li>
-                  <li>Exportpfade für Prüfer &amp; Berater (JSON/CSV/Report)</li>
-                </ul>
-                <Link
-                  href="/board/kpis"
-                  className={`${CH_BTN_PRIMARY} mt-6 inline-flex w-full sm:w-auto`}
-                >
-                  Zum Board
-                </Link>
-              </div>
-            </div>
-          </article>
+      <div className="border-t border-slate-200/80" />
 
-          <article className={CH_CARD}>
-            <div className="flex items-start gap-3">
-              <span className="text-2xl" aria-hidden>
-                🛡️
-              </span>
-              <div className="min-w-0 flex-1">
-                <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-700">
-                  NIS2
-                </span>
-                <h4 className="mt-3 text-lg font-semibold text-slate-900">
-                  NIS2 / KRITIS &amp; persönliche Verantwortung
-                </h4>
-                <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
-                  <li>Incident-Readiness &amp; Lieferketten-Risiko transparent</li>
-                  <li>OT/IT-Segregation &amp; „Worst Offenders“ pro KPI-Typ</li>
-                  <li>Haftungsrelevante Lücken priorisiert sichtbar</li>
-                </ul>
-                <Link
-                  href="/board/nis2-kritis"
-                  className={`${CH_BTN_SECONDARY} mt-6 inline-flex w-full sm:w-auto`}
-                >
-                  NIS2-Drilldown
-                </Link>
-              </div>
+      {/* Security */}
+      <section className="py-12 md:pb-4" aria-labelledby="home-security">
+        <div className="mx-auto grid max-w-7xl items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+          <div>
+            <h2
+              id="home-security"
+              className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl"
+            >
+              Security, DSGVO &amp; Hosting in der EU
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-600">
+              Für Industrie, Mittelstand und Kanzleien im DACH-Raum: EU-Hosting, klare
+              Trennung der Umgebungen und ein Setup, das NIS2, EU AI Act, DSGVO sowie
+              ISO 27001/42001 adressiert.
+            </p>
+            <ul className="mt-6 flex list-none flex-col gap-3 p-0">
+              {[
+                "EU-Hosting mit DACH-Fokus: Frontend z. B. auf Vercel (EU-Regionen), Backend und Orchestrierung wahlweise in Deutschland.",
+                "PostgreSQL mit Verschlüsselung at Rest, Backups und getrennten Umgebungen (Dev/Staging/Prod) je Mandant.",
+                "Mandanten-Isolation (z. B. PostgreSQL RLS), SSO (SAML 2.0, Azure AD, SAP IAS) und Audit-Logs für Board und Prüfer.",
+              ].map((line) => (
+                <li key={line} className="flex gap-3 text-sm leading-relaxed text-slate-800">
+                  <span
+                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
+                    aria-hidden
+                  />
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-b from-sky-50/80 to-white p-5 shadow-md shadow-slate-200/40">
+            <div className="flex justify-between text-xs text-slate-500">
+              <span>Infrastruktur-Snapshot</span>
+              <span>Architektur</span>
             </div>
-          </article>
-
-          <article className={CH_CARD}>
-            <div className="flex items-start gap-3">
-              <span className="text-2xl" aria-hidden>
-                🤖
-              </span>
-              <div className="min-w-0 flex-1">
-                <span className="inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-900">
-                  EU AI Act
-                </span>
-                <h4 className="mt-3 text-lg font-semibold text-slate-900">
-                  EU AI Act Readiness &amp; High-Risk
-                </h4>
-                <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
-                  <li>Readiness-Score, Tage bis Stichtag, kritische Artikel</li>
-                  <li>Verknüpfung zu betroffenen Systemen &amp; Maßnahmen</li>
-                  <li>Roadmap-QPs für Q2/Q3 2026 im Blick</li>
-                </ul>
-                <Link
-                  href="/board/eu-ai-act-readiness"
-                  className={`${CH_BTN_PRIMARY} mt-6 inline-flex w-full sm:w-auto`}
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {[
+                { t: "Vercel", m: "Frontend & Edge", s: "EU-Regionen, TLS" },
+                { t: "Postgres", m: "Supabase / Neon", s: "PostgreSQL mit RLS" },
+                { t: "Hetzner (DE)", m: "Compute & Storage", s: "DE/EU-Hosting" },
+              ].map((b) => (
+                <div
+                  key={b.t}
+                  className="rounded-xl border border-slate-200/80 bg-white/90 p-3 shadow-sm"
                 >
-                  Readiness-Dashboard
-                </Link>
-              </div>
-            </div>
-          </article>
-
-          <article
-            className={`${CH_CARD} border-dashed border-cyan-200/80 bg-gradient-to-br from-white to-cyan-50/30`}
-          >
-            <div className="flex items-start gap-3">
-              <span className="text-2xl" aria-hidden>
-                ✅
-              </span>
-              <div className="min-w-0 flex-1">
-                <span className="inline-block rounded-full bg-white/80 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-700">
-                  Audit
-                </span>
-                <h4 className="mt-3 text-lg font-semibold text-slate-900">
-                  Auditor-ready &amp; DATEV-orientiert
-                </h4>
-                <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
-                  <li>Strukturierte Reports für DMS, WP &amp; Kanzlei</li>
-                  <li>Nachvollziehbare KPI- und Alert-Exporte</li>
-                  <li>Mandanten-Cockpit für Policies &amp; Register</li>
-                </ul>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <Link href="/board/kpis" className={CH_BTN_SECONDARY}>
-                    Exporte &amp; Reports
-                  </Link>
-                  <Link href="/incidents" className={CH_BTN_PRIMARY}>
-                    Incidents
-                  </Link>
+                  <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-800">
+                    {b.t}
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-slate-900">{b.m}</div>
+                  <div className="mt-0.5 text-[0.7rem] text-slate-500">{b.s}</div>
                 </div>
-              </div>
+              ))}
             </div>
-          </article>
+            <Link href="/settings" className={`${CH_BTN_PRIMARY} mt-5 w-full sm:w-auto`}>
+              Zu Mandant &amp; Einstellungen
+            </Link>
+          </div>
         </div>
       </section>
     </div>
