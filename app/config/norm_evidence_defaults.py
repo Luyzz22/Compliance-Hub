@@ -1,17 +1,30 @@
-"""Statische Default-Empfehlungen für Norm-Nachweise (beratergetrieben, nicht automatisch)."""
+"""Statische Default-Empfehlungen für Norm-Nachweise (EU AI Act / NIS2 / ISO 42001).
+
+Beratergetrieben.
+"""
 
 from __future__ import annotations
 
-# Hinweis: Diese Defaults sind generisch (nicht tenant-spezifisch) und dienen als Vorschläge.
-# Sie werden NICHT automatisch angelegt; nur als UI-/Berater-Assistenz.
+from typing import List, Literal, TypedDict  # noqa: UP035
 
-DEFAULT_NORM_EVIDENCE_MAPPINGS: list[dict[str, str]] = [
+NormFramework = Literal["EU_AI_ACT", "NIS2", "ISO_42001"]
+EvidenceType = Literal["board_report", "export_job", "other"]
+
+
+class NormEvidenceDefault(TypedDict):
+    framework: NormFramework
+    reference: str
+    evidence_type: EvidenceType
+    note: str
+
+
+DEFAULT_NORM_EVIDENCE_MAPPINGS: List[NormEvidenceDefault] = [  # noqa: UP006
     {
         "framework": "EU_AI_ACT",
         "reference": "Art. 9",
         "evidence_type": "board_report",
         "note": (
-            "Board-Report als Nachweis für Risikomanagement und kontinuierliches "
+            "Board-Report als Nachweis für Risikomanagement und laufendes "
             "Monitoring von High-Risk-KI-Systemen."
         ),
     },
@@ -20,17 +33,8 @@ DEFAULT_NORM_EVIDENCE_MAPPINGS: list[dict[str, str]] = [
         "reference": "Art. 17",
         "evidence_type": "board_report",
         "note": (
-            "Board-Report als Nachweis für ein AI-Managementsystem (Governance, "
-            "Kontrollen, Kennzahlen) – vorbereitet für ISO 42001."
-        ),
-    },
-    {
-        "framework": "EU_AI_ACT",
-        "reference": "Art. 61",
-        "evidence_type": "board_report",
-        "note": (
-            "Board-Report als Input für Post-Market-Monitoring: Trends, Incidents "
-            "und Alerts als kontinuierliche Überwachung."
+            "Board-Report als Evidenz für das AI-Managementsystem nach ISO 42001 "
+            "und dessen Aufsicht durch das Leitungsorgan."
         ),
     },
     {
@@ -38,17 +42,8 @@ DEFAULT_NORM_EVIDENCE_MAPPINGS: list[dict[str, str]] = [
         "reference": "Art. 21",
         "evidence_type": "board_report",
         "note": (
-            "Board-Report als Nachweis für Risikomanagementmaßnahmen, Incident-Readiness "
-            "und Lieferanten-Risiko-Überblick gegenüber Leitungsorganen."
-        ),
-    },
-    {
-        "framework": "NIS2",
-        "reference": "Art. 24",
-        "evidence_type": "board_report",
-        "note": (
-            "Board-Report als Evidenz für Supply-Chain-Risiken "
-            "(Supplier Coverage, kritische Lieferanten)."
+            "Board-Report als Nachweis für Risiko-Management, "
+            "Sicherheitsmaßnahmen und Berichtspflichten gegenüber der Leitung."
         ),
     },
     {
@@ -56,7 +51,8 @@ DEFAULT_NORM_EVIDENCE_MAPPINGS: list[dict[str, str]] = [
         "reference": "6.2",
         "evidence_type": "board_report",
         "note": (
-            "Board-Report als Evidenz für AI-Governance-Ziele, Messung und Managementbewertung."
+            "Board-Report als Evidenz für AI-Governance-Ziele und "
+            "Managementbewertung gemäß ISO 42001."
         ),
     },
     {
@@ -64,8 +60,8 @@ DEFAULT_NORM_EVIDENCE_MAPPINGS: list[dict[str, str]] = [
         "reference": "8.1",
         "evidence_type": "board_report",
         "note": (
-            "Board-Report als Evidenz für operative Steuerung: KPIs, Alerts "
-            "und definierte Schwellenwerte."
+            "Board-Report als Evidenz für operative Steuerung, Kennzahlen "
+            "und definierte Schwellwerte im AI-Managementsystem."
         ),
     },
     {
@@ -73,7 +69,8 @@ DEFAULT_NORM_EVIDENCE_MAPPINGS: list[dict[str, str]] = [
         "reference": "9.1",
         "evidence_type": "board_report",
         "note": (
-            "Board-Report als Evidenz für Monitoring, Measurement & Evaluation der AI-Governance."
+            "Board-Report als Evidenz für Monitoring, Measurement, Analysis "
+            "und Evaluation der AI-Governance."
         ),
     },
 ]
