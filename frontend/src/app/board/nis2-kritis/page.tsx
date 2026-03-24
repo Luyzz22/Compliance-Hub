@@ -56,9 +56,9 @@ export default async function BoardNis2KritisPage() {
 
   if (!drilldown) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="sbs-page-main">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="sbs-h1">
             NIS2 / KRITIS – KPI-Drilldown
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -84,9 +84,9 @@ export default async function BoardNis2KritisPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="sbs-page-main">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="sbs-h1">
           NIS2 / KRITIS – KPI-Drilldown
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -114,7 +114,7 @@ export default async function BoardNis2KritisPage() {
             <section
               key={block.kpi_type}
               aria-label={KPI_LABEL[block.kpi_type]}
-              className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm"
+              className="sbs-panel p-5"
             >
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                 {KPI_LABEL[block.kpi_type]}

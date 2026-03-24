@@ -75,7 +75,7 @@ function ManagementSummary({ kpis }: { kpis: BoardKpiSummary }) {
   return (
     <section
       aria-label="Management-Zusammenfassung AI Governance"
-      className="mt-8 space-y-1 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700"
+      className="sbs-panel-muted mt-8 space-y-1 p-4 text-sm text-[var(--sbs-text-primary)]"
     >
       {lines.map((line) => (
         <p key={line}>{line}</p>
@@ -115,19 +115,16 @@ export default async function BoardKpisPage() {
 
   if (!kpis) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="sbs-page-main">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="sbs-h1">
             AI Governance – Board KPIs
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="sbs-subtitle">
             Überblick über Reifegrad, NIS2-Readiness und High-Risk-KI-Systeme.
           </p>
         </header>
-        <div
-          role="status"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-        >
+        <div role="status" className="sbs-alert-warn">
           KPI-Daten konnten nicht geladen werden. Bitte versuchen Sie es später
           erneut oder wenden Sie sich an das AI-Governance-Team.
         </div>
@@ -138,12 +135,12 @@ export default async function BoardKpisPage() {
   const isoScore = kpis.iso42001_governance_score;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="sbs-page-main">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="sbs-h1">
           AI Governance – Board KPIs
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="sbs-subtitle">
           ISO 42001 Reifegrad, NIS2-Incident-Readiness und Lieferanten-Risiko im
           Überblick für den Standort Deutschland.
         </p>
@@ -169,7 +166,7 @@ export default async function BoardKpisPage() {
       {/* Alerts & Hinweise (max 5) + Export für CISO/ISB/Vorstand */}
       <section
         aria-label="Alerts und Hinweise"
-        className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+        className="sbs-panel mb-6 p-4"
       >
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
           Alerts &amp; Hinweise
@@ -237,7 +234,7 @@ export default async function BoardKpisPage() {
         return (
           <section
             aria-label="AI-Governance-Reife nach ISO 42001"
-            className={`relative mb-8 flex flex-col justify-between gap-4 rounded-2xl border p-6 shadow-sm ${scoreColor(
+            className={`sbs-panel relative mb-8 flex flex-col justify-between gap-4 p-6 ${scoreColor(
               isoScore,
             )} ${hasCriticalForIso ? "ring-2 ring-red-300" : ""}`}
           >
@@ -282,7 +279,7 @@ export default async function BoardKpisPage() {
           );
           return (
             <div
-              className={`relative flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm ${hasCritical ? "ring-2 ring-red-300" : ""}`}
+              className={`sbs-panel relative flex flex-col p-4 ${hasCritical ? "ring-2 ring-red-300" : ""}`}
             >
               {hasCritical && (
                 <span
@@ -325,7 +322,7 @@ export default async function BoardKpisPage() {
           );
           return (
             <div
-              className={`relative flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm ${hasCritical ? "ring-2 ring-red-300" : ""}`}
+              className={`sbs-panel relative flex flex-col p-4 ${hasCritical ? "ring-2 ring-red-300" : ""}`}
             >
               {hasCritical && (
                 <span
@@ -360,7 +357,7 @@ export default async function BoardKpisPage() {
         })()}
 
         {/* High-Risk KI-Systeme gesamt */}
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             High-Risk KI-Systeme gesamt
           </h3>
@@ -376,7 +373,7 @@ export default async function BoardKpisPage() {
         </div>
 
         {/* High-Risk ohne DPIA */}
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             High-Risk ohne DPIA
           </h3>
@@ -396,7 +393,7 @@ export default async function BoardKpisPage() {
       {complianceOverview && (
         <section
           aria-label="EU AI Act und ISO 42001 Readiness"
-          className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="sbs-panel mb-8 p-6"
         >
           <h2 className="text-lg font-semibold text-slate-900">
             EU AI Act / ISO 42001 Readiness

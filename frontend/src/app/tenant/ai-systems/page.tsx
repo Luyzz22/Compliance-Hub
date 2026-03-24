@@ -40,66 +40,53 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
 
   return (
     <>
-      <header className="mb-8 flex items-center justify-between">
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            AI‑System Registry
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <h1 className="sbs-h1">AI‑System Registry</h1>
+          <p className="sbs-subtitle">
             Zentrale Übersicht aller registrierten AI‑Systeme dieses Tenants.
           </p>
         </div>
-        <button className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20">
+        <button type="button" className="sbs-btn-primary text-sm">
           Neues AI‑System anlegen
         </button>
       </header>
 
       {idSet.size > 0 ? (
-        <div
-          role="status"
-          className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-100"
-        >
+        <div role="status" className="sbs-alert-warn mb-4 text-xs">
           Gefilterte Ansicht: {filtered.length} von {systems.length} Systemen
           (Deep-Link aus EU-AI-Act-Readiness).
         </div>
       ) : null}
 
       <section className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="text-xs font-medium text-slate-400">
-            AI‑Systeme gesamt
-          </div>
-          <div className="mt-2 text-3xl font-semibold">{total}</div>
+        <div className="sbs-kpi-tile">
+          <div className="sbs-kpi-label">AI‑Systeme gesamt</div>
+          <div className="sbs-kpi-value">{total}</div>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="text-xs font-medium text-slate-400">
-            Aktive Systeme
-          </div>
-          <div className="mt-2 text-3xl font-semibold text-emerald-300">
-            {active}
-          </div>
+        <div className="sbs-kpi-tile">
+          <div className="sbs-kpi-label">Aktive Systeme</div>
+          <div className="sbs-kpi-value text-emerald-600">{active}</div>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="text-xs font-medium text-slate-400">
-            High‑Risk Systeme
-          </div>
-          <div className="mt-2 text-3xl font-semibold text-amber-300">
-            {highRisk}
-          </div>
+        <div className="sbs-kpi-tile">
+          <div className="sbs-kpi-label">High‑Risk Systeme</div>
+          <div className="sbs-kpi-value text-amber-600">{highRisk}</div>
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-800 bg-slate-900/60">
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-          <h2 className="text-sm font-semibold">AI‑Systeme</h2>
-          <span className="text-xs text-slate-500">
+      <section className="sbs-panel overflow-hidden p-0">
+        <div className="flex items-center justify-between border-b border-[var(--sbs-border)] px-5 py-3">
+          <h2 className="text-sm font-bold text-[var(--sbs-text-primary)]">
+            AI‑Systeme
+          </h2>
+          <span className="text-xs text-[var(--sbs-text-secondary)]">
             {total} Einträge
             {idSet.size > 0 ? " (gefiltert)" : ""}
           </span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
+        <div className="sbs-table-wrap">
+          <table className="sbs-table">
+            <thead>
               <tr>
                 <th className="px-5 py-2 font-medium">Name</th>
                 <th className="px-3 py-2 font-medium">Business Unit</th>
@@ -111,41 +98,42 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
             </thead>
             <tbody>
               {filtered.map((s) => (
-                <tr
-                  key={s.id}
-                  className="border-t border-slate-800/80 hover:bg-slate-900"
-                >
-                  <td className="px-5 py-2 text-slate-50">
-                    <div className="font-medium">{s.name}</div>
-                    <div className="text-xs text-slate-500">{s.id}</div>
+                <tr key={s.id}>
+                  <td>
+                    <div className="font-semibold text-[var(--sbs-text-primary)]">
+                      {s.name}
+                    </div>
+                    <div className="text-xs text-[var(--sbs-text-muted)]">
+                      {s.id}
+                    </div>
                   </td>
-                  <td className="px-3 py-2 text-slate-300">
+                  <td className="text-[var(--sbs-text-secondary)]">
                     {s.businessunit}
                   </td>
-                  <td className="px-3 py-2">
+                  <td>
                     <span
                       className={classNames(
-                        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                        "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
                         s.risklevel === "high" &&
-                          "bg-rose-500/10 text-rose-300 border border-rose-500/40",
+                          "border border-rose-200 bg-rose-50 text-rose-800",
                         s.risklevel === "limited" &&
-                          "bg-amber-500/10 text-amber-300 border border-amber-500/40",
+                          "border border-amber-200 bg-amber-50 text-amber-900",
                         s.risklevel === "low" &&
-                          "bg-emerald-500/10 text-emerald-300 border border-emerald-500/40"
+                          "border border-emerald-200 bg-emerald-50 text-emerald-900",
                       )}
                     >
                       {s.risklevel}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs text-slate-300">
+                  <td className="text-xs text-[var(--sbs-text-secondary)]">
                     {s.aiactcategory}
                   </td>
-                  <td className="px-3 py-2 text-xs">
-                    <span className="inline-flex rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
+                  <td className="text-xs">
+                    <span className="inline-flex rounded-full border border-[var(--sbs-border)] bg-slate-50 px-2 py-0.5 text-[var(--sbs-text-secondary)]">
                       {s.status}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs text-slate-300">
+                  <td className="text-xs text-[var(--sbs-text-secondary)]">
                     {s.owneremail ?? "—"}
                   </td>
                 </tr>
@@ -154,7 +142,7 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-5 py-6 text-center text-xs text-slate-500"
+                    className="py-8 text-center text-sm text-[var(--sbs-text-secondary)]"
                   >
                     Noch keine AI‑Systeme erfasst.
                   </td>

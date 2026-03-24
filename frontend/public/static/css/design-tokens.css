@@ -1,0 +1,27 @@
+/**
+ * Design-Tokens – angelehnt an SBS Deutschland / SBS Nexus (Enterprise KI, DACH).
+ * Referenz: https://sbsdeutschland.com/sbshomepage/
+ */
+:root {
+  --sbs-navy-deep: #003366;
+  --sbs-navy-mid: #0066b3;
+  --sbs-text-primary: #0f172a;
+  --sbs-text-secondary: #64748b;
+  --sbs-text-muted: #94a3b8;
+  --sbs-text-accent: #0066b3;
+  --sbs-bg-page: #f1f5f9;
+  --sbs-bg-elevated: #ffffff;
+  --sbs-bg-alt: #e2e8f0;
+  --sbs-border: #e2e8f0;
+  --sbs-border-hover: #cbd5e1;
+  --sbs-border-amber: #fbbf24;
+  --sbs-gradient-amber: linear-gradient(135deg, #fcd34d 0%, #fbbf24 45%, #f59e0b 100%);
+  --sbs-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --sbs-shadow-md: 0 8px 30px rgba(15, 23, 42, 0.08);
+  --sbs-shadow-amber: 0 8px 24px rgba(245, 158, 11, 0.35);
+  --sbs-header-h: 64px;
+  --sbs-radius: 12px;
+  --sbs-radius-lg: 16px;
+  --sbs-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+}
