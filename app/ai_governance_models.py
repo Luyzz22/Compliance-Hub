@@ -21,6 +21,18 @@ class AIGovernanceKpiSummary(BaseModel):
     audit_events_last_30_days: int
     has_documented_ai_policy: bool = False
     has_ai_risk_register: bool = False
+    nis2_kritis_kpi_mean_percent: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=100.0,
+        description="Mittelwert aller NIS2-/KRITIS-KPI-Werte (0–100), falls vorhanden.",
+    )
+    nis2_kritis_systems_full_coverage_ratio: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Anteil KI-Systeme mit allen drei KPI-Typen gepflegt.",
+    )
 
 
 class AIBoardKpiSummary(BaseModel):
@@ -67,6 +79,19 @@ class AIBoardKpiSummary(BaseModel):
     score_change_vs_last_quarter: float
     incidents_last_quarter: int
     complaints_last_quarter: int
+
+    nis2_kritis_kpi_mean_percent: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=100.0,
+        description="Mittelwert aller NIS2-/KRITIS-KPI-Werte (0–100).",
+    )
+    nis2_kritis_systems_full_coverage_ratio: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Anteil KI-Systeme mit allen drei KPI-Typen gepflegt.",
+    )
 
 
 class AIKpiAlert(BaseModel):
@@ -194,3 +219,23 @@ class NormEvidenceLink(BaseModel):
     reference: str
     evidence_type: EvidenceType
     note: str | None = None
+
+
+class HighRiskScenarioProfile(BaseModel):
+    """Read-only High-Risk-AI-Szenario mit empfohlenen Norm-Nachweisen (keine DB-Anlage)."""
+
+    id: str
+    label: str
+    description: str
+    recommended_evidence: list[NormEvidenceLinkCreate]
+    recommended_incident_response_maturity_percent: int | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+    )
+    recommended_supplier_risk_coverage_percent: int | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+    )
+    recommended_ot_it_segregation_percent: int | None = Field(default=None, ge=0, le=100)

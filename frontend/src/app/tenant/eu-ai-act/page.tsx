@@ -2,6 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 
+import {
+  fetchNis2KritisKpis,
+  upsertNis2KritisKpi,
+  type Nis2KritisKpiListResponse,
+  type Nis2KritisKpiType,
+} from "@/lib/api";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type EURiskLevel = "prohibited" | "high_risk" | "limited_risk" | "minimal_risk";
@@ -145,6 +152,29 @@ const STATUS_LABEL: Record<string, string> = {
   not_applicable: "N/A",
 };
 
+const NIS2_KPI_LABEL: Record<Nis2KritisKpiType, string> = {
+  INCIDENT_RESPONSE_MATURITY: "Incident-Response-Reife",
+  SUPPLIER_RISK_COVERAGE: "Supplier-Risk-Coverage",
+  OT_IT_SEGREGATION: "OT/IT-Segregation",
+};
+
+function nis2RecommendedPercent(
+  kpiType: Nis2KritisKpiType,
+  rec: Nis2KritisKpiListResponse["recommended"]
+): number | null {
+  if (!rec) return null;
+  switch (kpiType) {
+    case "INCIDENT_RESPONSE_MATURITY":
+      return rec.incident_response_maturity_percent;
+    case "SUPPLIER_RISK_COVERAGE":
+      return rec.supplier_risk_coverage_percent;
+    case "OT_IT_SEGREGATION":
+      return rec.ot_it_segregation_percent;
+    default:
+      return null;
+  }
+}
+
 // ─── Questionnaire Steps (Classification Wizard) ────────────────────────────
 
 type WizardStep = 1 | 2 | 3 | 4 | 5;
@@ -218,6 +248,15 @@ export default function EUAIActPage() {
   const [gapSystemId, setGapSystemId] = useState("");
   const [gapStatuses, setGapStatuses] = useState<ComplianceStatusEntry[]>([]);
   const [requirements, setRequirements] = useState<ComplianceRequirement[]>([]);
+  const [nis2Kpis, setNis2Kpis] = useState<Nis2KritisKpiListResponse | null>(null);
+  const [nis2Draft, setNis2Draft] = useState<
+    Record<Nis2KritisKpiType, { value: number; evidence: string }>
+  >({
+    INCIDENT_RESPONSE_MATURITY: { value: 0, evidence: "" },
+    SUPPLIER_RISK_COVERAGE: { value: 0, evidence: "" },
+    OT_IT_SEGREGATION: { value: 0, evidence: "" },
+  });
+  const [nis2Saving, setNis2Saving] = useState<Nis2KritisKpiType | null>(null);
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -251,7 +290,56 @@ export default function EUAIActPage() {
     setGapSystemId(systemId);
     const statuses = await api(`/api/v1/ai-systems/${systemId}/compliance`);
     if (statuses) setGapStatuses(statuses);
+    try {
+      const nis2 = await fetchNis2KritisKpis(systemId);
+      setNis2Kpis(nis2);
+      const types: Nis2KritisKpiType[] = [
+        "INCIDENT_RESPONSE_MATURITY",
+        "SUPPLIER_RISK_COVERAGE",
+        "OT_IT_SEGREGATION",
+      ];
+      const nextDraft: Record<Nis2KritisKpiType, { value: number; evidence: string }> = {
+        INCIDENT_RESPONSE_MATURITY: { value: 0, evidence: "" },
+        SUPPLIER_RISK_COVERAGE: { value: 0, evidence: "" },
+        OT_IT_SEGREGATION: { value: 0, evidence: "" },
+      };
+      for (const t of types) {
+        const row = nis2.kpis.find((k) => k.kpi_type === t);
+        nextDraft[t] = {
+          value: row?.value_percent ?? 0,
+          evidence: row?.evidence_ref ?? "",
+        };
+      }
+      setNis2Draft(nextDraft);
+    } catch {
+      setNis2Kpis(null);
+    }
     setView("gap");
+  };
+
+  const saveNis2Kpi = async (kpiType: Nis2KritisKpiType) => {
+    const d = nis2Draft[kpiType];
+    setNis2Saving(kpiType);
+    try {
+      const saved = await upsertNis2KritisKpi(gapSystemId, {
+        kpi_type: kpiType,
+        value_percent: Math.min(100, Math.max(0, Math.round(d.value))),
+        evidence_ref: d.evidence.trim() || null,
+        last_reviewed_at: new Date().toISOString(),
+      });
+      setNis2Kpis((prev) => {
+        if (!prev) {
+          return {
+            kpis: [saved],
+            recommended: null,
+          };
+        }
+        const others = prev.kpis.filter((k) => k.kpi_type !== kpiType);
+        return { ...prev, kpis: [...others, saved] };
+      });
+    } finally {
+      setNis2Saving(null);
+    }
   };
 
   const submitClassification = async () => {
@@ -780,6 +868,97 @@ export default function EUAIActPage() {
             </div>
           </div>
         )}
+
+        <section className="mb-8 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+          <h2 className="text-sm font-semibold text-slate-100">
+            NIS2 / KRITIS KPIs
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Operative Kennzahlen (0–100 %) mit optionaler Evidenz-Referenz. Empfohlene
+            Ziele aus dem High-Risk-Szenario-Profil, sofern das System als High-Risk
+            eingeordnet ist.
+          </p>
+          {nis2Kpis?.recommended?.scenario_label && (
+            <p className="mt-2 text-xs text-indigo-300">
+              Szenario-Mapping: {nis2Kpis.recommended.scenario_label}
+            </p>
+          )}
+          <div className="mt-4 space-y-5">
+            {(
+              [
+                "INCIDENT_RESPONSE_MATURITY",
+                "SUPPLIER_RISK_COVERAGE",
+                "OT_IT_SEGREGATION",
+              ] as const
+            ).map((kpiType) => {
+              const recPct = nis2RecommendedPercent(kpiType, nis2Kpis?.recommended ?? null);
+              const draft = nis2Draft[kpiType];
+              return (
+                <div key={kpiType} className="border-t border-slate-800 pt-4 first:border-t-0 first:pt-0">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-sm font-medium text-slate-200">
+                      {NIS2_KPI_LABEL[kpiType]}
+                    </span>
+                    {recPct != null && (
+                      <span className="text-xs text-slate-500">
+                        Empfehlung:{" "}
+                        <span className="text-emerald-400 font-medium">{recPct}%</span>
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={draft.value}
+                      onChange={(e) =>
+                        setNis2Draft((prev) => ({
+                          ...prev,
+                          [kpiType]: { ...prev[kpiType], value: Number(e.target.value) },
+                        }))
+                      }
+                      className="flex-1 accent-emerald-500"
+                    />
+                    <span className="w-10 text-right text-sm tabular-nums text-slate-200">
+                      {draft.value}%
+                    </span>
+                  </div>
+                  {recPct != null && (
+                    <div className="mt-1 h-1.5 w-full rounded-full bg-slate-800">
+                      <div
+                        className="h-full rounded-full bg-emerald-500/40"
+                        style={{ width: `${recPct}%` }}
+                      />
+                    </div>
+                  )}
+                  <label className="mt-2 block text-xs text-slate-500">
+                    Evidenz (optional, z. B. NormEvidence-IDs)
+                    <input
+                      type="text"
+                      value={draft.evidence}
+                      onChange={(e) =>
+                        setNis2Draft((prev) => ({
+                          ...prev,
+                          [kpiType]: { ...prev[kpiType], evidence: e.target.value },
+                        }))
+                      }
+                      className="mt-1 w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void saveNis2Kpi(kpiType)}
+                    disabled={nis2Saving === kpiType}
+                    className="mt-2 rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
+                  >
+                    {nis2Saving === kpiType ? "Speichern…" : "Speichern"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         {gapStatuses.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-8 text-center text-sm text-slate-500">

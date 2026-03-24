@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   createBoardReportAuditRecord,
   fetchNormEvidenceDefaults,
   fetchBoardReportAuditRecords,
   createNormEvidence,
   fetchNormEvidenceByAudit,
+  fetchHighRiskScenarios,
   type BoardReportAuditRecord,
   type NormEvidenceLink,
   type NormFramework,
   type NormEvidenceSuggestion,
+  type HighRiskScenarioProfile,
 } from "@/lib/api";
 
 const LIST_LIMIT = 5;
@@ -38,10 +40,30 @@ export function BoardReportAuditSection() {
     [auditId: string]: { framework: NormFramework; reference: string; note: string };
   }>({});
   const [defaults, setDefaults] = useState<NormEvidenceSuggestion[] | null>(null);
+  const [highRiskScenarios, setHighRiskScenarios] = useState<
+    HighRiskScenarioProfile[] | null
+  >(null);
+  const [highRiskLoading, setHighRiskLoading] = useState(false);
+  const [expandedHighRiskId, setExpandedHighRiskId] = useState<string | null>(
+    null,
+  );
+  const [scenarioTargetAuditId, setScenarioTargetAuditId] = useState<
+    string | null
+  >(null);
   const [loading, setLoading] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (records.length === 0) {
+      setScenarioTargetAuditId(null);
+      return;
+    }
+    setScenarioTargetAuditId((prev) =>
+      prev && records.some((r) => r.id === prev) ? prev : records[0].id,
+    );
+  }, [records]);
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
@@ -132,6 +154,136 @@ export function BoardReportAuditSection() {
           Audit-Record angelegt (ID: {createdId.slice(0, 8)}…).
         </p>
       )}
+
+      <div className="mt-5 rounded-xl border border-amber-100 bg-amber-50/40 p-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-900/90">
+          High-Risk-AI-Szenarien
+        </h3>
+        <p className="mt-1 text-[11px] leading-snug text-amber-950/80">
+          Empfohlene Norm-Nachweise für High-Risk-AI-Szenarien (EU AI Act / NIS2 /
+          ISO 42001) – werden erst beim Speichern angelegt.
+        </p>
+        {records.length > 0 && scenarioTargetAuditId && (
+          <label className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-700">
+            <span className="font-medium">Ziel-Audit-Record für „Übernehmen“:</span>
+            <select
+              value={scenarioTargetAuditId}
+              onChange={(e) => setScenarioTargetAuditId(e.target.value)}
+              className="max-w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+            >
+              {records.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.purpose.slice(0, 48)}
+                  {r.purpose.length > 48 ? "…" : ""} ({r.id.slice(0, 8)}…)
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {records.length === 0 && (
+          <p className="mt-2 text-[11px] text-slate-600">
+            Bitte zuerst Audit-Records laden oder anlegen, um Vorschläge in ein
+            Formular zu übernehmen.
+          </p>
+        )}
+        {highRiskScenarios === null && !highRiskLoading && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={async () => {
+                setHighRiskLoading(true);
+                setError(null);
+                try {
+                  const list = await fetchHighRiskScenarios();
+                  setHighRiskScenarios(list);
+                } catch (err) {
+                  setError(
+                    err instanceof Error
+                      ? err.message
+                      : "High-Risk-Szenarien konnten nicht geladen werden.",
+                  );
+                } finally {
+                  setHighRiskLoading(false);
+                }
+              }}
+              className="rounded-lg border border-amber-300/80 bg-white px-3 py-1.5 text-xs font-medium text-amber-950 hover:bg-amber-100/80"
+            >
+              High-Risk-Szenarien &amp; Empfehlungen laden
+            </button>
+          </div>
+        )}
+        {highRiskLoading && (
+          <p className="mt-2 text-[11px] text-slate-600">Laden…</p>
+        )}
+        {highRiskScenarios && highRiskScenarios.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {highRiskScenarios.map((s) => (
+              <li
+                key={s.id}
+                className="rounded-lg border border-slate-200 bg-white/90 p-2 text-sm"
+              >
+                <div className="font-medium text-slate-800">{s.label}</div>
+                <p className="mt-0.5 text-[11px] text-slate-600">
+                  {s.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedHighRiskId((prev) =>
+                      prev === s.id ? null : s.id,
+                    )
+                  }
+                  className="mt-2 text-[11px] font-medium text-amber-900 underline decoration-amber-700/50 hover:text-amber-950"
+                >
+                  {expandedHighRiskId === s.id
+                    ? "Empfohlene Norm-Nachweise ausblenden"
+                    : "Empfohlene Norm-Nachweise anzeigen/übernehmen"}
+                </button>
+                {expandedHighRiskId === s.id && (
+                  <ul className="mt-2 flex flex-col gap-1.5">
+                    {s.recommended_evidence.map((ev, idx) => (
+                      <li
+                        key={`${s.id}-${ev.framework}-${ev.reference}-${idx}`}
+                        className="flex flex-wrap items-start justify-between gap-2 rounded border border-slate-100 bg-slate-50/80 px-2 py-1.5 text-[11px]"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span className="font-semibold text-slate-800">
+                            {ev.framework}
+                          </span>{" "}
+                          <span className="text-slate-700">{ev.reference}</span>
+                          {ev.note && (
+                            <span className="mt-0.5 block text-slate-600">
+                              {ev.note}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!scenarioTargetAuditId}
+                          onClick={() => {
+                            if (!scenarioTargetAuditId) return;
+                            setNormForm((prev) => ({
+                              ...prev,
+                              [scenarioTargetAuditId]: {
+                                framework: ev.framework,
+                                reference: ev.reference,
+                                note: ev.note ?? "",
+                              },
+                            }));
+                          }}
+                          className="shrink-0 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-800 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Übernehmen
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {records.length > 0 && (
         <div className="mt-4">

@@ -2,7 +2,15 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column
 
 Base = declarative_base()
@@ -74,6 +82,36 @@ class AISystemTable(Base):
         DateTime(timezone=True),
         default=datetime.utcnow,
         nullable=False,
+    )
+
+
+class Nis2KritisKpiDB(Base):
+    """NIS2 / KRITIS-orientierte KPIs pro KI-System (mandantenfähig)."""
+
+    __tablename__ = "nis2_kritis_kpis"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "ai_system_id",
+            "kpi_type",
+            name="uq_nis2_kritis_kpi_tenant_system_type",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kpi_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    value_percent: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
 

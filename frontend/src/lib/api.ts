@@ -1,9 +1,15 @@
 const API_BASE_URL =
-  process.env.COMPLIANCEHUB_API_BASE_URL || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.COMPLIANCEHUB_API_BASE_URL ||
+  "http://localhost:8000";
 const API_KEY =
-  process.env.COMPLIANCEHUB_API_KEY || "tenant-overview-key";
+  process.env.NEXT_PUBLIC_API_KEY ||
+  process.env.COMPLIANCEHUB_API_KEY ||
+  "tenant-overview-key";
 const TENANT_ID =
-  process.env.COMPLIANCEHUB_TENANT_ID || "tenant-overview-001";
+  process.env.NEXT_PUBLIC_TENANT_ID ||
+  process.env.COMPLIANCEHUB_TENANT_ID ||
+  "tenant-overview-001";
 
 async function apiFetch(path: string, init?: RequestInit) {
   const url = `${API_BASE_URL}${path}`;
@@ -214,6 +220,8 @@ export interface AIComplianceOverview {
   top_critical_requirements: TopCriticalRequirement[];
   deadline: string;
   days_remaining: number;
+  nis2_kritis_kpi_mean_percent?: number | null;
+  nis2_kritis_systems_full_coverage_ratio?: number;
 }
 
 export async function fetchAIComplianceOverview(): Promise<AIComplianceOverview> {
@@ -242,6 +250,8 @@ export interface BoardKpiSummary {
   score_change_vs_last_quarter: number;
   incidents_last_quarter: number;
   complaints_last_quarter: number;
+  nis2_kritis_kpi_mean_percent?: number | null;
+  nis2_kritis_systems_full_coverage_ratio?: number;
 }
 
 export async function fetchBoardKpis(): Promise<BoardKpiSummary> {
@@ -454,6 +464,27 @@ export async function fetchNormEvidenceDefaults(): Promise<NormEvidenceSuggestio
   return apiFetch("/api/v1/ai-governance/report/board/norm-evidence-defaults");
 }
 
+export interface HighRiskScenarioRecommendedEvidence {
+  framework: NormFramework;
+  reference: string;
+  evidence_type: EvidenceType;
+  note?: string | null;
+}
+
+export interface HighRiskScenarioProfile {
+  id: string;
+  label: string;
+  description: string;
+  recommended_evidence: HighRiskScenarioRecommendedEvidence[];
+  recommended_incident_response_maturity_percent?: number | null;
+  recommended_supplier_risk_coverage_percent?: number | null;
+  recommended_ot_it_segregation_percent?: number | null;
+}
+
+export async function fetchHighRiskScenarios(): Promise<HighRiskScenarioProfile[]> {
+  return apiFetch("/api/v1/ai-governance/high-risk-scenarios");
+}
+
 // ─── AI Governance Incident Drilldown (NIS2 Art. 21/23, ISO 42001) ─────────────
 
 export type IncidentSeverityLevel = "low" | "medium" | "high";
@@ -520,6 +551,58 @@ export async function fetchSupplierRiskOverview(): Promise<AISupplierRiskOvervie
 
 export async function fetchSupplierRiskBySystem(): Promise<AISupplierRiskBySystem[]> {
   return apiFetch("/api/v1/ai-governance/suppliers/by-system");
+}
+
+// ─── NIS2 / KRITIS KPIs pro AI-System ─────────────────────────────────────────
+
+export type Nis2KritisKpiType =
+  | "INCIDENT_RESPONSE_MATURITY"
+  | "SUPPLIER_RISK_COVERAGE"
+  | "OT_IT_SEGREGATION";
+
+export interface Nis2KritisKpi {
+  id: string;
+  ai_system_id: string;
+  kpi_type: Nis2KritisKpiType;
+  value_percent: number;
+  evidence_ref: string | null;
+  last_reviewed_at: string | null;
+}
+
+export interface Nis2KritisKpiRecommended {
+  scenario_profile_id: string | null;
+  scenario_label: string | null;
+  incident_response_maturity_percent: number | null;
+  supplier_risk_coverage_percent: number | null;
+  ot_it_segregation_percent: number | null;
+}
+
+export interface Nis2KritisKpiListResponse {
+  kpis: Nis2KritisKpi[];
+  recommended: Nis2KritisKpiRecommended | null;
+}
+
+export async function fetchNis2KritisKpis(
+  aiSystemId: string
+): Promise<Nis2KritisKpiListResponse> {
+  return apiFetch(`/api/v1/ai-systems/${aiSystemId}/nis2-kritis-kpis`);
+}
+
+export interface Nis2KritisKpiUpsertInput {
+  kpi_type: Nis2KritisKpiType;
+  value_percent: number;
+  evidence_ref?: string | null;
+  last_reviewed_at?: string | null;
+}
+
+export async function upsertNis2KritisKpi(
+  aiSystemId: string,
+  input: Nis2KritisKpiUpsertInput
+): Promise<Nis2KritisKpi> {
+  return apiFetch(`/api/v1/ai-systems/${aiSystemId}/nis2-kritis-kpis`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 

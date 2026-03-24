@@ -48,9 +48,19 @@ def render_board_report_markdown(report: AIBoardGovernanceReport) -> str:
         f"NIS2 Incident Readiness: {_fmt_pct(k.nis2_incident_readiness_ratio)}; "
         f"Supplier Risk Coverage: {_fmt_pct(k.nis2_supplier_risk_coverage_ratio)}."
     )
+    nis2_mean = (
+        f"{round(c.nis2_kritis_kpi_mean_percent)} %"
+        if c.nis2_kritis_kpi_mean_percent is not None
+        else "k. A."
+    )
+    nis2_cov = f"{round(c.nis2_kritis_systems_full_coverage_ratio * 100)} %"
     lines.append(
         f"- EU AI Act / ISO 42001 Gesamt-Readiness: {_fmt_pct(c.overall_readiness)}; "
         f"Frist High-Risk: {c.days_remaining} Tage (bis {c.deadline})."
+    )
+    lines.append(
+        f"- NIS2 / KRITIS KPI (persistente Kennzahlen): Mittelwert {nis2_mean}; "
+        f"Vollständige Systemabdeckung (alle drei KPI-Typen): {nis2_cov}."
     )
     lines.append(
         f"- Offene Incidents (12 Monate): {i.total_incidents_last_12_months}; "
@@ -79,6 +89,19 @@ def render_board_report_markdown(report: AIBoardGovernanceReport) -> str:
             f"| High-Risk-Systeme ohne DPIA | {k.high_risk_systems_without_dpia} |",
             f"| Kritische Systeme ohne Owner | {k.critical_systems_without_owner} |",
             f"| NIS2-Kontrolllücken (gesamt) | {k.nis2_control_gaps} |",
+            "",
+        ]
+    )
+    nis2_k_mean = (
+        f"{round(k.nis2_kritis_kpi_mean_percent)} %"
+        if k.nis2_kritis_kpi_mean_percent is not None
+        else "k. A."
+    )
+    nis2_k_cov = f"{round(k.nis2_kritis_systems_full_coverage_ratio * 100)} %"
+    lines.extend(
+        [
+            f"| NIS2 / KRITIS KPI Mittelwert (0–100) | {nis2_k_mean} |",
+            f"| NIS2 / KRITIS KPI Systemabdeckung (alle 3 Typen) | {nis2_k_cov} |",
             "",
         ]
     )
