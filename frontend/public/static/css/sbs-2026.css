@@ -10,6 +10,7 @@ body.has-fixed-header {
   background: var(--sbs-bg-page);
   color: var(--sbs-text-primary);
   -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
 }
 
 .sbs-header-2026 {
@@ -29,14 +30,21 @@ body.has-fixed-header {
 }
 
 .sbs-header-inner {
-  max-width: 1200px;
+  max-width: 80rem;
   margin: 0 auto;
-  padding: 0 1.25rem;
+  padding: 0 1rem;
   width: 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .sbs-header-inner {
+    padding: 0 1.5rem;
+  }
 }
 
 .sbs-brand {
@@ -105,14 +113,22 @@ body.has-fixed-header {
 }
 
 .sbs-footer-inner {
-  max-width: 1200px;
+  max-width: 80rem;
   margin: 0 auto;
+  padding: 0 1rem;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 1rem;
   font-size: 0.75rem;
   color: var(--sbs-text-secondary);
+}
+
+@media (min-width: 768px) {
+  .sbs-footer-inner {
+    padding: 0 1.5rem;
+  }
 }
 
 .sbs-footer-inner a {

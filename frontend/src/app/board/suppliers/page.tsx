@@ -7,6 +7,7 @@ import {
   type AISupplierRiskBySystem,
   type AISupplierRiskOverview,
 } from "@/lib/api";
+import { BOARD_PAGE_MAIN_CLASS } from "@/lib/boardLayout";
 
 function riskLevelLabel(level: string): string {
   const labels: Record<string, string> = {
@@ -37,12 +38,12 @@ export default async function BoardSuppliersPage() {
 
   if (!overview) {
     return (
-      <main className="sbs-page-main">
+      <main className={BOARD_PAGE_MAIN_CLASS}>
         <header className="mb-6">
           <h1 className="sbs-h1">
             AI Governance – Supplier-Risiko
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="sbs-subtitle">
             NIS2 Art. 21/24 Supply-Chain-Security · KRITIS-Bezug
           </p>
         </header>
@@ -74,12 +75,12 @@ export default async function BoardSuppliersPage() {
       : 0;
 
   return (
-    <main className="sbs-page-main">
+    <main className={BOARD_PAGE_MAIN_CLASS}>
       <header className="mb-6">
         <h1 className="sbs-h1">
           AI Governance – Supplier-Risiko
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="sbs-subtitle">
           NIS2 Art. 21/24 Supply-Chain-Security · Lieferanten-Risikoregister ·
           KRITIS-Bezug · Standort Deutschland
         </p>
@@ -96,9 +97,9 @@ export default async function BoardSuppliersPage() {
 
       <section
         aria-label="Supplier-Risiko-KPIs"
-        className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Systeme mit Lieferanten-Register
           </h2>
@@ -110,7 +111,7 @@ export default async function BoardSuppliersPage() {
             Lieferanten-Risikoregister
           </p>
         </div>
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Systeme ohne Supplier-Risikoregister
           </h2>
@@ -121,7 +122,7 @@ export default async function BoardSuppliersPage() {
             NIS2 Supply-Chain-Anforderung aktuell nicht erfüllt
           </p>
         </div>
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Kritische KI-Systeme gesamt
           </h2>
@@ -132,7 +133,7 @@ export default async function BoardSuppliersPage() {
             Hohe/Sehr hohe Kritikalität (KRITIS-relevant)
           </p>
         </div>
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Kritische ohne Lieferanten-Controls
           </h2>
