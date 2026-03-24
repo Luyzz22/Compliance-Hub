@@ -50,9 +50,9 @@ export default async function BoardIncidentsPage() {
 
   if (!overview) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="sbs-page-main">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="sbs-h1">
             AI Governance – Incident-Übersicht
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -81,9 +81,9 @@ export default async function BoardIncidentsPage() {
   const topSystems = bySystem.slice(0, 3);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="sbs-page-main">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="sbs-h1">
           AI Governance – Incident-Übersicht
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -105,7 +105,7 @@ export default async function BoardIncidentsPage() {
         aria-label="Incident-KPIs"
         className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Incidents letzte 12 Monate
           </h2>
@@ -114,7 +114,7 @@ export default async function BoardIncidentsPage() {
           </p>
           <p className="mt-1 text-xs text-slate-500">Gesamt (Rolling 12 Monate)</p>
         </div>
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Aktuell offene Incidents
           </h2>
@@ -123,7 +123,7 @@ export default async function BoardIncidentsPage() {
           </p>
           <p className="mt-1 text-xs text-slate-500">Status: offen</p>
         </div>
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Major Incidents (NIS2-relevant)
           </h2>
@@ -132,7 +132,7 @@ export default async function BoardIncidentsPage() {
           </p>
           <p className="mt-1 text-xs text-slate-500">Schweregrad Hoch, 12 Monate</p>
         </div>
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             MTTA / MTTR
           </h2>
@@ -153,7 +153,7 @@ export default async function BoardIncidentsPage() {
 
       <section
         aria-label="Incidents nach Schweregrad"
-        className="mb-8 rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
+        className="sbs-panel mb-8 p-4"
       >
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">
           Incidents nach Schweregrad
@@ -179,7 +179,7 @@ export default async function BoardIncidentsPage() {
       {topSystems.length > 0 && (
         <section
           aria-label="Top-KI-Systeme nach Incident-Anzahl"
-          className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
+          className="sbs-panel p-4"
         >
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">
             Top 3 KI-Systeme mit den meisten Incidents (12 Monate)

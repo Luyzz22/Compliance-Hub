@@ -35,9 +35,9 @@ export default async function EuAiActReadinessPage() {
 
   if (!data) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="sbs-page-main">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="sbs-h1">
             EU AI Act Readiness
           </h1>
         </header>
@@ -64,9 +64,9 @@ export default async function EuAiActReadinessPage() {
   const q3done = data.days_remaining > 0 && data.overall_readiness >= 0.85;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="sbs-page-main">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="sbs-h1">
           EU AI Act Readiness (High-Risk)
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -87,7 +87,7 @@ export default async function EuAiActReadinessPage() {
         aria-label="Kernkennzahlen"
         className="mb-8 grid gap-4 md:grid-cols-3"
       >
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Overall Readiness
           </h2>
@@ -95,7 +95,7 @@ export default async function EuAiActReadinessPage() {
             {readinessPct} %
           </p>
         </div>
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             High-Risk mit essenziellen Controls
           </h2>
@@ -103,7 +103,7 @@ export default async function EuAiActReadinessPage() {
             {data.high_risk_systems_essential_complete}
           </p>
         </div>
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             High-Risk mit Lücken
           </h2>
@@ -115,7 +115,7 @@ export default async function EuAiActReadinessPage() {
 
       <section
         aria-label="Roadmap"
-        className="mb-8 rounded-xl border border-slate-100 bg-slate-50 p-4"
+        className="sbs-panel-muted mb-8 p-4"
       >
         <h2 className="text-sm font-semibold text-slate-800">
           Grobe Timeline bis Stichtag
@@ -149,7 +149,7 @@ export default async function EuAiActReadinessPage() {
             {data.critical_requirements.map((r) => (
               <li
                 key={r.requirement_id ?? `${r.code}-${r.name}`}
-                className="flex items-start gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm shadow-sm"
+                className="sbs-panel flex items-start gap-3 px-3 py-2 text-sm"
               >
                 <span
                   className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${trafficDot(r.traffic)}`}
@@ -216,7 +216,7 @@ export default async function EuAiActReadinessPage() {
             {data.suggested_actions.map((s, i) => (
               <li
                 key={`${s.title}-${i}`}
-                className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2"
+                className="sbs-panel-muted border border-dashed border-[var(--sbs-border)] px-3 py-2"
               >
                 <span className="font-medium">{s.title}</span>
                 <span className="ml-2 text-xs text-slate-500">
@@ -239,7 +239,7 @@ export default async function EuAiActReadinessPage() {
             <code className="rounded bg-slate-100 px-1">ai_governance_actions</code>.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-100 bg-white shadow-sm">
+          <ul className="sbs-panel mt-3 divide-y divide-[var(--sbs-border)] overflow-hidden p-0">
             {data.open_governance_actions.map((a) => (
               <li key={a.id} className="px-4 py-3 text-sm">
                 <div className="font-medium text-slate-900">{a.title}</div>

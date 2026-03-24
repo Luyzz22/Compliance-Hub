@@ -109,7 +109,7 @@ export function BoardReportAuditSection() {
   return (
     <section
       aria-label="Audit-Ready"
-      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="sbs-panel p-4"
     >
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
         Audit-Ready (Prüfungsdokumentation)

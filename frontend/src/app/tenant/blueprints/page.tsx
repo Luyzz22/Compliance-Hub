@@ -1,7 +1,6 @@
 import React from "react";
 
 export default async function TenantBlueprintsPage() {
-  // Später: fetch aus Blueprint‑API (NIS2BASELINE_MIDMARKET, AIGOVERNANCE_STARTER etc.)
   const blueprints: { id: string; title: string; description: string }[] = [
     {
       id: "NIS2_BASELINE_MIDMARKET",
@@ -20,26 +19,28 @@ export default async function TenantBlueprintsPage() {
   return (
     <>
       <header className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Compliance Blueprints
-        </h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="sbs-h1">Compliance Blueprints</h1>
+        <p className="sbs-subtitle">
           Kuratierte Blueprint‑Sets für NIS2, EU AI Act und ISO‑Standards.
         </p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2">
         {blueprints.map((bp) => (
-          <div
-            key={bp.id}
-            className="rounded-xl border border-slate-800 bg-slate-900/60 p-5"
-          >
-            <div className="text-xs font-mono uppercase text-slate-500">
+          <div key={bp.id} className="sbs-panel p-5">
+            <div className="font-mono text-xs uppercase text-[var(--sbs-text-muted)]">
               {bp.id}
             </div>
-            <h2 className="mt-1 text-sm font-semibold">{bp.title}</h2>
-            <p className="mt-2 text-xs text-slate-400">{bp.description}</p>
-            <button className="mt-4 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20">
+            <h2 className="mt-1 text-sm font-bold text-[var(--sbs-text-primary)]">
+              {bp.title}
+            </h2>
+            <p className="mt-2 text-xs text-[var(--sbs-text-secondary)]">
+              {bp.description}
+            </p>
+            <button
+              type="button"
+              className="mt-4 rounded-lg border border-emerald-600/40 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100"
+            >
               Blueprint aktivieren
             </button>
           </div>

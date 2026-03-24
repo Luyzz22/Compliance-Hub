@@ -37,9 +37,9 @@ export default async function BoardSuppliersPage() {
 
   if (!overview) {
     return (
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="sbs-page-main">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="sbs-h1">
             AI Governance – Supplier-Risiko
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -74,9 +74,9 @@ export default async function BoardSuppliersPage() {
       : 0;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
+    <main className="sbs-page-main">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="sbs-h1">
           AI Governance – Supplier-Risiko
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -98,7 +98,7 @@ export default async function BoardSuppliersPage() {
         aria-label="Supplier-Risiko-KPIs"
         className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Systeme mit Lieferanten-Register
           </h2>
@@ -110,7 +110,7 @@ export default async function BoardSuppliersPage() {
             Lieferanten-Risikoregister
           </p>
         </div>
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Systeme ohne Supplier-Risikoregister
           </h2>
@@ -121,7 +121,7 @@ export default async function BoardSuppliersPage() {
             NIS2 Supply-Chain-Anforderung aktuell nicht erfüllt
           </p>
         </div>
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Kritische KI-Systeme gesamt
           </h2>
@@ -132,7 +132,7 @@ export default async function BoardSuppliersPage() {
             Hohe/Sehr hohe Kritikalität (KRITIS-relevant)
           </p>
         </div>
-        <div className="flex flex-col rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="sbs-panel flex flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Kritische ohne Lieferanten-Controls
           </h2>
@@ -147,7 +147,7 @@ export default async function BoardSuppliersPage() {
 
       <section
         aria-label="Supplier-Risiko nach Risikostufe"
-        className="mb-8 rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
+        className="sbs-panel mb-8 p-4"
       >
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">
           KI-Systeme nach Supplier-Risikostufe
@@ -183,7 +183,7 @@ export default async function BoardSuppliersPage() {
       {topSystems.length > 0 && (
         <section
           aria-label="Top-KI-Systeme mit höchstem Supplier-Risiko"
-          className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm"
+          className="sbs-panel p-4"
         >
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">
             Top 3 KI-Systeme mit höchstem Supplier-Risiko

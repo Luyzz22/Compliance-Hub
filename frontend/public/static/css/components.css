@@ -1,0 +1,207 @@
+/* Wiederverwendbare Bausteine für App-Seiten (Compliance Hub + SBS-Stil) */
+
+.sbs-page-main {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+  min-height: calc(100vh - var(--sbs-header-h) - 120px);
+  color: var(--sbs-text-primary);
+  font-family: var(--sbs-font);
+}
+
+.sbs-panel {
+  border-radius: var(--sbs-radius-lg);
+  border: 1px solid var(--sbs-border);
+  background: var(--sbs-bg-elevated);
+  box-shadow: var(--sbs-shadow-sm);
+}
+
+.sbs-panel-muted {
+  border-radius: var(--sbs-radius-lg);
+  border: 1px solid var(--sbs-border);
+  background: #f8fafc;
+}
+
+.sbs-h1 {
+  font-size: clamp(1.5rem, 2.5vw, 1.875rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--sbs-text-primary);
+  line-height: 1.2;
+}
+
+.sbs-subtitle {
+  margin-top: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--sbs-text-secondary);
+  line-height: 1.5;
+}
+
+.sbs-nav-inline a {
+  color: var(--sbs-text-accent);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sbs-nav-inline a:hover {
+  color: var(--sbs-navy-deep);
+}
+
+.sbs-badge-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sbs-text-accent);
+  background: rgba(0, 102, 179, 0.08);
+  border: 1px solid rgba(0, 102, 179, 0.2);
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+}
+
+.sbs-table-wrap {
+  overflow-x: auto;
+}
+
+.sbs-table {
+  width: 100%;
+  text-align: left;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+
+.sbs-table thead {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sbs-text-secondary);
+  background: #f8fafc;
+}
+
+.sbs-table th,
+.sbs-table td {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--sbs-border);
+}
+
+.sbs-table tbody tr:hover {
+  background: rgba(0, 102, 179, 0.04);
+}
+
+/* Tenant-Bereich: Sidebar dunkel (Nexus-ähnlich) */
+.sbs-tenant-shell {
+  display: flex;
+  min-height: calc(100vh - var(--sbs-header-h));
+  font-family: var(--sbs-font);
+}
+
+.sbs-tenant-sidebar {
+  width: 16rem;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #0c1929 0%, #0a1524 100%);
+  border-right: 1px solid rgba(148, 163, 184, 0.15);
+  color: #e2e8f0;
+}
+
+.sbs-tenant-sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sbs-tenant-sidebar a:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+}
+
+.sbs-tenant-sidebar a.sbs-nav-active {
+  background: rgba(0, 102, 179, 0.35);
+  color: #fff;
+}
+
+.sbs-tenant-main {
+  flex: 1;
+  padding: 2rem;
+  background: var(--sbs-bg-page);
+  color: var(--sbs-text-primary);
+}
+
+.sbs-kpi-tile {
+  border-radius: var(--sbs-radius-lg);
+  border: 1px solid var(--sbs-border);
+  background: var(--sbs-bg-elevated);
+  padding: 1.25rem;
+  box-shadow: var(--sbs-shadow-sm);
+}
+
+.sbs-kpi-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sbs-text-secondary);
+}
+
+.sbs-kpi-value {
+  margin-top: 0.5rem;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--sbs-text-primary);
+}
+
+.sbs-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background: var(--sbs-gradient-amber);
+  color: var(--sbs-navy-deep);
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--sbs-shadow-amber);
+}
+
+.sbs-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border: 1px solid var(--sbs-border-hover);
+  color: var(--sbs-text-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.sbs-alert-warn {
+  border-radius: var(--sbs-radius);
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #92400e;
+}
+
+.sbs-alert-info {
+  border-radius: var(--sbs-radius);
+  border: 1px solid #bae6fd;
+  background: #f0f9ff;
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #0369a1;
+}
