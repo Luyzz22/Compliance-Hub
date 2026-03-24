@@ -95,14 +95,10 @@ def test_nis2_kritis_drilldown_tenant_isolation():
     r_b = client.get("/api/v1/nis2-kritis/kpi-drilldown", headers=h_b)
     assert r_b.status_code == 200
     assert r_b.json()["tenant_id"] == tid_b
-    ot_b = next(
-        x for x in r_b.json()["by_kpi_type"] if x["kpi_type"] == "OT_IT_SEGREGATION"
-    )
+    ot_b = next(x for x in r_b.json()["by_kpi_type"] if x["kpi_type"] == "OT_IT_SEGREGATION")
     assert sum(b["count"] for b in ot_b["histogram"]) == 1
 
     r_a = client.get("/api/v1/nis2-kritis/kpi-drilldown", headers=h_a)
     assert r_a.status_code == 200
-    ot_a = next(
-        x for x in r_a.json()["by_kpi_type"] if x["kpi_type"] == "OT_IT_SEGREGATION"
-    )
+    ot_a = next(x for x in r_a.json()["by_kpi_type"] if x["kpi_type"] == "OT_IT_SEGREGATION")
     assert sum(b["count"] for b in ot_a["histogram"]) == 0
