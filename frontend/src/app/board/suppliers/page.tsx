@@ -7,7 +7,13 @@ import {
   type AISupplierRiskBySystem,
   type AISupplierRiskOverview,
 } from "@/lib/api";
-import { BOARD_PAGE_MAIN_CLASS } from "@/lib/boardLayout";
+import {
+  BOARD_PAGE_ROOT_CLASS,
+  CH_CARD,
+  CH_PAGE_SUB,
+  CH_PAGE_TITLE,
+  CH_SECTION_LABEL,
+} from "@/lib/boardLayout";
 
 function riskLevelLabel(level: string): string {
   const labels: Record<string, string> = {
@@ -38,18 +44,16 @@ export default async function BoardSuppliersPage() {
 
   if (!overview) {
     return (
-      <main className={BOARD_PAGE_MAIN_CLASS}>
-        <header className="mb-6">
-          <h1 className="sbs-h1">
-            AI Governance – Supplier-Risiko
-          </h1>
-          <p className="sbs-subtitle">
+      <div className={BOARD_PAGE_ROOT_CLASS}>
+        <header className="mb-8">
+          <h1 className={CH_PAGE_TITLE}>Supplier-Risiko</h1>
+          <p className={CH_PAGE_SUB}>
             NIS2 Art. 21/24 Supply-Chain-Security · KRITIS-Bezug
           </p>
         </header>
         <div
           role="status"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
         >
           Supplier-Risiko-KPIs konnten nicht geladen werden. Bitte versuchen Sie
           es später erneut oder wenden Sie sich an das AI-Governance-Team.
@@ -57,12 +61,12 @@ export default async function BoardSuppliersPage() {
         <p className="mt-4">
           <Link
             href="/board/kpis"
-            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
           >
             ← Zurück zu Board-KPIs
           </Link>
         </p>
-      </main>
+      </div>
     );
   }
 
@@ -75,19 +79,17 @@ export default async function BoardSuppliersPage() {
       : 0;
 
   return (
-    <main className={BOARD_PAGE_MAIN_CLASS}>
-      <header className="mb-6">
-        <h1 className="sbs-h1">
-          AI Governance – Supplier-Risiko
-        </h1>
-        <p className="sbs-subtitle">
+    <div className={BOARD_PAGE_ROOT_CLASS}>
+      <header className="mb-8">
+        <h1 className={CH_PAGE_TITLE}>Supplier-Risiko</h1>
+        <p className={CH_PAGE_SUB}>
           NIS2 Art. 21/24 Supply-Chain-Security · Lieferanten-Risikoregister ·
           KRITIS-Bezug · Standort Deutschland
         </p>
-        <p className="mt-2">
+        <p className="mt-3">
           <Link
             href="/board/kpis"
-            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
             aria-label="Zurück zu Board-KPIs"
           >
             ← Zurück zu Board-KPIs
@@ -99,10 +101,8 @@ export default async function BoardSuppliersPage() {
         aria-label="Supplier-Risiko-KPIs"
         className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Systeme mit Lieferanten-Register
-          </h2>
+        <div className={`${CH_CARD} flex min-w-0 flex-col`}>
+          <p className={CH_SECTION_LABEL}>Mit Lieferanten-Register</p>
           <p className="mt-2 text-3xl font-semibold text-slate-900">
             {overview.total_systems_with_suppliers}
           </p>
@@ -111,10 +111,8 @@ export default async function BoardSuppliersPage() {
             Lieferanten-Risikoregister
           </p>
         </div>
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Systeme ohne Supplier-Risikoregister
-          </h2>
+        <div className={`${CH_CARD} flex min-w-0 flex-col`}>
+          <p className={CH_SECTION_LABEL}>Ohne Supplier-Risikoregister</p>
           <p className="mt-2 text-3xl font-semibold text-slate-900">
             {overview.systems_without_supplier_risk_register}
           </p>
@@ -122,10 +120,8 @@ export default async function BoardSuppliersPage() {
             NIS2 Supply-Chain-Anforderung aktuell nicht erfüllt
           </p>
         </div>
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Kritische KI-Systeme gesamt
-          </h2>
+        <div className={`${CH_CARD} flex min-w-0 flex-col`}>
+          <p className={CH_SECTION_LABEL}>Kritische KI-Systeme gesamt</p>
           <p className="mt-2 text-3xl font-semibold text-slate-900">
             {overview.critical_suppliers_total}
           </p>
@@ -133,10 +129,8 @@ export default async function BoardSuppliersPage() {
             Hohe/Sehr hohe Kritikalität (KRITIS-relevant)
           </p>
         </div>
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Kritische ohne Lieferanten-Controls
-          </h2>
+        <div className={`${CH_CARD} flex min-w-0 flex-col`}>
+          <p className={CH_SECTION_LABEL}>Kritisch ohne Lieferanten-Controls</p>
           <p className="mt-2 text-3xl font-semibold text-slate-900">
             {overview.critical_suppliers_without_controls}
           </p>
@@ -146,32 +140,32 @@ export default async function BoardSuppliersPage() {
         </div>
       </section>
 
-      <section
-        aria-label="Supplier-Risiko nach Risikostufe"
-        className="sbs-panel mb-8 p-4"
-      >
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">
+      <section aria-label="Supplier-Risiko nach Risikostufe" className={`${CH_CARD} mb-8`}>
+        <h2 className="text-base font-semibold text-slate-900">
           KI-Systeme nach Supplier-Risikostufe
         </h2>
-        <div className="overflow-x-auto">
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-100">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                <th className="pb-2 font-semibold">Risikostufe</th>
-                <th className="pb-2 font-semibold">Mit Register</th>
-                <th className="pb-2 font-semibold">Ohne Register</th>
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3">Risikostufe</th>
+                <th className="px-4 py-3">Mit Register</th>
+                <th className="px-4 py-3">Ohne Register</th>
               </tr>
             </thead>
             <tbody>
               {overview.by_risk_level.map((entry) => (
-                <tr key={entry.risk_level} className="border-b border-slate-100">
-                  <td className="py-2 font-medium text-slate-900">
+                <tr
+                  key={entry.risk_level}
+                  className="border-b border-slate-100 transition hover:bg-cyan-50/40"
+                >
+                  <td className="px-4 py-3 font-semibold text-slate-900">
                     {riskLevelLabel(entry.risk_level)}
                   </td>
-                  <td className="py-2 text-slate-700">
+                  <td className="px-4 py-3 tabular-nums text-slate-700">
                     {entry.systems_with_register}
                   </td>
-                  <td className="py-2 text-slate-700">
+                  <td className="px-4 py-3 tabular-nums text-slate-700">
                     {entry.systems_without_register}
                   </td>
                 </tr>
@@ -184,30 +178,33 @@ export default async function BoardSuppliersPage() {
       {topSystems.length > 0 && (
         <section
           aria-label="Top-KI-Systeme mit höchstem Supplier-Risiko"
-          className="sbs-panel p-4"
+          className={CH_CARD}
         >
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">
+          <h2 className="text-base font-semibold text-slate-900">
             Top 3 KI-Systeme mit höchstem Supplier-Risiko
           </h2>
-          <div className="overflow-x-auto">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-slate-100">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                  <th className="pb-2 font-semibold">KI-System</th>
-                  <th className="pb-2 font-semibold">Lieferanten-Register</th>
-                  <th className="pb-2 font-semibold">Risiko-Score</th>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-3">KI-System</th>
+                  <th className="px-4 py-3">Lieferanten-Register</th>
+                  <th className="px-4 py-3">Risiko-Score</th>
                 </tr>
               </thead>
               <tbody>
                 {topSystems.map((row) => (
-                  <tr key={row.ai_system_id} className="border-b border-slate-100">
-                    <td className="py-2 font-medium text-slate-900">
+                  <tr
+                    key={row.ai_system_id}
+                    className="border-b border-slate-100 transition hover:bg-cyan-50/40"
+                  >
+                    <td className="px-4 py-3 font-semibold text-slate-900">
                       {row.ai_system_name}
                     </td>
-                    <td className="py-2 text-slate-700">
+                    <td className="px-4 py-3 text-slate-700">
                       {row.has_supplier_risk_register ? "Ja" : "Nein"}
                     </td>
-                    <td className="py-2 text-slate-700">
+                    <td className="px-4 py-3 tabular-nums text-slate-700">
                       {row.supplier_risk_score.toFixed(2)}
                     </td>
                   </tr>
@@ -217,6 +214,6 @@ export default async function BoardSuppliersPage() {
           </div>
         </section>
       )}
-    </main>
+    </div>
   );
 }

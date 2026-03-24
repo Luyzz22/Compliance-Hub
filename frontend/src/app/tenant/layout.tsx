@@ -8,7 +8,8 @@ export default function TenantLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="sbs-tenant-shell">
+    <div className="relative ml-[calc(-50vw+50%)] w-screen max-w-[100vw] shrink-0">
+      <div className="sbs-tenant-shell">
       <aside className="sbs-tenant-sidebar">
         <div
           style={{
@@ -36,6 +37,7 @@ export default function TenantLayout({
         <TenantNav />
       </aside>
       <div className="sbs-tenant-main">{children}</div>
+      </div>
     </div>
   );
 }

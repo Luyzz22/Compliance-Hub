@@ -19,9 +19,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
-      <body className="has-fixed-header sbs-body">
+      <body className="has-fixed-header sbs-body flex min-h-screen flex-col bg-slate-100/80">
         <SbsHeader />
-        {children}
+        <main
+          id="app-main"
+          className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 py-8 pb-16 md:px-6 md:py-10"
+        >
+          {children}
+        </main>
         <SbsFooter />
       </body>
     </html>
