@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from fastapi.testclient import TestClient
 
 from app.ai_system_models import (
@@ -18,7 +16,6 @@ client = TestClient(app)
 
 
 def _headers(tenant_id: str = "tenant-nis2-kpi-001") -> dict[str, str]:
-    os.environ["COMPLIANCEHUB_API_KEYS"] = "test-api-key"
     return {
         "x-api-key": "test-api-key",
         "x-tenant-id": tenant_id,

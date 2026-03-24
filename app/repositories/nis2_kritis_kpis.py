@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models_db import AISystemTable, Nis2KritisKpiDB
@@ -102,3 +102,64 @@ class Nis2KritisKpiRepository:
         full = sum(1 for sid in system_ids if counts.get(sid, 0) >= len(Nis2KritisKpiType))
         ratio = full / total
         return mean_percent, ratio
+
+    def mean_percent_by_kpi_type(self, tenant_id: str) -> dict[Nis2KritisKpiType, float | None]:
+        """Arithmetisches Mittel je KPI-Typ (None, wenn keine Werte)."""
+        out: dict[Nis2KritisKpiType, float | None] = {}
+        for kt in Nis2KritisKpiType:
+            stmt = select(func.avg(Nis2KritisKpiDB.value_percent)).where(
+                Nis2KritisKpiDB.tenant_id == tenant_id,
+                Nis2KritisKpiDB.kpi_type == kt.value,
+            )
+            raw = self._session.execute(stmt).scalar_one()
+            out[kt] = float(raw) if raw is not None else None
+        return out
+
+    def count_focus_systems_ot_it_below(
+        self,
+        tenant_id: str,
+        *,
+        threshold_percent: int,
+    ) -> int:
+        """
+        Zählt KI-Systeme mit OT/IT-KPI unter Schwellwert und Fokusprofil
+        (High-Risk, High-Risk-Kategorie oder hohe KRITIS-ähnliche Criticality).
+        """
+        stmt = (
+            select(func.count())
+            .select_from(Nis2KritisKpiDB)
+            .join(AISystemTable, AISystemTable.id == Nis2KritisKpiDB.ai_system_id)
+            .where(
+                Nis2KritisKpiDB.tenant_id == tenant_id,
+                AISystemTable.tenant_id == tenant_id,
+                Nis2KritisKpiDB.kpi_type == Nis2KritisKpiType.OT_IT_SEGREGATION.value,
+                Nis2KritisKpiDB.value_percent < threshold_percent,
+                or_(
+                    AISystemTable.risk_level == "high",
+                    AISystemTable.ai_act_category == "high_risk",
+                    AISystemTable.criticality.in_(("high", "very_high")),
+                ),
+            )
+        )
+        return int(self._session.execute(stmt).scalar_one() or 0)
+
+    def list_kpis_with_system_for_tenant(
+        self,
+        tenant_id: str,
+    ) -> list[tuple[Nis2KritisKpi, str, str]]:
+        """Alle KPI-Zeilen mit Systemname und Geschäftsbereich (Join)."""
+        stmt = (
+            select(
+                Nis2KritisKpiDB,
+                AISystemTable.name,
+                AISystemTable.business_unit,
+            )
+            .join(AISystemTable, AISystemTable.id == Nis2KritisKpiDB.ai_system_id)
+            .where(
+                Nis2KritisKpiDB.tenant_id == tenant_id,
+                AISystemTable.tenant_id == tenant_id,
+            )
+            .order_by(Nis2KritisKpiDB.kpi_type, Nis2KritisKpiDB.value_percent)
+        )
+        rows = self._session.execute(stmt).all()
+        return [(self._to_domain(r[0]), str(r[1]), str(r[2])) for r in rows]

@@ -13,12 +13,20 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.ai_governance_action_models import (
+    AIGovernanceActionCreate,
+    AIGovernanceActionRead,
+    AIGovernanceActionUpdate,
+    GovernanceActionStatus,
+)
 from app.ai_governance_models import (
     AIBoardGovernanceReport,
     AIBoardKpiSummary,
     AIGovernanceKpiSummary,
     AIKpiAlert,
     AIKpiAlertExport,
+    BoardKpiExportJob,
+    BoardKpiExportJobCreate,
     BoardReportAuditRecord,
     BoardReportAuditRecordCreate,
     BoardReportAuditRecordWithJobs,
@@ -52,7 +60,9 @@ from app.compliance_gap_models import (
     ComplianceStatusEntry,
     ComplianceStatusUpdate,
 )
+from app.config.nis2_kritis_board_alert_thresholds import NIS2_KRITIS_OT_IT_ALERT_THRESHOLD_PCT
 from app.db import engine, get_session
+from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.models import (
     ComplianceAction,
@@ -63,11 +73,13 @@ from app.models import (
 from app.models_db import Base
 from app.nis2_kritis_models import (
     Nis2KritisKpi,
+    Nis2KritisKpiDrilldown,
     Nis2KritisKpiListResponse,
     Nis2KritisKpiUpsertRequest,
 )
 from app.policy_models import Violation
 from app.policy_service import evaluate_policies_for_ai_system
+from app.repositories.ai_governance_actions import AIGovernanceActionRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
 from app.repositories.audit_logs import AuditLogRepository
@@ -88,6 +100,8 @@ from app.services.ai_governance_suppliers import (
     compute_ai_supplier_risk_by_system,
     compute_ai_supplier_risk_overview,
 )
+from app.services.board_kpi_export import board_kpi_export_csv, build_board_kpi_export_envelope
+from app.services.board_kpi_export_jobs import get_kpi_job, register_kpi_export_job
 from app.services.board_report_audit_records import (
     create_audit_record,
     get_record,
@@ -107,7 +121,10 @@ from app.services.compliance_dashboard import (
     compute_compliance_dashboard,
 )
 from app.services.compliance_engine import build_audit_hash, derive_actions
+from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
 from app.services.high_risk_scenarios import list_high_risk_scenarios
+from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
+from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
@@ -235,6 +252,12 @@ def get_nis2_kritis_kpi_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> Nis2KritisKpiRepository:
     return Nis2KritisKpiRepository(session)
+
+
+def get_ai_governance_action_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> AIGovernanceActionRepository:
+    return AIGovernanceActionRepository(session)
 
 
 def _model_to_json(model: BaseModel) -> str:
@@ -498,6 +521,27 @@ def upsert_nis2_kritis_kpi(
     )
 
 
+@app.get(
+    "/api/v1/nis2-kritis/kpi-drilldown",
+    response_model=Nis2KritisKpiDrilldown,
+    tags=["nis2-kritis"],
+)
+def get_nis2_kritis_kpi_drilldown(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    top_n: Annotated[
+        int,
+        Query(ge=1, le=50, description="Top-N schwächste Systeme je KPI-Typ"),
+    ] = 5,
+) -> Nis2KritisKpiDrilldown:
+    """Histogramm + Worst-Offenders je NIS2-/KRITIS-KPI-Typ (mandantenisoliert)."""
+    return build_nis2_kritis_kpi_drilldown(
+        auth_context.tenant_id,
+        nis2_repo,
+        top_n=top_n,
+    )
+
+
 @app.get("/api/v1/audit-logs", response_model=list[AuditLog])
 def list_audit_logs(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
@@ -618,6 +662,162 @@ def get_ai_compliance_overview(
 
 
 @app.get(
+    "/api/v1/ai-governance/readiness/eu-ai-act",
+    response_model=EUAIActReadinessOverview,
+)
+def get_eu_ai_act_readiness(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+) -> EUAIActReadinessOverview:
+    """Readiness bis Stichtag High-Risk inkl. Gaps, Vorschläge und offene Maßnahmen."""
+    return compute_eu_ai_act_readiness_overview(
+        tenant_id=auth_context.tenant_id,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+        nis2_repo=nis2_repo,
+        action_repo=action_repo,
+    )
+
+
+@app.post(
+    "/api/v1/ai-governance/actions",
+    response_model=AIGovernanceActionRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_ai_governance_action(
+    body: AIGovernanceActionCreate,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> AIGovernanceActionRead:
+    tenant_id = auth_context.tenant_id
+    if body.related_ai_system_id:
+        if ai_repo.get_by_id(tenant_id, body.related_ai_system_id) is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="AISystem not found",
+            )
+    return action_repo.create(tenant_id, body)
+
+
+@app.get(
+    "/api/v1/ai-governance/actions",
+    response_model=list[AIGovernanceActionRead],
+)
+def list_ai_governance_actions(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    status_filter: Annotated[
+        GovernanceActionStatus | None,
+        Query(alias="status", description="Filter nach Status"),
+    ] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> list[AIGovernanceActionRead]:
+    return action_repo.list_for_tenant(
+        auth_context.tenant_id,
+        status=status_filter,
+        limit=limit,
+    )
+
+
+@app.get(
+    "/api/v1/ai-governance/actions/{action_id}",
+    response_model=AIGovernanceActionRead,
+)
+def get_ai_governance_action(
+    action_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+) -> AIGovernanceActionRead:
+    row = action_repo.get(auth_context.tenant_id, action_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Governance action not found",
+        )
+    return row
+
+
+@app.patch(
+    "/api/v1/ai-governance/actions/{action_id}",
+    response_model=AIGovernanceActionRead,
+)
+def update_ai_governance_action(
+    action_id: str,
+    body: AIGovernanceActionUpdate,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> AIGovernanceActionRead:
+    tenant_id = auth_context.tenant_id
+    patch = body.model_dump(exclude_unset=True)
+    if patch.get("related_ai_system_id"):
+        if ai_repo.get_by_id(tenant_id, patch["related_ai_system_id"]) is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="AISystem not found",
+            )
+    updated = action_repo.update(tenant_id, action_id, body)
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Governance action not found",
+        )
+    return updated
+
+
+@app.delete(
+    "/api/v1/ai-governance/actions/{action_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_ai_governance_action(
+    action_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+) -> Response:
+    if not action_repo.delete(auth_context.tenant_id, action_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Governance action not found",
+        )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _nis2_kritis_board_alert_signals(
+    tenant_id: str,
+    nis2_repo: Nis2KritisKpiRepository,
+):
+    return build_nis2_kritis_alert_signals(
+        tenant_id,
+        nis2_repo,
+        ot_it_threshold_percent=NIS2_KRITIS_OT_IT_ALERT_THRESHOLD_PCT,
+    )
+
+
+@app.get(
     "/api/v1/ai-governance/alerts/board",
     response_model=list[AIKpiAlert],
 )
@@ -648,6 +848,7 @@ def get_board_alerts(
         tenant_id=tenant_id,
         board_kpis=board_kpis,
         compliance_overview=compliance_overview,
+        nis2_kritis_signals=_nis2_kritis_board_alert_signals(tenant_id, nis2_repo),
     )
 
 
@@ -710,6 +911,7 @@ def get_board_alerts_export(
         tenant_id=tenant_id,
         board_kpis=board_kpis,
         compliance_overview=compliance_overview,
+        nis2_kritis_signals=_nis2_kritis_board_alert_signals(tenant_id, nis2_repo),
     )
     generated_at = datetime.now(UTC)
 
@@ -798,6 +1000,73 @@ def get_board_governance_report_markdown(
     )
 
 
+@app.get(
+    "/api/v1/ai-governance/report/board/kpi-export",
+    response_class=Response,
+)
+def get_board_kpi_export(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    format: Annotated[
+        Literal["json", "csv"],
+        Query(description="Export-Format für DMS/DATEV/SAP-BTP-Integration"),
+    ] = "json",
+) -> Response:
+    """Board-KPI- und NIS2-/KRITIS-Werte je KI-System als JSON oder CSV."""
+    tenant_id = auth_context.tenant_id
+    envelope = build_board_kpi_export_envelope(tenant_id, ai_repo, nis2_repo)
+    gen = envelope.generated_at
+    if format == "csv":
+        csv_content = board_kpi_export_csv(envelope)
+        filename = f"board-kpi-export-{tenant_id}-{gen.strftime('%Y%m%d')}.csv"
+        return Response(
+            content=csv_content,
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
+    filename = f"board-kpi-export-{tenant_id}-{gen.strftime('%Y%m%d')}.json"
+    return Response(
+        content=envelope.model_dump_json(),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@app.post(
+    "/api/v1/ai-governance/report/board/kpi-export/jobs",
+    response_model=BoardKpiExportJob,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_board_kpi_export_job(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    body: BoardKpiExportJobCreate,
+) -> BoardKpiExportJob:
+    """Registriert einen KPI-Export für Audit-Verknüpfung (Zielsystem-Label, kein Versand)."""
+    return register_kpi_export_job(auth_context.tenant_id, body)
+
+
+@app.get(
+    "/api/v1/ai-governance/report/board/kpi-export/jobs/{job_id}",
+    response_model=BoardKpiExportJob,
+)
+def get_board_kpi_export_job(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    job_id: str,
+) -> BoardKpiExportJob:
+    job = get_kpi_job(job_id, auth_context.tenant_id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="KPI export job not found",
+        )
+    return job
+
+
 def _build_board_report(
     tenant_id: str,
     ai_repo: AISystemRepository,
@@ -836,6 +1105,7 @@ def _build_board_report(
         tenant_id=tenant_id,
         board_kpis=kpis,
         compliance_overview=compliance_overview,
+        nis2_kritis_signals=_nis2_kritis_board_alert_signals(tenant_id, nis2_repo),
     )
     return AIBoardGovernanceReport(
         tenant_id=tenant_id,
@@ -992,9 +1262,15 @@ def get_board_report_audit_record(
         job = get_job(jid, auth_context.tenant_id)
         if job is not None:
             linked_jobs.append(job)
+    linked_kpi: list[BoardKpiExportJob] = []
+    for kid in record.linked_kpi_export_job_ids:
+        kj = get_kpi_job(kid, auth_context.tenant_id)
+        if kj is not None:
+            linked_kpi.append(kj)
     return BoardReportAuditRecordWithJobs(
         **record.model_dump(),
         linked_export_jobs=linked_jobs,
+        linked_kpi_export_jobs=linked_kpi,
     )
 
 

@@ -196,6 +196,36 @@ class IncidentTable(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class AIGovernanceActionDB(Base):
+    """Leichtgewichtige Maßnahmen/Gaps (EU AI Act, NIS2) – mandantenfähig."""
+
+    __tablename__ = "ai_governance_actions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    related_ai_system_id: Mapped[str | None] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    related_requirement: Mapped[str] = mapped_column(String(500), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    owner: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+
 class AuditLogTable(Base):
     __tablename__ = "audit_logs"
 

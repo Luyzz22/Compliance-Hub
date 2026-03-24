@@ -173,6 +173,7 @@ class BoardReportAuditRecordCreate(BaseModel):
     purpose: str = Field(..., min_length=1, max_length=200)
     status: AuditRecordStatus = "draft"
     linked_export_job_ids: list[str] = Field(default_factory=list, max_length=50)
+    linked_kpi_export_job_ids: list[str] = Field(default_factory=list, max_length=50)
 
 
 class BoardReportAuditRecord(BaseModel):
@@ -186,6 +187,7 @@ class BoardReportAuditRecord(BaseModel):
     created_by: str
     purpose: str
     linked_export_job_ids: list[str]
+    linked_kpi_export_job_ids: list[str] = Field(default_factory=list)
     status: AuditRecordStatus
 
 
@@ -193,6 +195,7 @@ class BoardReportAuditRecordWithJobs(BoardReportAuditRecord):
     """Audit-Record inkl. aufgelöster verknüpfter Export-Jobs (für GET by id)."""
 
     linked_export_jobs: list[BoardReportExportJob] = Field(default_factory=list)
+    linked_kpi_export_jobs: list[BoardKpiExportJob] = Field(default_factory=list)
 
 
 # Norm-Nachweise: Verknüpfung von Audit-Records/Reports mit Norm-Referenzen
@@ -219,6 +222,59 @@ class NormEvidenceLink(BaseModel):
     reference: str
     evidence_type: EvidenceType
     note: str | None = None
+
+
+class BoardKpiExportSystemRow(BaseModel):
+    """Eine Zeile im Board-KPI-Export (DMS/DATEV/SAP-BTP-tauglich)."""
+
+    ai_system_id: str
+    name: str
+    business_unit: str
+    risk_level: str
+    ai_act_category: str
+    high_risk_scenario_profile_id: str | None = None
+    nis2_kritis_incident_response_maturity_percent: int | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+    )
+    nis2_kritis_supplier_risk_coverage_percent: int | None = Field(default=None, ge=0, le=100)
+    nis2_kritis_ot_it_segregation_percent: int | None = Field(default=None, ge=0, le=100)
+
+
+class BoardKpiExportEnvelope(BaseModel):
+    """JSON-Export-Envelope für Board-/NIS2-KPI-Daten."""
+
+    format_version: str = "1.0"
+    tenant_id: str
+    generated_at: datetime
+    systems: list[BoardKpiExportSystemRow]
+
+
+KpiExportTargetLabel = Literal["datev", "dms", "sap_btp_placeholder"]
+BoardKpiExportJobStatus = Literal["completed", "failed"]
+
+
+class BoardKpiExportJobCreate(BaseModel):
+    """Audit-Trail: KPI-Export-Job anlegen (ohne externen Versand)."""
+
+    target_system_label: KpiExportTargetLabel
+    export_format: Literal["json", "csv"] = "json"
+    metadata: dict[str, str] | None = None
+
+
+class BoardKpiExportJob(BaseModel):
+    """In-Memory-Metadaten zu einem KPI-Export (Tenant-isoliert)."""
+
+    id: str
+    tenant_id: str
+    created_at: datetime
+    completed_at: datetime | None = None
+    status: BoardKpiExportJobStatus
+    target_system_label: KpiExportTargetLabel
+    export_format: Literal["json", "csv"]
+    metadata: dict[str, str] | None = None
+    error_message: str | None = None
 
 
 class HighRiskScenarioProfile(BaseModel):

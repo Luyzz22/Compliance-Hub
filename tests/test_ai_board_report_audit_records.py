@@ -69,6 +69,7 @@ def test_create_audit_record():
     assert data["status"] == "draft"
     assert data["report_version"] != ""
     assert data["linked_export_job_ids"] == []
+    assert data.get("linked_kpi_export_job_ids") == []
     assert "report_generated_at" in data
     assert "created_by" in data
 
