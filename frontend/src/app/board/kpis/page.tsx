@@ -12,6 +12,7 @@ import {
   type AIKpiAlert,
   type BoardKpiSummary,
 } from "@/lib/api";
+import { BOARD_PAGE_MAIN_CLASS } from "@/lib/boardLayout";
 
 import { BoardKpiAdvisorExport } from "./BoardKpiAdvisorExport";
 import { BoardReportAuditSection } from "./BoardReportAuditSection";
@@ -115,7 +116,7 @@ export default async function BoardKpisPage() {
 
   if (!kpis) {
     return (
-      <main className="sbs-page-main">
+      <main className={BOARD_PAGE_MAIN_CLASS}>
         <header className="mb-6">
           <h1 className="sbs-h1">
             AI Governance – Board KPIs
@@ -135,7 +136,7 @@ export default async function BoardKpisPage() {
   const isoScore = kpis.iso42001_governance_score;
 
   return (
-    <main className="sbs-page-main">
+    <main className={BOARD_PAGE_MAIN_CLASS}>
       <header className="mb-6">
         <h1 className="sbs-h1">
           AI Governance – Board KPIs
@@ -234,7 +235,7 @@ export default async function BoardKpisPage() {
         return (
           <section
             aria-label="AI-Governance-Reife nach ISO 42001"
-            className={`sbs-panel relative mb-8 flex flex-col justify-between gap-4 p-6 ${scoreColor(
+            className={`sbs-panel relative mb-8 flex min-w-0 flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between ${scoreColor(
               isoScore,
             )} ${hasCriticalForIso ? "ring-2 ring-red-300" : ""}`}
           >
@@ -244,31 +245,31 @@ export default async function BoardKpisPage() {
                 aria-hidden
               />
             )}
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold uppercase tracking-wide">
                 AI-Governance-Reife (ISO 42001)
               </h2>
-          <p className="mt-1 text-xs text-slate-700">
-            Aggregierter Reifegrad des AI-Managementsystems (Kontext, Führung,
-            Risikobewertung, Betrieb, Verbesserung).
-          </p>
-        </div>
-        <div className="flex items-baseline gap-3">
-          <span className="text-5xl font-semibold leading-none">
-            {formatPercent(isoScore)}
-          </span>
-          <span className="text-sm font-medium text-slate-700">
-            von 100&nbsp;% Zielreife
-          </span>
-        </div>
-      </section>
+              <p className="mt-1 text-xs text-slate-700">
+                Aggregierter Reifegrad des AI-Managementsystems (Kontext, Führung,
+                Risikobewertung, Betrieb, Verbesserung).
+              </p>
+            </div>
+            <div className="flex shrink-0 items-baseline gap-3">
+              <span className="text-5xl font-semibold leading-none">
+                {formatPercent(isoScore)}
+              </span>
+              <span className="text-sm font-medium text-slate-700">
+                von 100&nbsp;% Zielreife
+              </span>
+            </div>
+          </section>
         );
       })()}
 
       {/* KPI Grid */}
       <section
         aria-label="NIS2- und High-Risk-KPIs"
-        className="mb-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
         {/* NIS2 Incident Readiness */}
         {(() => {
@@ -279,7 +280,7 @@ export default async function BoardKpisPage() {
           );
           return (
             <div
-              className={`sbs-panel relative flex flex-col p-4 ${hasCritical ? "ring-2 ring-red-300" : ""}`}
+              className={`sbs-panel relative flex min-w-0 flex-col p-4 ${hasCritical ? "ring-2 ring-red-300" : ""}`}
             >
               {hasCritical && (
                 <span
@@ -290,25 +291,25 @@ export default async function BoardKpisPage() {
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 NIS2 Incident Readiness
               </h3>
-          <p className="mt-1 text-xs text-slate-500">
-            Anteil KI-Systeme mit Incident- und Backup-Runbook.
-          </p>
-          <div className="mt-4 text-3xl font-semibold text-slate-900">
-            {formatPercent(kpis.nis2_incident_readiness_ratio)}
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {formatPercent(kpis.nis2_incident_readiness_ratio)} der
-            KI-Systeme mit Incident- &amp; Backup-Runbook.
-          </p>
-          <p className="mt-3">
-            <Link
-              href="/board/incidents"
-              className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
-              aria-label="Incident-Drilldown öffnen"
-            >
-              Incident-Details anzeigen
-            </Link>
-          </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Anteil KI-Systeme mit Incident- und Backup-Runbook.
+              </p>
+              <div className="mt-4 text-3xl font-semibold text-slate-900">
+                {formatPercent(kpis.nis2_incident_readiness_ratio)}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {formatPercent(kpis.nis2_incident_readiness_ratio)} der
+                KI-Systeme mit Incident- &amp; Backup-Runbook.
+              </p>
+              <p className="mt-3">
+                <Link
+                  href="/board/incidents"
+                  className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
+                  aria-label="Incident-Drilldown öffnen"
+                >
+                  Incident-Details anzeigen
+                </Link>
+              </p>
             </div>
           );
         })()}
@@ -322,7 +323,7 @@ export default async function BoardKpisPage() {
           );
           return (
             <div
-              className={`sbs-panel relative flex flex-col p-4 ${hasCritical ? "ring-2 ring-red-300" : ""}`}
+              className={`sbs-panel relative flex min-w-0 flex-col p-4 ${hasCritical ? "ring-2 ring-red-300" : ""}`}
             >
               {hasCritical && (
                 <span
@@ -333,31 +334,31 @@ export default async function BoardKpisPage() {
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 NIS2 Supplier Risk Coverage
               </h3>
-          <p className="mt-1 text-xs text-slate-500">
-            Anteil KI-Systeme mit dokumentiertem Lieferanten-Risikoregister.
-          </p>
-          <div className="mt-4 text-3xl font-semibold text-slate-900">
-            {formatPercent(kpis.nis2_supplier_risk_coverage_ratio)}
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {formatPercent(kpis.nis2_supplier_risk_coverage_ratio)} der Systeme
-            mit Supplier-Risikoregister.
-          </p>
-          <p className="mt-3">
-            <Link
-              href="/board/suppliers"
-              className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
-              aria-label="Supplier-Risiko-Drilldown öffnen"
-            >
-              Details anzeigen
-            </Link>
-          </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Anteil KI-Systeme mit dokumentiertem Lieferanten-Risikoregister.
+              </p>
+              <div className="mt-4 text-3xl font-semibold text-slate-900">
+                {formatPercent(kpis.nis2_supplier_risk_coverage_ratio)}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {formatPercent(kpis.nis2_supplier_risk_coverage_ratio)} der Systeme
+                mit Supplier-Risikoregister.
+              </p>
+              <p className="mt-3">
+                <Link
+                  href="/board/suppliers"
+                  className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
+                  aria-label="Supplier-Risiko-Drilldown öffnen"
+                >
+                  Details anzeigen
+                </Link>
+              </p>
             </div>
           );
         })()}
 
         {/* High-Risk KI-Systeme gesamt */}
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             High-Risk KI-Systeme gesamt
           </h3>
@@ -373,7 +374,7 @@ export default async function BoardKpisPage() {
         </div>
 
         {/* High-Risk ohne DPIA */}
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             High-Risk ohne DPIA
           </h3>
@@ -402,9 +403,9 @@ export default async function BoardKpisPage() {
             Readiness für High-Risk-Anforderungen bis Anwendungsbeginn EU AI Act
             (2. August 2026) und ISO 42001 AI-Managementsystem.
           </p>
-          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div
-              className={`flex flex-col rounded-xl border p-4 ${scoreColor(
+              className={`flex min-w-0 flex-col rounded-xl border p-4 ${scoreColor(
                 complianceOverview.overall_readiness,
               )}`}
             >
@@ -418,7 +419,7 @@ export default async function BoardKpisPage() {
                 EU AI Act &amp; ISO 42001 Anforderungen gewichtet.
               </p>
             </div>
-            <div className="flex flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <div className="flex min-w-0 flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Frist High-Risk
               </h3>
@@ -429,7 +430,7 @@ export default async function BoardKpisPage() {
                 Bis 2. August 2026 (Vollanwendung High-Risk).
               </p>
             </div>
-            <div className="flex flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <div className="flex min-w-0 flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 High-Risk voll kontrolliert
               </h3>
@@ -440,7 +441,7 @@ export default async function BoardKpisPage() {
                 Systeme mit vollständig erfüllten Anforderungen.
               </p>
             </div>
-            <div className="flex flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <div className="flex min-w-0 flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 High-Risk mit kritischen Lücken
               </h3>
@@ -452,8 +453,8 @@ export default async function BoardKpisPage() {
               </p>
             </div>
           </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="flex min-w-0 flex-col rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
                 NIS2 / KRITIS KPI (Mittelwert)
               </h3>
@@ -466,7 +467,7 @@ export default async function BoardKpisPage() {
                 Durchschnitt aller gepflegten Incident-/Supplier-/OT-IT-KPIs (0–100).
               </p>
             </div>
-            <div className="flex flex-col rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
+            <div className="flex min-w-0 flex-col rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
                 NIS2 / KRITIS KPI-Abdeckung
               </h3>
@@ -487,8 +488,8 @@ export default async function BoardKpisPage() {
               </h3>
               <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
                 {complianceOverview.top_critical_requirements.map((req, i) => (
-                  <li key={i} className="flex justify-between gap-4">
-                    <span>
+                  <li key={i} className="flex min-w-0 justify-between gap-4">
+                    <span className="min-w-0">
                       <strong className="text-slate-800">{req.article}</strong>{" "}
                       {req.name}
                     </span>

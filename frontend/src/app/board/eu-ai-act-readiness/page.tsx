@@ -6,6 +6,7 @@ import {
   type EUAIActReadinessOverview,
   type ReadinessRequirementTraffic,
 } from "@/lib/api";
+import { BOARD_PAGE_MAIN_CLASS } from "@/lib/boardLayout";
 
 function aiSystemsFilterHref(systemIds: string[]): string {
   const q = systemIds.length
@@ -35,7 +36,7 @@ export default async function EuAiActReadinessPage() {
 
   if (!data) {
     return (
-      <main className="sbs-page-main">
+      <main className={BOARD_PAGE_MAIN_CLASS}>
         <header className="mb-6">
           <h1 className="sbs-h1">
             EU AI Act Readiness
@@ -64,12 +65,12 @@ export default async function EuAiActReadinessPage() {
   const q3done = data.days_remaining > 0 && data.overall_readiness >= 0.85;
 
   return (
-    <main className="sbs-page-main">
+    <main className={BOARD_PAGE_MAIN_CLASS}>
       <header className="mb-6">
         <h1 className="sbs-h1">
           EU AI Act Readiness (High-Risk)
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="sbs-subtitle">
           Stichtag {data.deadline} · noch {data.days_remaining} Tage ·
           Gesamt-Readiness {readinessPct} %
         </p>
@@ -85,9 +86,9 @@ export default async function EuAiActReadinessPage() {
 
       <section
         aria-label="Kernkennzahlen"
-        className="mb-8 grid gap-4 md:grid-cols-3"
+        className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3"
       >
-        <div className="sbs-panel p-4">
+        <div className="sbs-panel min-w-0 p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Overall Readiness
           </h2>
@@ -95,7 +96,7 @@ export default async function EuAiActReadinessPage() {
             {readinessPct} %
           </p>
         </div>
-        <div className="sbs-panel p-4">
+        <div className="sbs-panel min-w-0 p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             High-Risk mit essenziellen Controls
           </h2>
@@ -103,7 +104,7 @@ export default async function EuAiActReadinessPage() {
             {data.high_risk_systems_essential_complete}
           </p>
         </div>
-        <div className="sbs-panel p-4">
+        <div className="sbs-panel min-w-0 p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             High-Risk mit Lücken
           </h2>
@@ -149,7 +150,7 @@ export default async function EuAiActReadinessPage() {
             {data.critical_requirements.map((r) => (
               <li
                 key={r.requirement_id ?? `${r.code}-${r.name}`}
-                className="sbs-panel flex items-start gap-3 px-3 py-2 text-sm"
+                className="sbs-panel flex min-w-0 items-start gap-3 px-3 py-2 text-sm"
               >
                 <span
                   className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${trafficDot(r.traffic)}`}

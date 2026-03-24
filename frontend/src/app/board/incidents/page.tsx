@@ -7,6 +7,7 @@ import {
   type AIIncidentBySystem,
   type AIIncidentOverview,
 } from "@/lib/api";
+import { BOARD_PAGE_MAIN_CLASS } from "@/lib/boardLayout";
 
 function severityBadgeClass(severity: string): string {
   switch (severity) {
@@ -50,12 +51,12 @@ export default async function BoardIncidentsPage() {
 
   if (!overview) {
     return (
-      <main className="sbs-page-main">
+      <main className={BOARD_PAGE_MAIN_CLASS}>
         <header className="mb-6">
           <h1 className="sbs-h1">
             AI Governance – Incident-Übersicht
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="sbs-subtitle">
             NIS2 Art. 21/23 · ISO 42001 Incident Management
           </p>
         </header>
@@ -81,12 +82,12 @@ export default async function BoardIncidentsPage() {
   const topSystems = bySystem.slice(0, 3);
 
   return (
-    <main className="sbs-page-main">
+    <main className={BOARD_PAGE_MAIN_CLASS}>
       <header className="mb-6">
         <h1 className="sbs-h1">
           AI Governance – Incident-Übersicht
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="sbs-subtitle">
           NIS2 Art. 21/23 (Incident & Business Continuity) · ISO 42001 Incident
           Management · Standort Deutschland
         </p>
@@ -103,9 +104,9 @@ export default async function BoardIncidentsPage() {
 
       <section
         aria-label="Incident-KPIs"
-        className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Incidents letzte 12 Monate
           </h2>
@@ -114,7 +115,7 @@ export default async function BoardIncidentsPage() {
           </p>
           <p className="mt-1 text-xs text-slate-500">Gesamt (Rolling 12 Monate)</p>
         </div>
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Aktuell offene Incidents
           </h2>
@@ -123,7 +124,7 @@ export default async function BoardIncidentsPage() {
           </p>
           <p className="mt-1 text-xs text-slate-500">Status: offen</p>
         </div>
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Major Incidents (NIS2-relevant)
           </h2>
@@ -132,7 +133,7 @@ export default async function BoardIncidentsPage() {
           </p>
           <p className="mt-1 text-xs text-slate-500">Schweregrad Hoch, 12 Monate</p>
         </div>
-        <div className="sbs-panel flex flex-col p-4">
+        <div className="sbs-panel flex min-w-0 flex-col p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             MTTA / MTTR
           </h2>

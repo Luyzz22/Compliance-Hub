@@ -6,6 +6,7 @@ import {
   type Nis2KritisKpiDrilldown,
   type Nis2KritisKpiType,
 } from "@/lib/api";
+import { BOARD_PAGE_MAIN_CLASS } from "@/lib/boardLayout";
 
 const KPI_LABEL: Record<Nis2KritisKpiType, string> = {
   INCIDENT_RESPONSE_MATURITY: "Incident-Response-Reife",
@@ -56,12 +57,12 @@ export default async function BoardNis2KritisPage() {
 
   if (!drilldown) {
     return (
-      <main className="sbs-page-main">
+      <main className={BOARD_PAGE_MAIN_CLASS}>
         <header className="mb-6">
           <h1 className="sbs-h1">
             NIS2 / KRITIS – KPI-Drilldown
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="sbs-subtitle">
             Incident-, Supplier- und OT/IT-KPIs je KI-System
           </p>
         </header>
@@ -84,12 +85,12 @@ export default async function BoardNis2KritisPage() {
   }
 
   return (
-    <main className="sbs-page-main">
+    <main className={BOARD_PAGE_MAIN_CLASS}>
       <header className="mb-6">
         <h1 className="sbs-h1">
           NIS2 / KRITIS – KPI-Drilldown
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="sbs-subtitle">
           Verteilung der KPI-Prozentwerte und schwächste KI-Systeme je Typ
           (Top {drilldown.top_n}). Stand:{" "}
           {new Date(drilldown.generated_at).toLocaleString("de-DE")}
@@ -104,7 +105,7 @@ export default async function BoardNis2KritisPage() {
         </p>
       </header>
 
-      <div className="space-y-8">
+      <div className="min-w-0 space-y-8">
         {drilldown.by_kpi_type.map((block) => {
           const maxCount = Math.max(
             ...block.histogram.map((h) => h.count),
@@ -114,7 +115,7 @@ export default async function BoardNis2KritisPage() {
             <section
               key={block.kpi_type}
               aria-label={KPI_LABEL[block.kpi_type]}
-              className="sbs-panel p-5"
+              className="sbs-panel min-w-0 p-5"
             >
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                 {KPI_LABEL[block.kpi_type]}
@@ -136,9 +137,9 @@ export default async function BoardNis2KritisPage() {
                   {block.critical_systems.map((s) => (
                     <li
                       key={`${s.ai_system_id}-${block.kpi_type}`}
-                      className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"
+                      className="flex min-w-0 flex-wrap items-baseline justify-between gap-2 py-2 text-sm"
                     >
-                      <div>
+                      <div className="min-w-0">
                         <span className="font-medium text-slate-900">
                           {s.name}
                         </span>
