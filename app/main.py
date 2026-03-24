@@ -24,6 +24,7 @@ from app.ai_governance_models import (
     BoardReportAuditRecordWithJobs,
     BoardReportExportJob,
     BoardReportExportJobCreate,
+    HighRiskScenarioProfile,
     NormEvidenceLink,
     NormEvidenceLinkCreate,
     NormFramework,
@@ -60,6 +61,11 @@ from app.models import (
     EInvoiceFormat,
 )
 from app.models_db import Base
+from app.nis2_kritis_models import (
+    Nis2KritisKpi,
+    Nis2KritisKpiListResponse,
+    Nis2KritisKpiUpsertRequest,
+)
 from app.policy_models import Violation
 from app.policy_service import evaluate_policies_for_ai_system
 from app.repositories.ai_systems import AISystemRepository
@@ -68,6 +74,7 @@ from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
 from app.repositories.incidents import IncidentRepository
+from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
@@ -100,6 +107,8 @@ from app.services.compliance_dashboard import (
     compute_compliance_dashboard,
 )
 from app.services.compliance_engine import build_audit_hash, derive_actions
+from app.services.high_risk_scenarios import list_high_risk_scenarios
+from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
     compute_tenant_compliance_overview,
@@ -220,6 +229,12 @@ def get_compliance_gap_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> ComplianceGapRepository:
     return ComplianceGapRepository(session)
+
+
+def get_nis2_kritis_kpi_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> Nis2KritisKpiRepository:
+    return Nis2KritisKpiRepository(session)
 
 
 def _model_to_json(model: BaseModel) -> str:
@@ -433,6 +448,56 @@ def update_ai_system_status(
     return updated
 
 
+@app.get(
+    "/api/v1/ai-systems/{ai_system_id}/nis2-kritis-kpis",
+    response_model=Nis2KritisKpiListResponse,
+)
+def list_nis2_kritis_kpis(
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+) -> Nis2KritisKpiListResponse:
+    tenant_id = auth_context.tenant_id
+    system = ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id)
+    if system is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AISystem not found",
+        )
+    kpis = nis2_repo.list_for_ai_system(tenant_id, ai_system_id)
+    recommended = recommended_kpis_for_ai_system(system)
+    return Nis2KritisKpiListResponse(kpis=kpis, recommended=recommended)
+
+
+@app.post(
+    "/api/v1/ai-systems/{ai_system_id}/nis2-kritis-kpis",
+    response_model=Nis2KritisKpi,
+)
+def upsert_nis2_kritis_kpi(
+    ai_system_id: str,
+    body: Nis2KritisKpiUpsertRequest,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+) -> Nis2KritisKpi:
+    tenant_id = auth_context.tenant_id
+    system = ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id)
+    if system is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AISystem not found",
+        )
+    return nis2_repo.upsert(
+        tenant_id=tenant_id,
+        ai_system_id=ai_system_id,
+        kpi_type=body.kpi_type,
+        value_percent=body.value_percent,
+        evidence_ref=body.evidence_ref,
+        last_reviewed_at=body.last_reviewed_at,
+    )
+
+
 @app.get("/api/v1/audit-logs", response_model=list[AuditLog])
 def list_audit_logs(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
@@ -521,11 +586,13 @@ def get_ai_governance_board_kpis(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     ai_repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
 ) -> AIBoardKpiSummary:
     return compute_ai_board_kpis(
         tenant_id=auth_context.tenant_id,
         ai_system_repository=ai_repository,
         violation_repository=violation_repository,
+        nis2_kritis_kpi_repository=nis2_repo,
     )
 
 
@@ -538,6 +605,7 @@ def get_ai_compliance_overview(
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
 ) -> AIComplianceOverview:
     """Board-fähiger EU AI Act / ISO 42001 Readiness-Überblick."""
     return compute_ai_compliance_overview(
@@ -545,6 +613,7 @@ def get_ai_compliance_overview(
         ai_repo=ai_repo,
         cls_repo=cls_repo,
         gap_repo=gap_repo,
+        nis2_kritis_kpi_repository=nis2_repo,
     )
 
 
@@ -558,6 +627,7 @@ def get_board_alerts(
     cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
     violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
 ) -> list[AIKpiAlert]:
     """Aktuelle Board-KPI-Alerts (NIS2 / EU AI Act / ISO 42001) für den Tenant."""
     tenant_id = auth_context.tenant_id
@@ -565,12 +635,14 @@ def get_board_alerts(
         tenant_id=tenant_id,
         ai_system_repository=ai_repo,
         violation_repository=violation_repo,
+        nis2_kritis_kpi_repository=nis2_repo,
     )
     compliance_overview = compute_ai_compliance_overview(
         tenant_id=tenant_id,
         ai_repo=ai_repo,
         cls_repo=cls_repo,
         gap_repo=gap_repo,
+        nis2_kritis_kpi_repository=nis2_repo,
     )
     return compute_board_alerts(
         tenant_id=tenant_id,
@@ -611,6 +683,7 @@ def get_board_alerts_export(
     cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
     violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
     format: Annotated[
         Literal["json", "csv"],
         Query(description="Export-Format: json (Standard) oder csv"),
@@ -624,12 +697,14 @@ def get_board_alerts_export(
         tenant_id=tenant_id,
         ai_system_repository=ai_repo,
         violation_repository=violation_repo,
+        nis2_kritis_kpi_repository=nis2_repo,
     )
     compliance_overview = compute_ai_compliance_overview(
         tenant_id=tenant_id,
         ai_repo=ai_repo,
         cls_repo=cls_repo,
         gap_repo=gap_repo,
+        nis2_kritis_kpi_repository=nis2_repo,
     )
     alerts = compute_board_alerts(
         tenant_id=tenant_id,
@@ -675,6 +750,7 @@ def get_board_governance_report(
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
     violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
     incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
 ) -> AIBoardGovernanceReport:
     """Vorstands-/Aufsichtsreport: alle AI-Governance-Kennzahlen gebündelt (nur JSON)."""
     return _build_board_report(
@@ -684,6 +760,7 @@ def get_board_governance_report(
         gap_repo=gap_repo,
         violation_repo=violation_repo,
         incident_repo=incident_repo,
+        nis2_repo=nis2_repo,
     )
 
 
@@ -698,6 +775,7 @@ def get_board_governance_report_markdown(
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
     violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
     incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
 ) -> Response:
     """Board-Report als Markdown (template-fähig, für PDF/Word-Weiterverarbeitung)."""
     report = _build_board_report(
@@ -707,6 +785,7 @@ def get_board_governance_report_markdown(
         gap_repo=gap_repo,
         violation_repo=violation_repo,
         incident_repo=incident_repo,
+        nis2_repo=nis2_repo,
     )
     markdown_content = render_board_report_markdown(report)
     filename = f"ai-board-report-{report.tenant_id}-{report.generated_at.strftime('%Y%m%d')}.md"
@@ -726,6 +805,7 @@ def _build_board_report(
     gap_repo: ComplianceGapRepository,
     violation_repo: ViolationRepository,
     incident_repo: IncidentRepository,
+    nis2_repo: Nis2KritisKpiRepository,
 ) -> AIBoardGovernanceReport:
     """Orchestriert alle Services und liefert AIBoardGovernanceReport."""
     from app.datetime_compat import UTC
@@ -735,12 +815,14 @@ def _build_board_report(
         tenant_id=tenant_id,
         ai_system_repository=ai_repo,
         violation_repository=violation_repo,
+        nis2_kritis_kpi_repository=nis2_repo,
     )
     compliance_overview = compute_ai_compliance_overview(
         tenant_id=tenant_id,
         ai_repo=ai_repo,
         cls_repo=cls_repo,
         gap_repo=gap_repo,
+        nis2_kritis_kpi_repository=nis2_repo,
     )
     incidents_overview = compute_ai_incident_overview(
         tenant_id=tenant_id,
@@ -779,6 +861,7 @@ def create_board_report_export_job(
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
     violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
     incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
     body: BoardReportExportJobCreate,
 ) -> BoardReportExportJob:
     """Erstellt Export-Job (Report + Markdown), optional Webhook-POST an callback_url."""
@@ -805,6 +888,7 @@ def create_board_report_export_job(
         gap_repo=gap_repo,
         violation_repo=violation_repo,
         incident_repo=incident_repo,
+        nis2_repo=nis2_repo,
     )
     job = run_export_job(tenant_id=tenant_id, report=report, body=body)
     return job
@@ -843,6 +927,7 @@ def create_board_report_audit_record(
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
     violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
     incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
     body: BoardReportAuditRecordCreate,
 ) -> BoardReportAuditRecord:
     """Legt einen Audit-Record für den aktuellen Board-Report an (Version = Hash)."""
@@ -855,6 +940,7 @@ def create_board_report_audit_record(
         gap_repo=gap_repo,
         violation_repo=violation_repo,
         incident_repo=incident_repo,
+        nis2_repo=nis2_repo,
     )
     record = create_audit_record(
         tenant_id=tenant_id,
@@ -994,6 +1080,18 @@ def get_norm_evidence_defaults(
     return get_default_norm_evidence_suggestions()
 
 
+@app.get(
+    "/api/v1/ai-governance/high-risk-scenarios",
+    response_model=list[HighRiskScenarioProfile],
+)
+def get_high_risk_scenarios(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> list[HighRiskScenarioProfile]:
+    """High-Risk-AI-Szenario-Profile mit empfohlenen Norm-Nachweisen (nur Lesen, keine Anlage)."""
+    _ = auth_context.tenant_id
+    return list_high_risk_scenarios()
+
+
 # --- Beispiel-Payload-Endpoint (NUR DEV/DOCS – nicht für Produktion) ---
 def _get_export_payload_example(target_system: str) -> dict:
     """Statisches Beispiel-Payload für sap_btp_http (1:1 in SAP Cloud Integration testbar)."""
@@ -1122,6 +1220,7 @@ def get_ai_governance_kpis(
     policy_repository: Annotated[PolicyRepository, Depends(get_policy_repository)],
     violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
     audit_repository: Annotated[AuditRepository, Depends(get_audit_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
 ) -> AIGovernanceKpiSummary:
     if tenant_id != auth_context.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
@@ -1132,6 +1231,7 @@ def get_ai_governance_kpis(
         policy_repository=policy_repository,
         violation_repository=violation_repository,
         audit_repository=audit_repository,
+        nis2_kritis_kpi_repository=nis2_repo,
     )
 
 

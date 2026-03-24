@@ -16,6 +16,7 @@ from app.compliance_gap_models import (
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
+from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 
 EU_AI_ACT_HIGH_RISK_DEADLINE = date(2026, 8, 2)
 
@@ -125,6 +126,7 @@ def compute_ai_compliance_overview(
     ai_repo: AISystemRepository,
     cls_repo: ClassificationRepository,
     gap_repo: ComplianceGapRepository,
+    nis2_kritis_kpi_repository: Nis2KritisKpiRepository,
 ) -> AIComplianceOverview:
     """Board-fähiger Compliance-Overview aus Dashboard-Aggregation."""
     dashboard = compute_compliance_dashboard(
@@ -133,6 +135,8 @@ def compute_ai_compliance_overview(
         cls_repo=cls_repo,
         gap_repo=gap_repo,
     )
+    mean_nis2, nis2_coverage = nis2_kritis_kpi_repository.aggregate_for_tenant(tenant_id)
+    mean_rounded = round(mean_nis2, 2) if mean_nis2 is not None else None
     high_risk_systems = [s for s in dashboard.systems if s.risk_level == "high_risk"]
     high_risk_with_full = sum(1 for s in high_risk_systems if s.readiness_score >= 1.0)
     high_risk_with_gaps = sum(1 for s in high_risk_systems if s.not_started > 0)
@@ -173,4 +177,6 @@ def compute_ai_compliance_overview(
         top_critical_requirements=top_list,
         deadline=EU_AI_ACT_HIGH_RISK_DEADLINE.isoformat(),
         days_remaining=dashboard.days_remaining,
+        nis2_kritis_kpi_mean_percent=mean_rounded,
+        nis2_kritis_systems_full_coverage_ratio=round(nis2_coverage, 4),
     )

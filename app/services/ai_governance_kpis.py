@@ -7,6 +7,7 @@ from app.ai_governance_models import AIBoardKpiSummary, AIGovernanceKpiSummary
 from app.datetime_compat import UTC
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
+from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 
@@ -38,6 +39,7 @@ def compute_ai_governance_kpis(
     policy_repository: PolicyRepository,
     violation_repository: ViolationRepository,
     audit_repository: AuditRepository,
+    nis2_kritis_kpi_repository: Nis2KritisKpiRepository,
 ) -> AIGovernanceKpiSummary:
     # Datenbasis aus Repositories
     ai_systems = ai_system_repository.list_for_tenant(tenant_id)
@@ -70,6 +72,9 @@ def compute_ai_governance_kpis(
     has_documented_ai_policy = any("policy" in policy_id for policy_id in policy_ids)
     has_ai_risk_register = any(system.has_supplier_risk_register for system in ai_systems)
 
+    mean_nis2, nis2_coverage = nis2_kritis_kpi_repository.aggregate_for_tenant(tenant_id)
+    mean_rounded = round(mean_nis2, 2) if mean_nis2 is not None else None
+
     return AIGovernanceKpiSummary(
         tenant_id=tenant_id,
         governance_maturity_score=round(governance_maturity_score, 3),
@@ -81,6 +86,8 @@ def compute_ai_governance_kpis(
         audit_events_last_30_days=audit_events_last_30_days,
         has_documented_ai_policy=has_documented_ai_policy,
         has_ai_risk_register=has_ai_risk_register,
+        nis2_kritis_kpi_mean_percent=mean_rounded,
+        nis2_kritis_systems_full_coverage_ratio=round(nis2_coverage, 4),
     )
 
 
@@ -88,6 +95,7 @@ def compute_ai_board_kpis(
     tenant_id: str,
     ai_system_repository: AISystemRepository,
     violation_repository: ViolationRepository,
+    nis2_kritis_kpi_repository: Nis2KritisKpiRepository,
 ) -> AIBoardKpiSummary:
     ai_systems = ai_system_repository.list_for_tenant(tenant_id)
     violations = violation_repository.list_violations_for_tenant(tenant_id)
@@ -177,6 +185,9 @@ def compute_ai_board_kpis(
     operational_resilience_score = runbook_ratio
     responsible_ai_score = 1.0 - violation_penalty
 
+    mean_nis2, nis2_coverage = nis2_kritis_kpi_repository.aggregate_for_tenant(tenant_id)
+    mean_rounded = round(mean_nis2, 2) if mean_nis2 is not None else None
+
     return AIBoardKpiSummary(
         tenant_id=tenant_id,
         ai_systems_total=total_systems,
@@ -197,4 +208,6 @@ def compute_ai_board_kpis(
         score_change_vs_last_quarter=0.0,
         incidents_last_quarter=0,
         complaints_last_quarter=0,
+        nis2_kritis_kpi_mean_percent=mean_rounded,
+        nis2_kritis_systems_full_coverage_ratio=round(nis2_coverage, 4),
     )

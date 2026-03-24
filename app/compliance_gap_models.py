@@ -77,6 +77,8 @@ class AIComplianceOverview(BaseModel):
     top_critical_requirements: list[TopCriticalRequirement]
     deadline: str
     days_remaining: int
+    nis2_kritis_kpi_mean_percent: float | None = None
+    nis2_kritis_systems_full_coverage_ratio: float = 0.0
 
 
 GAP_REQUIREMENTS: list[GapRequirement] = [

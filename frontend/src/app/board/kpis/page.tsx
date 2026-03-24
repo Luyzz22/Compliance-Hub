@@ -436,6 +436,34 @@ export default async function BoardKpisPage() {
               </p>
             </div>
           </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
+                NIS2 / KRITIS KPI (Mittelwert)
+              </h3>
+              <p className="mt-2 text-2xl font-semibold text-indigo-950">
+                {complianceOverview.nis2_kritis_kpi_mean_percent != null
+                  ? `${Math.round(complianceOverview.nis2_kritis_kpi_mean_percent)} %`
+                  : "–"}
+              </p>
+              <p className="mt-1 text-xs text-indigo-900/80">
+                Durchschnitt aller gepflegten Incident-/Supplier-/OT-IT-KPIs (0–100).
+              </p>
+            </div>
+            <div className="flex flex-col rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
+                NIS2 / KRITIS KPI-Abdeckung
+              </h3>
+              <p className="mt-2 text-2xl font-semibold text-indigo-950">
+                {formatPercent(
+                  complianceOverview.nis2_kritis_systems_full_coverage_ratio ?? 0,
+                )}
+              </p>
+              <p className="mt-1 text-xs text-indigo-900/80">
+                Anteil KI-Systeme mit allen drei KPI-Typen befüllt.
+              </p>
+            </div>
+          </div>
           {complianceOverview.top_critical_requirements.length > 0 && (
             <div className="mt-6">
               <h3 className="text-sm font-semibold text-slate-700">
