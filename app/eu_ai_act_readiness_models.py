@@ -21,6 +21,25 @@ class ReadinessCriticalRequirement(BaseModel):
     affected_systems_count: int = Field(ge=0)
     traffic: ReadinessRequirementTraffic
     priority: int = Field(ge=1, le=5, description="1 = höchste Priorität")
+    requirement_id: str | None = Field(
+        default=None,
+        description="Interne Requirement-ID (Compliance-Gap), z. B. art9_risk_management.",
+    )
+    related_ai_system_ids: list[str] = Field(
+        default_factory=list,
+        description="KI-Systeme mit Lücke zu dieser Anforderung (Deep-Link zur Registry).",
+        max_length=100,
+    )
+    linked_governance_action_ids: list[str] = Field(
+        default_factory=list,
+        description="Offene/in Bearbeitung befindliche Maßnahmen mit Bezug zu dieser Anforderung.",
+        max_length=50,
+    )
+    open_actions_count_for_requirement: int = Field(
+        default=0,
+        ge=0,
+        description="Anzahl verknüpfter offener Maßnahmen (Badge).",
+    )
 
 
 class SuggestedGovernanceAction(BaseModel):

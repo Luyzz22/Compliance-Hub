@@ -40,8 +40,15 @@ def test_board_alert_nis2_incident_maturity_low_from_kpi_mean():
     )
     r = client.get("/api/v1/ai-governance/alerts/board", headers=h)
     assert r.status_code == 200
-    keys = {a["kpi_key"] for a in r.json()}
+    alerts = r.json()
+    keys = {a["kpi_key"] for a in alerts}
     assert "nis2_kritis_incident_maturity_low" in keys
+    inc_alert = next(a for a in alerts if a["kpi_key"] == "nis2_kritis_incident_maturity_low")
+    meta = inc_alert.get("alert_metadata") or {}
+    assert meta.get("kpi_type") == "INCIDENT_RESPONSE_MATURITY"
+    assert meta.get("current_percent") == 30.0
+    assert meta.get("threshold_percent") == 50.0
+    assert meta.get("affected_system_ids") == [sid]
 
 
 def test_board_alert_nis2_ot_it_segmentation_risk():
@@ -76,8 +83,17 @@ def test_board_alert_nis2_ot_it_segmentation_risk():
         )
     r = client.get("/api/v1/ai-governance/alerts/board", headers=h)
     assert r.status_code == 200
-    keys = {a["kpi_key"] for a in r.json()}
+    alerts = r.json()
+    keys = {a["kpi_key"] for a in alerts}
     assert "nis2_kritis_ot_it_segmentation_risk" in keys
+    ot_alert = next(a for a in alerts if a["kpi_key"] == "nis2_kritis_ot_it_segmentation_risk")
+    ot_meta = ot_alert.get("alert_metadata") or {}
+    assert ot_meta.get("kpi_type") == "OT_IT_SEGREGATION"
+    assert ot_meta.get("threshold_percent") == 60.0
+    assert set(ot_meta.get("affected_system_ids") or []) <= {
+        f"alert-ot-{tid}-0",
+        f"alert-ot-{tid}-1",
+    }
 
 
 def test_board_alert_nis2_kpi_tenant_isolation():

@@ -6,17 +6,13 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from app.ai_governance_models import AIBoardKpiSummary, AIKpiAlert
+from app.ai_governance_models import AIBoardKpiSummary, AIKpiAlert, AIKpiAlertMetadata
 from app.compliance_gap_models import AIComplianceOverview
-from app.config.nis2_kritis_board_alert_thresholds import (
-    NIS2_KRITIS_FULL_COVERAGE_RATIO_ALERT,
-    NIS2_KRITIS_INCIDENT_MATURITY_MEAN_ALERT_PCT,
-    NIS2_KRITIS_OT_IT_ALERT_MIN_AFFECTED_SYSTEMS,
-    NIS2_KRITIS_OT_IT_ALERT_THRESHOLD_PCT,
-    NIS2_KRITIS_SUPPLIER_COVERAGE_MEAN_ALERT_PCT,
-)
+from app.config.nis2_kritis_board_alert_thresholds import DEFAULT_NIS2_KRITIS_THRESHOLD_CONFIG
 from app.datetime_compat import UTC
 from app.services.nis2_kritis_alert_signals import Nis2KritisAlertSignals
+
+_cfg = DEFAULT_NIS2_KRITIS_THRESHOLD_CONFIG
 
 
 def compute_board_alerts(
@@ -35,6 +31,7 @@ def compute_board_alerts(
         kpi_key: str,
         severity: Literal["info", "warning", "critical"],
         msg: str,
+        alert_metadata: AIKpiAlertMetadata | None = None,
     ) -> None:
         alerts.append(
             AIKpiAlert(
@@ -45,6 +42,7 @@ def compute_board_alerts(
                 message=msg,
                 created_at=now,
                 resolved_at=None,
+                alert_metadata=alert_metadata,
             )
         )
 
@@ -105,19 +103,27 @@ def compute_board_alerts(
     # NIS2-/KRITIS-KPI-Tabellenwerte (Incident, Supplier, OT/IT)
     if nis2_kritis_signals is not None:
         inc = nis2_kritis_signals.incident_mean_percent
-        if inc is not None and inc < NIS2_KRITIS_INCIDENT_MATURITY_MEAN_ALERT_PCT:
+        inc_thr = float(_cfg.incident_maturity.mean_percent_warning)
+        if inc is not None and inc < inc_thr:
             add(
                 "nis2_kritis_incident_maturity_low",
                 "warning",
                 f"NIS2/KRITIS Incident-Response-Reife (KPI-Mittel) {round(inc, 1)} % "
-                f"unter {NIS2_KRITIS_INCIDENT_MATURITY_MEAN_ALERT_PCT} %.",
+                f"unter {int(inc_thr)} %.",
+                AIKpiAlertMetadata(
+                    current_percent=round(inc, 2),
+                    threshold_percent=inc_thr,
+                    kpi_type="INCIDENT_RESPONSE_MATURITY",
+                    affected_system_ids=list(nis2_kritis_signals.incident_worst_system_ids),
+                ),
             )
 
         sup_mean = nis2_kritis_signals.supplier_mean_percent
         cov_ratio = board_kpis.nis2_kritis_systems_full_coverage_ratio
-        thr_sup = NIS2_KRITIS_SUPPLIER_COVERAGE_MEAN_ALERT_PCT
+        thr_sup = float(_cfg.supplier_coverage.mean_percent_warning)
+        cov_thr = _cfg.supplier_coverage.full_coverage_ratio_warning
         supplier_gap = sup_mean is not None and sup_mean < thr_sup
-        coverage_gap = cov_ratio < NIS2_KRITIS_FULL_COVERAGE_RATIO_ALERT
+        coverage_gap = cov_ratio < cov_thr
         if supplier_gap or coverage_gap:
             parts: list[str] = []
             if supplier_gap and sup_mean is not None:
@@ -125,22 +131,37 @@ def compute_board_alerts(
             if coverage_gap:
                 parts.append(
                     f"KPI-Vollständigkeit je System {int(cov_ratio * 100)} % "
-                    f"(Ziel mindestens {int(NIS2_KRITIS_FULL_COVERAGE_RATIO_ALERT * 100)} %)",
+                    f"(Ziel mindestens {int(cov_thr * 100)} %)",
                 )
             add(
                 "nis2_kritis_supplier_coverage_gap",
                 "warning",
                 "NIS2/KRITIS Supplier-Risiko: " + "; ".join(parts) + ".",
+                AIKpiAlertMetadata(
+                    current_percent=round(sup_mean, 2) if sup_mean is not None else None,
+                    threshold_percent=thr_sup if supplier_gap else None,
+                    kpi_type="SUPPLIER_RISK_COVERAGE",
+                    affected_system_ids=list(nis2_kritis_signals.supplier_worst_system_ids),
+                    coverage_ratio_current=cov_ratio if coverage_gap else None,
+                    coverage_ratio_threshold=cov_thr if coverage_gap else None,
+                ),
             )
 
+        ot_thr = float(_cfg.ot_it_segmentation.focus_system_value_below_percent)
+        ot_min = _cfg.ot_it_segmentation.min_affected_systems_for_critical_alert
         ot_n = nis2_kritis_signals.high_risk_focus_low_ot_it_count
-        if ot_n >= NIS2_KRITIS_OT_IT_ALERT_MIN_AFFECTED_SYSTEMS:
+        if ot_n >= ot_min:
             add(
                 "nis2_kritis_ot_it_segmentation_risk",
                 "critical",
                 f"{ot_n} High-Risk-/Fokus-KI-Systeme mit OT/IT-Segmentierung "
-                f"unter {NIS2_KRITIS_OT_IT_ALERT_THRESHOLD_PCT} % – "
+                f"unter {int(ot_thr)} % – "
                 "Handlungsbedarf KRITIS/OT-Schnittstellen.",
+                AIKpiAlertMetadata(
+                    threshold_percent=ot_thr,
+                    kpi_type="OT_IT_SEGREGATION",
+                    affected_system_ids=list(nis2_kritis_signals.ot_it_worst_focus_system_ids),
+                ),
             )
 
     return alerts

@@ -15,12 +15,28 @@ function classNames(...values: (string | false | null | undefined)[]) {
   return values.filter(Boolean).join(" ");
 }
 
-export default async function TenantAISystemsPage() {
+type PageProps = {
+  searchParams?: Promise<{ ids?: string }> | { ids?: string };
+};
+
+export default async function TenantAISystemsPage({ searchParams }: PageProps) {
   const systems = (await fetchTenantAISystems()) as AISystem[];
 
-  const total = systems.length;
-  const active = systems.filter((s) => s.status === "active").length;
-  const highRisk = systems.filter((s) => s.risklevel === "high").length;
+  const sp =
+    searchParams !== undefined ? await Promise.resolve(searchParams) : {};
+  const idFilterRaw = typeof sp.ids === "string" ? sp.ids : "";
+  const idSet = new Set(
+    idFilterRaw
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean),
+  );
+  const filtered =
+    idSet.size > 0 ? systems.filter((s) => idSet.has(s.id)) : systems;
+
+  const total = filtered.length;
+  const active = filtered.filter((s) => s.status === "active").length;
+  const highRisk = filtered.filter((s) => s.risklevel === "high").length;
 
   return (
     <>
@@ -37,6 +53,16 @@ export default async function TenantAISystemsPage() {
           Neues AI‑System anlegen
         </button>
       </header>
+
+      {idSet.size > 0 ? (
+        <div
+          role="status"
+          className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-100"
+        >
+          Gefilterte Ansicht: {filtered.length} von {systems.length} Systemen
+          (Deep-Link aus EU-AI-Act-Readiness).
+        </div>
+      ) : null}
 
       <section className="mb-6 grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
@@ -66,7 +92,10 @@ export default async function TenantAISystemsPage() {
       <section className="rounded-xl border border-slate-800 bg-slate-900/60">
         <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
           <h2 className="text-sm font-semibold">AI‑Systeme</h2>
-          <span className="text-xs text-slate-500">{total} Einträge</span>
+          <span className="text-xs text-slate-500">
+            {total} Einträge
+            {idSet.size > 0 ? " (gefiltert)" : ""}
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -81,7 +110,7 @@ export default async function TenantAISystemsPage() {
               </tr>
             </thead>
             <tbody>
-              {systems.map((s) => (
+              {filtered.map((s) => (
                 <tr
                   key={s.id}
                   className="border-t border-slate-800/80 hover:bg-slate-900"
@@ -121,7 +150,7 @@ export default async function TenantAISystemsPage() {
                   </td>
                 </tr>
               ))}
-              {systems.length === 0 && (
+              {filtered.length === 0 && (
                 <tr>
                   <td
                     colSpan={6}

@@ -163,3 +163,50 @@ class Nis2KritisKpiRepository:
         )
         rows = self._session.execute(stmt).all()
         return [(self._to_domain(r[0]), str(r[1]), str(r[2])) for r in rows]
+
+    def list_system_ids_lowest_kpi(
+        self,
+        tenant_id: str,
+        kpi_type: Nis2KritisKpiType,
+        *,
+        limit: int = 3,
+    ) -> list[str]:
+        """KI-System-IDs mit niedrigstem KPI-Wert (für Alert-Kontext, Top-N)."""
+        stmt = (
+            select(Nis2KritisKpiDB.ai_system_id)
+            .where(
+                Nis2KritisKpiDB.tenant_id == tenant_id,
+                Nis2KritisKpiDB.kpi_type == kpi_type.value,
+            )
+            .order_by(Nis2KritisKpiDB.value_percent.asc(), Nis2KritisKpiDB.ai_system_id.asc())
+            .limit(limit)
+        )
+        return [str(x) for x in self._session.execute(stmt).scalars().all()]
+
+    def list_focus_system_ids_ot_it_below(
+        self,
+        tenant_id: str,
+        *,
+        threshold_percent: int,
+        limit: int = 3,
+    ) -> list[str]:
+        """Fokus-Systeme mit OT/IT-KPI unter Schwellwert, niedrigste zuerst."""
+        stmt = (
+            select(Nis2KritisKpiDB.ai_system_id)
+            .select_from(Nis2KritisKpiDB)
+            .join(AISystemTable, AISystemTable.id == Nis2KritisKpiDB.ai_system_id)
+            .where(
+                Nis2KritisKpiDB.tenant_id == tenant_id,
+                AISystemTable.tenant_id == tenant_id,
+                Nis2KritisKpiDB.kpi_type == Nis2KritisKpiType.OT_IT_SEGREGATION.value,
+                Nis2KritisKpiDB.value_percent < threshold_percent,
+                or_(
+                    AISystemTable.risk_level == "high",
+                    AISystemTable.ai_act_category == "high_risk",
+                    AISystemTable.criticality.in_(("high", "very_high")),
+                ),
+            )
+            .order_by(Nis2KritisKpiDB.value_percent.asc(), Nis2KritisKpiDB.ai_system_id.asc())
+            .limit(limit)
+        )
+        return [str(x) for x in self._session.execute(stmt).scalars().all()]

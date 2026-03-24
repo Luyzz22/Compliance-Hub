@@ -47,6 +47,8 @@ def test_board_kpi_export_json():
     data = json.loads(r.text)
     assert data["format_version"] == "1.0"
     assert data["tenant_id"] == "board-kpi-tenant"
+    assert data["generated_by"] == "board_kpi_export_v1"
+    assert data["regulatory_scope"] == ["EU_AI_ACT", "NIS2", "ISO_42001"]
     row = next(s for s in data["systems"] if s["ai_system_id"] == "kpi-exp-1")
     assert row["nis2_kritis_supplier_risk_coverage_percent"] == 62
     assert row["high_risk_scenario_profile_id"] == "manufacturing_quality_control"
@@ -61,6 +63,8 @@ def test_board_kpi_export_csv():
     assert r.status_code == 200
     assert "tenant_id" in r.text
     assert "format_version" in r.text
+    assert "regulatory_scope" in r.text
+    assert "generated_by" in r.text
 
 
 def test_board_kpi_export_tenant_isolation():
