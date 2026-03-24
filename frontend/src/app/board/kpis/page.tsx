@@ -6,6 +6,7 @@ import {
   fetchBoardAlerts,
   fetchBoardKpis,
   fetchBoardAlertsExport,
+  getBoardKpiExportUrl,
   getBoardReportDownloadUrl,
   getBoardReportMarkdownDownloadUrl,
   type AIComplianceOverview,
@@ -146,6 +147,23 @@ export default async function BoardKpisPage() {
           ISO 42001 Reifegrad, NIS2-Incident-Readiness und Lieferanten-Risiko im
           Überblick für den Standort Deutschland.
         </p>
+        <nav
+          className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-slate-600"
+          aria-label="Board-Unterseiten"
+        >
+          <Link
+            href="/board/nis2-kritis"
+            className="underline hover:text-slate-900"
+          >
+            NIS2 / KRITIS KPI-Drilldown
+          </Link>
+          <Link
+            href="/board/eu-ai-act-readiness"
+            className="underline hover:text-slate-900"
+          >
+            EU AI Act Readiness
+          </Link>
+        </nav>
       </header>
 
       {/* Alerts & Hinweise (max 5) + Export für CISO/ISB/Vorstand */}
@@ -206,6 +224,24 @@ export default async function BoardKpisPage() {
             className="font-medium text-slate-800 underline hover:text-slate-600"
           >
             Board-Report als Markdown
+          </a>
+        </p>
+        <p className="mt-2 text-xs text-slate-600">
+          Export Board-KPIs (DMS / DATEV / SAP-BTP-Vorbereitung):{" "}
+          <a
+            href={getBoardKpiExportUrl("json")}
+            download
+            className="font-medium text-slate-800 underline hover:text-slate-600"
+          >
+            JSON
+          </a>
+          {" · "}
+          <a
+            href={getBoardKpiExportUrl("csv")}
+            download
+            className="font-medium text-slate-800 underline hover:text-slate-600"
+          >
+            CSV
           </a>
         </p>
       </section>

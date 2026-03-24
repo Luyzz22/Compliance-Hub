@@ -306,6 +306,11 @@ export function getBoardReportMarkdownDownloadUrl(): string {
   return "/api/board/report/markdown";
 }
 
+/** Download-URL für Board-KPI-Export (JSON/CSV) – Proxy-Route Next.js. */
+export function getBoardKpiExportUrl(format: "json" | "csv" = "json"): string {
+  return `/api/board/kpi-export?format=${format}`;
+}
+
 // ─── Board-Report Export-Jobs (PDF-/DMS-/SAP-BTP-Integration) ─────────────────
 
 export type BoardReportTargetSystem =
@@ -361,6 +366,22 @@ export async function fetchBoardReportExportJobStatus(
 
 export type AuditRecordStatus = "draft" | "final";
 
+export type BoardKpiExportJobStatus = "completed" | "failed";
+
+export type KpiExportTargetLabel = "datev" | "dms" | "sap_btp_placeholder";
+
+export interface BoardKpiExportJob {
+  id: string;
+  tenant_id: string;
+  created_at: string;
+  completed_at: string | null;
+  status: BoardKpiExportJobStatus;
+  target_system_label: KpiExportTargetLabel;
+  export_format: "json" | "csv";
+  metadata: Record<string, string> | null;
+  error_message: string | null;
+}
+
 export interface BoardReportAuditRecord {
   id: string;
   tenant_id: string;
@@ -370,17 +391,20 @@ export interface BoardReportAuditRecord {
   created_by: string;
   purpose: string;
   linked_export_job_ids: string[];
+  linked_kpi_export_job_ids?: string[];
   status: AuditRecordStatus;
 }
 
 export interface BoardReportAuditRecordWithJobs extends BoardReportAuditRecord {
   linked_export_jobs: BoardReportExportJob[];
+  linked_kpi_export_jobs?: BoardKpiExportJob[];
 }
 
 export interface BoardReportAuditRecordCreate {
   purpose: string;
   status?: AuditRecordStatus;
   linked_export_job_ids?: string[];
+  linked_kpi_export_job_ids?: string[];
 }
 
 export async function createBoardReportAuditRecord(
@@ -603,6 +627,92 @@ export async function upsertNis2KritisKpi(
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export interface Nis2KritisKpiHistogramBucket {
+  range_min_inclusive: number;
+  range_max_exclusive: number;
+  count: number;
+}
+
+export interface Nis2KritisKpiCriticalSystemEntry {
+  ai_system_id: string;
+  name: string;
+  business_unit: string;
+  kpi_type: Nis2KritisKpiType;
+  value_percent: number;
+  detail_href: string;
+}
+
+export interface Nis2KritisKpiTypeDrilldown {
+  kpi_type: Nis2KritisKpiType;
+  histogram: Nis2KritisKpiHistogramBucket[];
+  critical_systems: Nis2KritisKpiCriticalSystemEntry[];
+}
+
+export interface Nis2KritisKpiDrilldown {
+  tenant_id: string;
+  generated_at: string;
+  top_n: number;
+  by_kpi_type: Nis2KritisKpiTypeDrilldown[];
+}
+
+export async function fetchNis2KritisKpiDrilldown(
+  topN = 5
+): Promise<Nis2KritisKpiDrilldown> {
+  return apiFetch(
+    `/api/v1/nis2-kritis/kpi-drilldown?top_n=${encodeURIComponent(String(topN))}`
+  );
+}
+
+// ─── EU AI Act Readiness & Governance Actions ─────────────────────────────────
+
+export type ReadinessRequirementTraffic = "red" | "amber" | "green";
+
+export interface ReadinessCriticalRequirement {
+  code: string;
+  name: string;
+  affected_systems_count: number;
+  traffic: ReadinessRequirementTraffic;
+  priority: number;
+}
+
+export interface SuggestedGovernanceAction {
+  related_requirement: string;
+  title: string;
+  rationale: string;
+  suggested_priority: number;
+}
+
+export type GovernanceActionStatus = "open" | "in_progress" | "done";
+
+export interface AIGovernanceActionRead {
+  id: string;
+  tenant_id: string;
+  related_ai_system_id: string | null;
+  related_requirement: string;
+  title: string;
+  status: GovernanceActionStatus;
+  due_date: string | null;
+  owner: string | null;
+  created_at_utc: string;
+  updated_at_utc: string;
+}
+
+export interface EUAIActReadinessOverview {
+  tenant_id: string;
+  deadline: string;
+  days_remaining: number;
+  overall_readiness: number;
+  high_risk_systems_essential_complete: number;
+  high_risk_systems_essential_incomplete: number;
+  critical_requirements: ReadinessCriticalRequirement[];
+  suggested_actions: SuggestedGovernanceAction[];
+  open_governance_actions: AIGovernanceActionRead[];
+}
+
+export async function fetchEuAiActReadiness(): Promise<EUAIActReadinessOverview> {
+  return apiFetch("/api/v1/ai-governance/readiness/eu-ai-act");
 }
 
 

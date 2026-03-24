@@ -48,6 +48,7 @@ def create_audit_record(
         created_by=created_by,
         purpose=body.purpose,
         linked_export_job_ids=body.linked_export_job_ids or [],
+        linked_kpi_export_job_ids=body.linked_kpi_export_job_ids or [],
         status=body.status,
     )
     store_record(record)

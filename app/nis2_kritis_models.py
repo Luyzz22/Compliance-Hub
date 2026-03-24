@@ -55,3 +55,41 @@ class Nis2KritisTenantKpiAggregate(BaseModel):
         le=1.0,
         description="Anteil KI-Systeme mit je einem Eintrag pro KPI-Typ (0–1).",
     )
+
+
+class Nis2KritisKpiHistogramBucket(BaseModel):
+    """Histogramm-Bucket für Verteilung der KPI-Prozentwerte."""
+
+    range_min_inclusive: int = Field(ge=0, le=100)
+    range_max_exclusive: int = Field(ge=0, le=101)
+    count: int = Field(ge=0)
+
+
+class Nis2KritisKpiCriticalSystemEntry(BaseModel):
+    """KI-System mit niedrigem KPI-Wert (Worst-Offenders)."""
+
+    ai_system_id: str
+    name: str
+    business_unit: str
+    kpi_type: Nis2KritisKpiType
+    value_percent: int = Field(ge=0, le=100)
+    detail_href: str = Field(
+        description="Frontend-Pfad zur Pflege (EU-AI-Act-/Gap-Ansicht).",
+    )
+
+
+class Nis2KritisKpiTypeDrilldown(BaseModel):
+    """Histogramm + Top-N je KPI-Typ."""
+
+    kpi_type: Nis2KritisKpiType
+    histogram: list[Nis2KritisKpiHistogramBucket]
+    critical_systems: list[Nis2KritisKpiCriticalSystemEntry]
+
+
+class Nis2KritisKpiDrilldown(BaseModel):
+    """Tenant-weite Drilldown-Sicht für NIS2-/KRITIS-KPIs."""
+
+    tenant_id: str
+    generated_at: datetime
+    top_n: int = Field(ge=1, le=50)
+    by_kpi_type: list[Nis2KritisKpiTypeDrilldown]

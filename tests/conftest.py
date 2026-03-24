@@ -23,6 +23,13 @@ def setup_test_db() -> None:
     Base.metadata.create_all(bind=engine)
 
 
+@pytest.fixture(autouse=True)
+def _restore_api_keys_superset() -> None:
+    """Nach Tests, die COMPLIANCEHUB_API_KEYS verkleinern, wieder vollständige Key-Liste."""
+    os.environ["COMPLIANCEHUB_API_KEYS"] = _TEST_API_KEYS
+    get_settings.cache_clear()
+
+
 def _headers() -> dict[str, str]:
     """Standard-Test-Header (x-api-key, x-tenant-id) für geschützte Endpoints.
     Key muss in get_settings().api_keys liegen (kompatibel mit COMPLIANCEHUB_API_KEYS)."""
