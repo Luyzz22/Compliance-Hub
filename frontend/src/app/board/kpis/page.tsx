@@ -19,6 +19,9 @@ import {
   CH_PAGE_SUB,
   CH_PAGE_TITLE,
   CH_SECTION_LABEL,
+  CH_BTN_PRIMARY,
+  CH_BTN_SECONDARY,
+  chKpiStatusFromRatio,
 } from "@/lib/boardLayout";
 
 import { BoardKpiAdvisorExport } from "./BoardKpiAdvisorExport";
@@ -144,6 +147,34 @@ function alertSeverityChipClass(severity: AIKpiAlert["severity"]): string {
   }
 }
 
+function alertHeadline(alert: AIKpiAlert): string {
+  const key = alert.kpi_key;
+  if (key.includes("iso42001") || key.includes("iso")) return "ISO 42001 Governance";
+  if (key.includes("incident") || key.includes("nis2_incident")) return "NIS2 Incident Readiness";
+  if (key.includes("supplier")) return "Supplier Risk";
+  if (key.includes("readiness") || key.includes("eu_ai")) return "EU AI Act Readiness";
+  if (key.includes("nis2") || key.includes("kritis")) return "NIS2 / KRITIS";
+  return "Board-Alert";
+}
+
+function KpiStatusChip({ ratio }: { ratio: number | null }) {
+  if (ratio == null) {
+    return (
+      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200/80">
+        Keine Daten
+      </span>
+    );
+  }
+  const { label, chipClass } = chKpiStatusFromRatio(ratio);
+  return (
+    <span
+      className={`inline-flex rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ring-1 ring-inset ${chipClass}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 export default async function BoardKpisPage() {
   let kpis: BoardKpiSummary | null = null;
   let complianceOverview: AIComplianceOverview | null = null;
@@ -184,6 +215,7 @@ export default async function BoardKpisPage() {
   }
 
   const isoScore = kpis.iso42001_governance_score;
+  const euReadinessRatio = complianceOverview?.overall_readiness ?? null;
 
   return (
     <div className={BOARD_PAGE_ROOT_CLASS}>
@@ -212,10 +244,142 @@ export default async function BoardKpisPage() {
         </nav>
       </header>
 
-      {/* Alerts & Hinweise (max 5) + Export für CISO/ISB/Vorstand */}
+      <section
+        aria-label="Executive KPIs"
+        className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <div
+          className={`${CH_CARD} relative flex min-w-0 flex-col border-slate-200/90 ${euReadinessRatio != null ? scoreColor(euReadinessRatio) : "bg-white"}`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <span aria-hidden>🤖</span>
+              EU AI Act Readiness
+            </h2>
+            <KpiStatusChip ratio={euReadinessRatio} />
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            Gewichtete Erfüllung High-Risk-Anforderungen (Compliance-Overview).
+          </p>
+          <p className="mt-4 text-4xl font-semibold tabular-nums text-slate-900">
+            {euReadinessRatio != null ? formatPercent(euReadinessRatio) : "–"}
+          </p>
+          <p className="mt-3">
+            <Link
+              href="/board/eu-ai-act-readiness"
+              className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
+            >
+              Zur Readiness-Roadmap →
+            </Link>
+          </p>
+        </div>
+
+        <div className={`${CH_CARD} relative flex min-w-0 flex-col ${scoreColor(kpis.nis2_incident_readiness_ratio)}`}>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <span aria-hidden>🛡️</span>
+              NIS2 Incident Readiness
+            </h2>
+            <KpiStatusChip ratio={kpis.nis2_incident_readiness_ratio} />
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            Anteil Systeme mit Incident- und Backup-Runbook (NIS2/BC).
+          </p>
+          <p className="mt-4 text-4xl font-semibold tabular-nums text-slate-900">
+            {formatPercent(kpis.nis2_incident_readiness_ratio)}
+          </p>
+          <p className="mt-3">
+            <Link
+              href="/board/incidents"
+              className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
+            >
+              Zum Incident-Drilldown →
+            </Link>
+          </p>
+        </div>
+
+        <div className={`${CH_CARD} relative flex min-w-0 flex-col ${scoreColor(kpis.nis2_supplier_risk_coverage_ratio)}`}>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <span aria-hidden>📦</span>
+              Supplier Risk Coverage
+            </h2>
+            <KpiStatusChip ratio={kpis.nis2_supplier_risk_coverage_ratio} />
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            Abdeckung Lieferketten-Risiko / Register je KI-System.
+          </p>
+          <p className="mt-4 text-4xl font-semibold tabular-nums text-slate-900">
+            {formatPercent(kpis.nis2_supplier_risk_coverage_ratio)}
+          </p>
+          <p className="mt-3">
+            <Link
+              href="/board/suppliers"
+              className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
+            >
+              Supplier-Drilldown →
+            </Link>
+          </p>
+        </div>
+
+        <div className={`${CH_CARD} relative flex min-w-0 flex-col ${scoreColor(isoScore)}`}>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <span aria-hidden>📈</span>
+              ISO 42001 Governance
+            </h2>
+            <KpiStatusChip ratio={isoScore} />
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            Reife des AI-Managementsystems (Kontext bis Verbesserung).
+          </p>
+          <p className="mt-4 text-4xl font-semibold tabular-nums text-slate-900">
+            {formatPercent(isoScore)}
+          </p>
+          <p className="mt-3">
+            <Link
+              href="/tenant/eu-ai-act"
+              className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
+            >
+              Tenant-Cockpit →
+            </Link>
+          </p>
+        </div>
+      </section>
+
+      <section
+        aria-label="Exporte für Vorstand und Prüfer"
+        className={`${CH_CARD} mb-8 border-cyan-100 bg-gradient-to-br from-white to-cyan-50/40`}
+      >
+        <h2 className={CH_SECTION_LABEL}>Export &amp; Berichte</h2>
+        <p className="mt-2 max-w-2xl text-sm text-slate-600">
+          Strukturierte Daten für WP, DMS und DATEV-Pipelines – ohne Medienbruch
+          in die Nachweisführung.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <a href={fetchBoardAlertsExport("json")} download className={CH_BTN_PRIMARY}>
+            Alerts JSON
+          </a>
+          <a href={fetchBoardAlertsExport("csv")} download className={CH_BTN_SECONDARY}>
+            Alerts CSV
+          </a>
+          <a href={getBoardReportDownloadUrl()} download className={CH_BTN_SECONDARY}>
+            Board-Report JSON
+          </a>
+          <a
+            href={getBoardReportMarkdownDownloadUrl()}
+            download
+            className={CH_BTN_SECONDARY}
+          >
+            Board-Report Markdown
+          </a>
+        </div>
+        <BoardKpiAdvisorExport />
+      </section>
+
       <section aria-label="Alerts und Hinweise" className={`${CH_CARD} mb-8`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className={CH_SECTION_LABEL}>Alerts &amp; Hinweise</h2>
+          <h2 className={CH_SECTION_LABEL}>Board-Alerts</h2>
           <span className="text-xs text-slate-500">max. 5 Einträge</span>
         </div>
         {alerts.length > 0 ? (
@@ -225,209 +389,58 @@ export default async function BoardKpisPage() {
               return (
                 <li
                   key={alert.id}
-                  className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${alertSeverityStyles(alert.severity)}`}
+                  className={`rounded-2xl border p-4 shadow-sm ${alertSeverityStyles(alert.severity)}`}
                 >
-                  <p className="min-w-0 flex-1 text-sm leading-relaxed">
-                    {alert.message}
-                  </p>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${alertSeverityChipClass(alert.severity)}`}
-                    >
-                      {alert.severity === "critical"
-                        ? "Kritisch"
-                        : alert.severity === "warning"
-                          ? "Warnung"
-                          : "Info"}
-                    </span>
-                    <Link
-                      href={cta.href}
-                      className="text-xs font-semibold text-slate-800 underline decoration-slate-400 underline-offset-2 hover:text-slate-950"
-                    >
-                      {cta.label} →
-                    </Link>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {alertHeadline(alert)}
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-700">
+                        {alert.message}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${alertSeverityChipClass(alert.severity)}`}
+                      >
+                        {alert.severity === "critical"
+                          ? "Kritisch"
+                          : alert.severity === "warning"
+                            ? "Warnung"
+                            : "Info"}
+                      </span>
+                      <Link
+                        href={cta.href}
+                        className="inline-flex text-xs font-semibold text-slate-900 underline decoration-slate-400 underline-offset-2 hover:text-slate-950"
+                      >
+                        {cta.label} →
+                      </Link>
+                    </div>
                   </div>
                 </li>
               );
             })}
           </ul>
         ) : (
-          <p className="mt-4 text-sm text-slate-500">
-            Keine aktuellen Alerts.
-          </p>
+          <div
+            className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-10 text-center"
+            role="status"
+          >
+            <p className="text-sm font-semibold text-slate-800">Keine aktiven Alerts</p>
+            <p className="mt-2 text-sm text-slate-500">
+              Schwellenwerte für NIS2, EU AI Act und ISO 42001 sind aktuell nicht
+              überschritten. Exporte und Reports bleiben trotzdem verfügbar.
+            </p>
+          </div>
         )}
-        <p className="mt-4 text-xs text-slate-600">
-          Für Weiterleitung an CISO / ISB / Vorstand:{" "}
-          <a
-            href={fetchBoardAlertsExport("json")}
-            download
-            className="font-medium text-slate-800 underline hover:text-slate-600"
-          >
-            Alerts als JSON exportieren
-          </a>
-          {" · "}
-          <a
-            href={fetchBoardAlertsExport("csv")}
-            download
-            className="font-medium text-slate-800 underline hover:text-slate-600"
-          >
-            Alerts als CSV exportieren
-          </a>
-        </p>
-        <p className="mt-2 text-xs text-slate-600">
-          Für Vorstand / SVV / ISB-Reportings:{" "}
-          <a
-            href={getBoardReportDownloadUrl()}
-            download
-            className="font-medium text-slate-800 underline hover:text-slate-600"
-          >
-            Board-Report JSON
-          </a>
-          {" · "}
-          <a
-            href={getBoardReportMarkdownDownloadUrl()}
-            download
-            className="font-medium text-slate-800 underline hover:text-slate-600"
-          >
-            Board-Report als Markdown
-          </a>
-        </p>
-        <BoardKpiAdvisorExport />
       </section>
-
-      {/* Hero: ISO 42001 Governance Score */}
-      {(() => {
-        const hasCriticalForIso = alerts.some(
-          (a) => a.severity === "critical" && a.kpi_key === "iso42001_governance_score",
-        );
-        return (
-          <section
-            aria-label="AI-Governance-Reife nach ISO 42001"
-            className={`relative mb-8 flex min-w-0 flex-col gap-4 rounded-2xl border p-6 shadow-md shadow-slate-200/40 md:flex-row md:items-center md:justify-between ${scoreColor(
-              isoScore,
-            )} ${hasCriticalForIso ? "ring-2 ring-red-300" : ""}`}
-          >
-            {hasCriticalForIso && (
-              <span
-                className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-red-500"
-                aria-hidden
-              />
-            )}
-            <div className="min-w-0 flex-1">
-              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide">
-                <span aria-hidden>📈</span>
-                AI-Governance-Reife (ISO 42001)
-              </h2>
-              <p className="mt-1 text-xs text-slate-700">
-                Aggregierter Reifegrad des AI-Managementsystems (Kontext, Führung,
-                Risikobewertung, Betrieb, Verbesserung).
-              </p>
-            </div>
-            <div className="flex shrink-0 items-baseline gap-3">
-              <span className="text-5xl font-semibold leading-none">
-                {formatPercent(isoScore)}
-              </span>
-              <span className="text-sm font-medium text-slate-700">
-                von 100&nbsp;% Zielreife
-              </span>
-            </div>
-          </section>
-        );
-      })()}
 
       {/* KPI Grid */}
       <section
-        aria-label="NIS2- und High-Risk-KPIs"
-        className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+        aria-label="High-Risk-Register"
+        className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2"
       >
-        {/* NIS2 Incident Readiness */}
-        {(() => {
-          const hasCritical = alerts.some(
-            (a) =>
-              a.severity === "critical" &&
-              a.kpi_key === "nis2_incident_readiness_ratio",
-          );
-          return (
-            <div
-              className={`${CH_CARD} relative flex min-w-0 flex-col ${hasCritical ? "ring-2 ring-red-300" : ""}`}
-            >
-              {hasCritical && (
-                <span
-                  className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500"
-                  aria-hidden
-                />
-              )}
-              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <span aria-hidden>🛡️</span>
-                NIS2 Incident Readiness
-              </h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Anteil KI-Systeme mit Incident- und Backup-Runbook.
-              </p>
-              <div className="mt-4 text-3xl font-semibold text-slate-900">
-                {formatPercent(kpis.nis2_incident_readiness_ratio)}
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {formatPercent(kpis.nis2_incident_readiness_ratio)} der
-                KI-Systeme mit Incident- &amp; Backup-Runbook.
-              </p>
-              <p className="mt-3">
-                <Link
-                  href="/board/incidents"
-                  className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
-                  aria-label="Incident-Drilldown öffnen"
-                >
-                  Incident-Details anzeigen
-                </Link>
-              </p>
-            </div>
-          );
-        })()}
-
-        {/* NIS2 Supplier Risk Coverage */}
-        {(() => {
-          const hasCritical = alerts.some(
-            (a) =>
-              a.severity === "critical" &&
-              a.kpi_key === "nis2_supplier_risk_coverage_ratio",
-          );
-          return (
-            <div
-              className={`${CH_CARD} relative flex min-w-0 flex-col ${hasCritical ? "ring-2 ring-red-300" : ""}`}
-            >
-              {hasCritical && (
-                <span
-                  className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500"
-                  aria-hidden
-                />
-              )}
-              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <span aria-hidden>📦</span>
-                NIS2 Supplier Risk Coverage
-              </h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Anteil KI-Systeme mit dokumentiertem Lieferanten-Risikoregister.
-              </p>
-              <div className="mt-4 text-3xl font-semibold text-slate-900">
-                {formatPercent(kpis.nis2_supplier_risk_coverage_ratio)}
-              </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {formatPercent(kpis.nis2_supplier_risk_coverage_ratio)} der Systeme
-                mit Supplier-Risikoregister.
-              </p>
-              <p className="mt-3">
-                <Link
-                  href="/board/suppliers"
-                  className="text-xs font-medium text-slate-600 underline hover:text-slate-900"
-                  aria-label="Supplier-Risiko-Drilldown öffnen"
-                >
-                  Details anzeigen
-                </Link>
-              </p>
-            </div>
-          );
-        })()}
-
         {/* High-Risk KI-Systeme gesamt */}
         <div className={`${CH_CARD} flex min-w-0 flex-col`}>
           <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -474,22 +487,7 @@ export default async function BoardKpisPage() {
             Readiness für High-Risk-Anforderungen bis Anwendungsbeginn EU AI Act
             (2. August 2026) und ISO 42001 AI-Managementsystem.
           </p>
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div
-              className={`flex min-w-0 flex-col rounded-xl border p-4 ${scoreColor(
-                complianceOverview.overall_readiness,
-              )}`}
-            >
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Gesamt-Readiness
-              </h3>
-              <p className="mt-2 text-3xl font-semibold">
-                {formatPercent(complianceOverview.overall_readiness)}
-              </p>
-              <p className="mt-1 text-xs text-slate-600">
-                EU AI Act &amp; ISO 42001 Anforderungen gewichtet.
-              </p>
-            </div>
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="flex min-w-0 flex-col rounded-xl border border-slate-100 bg-slate-50 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Frist High-Risk

@@ -1,9 +1,20 @@
+import Link from "next/link";
 import React from "react";
 
 import {
   fetchTenantAISystems,
   fetchTenantViolations,
 } from "@/lib/api";
+import { CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
+
+const TENANT_ID =
+  process.env.NEXT_PUBLIC_TENANT_ID ||
+  process.env.COMPLIANCEHUB_TENANT_ID ||
+  "tenant-overview-001";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.COMPLIANCEHUB_API_BASE_URL ||
+  "http://localhost:8000";
 
 type AISystem = {
   id: string;
@@ -61,6 +72,57 @@ export default async function TenantComplianceOverviewPage() {
           </button>
         </div>
       </header>
+
+      <section
+        aria-label="Mandant und technische Anbindung"
+        className="mb-8 grid gap-4 lg:grid-cols-3"
+      >
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Mandant</p>
+          <p className="mt-2 font-mono text-sm font-semibold text-slate-900">{TENANT_ID}</p>
+          <p className="mt-2 text-xs leading-relaxed text-slate-600">
+            Anzeigename und Stammdaten des Mandanten; produktiv über Admin-API
+            gepflegt.
+          </p>
+          <Link href="/tenant/ai-systems" className={`${CH_BTN_SECONDARY} mt-4 text-xs`}>
+            Zum AI-Register
+          </Link>
+        </article>
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>API &amp; Zugriff</p>
+          <dl className="mt-3 space-y-2 text-xs text-slate-600">
+            <div>
+              <dt className="font-semibold text-slate-500">Basis-URL</dt>
+              <dd className="mt-0.5 break-all font-mono text-slate-800">{API_BASE_URL}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-slate-500">API-Key</dt>
+              <dd className="mt-0.5 text-slate-800">
+                Konfiguriert als{" "}
+                <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_API_KEY</code> /{" "}
+                <code className="rounded bg-slate-100 px-1">COMPLIANCEHUB_API_KEY</code>
+                . Werte werden hier nicht angezeigt; Geheimnisse besser nur serverseitig
+                (<code className="rounded bg-slate-100 px-1">COMPLIANCEHUB_*</code>) setzen.
+              </dd>
+            </div>
+          </dl>
+        </article>
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Framework-Scoping</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Aktiver GRC-Stack: EU AI Act (High-Risk), NIS2 / KRITIS-Bezug, ISO 42001
+            AI-Managementsystem, DSGVO-DPIA für High-Risk.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/board/kpis" className={`${CH_BTN_SECONDARY} text-xs`}>
+              Board KPIs
+            </Link>
+            <Link href="/board/eu-ai-act-readiness" className={`${CH_BTN_SECONDARY} text-xs`}>
+              EU AI Act
+            </Link>
+          </div>
+        </article>
+      </section>
 
       <section className="mb-8 grid gap-4 md:grid-cols-3">
         <div className="sbs-kpi-tile">

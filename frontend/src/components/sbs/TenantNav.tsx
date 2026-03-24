@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import React from "react";
 
 const items = [
-  { href: "/tenant/compliance-overview", label: "Tenant Compliance" },
+  { href: "/tenant/compliance-overview", label: "Mandant & Einstellungen" },
   { href: "/tenant/eu-ai-act", label: "EU AI Act" },
   { href: "/tenant/ai-systems", label: "AI Systems" },
   { href: "/tenant/policies", label: "Policies & Rules" },
