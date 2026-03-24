@@ -12,6 +12,8 @@ import {
   CH_PAGE_SUB,
   CH_PAGE_TITLE,
   CH_SECTION_LABEL,
+  CH_BTN_PRIMARY,
+  CH_BTN_SECONDARY,
 } from "@/lib/boardLayout";
 
 function aiSystemsFilterHref(systemIds: string[]): string {
@@ -40,6 +42,17 @@ function trafficLabel(traffic: ReadinessRequirementTraffic): string {
       return "Gelb";
     default:
       return "Grün";
+  }
+}
+
+function requirementGapSummary(traffic: ReadinessRequirementTraffic): string {
+  switch (traffic) {
+    case "red":
+      return "Wesentliche Controls oder Nachweise fehlen – Umsetzung vor Stichtag priorisieren.";
+    case "amber":
+      return "Teilweise umgesetzt; offene Punkte und Evidenzen zeitnah schließen.";
+    default:
+      return "Stand tragfähig; fortlaufende Pflege und Stichproben empfohlen.";
   }
 }
 
@@ -125,7 +138,12 @@ export default async function EuAiActReadinessPage() {
 
       <section className={`${CH_CARD} mb-8`} aria-label="Readiness-Übersicht">
         <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">
-          <ReadinessRing percent={readinessPct} />
+          <div className="text-center lg:text-left">
+            <ReadinessRing percent={readinessPct} />
+            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Gesamt-Readiness
+            </p>
+          </div>
           <div className="min-w-0 space-y-6">
             <div>
               <p className={CH_SECTION_LABEL}>Fortschritt</p>
@@ -140,10 +158,13 @@ export default async function EuAiActReadinessPage() {
               </p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
-                <p className="text-xs font-medium text-slate-500">Tage verbleibend</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+              <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-4">
+                <p className="text-xs font-medium text-amber-900/80">Tage bis 02.08.2026</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-950">
                   {data.days_remaining}
+                </p>
+                <p className="mt-1 text-[0.7rem] text-amber-900/70">
+                  Vollanwendung High-Risk (EU AI Act)
                 </p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
@@ -210,6 +231,9 @@ export default async function EuAiActReadinessPage() {
                   <p className="mt-1 text-sm text-slate-600">
                     {r.affected_systems_count} Systeme · Priorität {r.priority}
                   </p>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    {requirementGapSummary(r.traffic)}
+                  </p>
                   {(r.open_actions_count_for_requirement ?? 0) > 0 ? (
                     <span className="mt-2 inline-flex rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-900">
                       {r.open_actions_count_for_requirement} offene Maßnahme
@@ -220,16 +244,22 @@ export default async function EuAiActReadinessPage() {
                     {(r.related_ai_system_ids?.length ?? 0) > 0 ? (
                       <Link
                         href={aiSystemsFilterHref(r.related_ai_system_ids ?? [])}
-                        className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-slate-300"
+                        className={`${CH_BTN_SECONDARY} px-3 py-1.5 text-xs`}
                       >
-                        Betroffene Systeme
+                        Betroffene Systeme anzeigen
                       </Link>
                     ) : null}
                     <Link
                       href="/board/eu-ai-act-readiness#governance-actions"
-                      className="inline-flex rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800"
+                      className={`${CH_BTN_SECONDARY} px-3 py-1.5 text-xs`}
                     >
-                      Maßnahmen
+                      Maßnahmen ansehen
+                    </Link>
+                    <Link
+                      href="/tenant/eu-ai-act"
+                      className={`${CH_BTN_PRIMARY} px-3 py-1.5 text-xs`}
+                    >
+                      Maßnahme erstellen
                     </Link>
                   </div>
                 </div>
@@ -266,45 +296,84 @@ export default async function EuAiActReadinessPage() {
       </section>
 
       <section id="governance-actions" aria-label="Offene Maßnahmen">
-        <h2 className={`${CH_SECTION_LABEL} mb-4`}>Offene Maßnahmen</h2>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <h2 className={CH_SECTION_LABEL}>Maßnahmen</h2>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/tenant/eu-ai-act" className={`${CH_BTN_PRIMARY} px-4 py-2 text-sm`}>
+              Neu
+            </Link>
+            <Link
+              href="/tenant/eu-ai-act"
+              className={`${CH_BTN_SECONDARY} px-4 py-2 text-sm`}
+            >
+              Im Tenant bearbeiten
+            </Link>
+          </div>
+        </div>
         {data.open_governance_actions.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <div
+            className={`${CH_CARD} border-dashed border-slate-200 bg-slate-50/60 text-sm text-slate-600`}
+            role="status"
+          >
             Keine offenen Einträge in{" "}
-            <code className="rounded bg-slate-100 px-1 text-xs">ai_governance_actions</code>.
-          </p>
+            <code className="rounded bg-white px-1 text-xs ring-1 ring-slate-200">
+              ai_governance_actions
+            </code>
+            . Über „Neu“ oder das Tenant-Cockpit können Sie Maßnahmen anlegen.
+          </div>
         ) : (
           <div className={`${CH_CARD} overflow-hidden p-0`}>
-            <ul className="divide-y divide-slate-100">
-              {data.open_governance_actions.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex flex-col gap-2 px-5 py-4 transition hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <div className="font-semibold text-slate-900">{a.title}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                      <span>{a.related_requirement}</span>
-                      <span
-                        className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-700"
-                      >
-                        {a.status}
-                      </span>
-                      {a.due_date
-                        ? ` · Fällig ${new Date(a.due_date).toLocaleDateString("de-DE")}`
-                        : null}
-                    </div>
-                    {a.related_ai_system_id ? (
-                      <Link
-                        href="/tenant/eu-ai-act"
-                        className="mt-2 inline-block text-xs font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
-                      >
-                        KI-System {a.related_ai_system_id}
-                      </Link>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th className="px-5 py-3">Titel</th>
+                    <th className="px-5 py-3">Requirement</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Fällig</th>
+                    <th className="px-5 py-3">Owner</th>
+                    <th className="px-5 py-3 text-right">Aktion</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.open_governance_actions.map((a) => (
+                    <tr key={a.id} className="transition hover:bg-slate-50/80">
+                      <td className="px-5 py-4 font-semibold text-slate-900">{a.title}</td>
+                      <td className="px-5 py-4 text-slate-600">{a.related_requirement}</td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-800 ring-1 ring-slate-200/80">
+                          {a.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 tabular-nums text-slate-600">
+                        {a.due_date
+                          ? new Date(a.due_date).toLocaleDateString("de-DE")
+                          : "–"}
+                      </td>
+                      <td className="px-5 py-4 text-slate-600">{a.owner ?? "–"}</td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {a.related_ai_system_id ? (
+                            <Link
+                              href={`/tenant/ai-systems/${encodeURIComponent(a.related_ai_system_id)}`}
+                              className="text-xs font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
+                            >
+                              System
+                            </Link>
+                          ) : null}
+                          <Link
+                            href="/tenant/eu-ai-act"
+                            className="text-xs font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
+                          >
+                            Bearbeiten
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>

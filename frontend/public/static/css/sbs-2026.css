@@ -1,7 +1,9 @@
 /* Marketing / Landing – SBS 2026 (Compliance Hub Home) */
 
+/* Offset für fixed Header: zentral im Root-`<main>` (layout.tsx), nicht am body,
+   damit Tailwind/Preflight den Abstand nicht überschreibt. */
 body.has-fixed-header {
-  padding-top: var(--sbs-header-h);
+  padding-top: 0;
 }
 
 .sbs-body {

@@ -36,7 +36,7 @@ function histogramApproxMean(block: Nis2KritisKpiTypeDrilldown): number | null {
   return Math.round(sum / n);
 }
 
-function Histogram({
+function VerticalBucketChart({
   buckets,
   maxCount,
 }: {
@@ -44,28 +44,34 @@ function Histogram({
   maxCount: number;
 }) {
   return (
-    <div className="mt-4 space-y-3">
-      {buckets.map((b) => {
-        const w = maxCount > 0 ? Math.round((b.count / maxCount) * 100) : 0;
-        return (
-          <div key={`${b.range_min_inclusive}-${b.range_max_exclusive}`}>
-            <div className="flex justify-between text-xs font-medium text-slate-600">
-              <span>
-                {b.range_min_inclusive}–
-                {b.range_max_exclusive === 101 ? 100 : b.range_max_exclusive - 1}{" "}
-                %
+    <div className="mt-6">
+      <p className="text-xs text-slate-500">
+        Legende: Balkenhöhe = Anteil am Maximum je Bucket (Anzahl Systeme).
+      </p>
+      <div className="mt-4 flex h-44 items-end justify-between gap-2 sm:h-48 sm:gap-3">
+        {buckets.map((b) => {
+          const h = maxCount > 0 ? Math.round((b.count / maxCount) * 100) : 0;
+          const hi = b.range_max_exclusive === 101 ? 100 : b.range_max_exclusive - 1;
+          return (
+            <div
+              key={`${b.range_min_inclusive}-${b.range_max_exclusive}`}
+              className="flex min-w-0 flex-1 flex-col items-center gap-2"
+            >
+              <div className="flex h-36 w-full items-end justify-center rounded-t-xl bg-slate-100/90 sm:h-40">
+                <div
+                  className="w-[72%] min-h-[3px] rounded-t-lg bg-gradient-to-t from-cyan-700 to-teal-400 shadow-sm transition-all"
+                  style={{ height: `${h}%` }}
+                  title={`${b.count} Systeme`}
+                />
+              </div>
+              <span className="text-center text-[0.65rem] font-semibold leading-tight text-slate-600">
+                {b.range_min_inclusive}–{hi}%
               </span>
-              <span className="tabular-nums text-slate-500">{b.count}</span>
+              <span className="tabular-nums text-xs font-bold text-slate-800">{b.count}</span>
             </div>
-            <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-teal-500 shadow-sm transition-all"
-                style={{ width: `${w}%` }}
-              />
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -208,9 +214,9 @@ export default async function BoardNis2KritisPage() {
                 {KPI_LABEL[block.kpi_type]}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Verteilung (Buckets 0–25, 25–50, 50–75, 75–100 %)
+                Verteilung über vier Bereiche (0–25 … 75–100&nbsp;%).
               </p>
-              <Histogram buckets={block.histogram} maxCount={maxCount} />
+              <VerticalBucketChart buckets={block.histogram} maxCount={maxCount} />
 
               <h3 className={`${CH_SECTION_LABEL} mt-8`}>
                 Top {drilldown.top_n} Risiko-Systeme
@@ -224,7 +230,7 @@ export default async function BoardNis2KritisPage() {
                   {block.critical_systems.map((s) => (
                     <li
                       key={`${s.ai_system_id}-${block.kpi_type}`}
-                      className="flex min-w-0 flex-wrap items-center justify-between gap-3 py-4 text-sm first:pt-0"
+                      className="flex min-w-0 flex-wrap items-center justify-between gap-3 py-4 text-sm transition first:pt-0 hover:bg-slate-50/90"
                     >
                       <div className="min-w-0">
                         <div className="font-semibold text-slate-900">{s.name}</div>
@@ -235,10 +241,10 @@ export default async function BoardNis2KritisPage() {
                           {s.value_percent} %
                         </span>
                         <Link
-                          href={s.detail_href}
+                          href={`/tenant/ai-systems/${encodeURIComponent(s.ai_system_id)}`}
                           className="shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800"
                         >
-                          EU-AI-Act-Ansicht
+                          System-Detail
                         </Link>
                       </div>
                     </li>

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import React from "react";
+
 import { fetchTenantAISystems } from "@/lib/api";
 
 type AISystem = {
@@ -94,6 +96,7 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
                 <th className="px-3 py-2 font-medium">AI Act</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 font-medium">Owner</th>
+                <th className="px-3 py-2 font-medium">Detail</th>
               </tr>
             </thead>
             <tbody>
@@ -136,12 +139,20 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
                   <td className="text-xs text-[var(--sbs-text-secondary)]">
                     {s.owneremail ?? "—"}
                   </td>
+                  <td>
+                    <Link
+                      href={`/tenant/ai-systems/${encodeURIComponent(s.id)}`}
+                      className="text-xs font-semibold text-[var(--sbs-text-accent)] underline decoration-[var(--sbs-text-accent)]/30 underline-offset-2 hover:text-[var(--sbs-navy-deep)]"
+                    >
+                      Öffnen
+                    </Link>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="py-8 text-center text-sm text-[var(--sbs-text-secondary)]"
                   >
                     Noch keine AI‑Systeme erfasst.

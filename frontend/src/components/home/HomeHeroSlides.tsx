@@ -8,7 +8,7 @@ const slides = [
     label: "Board KPIs",
     icon: "📊",
     content: (
-      <div className="flex h-full flex-col justify-between p-6">
+      <div className="flex h-full flex-col p-6">
         <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           Executive KPIs
         </div>
@@ -27,8 +27,24 @@ const slides = [
             </div>
           ))}
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
-          <div className="h-full w-[72%] rounded-full bg-gradient-to-r from-cyan-500 to-teal-500" />
+        <ul className="mt-5 space-y-2 text-left text-sm leading-snug text-slate-600">
+          <li className="flex gap-2">
+            <span className="shrink-0 text-cyan-600">·</span>
+            Executive Overview für Vorstand &amp; Aufsicht
+          </li>
+          <li className="flex gap-2">
+            <span className="shrink-0 text-cyan-600">·</span>
+            Alerts &amp; Eskalationspfade auf einen Blick
+          </li>
+          <li className="flex gap-2">
+            <span className="shrink-0 text-cyan-600">·</span>
+            Exporte für WP, DMS &amp; DATEV-Pipelines
+          </li>
+        </ul>
+        <div className="mt-auto pt-4">
+          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full w-[72%] rounded-full bg-gradient-to-r from-cyan-500 to-teal-500" />
+          </div>
         </div>
       </div>
     ),
@@ -42,7 +58,7 @@ const slides = [
         <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           Incident &amp; Supply Chain
         </div>
-        <div className="mt-5 flex h-36 items-end gap-2 sm:gap-3">
+        <div className="mt-4 flex h-32 items-end gap-2 sm:gap-3">
           {[45, 72, 58, 88, 64].map((h, i) => (
             <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end">
               <div
@@ -52,11 +68,25 @@ const slides = [
             </div>
           ))}
         </div>
-        <div className="mt-3 flex justify-between text-[0.65rem] text-slate-500">
+        <div className="mt-2 flex justify-between text-[0.65rem] text-slate-500">
           <span>Incident</span>
           <span>Supplier</span>
           <span>OT/IT</span>
         </div>
+        <ul className="mt-4 space-y-2 text-left text-sm leading-snug text-slate-600">
+          <li className="flex gap-2">
+            <span className="shrink-0 text-cyan-600">·</span>
+            Incident Readiness &amp; BC/DR-Bezug
+          </li>
+          <li className="flex gap-2">
+            <span className="shrink-0 text-cyan-600">·</span>
+            Supplier Risk &amp; Lieferketten-Sicht
+          </li>
+          <li className="flex gap-2">
+            <span className="shrink-0 text-cyan-600">·</span>
+            OT/IT-Segregation für KRITIS-relevante Kontexte
+          </li>
+        </ul>
       </div>
     ),
   },
@@ -65,11 +95,11 @@ const slides = [
     label: "EU AI Act",
     icon: "🤖",
     content: (
-      <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+      <div className="flex h-full flex-col p-6 text-center">
         <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           High-Risk Readiness
         </div>
-        <div className="relative mt-4 h-28 w-28">
+        <div className="relative mx-auto mt-3 h-28 w-28">
           <div
             className="absolute inset-0 rounded-full"
             style={{
@@ -80,17 +110,24 @@ const slides = [
             <span className="text-2xl font-semibold tabular-nums text-slate-900">68%</span>
           </div>
         </div>
-        <p className="mt-3 text-xs text-slate-600">
-          Ziel: 85&nbsp;% vor dem Stichtag · 02.08.2026
+        <ul className="mt-4 space-y-2 text-left text-sm leading-snug text-slate-600">
+          <li className="flex gap-2">
+            <span className="shrink-0 text-cyan-600">·</span>
+            High-Risk-Systeme &amp; Pflichtcontrols im Fokus
+          </li>
+          <li className="flex gap-2">
+            <span className="shrink-0 text-cyan-600">·</span>
+            Readiness-Score bis Stichtag 02.08.2026
+          </li>
+          <li className="flex gap-2">
+            <span className="shrink-0 text-cyan-600">·</span>
+            Maßnahmen-Tracking mit Owner &amp; Fälligkeit
+          </li>
+        </ul>
+        <p className="mt-3 text-xs text-slate-500">
+          Ziel: 85&nbsp;% vor dem Stichtag ·{" "}
+          <time dateTime="2026-08-02">02.08.2026</time>
         </p>
-        <div className="mt-3 flex w-full gap-2">
-          <div className="h-1 flex-1 rounded-full bg-slate-200">
-            <div className="h-full w-1/3 rounded-full bg-cyan-500" />
-          </div>
-          <div className="h-1 flex-1 rounded-full bg-slate-200">
-            <div className="h-full w-2/3 rounded-full bg-teal-500" />
-          </div>
-        </div>
       </div>
     ),
   },
@@ -109,7 +146,7 @@ export function HomeHeroSlides() {
   return (
     <div className="min-w-0">
       <div
-        className="relative min-h-[280px] overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-cyan-50/40 shadow-lg shadow-slate-300/40 sm:min-h-[320px]"
+        className="relative min-h-[300px] overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-cyan-50/40 shadow-lg shadow-slate-300/40 sm:min-h-[340px]"
         role="region"
         aria-roledescription="carousel"
         aria-label="Produktüberblick"
@@ -118,7 +155,7 @@ export function HomeHeroSlides() {
           <div
             key={s.id}
             className={`absolute inset-0 transition-opacity duration-500 ease-out ${
-              i === active ? "z-10 opacity-100" : "z-0 opacity-0 pointer-events-none"
+              i === active ? "z-10 opacity-100" : "z-0 pointer-events-none opacity-0"
             }`}
             aria-hidden={i !== active}
           >

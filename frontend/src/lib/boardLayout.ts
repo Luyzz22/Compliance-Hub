@@ -22,3 +22,29 @@ export const CH_BTN_PRIMARY =
 
 export const CH_BTN_SECONDARY =
   "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50";
+
+export const CH_BTN_GHOST =
+  "inline-flex items-center justify-center rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100";
+
+/** Status-Badge für KPI-Ratios 0–1 (Enterprise-Dashboard). */
+export function chKpiStatusFromRatio(ratio: number): {
+  label: string;
+  chipClass: string;
+} {
+  if (ratio < 0.4) {
+    return {
+      label: "Kritisch",
+      chipClass: "bg-red-100 text-red-900 ring-red-200/70",
+    };
+  }
+  if (ratio < 0.75) {
+    return {
+      label: "Beobachten",
+      chipClass: "bg-amber-100 text-amber-950 ring-amber-200/70",
+    };
+  }
+  return {
+    label: "Im Plan",
+    chipClass: "bg-emerald-100 text-emerald-900 ring-emerald-200/70",
+  };
+}
