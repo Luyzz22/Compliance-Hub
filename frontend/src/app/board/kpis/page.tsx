@@ -12,7 +12,14 @@ import {
   type AIKpiAlert,
   type BoardKpiSummary,
 } from "@/lib/api";
-import { BOARD_PAGE_MAIN_CLASS } from "@/lib/boardLayout";
+import {
+  BOARD_PAGE_ROOT_CLASS,
+  CH_CARD,
+  CH_CARD_MUTED,
+  CH_PAGE_SUB,
+  CH_PAGE_TITLE,
+  CH_SECTION_LABEL,
+} from "@/lib/boardLayout";
 
 import { BoardKpiAdvisorExport } from "./BoardKpiAdvisorExport";
 import { BoardReportAuditSection } from "./BoardReportAuditSection";
@@ -26,6 +33,36 @@ function scoreColor(score: number): string {
 
 function formatPercent(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
+}
+
+function alertInsightLink(kpiKey: string): { href: string; label: string } {
+  if (
+    kpiKey === "nis2_incident_readiness_ratio" ||
+    kpiKey.includes("incident")
+  ) {
+    return { href: "/board/incidents", label: "Incident-Ansicht" };
+  }
+  if (
+    kpiKey === "nis2_supplier_risk_coverage_ratio" ||
+    kpiKey.includes("supplier")
+  ) {
+    return { href: "/board/suppliers", label: "Supplier-Risiko" };
+  }
+  if (
+    kpiKey.includes("nis2") ||
+    kpiKey.includes("kritis") ||
+    kpiKey.includes("ot_it")
+  ) {
+    return { href: "/board/nis2-kritis", label: "NIS2-Drilldown" };
+  }
+  if (
+    kpiKey.includes("readiness") ||
+    kpiKey.includes("eu_ai") ||
+    kpiKey.includes("iso42001")
+  ) {
+    return { href: "/board/eu-ai-act-readiness", label: "EU AI Act Readiness" };
+  }
+  return { href: "/board/kpis", label: "Board-KPIs" };
 }
 
 function ManagementSummary({ kpis }: { kpis: BoardKpiSummary }) {
@@ -76,7 +113,7 @@ function ManagementSummary({ kpis }: { kpis: BoardKpiSummary }) {
   return (
     <section
       aria-label="Management-Zusammenfassung AI Governance"
-      className="sbs-panel-muted mt-8 space-y-1 p-4 text-sm text-[var(--sbs-text-primary)]"
+      className={`${CH_CARD_MUTED} mt-8 space-y-2 text-sm text-slate-700`}
     >
       {lines.map((line) => (
         <p key={line}>{line}</p>
@@ -93,6 +130,17 @@ function alertSeverityStyles(severity: AIKpiAlert["severity"]): string {
       return "border-amber-200 bg-amber-50 text-amber-800";
     default:
       return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+}
+
+function alertSeverityChipClass(severity: AIKpiAlert["severity"]): string {
+  switch (severity) {
+    case "critical":
+      return "bg-red-100 text-red-800 ring-red-200/60";
+    case "warning":
+      return "bg-amber-100 text-amber-900 ring-amber-200/60";
+    default:
+      return "bg-slate-100 text-slate-700 ring-slate-200/60";
   }
 }
 
@@ -116,48 +164,48 @@ export default async function BoardKpisPage() {
 
   if (!kpis) {
     return (
-      <main className={BOARD_PAGE_MAIN_CLASS}>
-        <header className="mb-6">
-          <h1 className="sbs-h1">
-            AI Governance – Board KPIs
-          </h1>
-          <p className="sbs-subtitle">
-            Überblick über Reifegrad, NIS2-Readiness und High-Risk-KI-Systeme.
+      <div className={BOARD_PAGE_ROOT_CLASS}>
+        <header className="mb-8">
+          <h1 className={CH_PAGE_TITLE}>Board KPIs</h1>
+          <p className={CH_PAGE_SUB}>
+            Executive Overview Ihrer AI-Governance – Reifegrad, NIS2 und
+            High-Risk-Register.
           </p>
         </header>
-        <div role="status" className="sbs-alert-warn">
+        <div
+          role="status"
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
           KPI-Daten konnten nicht geladen werden. Bitte versuchen Sie es später
           erneut oder wenden Sie sich an das AI-Governance-Team.
         </div>
-      </main>
+      </div>
     );
   }
 
   const isoScore = kpis.iso42001_governance_score;
 
   return (
-    <main className={BOARD_PAGE_MAIN_CLASS}>
-      <header className="mb-6">
-        <h1 className="sbs-h1">
-          AI Governance – Board KPIs
-        </h1>
-        <p className="sbs-subtitle">
-          ISO 42001 Reifegrad, NIS2-Incident-Readiness und Lieferanten-Risiko im
-          Überblick für den Standort Deutschland.
+    <div className={BOARD_PAGE_ROOT_CLASS}>
+      <header className="mb-8">
+        <h1 className={CH_PAGE_TITLE}>Board KPIs</h1>
+        <p className={CH_PAGE_SUB}>
+          Executive Overview Ihrer AI-Governance – ISO 42001, NIS2-Readiness und
+          Lieferanten-Risiko (Standort Deutschland).
         </p>
         <nav
-          className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-slate-600"
+          className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium"
           aria-label="Board-Unterseiten"
         >
           <Link
             href="/board/nis2-kritis"
-            className="underline hover:text-slate-900"
+            className="rounded-lg text-cyan-700 underline decoration-cyan-700/30 underline-offset-4 hover:text-cyan-900"
           >
             NIS2 / KRITIS KPI-Drilldown
           </Link>
           <Link
             href="/board/eu-ai-act-readiness"
-            className="underline hover:text-slate-900"
+            className="rounded-lg text-cyan-700 underline decoration-cyan-700/30 underline-offset-4 hover:text-cyan-900"
           >
             EU AI Act Readiness
           </Link>
@@ -165,26 +213,46 @@ export default async function BoardKpisPage() {
       </header>
 
       {/* Alerts & Hinweise (max 5) + Export für CISO/ISB/Vorstand */}
-      <section
-        aria-label="Alerts und Hinweise"
-        className="sbs-panel mb-6 p-4"
-      >
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-          Alerts &amp; Hinweise
-        </h2>
+      <section aria-label="Alerts und Hinweise" className={`${CH_CARD} mb-8`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className={CH_SECTION_LABEL}>Alerts &amp; Hinweise</h2>
+          <span className="text-xs text-slate-500">max. 5 Einträge</span>
+        </div>
         {alerts.length > 0 ? (
-          <ul className="mt-3 space-y-2">
-            {alerts.slice(0, 5).map((alert) => (
-              <li
-                key={alert.id}
-                className={`rounded-lg border px-3 py-2 text-sm ${alertSeverityStyles(alert.severity)}`}
-              >
-                {alert.message}
-              </li>
-            ))}
+          <ul className="mt-4 space-y-3">
+            {alerts.slice(0, 5).map((alert) => {
+              const cta = alertInsightLink(alert.kpi_key);
+              return (
+                <li
+                  key={alert.id}
+                  className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${alertSeverityStyles(alert.severity)}`}
+                >
+                  <p className="min-w-0 flex-1 text-sm leading-relaxed">
+                    {alert.message}
+                  </p>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${alertSeverityChipClass(alert.severity)}`}
+                    >
+                      {alert.severity === "critical"
+                        ? "Kritisch"
+                        : alert.severity === "warning"
+                          ? "Warnung"
+                          : "Info"}
+                    </span>
+                    <Link
+                      href={cta.href}
+                      className="text-xs font-semibold text-slate-800 underline decoration-slate-400 underline-offset-2 hover:text-slate-950"
+                    >
+                      {cta.label} →
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-4 text-sm text-slate-500">
             Keine aktuellen Alerts.
           </p>
         )}
@@ -235,7 +303,7 @@ export default async function BoardKpisPage() {
         return (
           <section
             aria-label="AI-Governance-Reife nach ISO 42001"
-            className={`sbs-panel relative mb-8 flex min-w-0 flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between ${scoreColor(
+            className={`relative mb-8 flex min-w-0 flex-col gap-4 rounded-2xl border p-6 shadow-md shadow-slate-200/40 md:flex-row md:items-center md:justify-between ${scoreColor(
               isoScore,
             )} ${hasCriticalForIso ? "ring-2 ring-red-300" : ""}`}
           >
@@ -246,7 +314,8 @@ export default async function BoardKpisPage() {
               />
             )}
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-semibold uppercase tracking-wide">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide">
+                <span aria-hidden>📈</span>
                 AI-Governance-Reife (ISO 42001)
               </h2>
               <p className="mt-1 text-xs text-slate-700">
@@ -269,7 +338,7 @@ export default async function BoardKpisPage() {
       {/* KPI Grid */}
       <section
         aria-label="NIS2- und High-Risk-KPIs"
-        className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
       >
         {/* NIS2 Incident Readiness */}
         {(() => {
@@ -280,7 +349,7 @@ export default async function BoardKpisPage() {
           );
           return (
             <div
-              className={`sbs-panel relative flex min-w-0 flex-col p-4 ${hasCritical ? "ring-2 ring-red-300" : ""}`}
+              className={`${CH_CARD} relative flex min-w-0 flex-col ${hasCritical ? "ring-2 ring-red-300" : ""}`}
             >
               {hasCritical && (
                 <span
@@ -288,7 +357,8 @@ export default async function BoardKpisPage() {
                   aria-hidden
                 />
               )}
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <span aria-hidden>🛡️</span>
                 NIS2 Incident Readiness
               </h3>
               <p className="mt-1 text-xs text-slate-500">
@@ -323,7 +393,7 @@ export default async function BoardKpisPage() {
           );
           return (
             <div
-              className={`sbs-panel relative flex min-w-0 flex-col p-4 ${hasCritical ? "ring-2 ring-red-300" : ""}`}
+              className={`${CH_CARD} relative flex min-w-0 flex-col ${hasCritical ? "ring-2 ring-red-300" : ""}`}
             >
               {hasCritical && (
                 <span
@@ -331,7 +401,8 @@ export default async function BoardKpisPage() {
                   aria-hidden
                 />
               )}
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <span aria-hidden>📦</span>
                 NIS2 Supplier Risk Coverage
               </h3>
               <p className="mt-1 text-xs text-slate-500">
@@ -358,8 +429,9 @@ export default async function BoardKpisPage() {
         })()}
 
         {/* High-Risk KI-Systeme gesamt */}
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className={`${CH_CARD} flex min-w-0 flex-col`}>
+          <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span aria-hidden>⚠️</span>
             High-Risk KI-Systeme gesamt
           </h3>
           <p className="mt-1 text-xs text-slate-500">
@@ -374,8 +446,9 @@ export default async function BoardKpisPage() {
         </div>
 
         {/* High-Risk ohne DPIA */}
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className={`${CH_CARD} flex min-w-0 flex-col`}>
+          <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span aria-hidden>🔒</span>
             High-Risk ohne DPIA
           </h3>
           <p className="mt-1 text-xs text-slate-500">
@@ -392,11 +465,9 @@ export default async function BoardKpisPage() {
 
       {/* EU AI Act / ISO 42001 Readiness */}
       {complianceOverview && (
-        <section
-          aria-label="EU AI Act und ISO 42001 Readiness"
-          className="sbs-panel mb-8 p-6"
-        >
-          <h2 className="text-lg font-semibold text-slate-900">
+        <section aria-label="EU AI Act und ISO 42001 Readiness" className={`${CH_CARD} mb-8`}>
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+            <span aria-hidden>🤖</span>
             EU AI Act / ISO 42001 Readiness
           </h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -525,7 +596,7 @@ export default async function BoardKpisPage() {
       </section>
 
       <ManagementSummary kpis={kpis} />
-    </main>
+    </div>
   );
 }
 

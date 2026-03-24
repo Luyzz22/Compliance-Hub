@@ -1,466 +1,167 @@
 import Link from "next/link";
 import React from "react";
 
+import { HomeHeroSlides } from "@/components/home/HomeHeroSlides";
+import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD } from "@/lib/boardLayout";
+
 export default function HomePage() {
   return (
-    <>
-      <section className="hero-2026">
-        <div className="hero-content animate-in">
-          <div className="hero-badge">
-            <span className="pulse-dot" aria-hidden />
-            Compliance Hub · Live
-          </div>
-          <h1>
-            Enterprise-Governance für den
-            <br />
-            <span className="text-gradient">deutschen Mittelstand</span>
-          </h1>
-          <p className="hero-subtitle">
-            Von KI-System-Register und EU-AI-Act-Readiness bis zu NIS2-Board-KPIs
-            und exportfähigen Nachweisen – eine Plattform für Beratungen,
-            Konzerne und WP-Kanzleien. DSGVO-orientiert. Made for DACH.
+    <div className="min-w-0 space-y-16 md:space-y-20">
+      <section className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-12">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
+            Board-ready · DACH · Enterprise
           </p>
-          <div className="hero-cta-group">
-            <Link href="/tenant/compliance-overview" className="cta-primary">
-              Tenant öffnen →
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.08]">
+            Board-ready AI Governance für EU AI Act &amp; NIS2
+          </h1>
+          <p className="mt-4 max-w-xl text-lg leading-relaxed text-slate-600">
+            Eine ruhige, auditierbare Sicht auf Reifegrad, regulatorische KPIs und
+            offene Maßnahmen – gebaut für Vorstand, ISB und externe Prüfer.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/board/kpis" className={CH_BTN_PRIMARY}>
+              Board öffnen
             </Link>
-            <Link href="/board/kpis" className="cta-secondary">
-              Board-KPIs ansehen
+            <Link href="/tenant/compliance-overview" className={CH_BTN_SECONDARY}>
+              Tenant-Cockpit
             </Link>
           </div>
-          <div className="hero-stats">
-            <div className="hero-stat">
-              <div className="stat-value">4+</div>
-              <div className="stat-label">Regulatory Pillars</div>
-            </div>
-            <div className="hero-stat">
-              <div className="stat-value">RLS</div>
-              <div className="stat-label">Tenant-Isolation</div>
-            </div>
-            <div className="hero-stat">
-              <div className="stat-value">JSON</div>
-              <div className="stat-label">DATEV-ready Export</div>
-            </div>
-            <div className="hero-stat">
-              <div className="stat-value">🇩🇪</div>
-              <div className="stat-label">DACH-Fokus</div>
-            </div>
-          </div>
         </div>
+        <HomeHeroSlides />
       </section>
 
-      <section className="section-2026" style={{ padding: "40px 24px" }}>
-        <div className="section-inner">
-          <div
-            className="trust-badges-2026"
-            style={{ justifyContent: "center" }}
-          >
-            <div className="trust-badge-2026">
-              <span className="badge-icon">🏢</span> Enterprise-Grade
+      <section aria-label="Kernmodule">
+        <h2 className="sr-only">Kernmodule</h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          <article className={CH_CARD}>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-2xl" aria-hidden>
+                📊
+              </span>
+              <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-800">
+                Board
+              </span>
             </div>
-            <div className="trust-badge-2026">
-              <span className="badge-icon">🔒</span> DSGVO-orientiert
-            </div>
-            <div className="trust-badge-2026">
-              <span className="badge-icon">📋</span> EU AI Act &amp; ISO 42001
-            </div>
-            <div className="trust-badge-2026">
-              <span className="badge-icon">⚡</span> NIS2 / KRITIS KPIs
-            </div>
-            <div className="trust-badge-2026">
-              <span className="badge-icon">🔗</span> DATEV &amp; SAP-ready
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-2026 alt-bg">
-        <div className="section-inner">
-          <div className="featured-product-2026">
-            <div className="fp-grid">
-              <div>
-                <div className="fp-badge">🚀 Board-ready</div>
-                <h2
-                  style={{
-                    fontSize: "clamp(1.6rem,3vw,2.4rem)",
-                    fontWeight: 800,
-                    letterSpacing: "-0.02em",
-                    marginBottom: "16px",
-                  }}
-                >
-                  AI Governance &amp; NIS2 in einer Ansicht
-                </h2>
-                <p
-                  style={{
-                    fontSize: "1.05rem",
-                    color: "var(--sbs-text-secondary)",
-                    lineHeight: 1.6,
-                    marginBottom: "24px",
-                  }}
-                >
-                  KPI-Drilldowns, Alerts mit Schwellen-Kontext, EU-AI-Act-Readiness
-                  mit Maßnahmen-Deep-Links und revisionssichere Exporte – gebaut für
-                  Aufsicht, ISB und externe Prüfer.
-                </p>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "12px",
-                    marginBottom: "28px",
-                  }}
-                >
-                  {[
-                    "KI-System-Register mit Risiko & Technical-File-Spuren",
-                    "NIS2/KRITIS-Incident- und Supplier-Drilldowns",
-                    "Readiness-API mit Verknüpfung zu Governance-Actions",
-                    "KPI-Export JSON/CSV mit regulatory_scope für DMS/DATEV-Pipelines",
-                  ].map((t) => (
-                    <div
-                      key={t}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        fontSize: "0.92rem",
-                        color: "var(--sbs-text-secondary)",
-                      }}
-                    >
-                      <span style={{ color: "var(--sbs-text-accent)" }}>✓</span>
-                      {t}
-                    </div>
-                  ))}
-                </div>
-                <Link href="/board/kpis" className="sbs-btn-primary">
-                  Zum Board →
-                </Link>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <div
-                  style={{
-                    background: "#F1F5F9",
-                    border: "1px solid var(--sbs-border)",
-                    borderRadius: "16px",
-                    padding: "32px",
-                    textAlign: "center",
-                    width: "100%",
-                  }}
-                >
-                  <div style={{ fontSize: "4rem", marginBottom: "16px" }} aria-hidden>
-                    📊
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "0.82rem",
-                      color: "#64748B",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    Datenfluss
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      gap: "12px",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {["Register", "Policies", "Engine", "Reports"].map((x, i) => (
-                      <React.Fragment key={x}>
-                        {i > 0 ? (
-                          <span style={{ color: "var(--sbs-text-muted)" }}>→</span>
-                        ) : null}
-                        <span
-                          style={{
-                            padding: "8px 14px",
-                            background: "rgba(0,102,179,0.08)",
-                            border: "1px solid rgba(0,102,179,0.2)",
-                            borderRadius: "8px",
-                            fontSize: "0.82rem",
-                            color: "var(--sbs-text-accent)",
-                          }}
-                        >
-                          {x}
-                        </span>
-                      </React.Fragment>
-                    ))}
-                  </div>
-                  <p
-                    style={{
-                      fontSize: "0.82rem",
-                      color: "#64748B",
-                      marginTop: "16px",
-                    }}
-                  >
-                    Ein konsistenter Pfad von Inventar bis Board-Export
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-2026">
-        <div className="section-inner">
-          <div className="section-header-center">
-            <div className="section-badge">Module</div>
-            <h2 className="section-title">
-              Board, Tenant &amp; Export.
-              <br />
-              Eine Oberfläche.
-            </h2>
-            <p className="section-subtitle">
-              Wählen Sie den Einstieg: operatives Tenant-Cockpit, Vorstands-KPIs
-              oder tiefe NIS2-/Readiness-Drilldowns.
+            <h3 className="mt-4 text-xl font-semibold text-slate-900">Board KPIs</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              ISO-42001-Reife, NIS2-Incident- und Supplier-Kennzahlen, Alerts und
+              Exporte für CISO und Aufsicht.
             </p>
-          </div>
-          <div className="card-grid-3" style={{ marginBottom: "20px" }}>
-            <Link href="/board/kpis" className="product-card-2026">
-              <span className="arrow">→</span>
-              <div className="product-icon">📈</div>
-              <h3>Board KPIs</h3>
-              <p>
-                ISO-42001-Reife, NIS2-Incident- und Supplier-Ratios, Alerts mit
-                Kennzahlen-Kontext und Exporte für CISO/Vorstand.
-              </p>
-              <div className="product-tags">
-                <span className="tag">ISO 42001</span>
-                <span className="tag">NIS2</span>
-                <span className="tag">Alerts</span>
+            <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-slate-100 pt-5 text-center">
+              <div>
+                <dt className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+                  Reife
+                </dt>
+                <dd className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  Live
+                </dd>
               </div>
-            </Link>
-            <Link href="/board/nis2-kritis" className="product-card-2026">
-              <span className="arrow">→</span>
-              <div className="product-icon">🛡️</div>
-              <h3>NIS2 / KRITIS Drilldown</h3>
-              <p>
-                KPI-Typen Incident, Supplier, OT/IT – sortiert und für
-                Aufsichtsreporting aufbereitet.
-              </p>
-              <div className="product-tags">
-                <span className="tag">KRITIS</span>
-                <span className="tag">OT/IT</span>
-                <span className="tag">Top-N</span>
+              <div>
+                <dt className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+                  Alerts
+                </dt>
+                <dd className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  API
+                </dd>
               </div>
-            </Link>
-            <Link href="/board/eu-ai-act-readiness" className="product-card-2026">
-              <span className="arrow">→</span>
-              <div className="product-icon">⚖️</div>
-              <h3>EU AI Act Readiness</h3>
-              <p>
-                Stichtag High-Risk, kritische Anforderungen, Deep-Links zu
-                Systemen und Governance-Actions.
-              </p>
-              <div className="product-tags">
-                <span className="tag">Art. 9–15</span>
-                <span className="tag">Actions</span>
-                <span className="tag">Gaps</span>
+              <div>
+                <dt className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+                  Export
+                </dt>
+                <dd className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  JSON
+                </dd>
               </div>
-            </Link>
-          </div>
-          <div className="card-grid-2">
-            <Link href="/tenant/compliance-overview" className="product-card-2026">
-              <span className="arrow">→</span>
-              <div className="product-icon">🏢</div>
-              <h3>Tenant Compliance</h3>
-              <p>
-                AI-Systeme, Violations und Status in einem Cockpit für
-                Betriebsteams.
-              </p>
-              <div className="product-tags">
-                <span className="tag">Multi-Tenant</span>
-                <span className="tag">Violations</span>
-              </div>
-            </Link>
+            </dl>
             <Link
               href="/board/kpis"
-              className="product-card-2026"
-              style={{ borderColor: "var(--sbs-border-amber)" }}
+              className={`${CH_BTN_PRIMARY} mt-6 w-full sm:w-auto`}
             >
-              <span className="arrow">→</span>
-              <div
-                className="product-icon"
-                style={{ background: "var(--sbs-gradient-amber)" }}
-              >
-                📦
-              </div>
-              <h3>WP / DMS / DATEV Export</h3>
-              <p>
-                Strukturierte KPI-Exports mit Norm-Kontext im Envelope – bereit
-                für Kanzlei- und Archiv-Workflows.
-              </p>
-              <div className="product-tags">
-                <span className="tag">JSON</span>
-                <span className="tag">CSV</span>
-                <span className="tag">Audit</span>
-              </div>
+              Board öffnen
             </Link>
-          </div>
-        </div>
-      </section>
+          </article>
 
-      <section className="section-2026 alt-bg">
-        <div className="section-inner">
-          <div className="section-header-center">
-            <div className="section-badge">Vorteile</div>
-            <h2 className="section-title">Warum Compliance Hub</h2>
-            <p className="section-subtitle">
-              Normen übersetzen sich in messbare Controls – ohne Medienbrüche
-              zwischen Fachbereich, IT und Prüfern.
-            </p>
-          </div>
-          <div className="card-grid-3">
-            <div className="card-2026">
-              <div className="card-icon">🇩🇪</div>
-              <h3>DACH &amp; Regulatorik</h3>
-              <p>
-                EU AI Act, NIS2, ISO 42001, DSGVO/GoBD als Leitplanken – nicht
-                nur als Buzzwords, sondern im Datenmodell verankert.
-              </p>
-            </div>
-            <div className="card-2026">
-              <div className="card-icon">⚡</div>
-              <h3>Board-tauglich</h3>
-              <p>
-                Aggregierte KPIs, Ampeln und Exporte, die ISB und Aufsicht
-                direkt weiterverwenden können.
-              </p>
-            </div>
-            <div className="card-2026">
-              <div className="card-icon">🔗</div>
-              <h3>Integration</h3>
-              <p>
-                APIs, Webhooks und Export-Jobs – andockbar an SAP, DATEV, DMS
-                und n8n-Workflows.
-              </p>
-            </div>
-            <div className="card-2026">
-              <div className="card-icon">🔒</div>
-              <h3>Security by design</h3>
-              <p>
-                Mandanten-Isolation, nachvollziehbare Audit-Events und klare
-                Grenzen zwischen Demo und Produktion.
-              </p>
-            </div>
-            <div className="card-2026">
-              <div className="card-icon">📊</div>
-              <h3>Evidence</h3>
-              <p>
-                Lücken, Maßnahmen und Reports aus einer Quelle – weniger
-                Copy-Paste vor der Prüfung.
-              </p>
-            </div>
-            <div className="card-2026">
-              <div className="card-icon">🎯</div>
-              <h3>Berater-first</h3>
-              <p>
-                Wiederholbare Blueprints und mandantenfähige Sichten für
-                skalierbare GRC-Projekte.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-2026 alt-bg" style={{ padding: "60px 24px" }}>
-        <div className="section-inner">
-          <div className="section-header-center" style={{ marginBottom: "32px" }}>
-            <div className="section-badge">Technologie</div>
-            <h2 style={{ fontSize: "1.4rem", fontWeight: 700 }}>
-              Powered by moderner Stack
-            </h2>
-          </div>
-          <div className="tech-badges-2026">
-            {[
-              "FastAPI",
-              "Python 3.11+",
-              "Next.js",
-              "PostgreSQL / RLS",
-              "Pydantic v2",
-              "n8n",
-              "LangChain",
-              "DATEV",
-              "SAP S/4HANA",
-              "Multi-LLM",
-            ].map((t) => (
-              <span key={t} className="tech-badge-2026">
-                {t}
+          <article className={CH_CARD}>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-2xl" aria-hidden>
+                🛡️
               </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="cta-section-2026">
-        <div className="cta-box">
-          <div className="section-badge" style={{ marginBottom: "20px" }}>
-            Jetzt starten
-          </div>
-          <h2
-            style={{
-              fontSize: "clamp(1.6rem,3vw,2.2rem)",
-              fontWeight: 800,
-              letterSpacing: "-0.02em",
-              marginBottom: "14px",
-            }}
-          >
-            Bereit für Enterprise-Governance?
-          </h2>
-          <p
-            style={{
-              fontSize: "1rem",
-              color: "var(--sbs-text-secondary)",
-              maxWidth: "480px",
-              margin: "0 auto 28px",
-              lineHeight: 1.6,
-            }}
-          >
-            Öffnen Sie das Tenant-Cockpit oder die Board-Ansicht – ohne
-            Kreditkarte, rein demonstrativ gegen die ComplianceHub-API.
-          </p>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              gap: "14px",
-            }}
-          >
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-700">
+                NIS2
+              </span>
+            </div>
+            <h3 className="mt-4 text-xl font-semibold text-slate-900">NIS2 / KRITIS</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Verteilung und schwächste Systeme je KPI-Typ – für
+              Aufsichtsreporting und KRITIS-Bezug.
+            </p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-600">
+              <li className="flex gap-2">
+                <span className="text-cyan-600">·</span>
+                Incident-Response- und Backup-Runbook-Reife
+              </li>
+              <li className="flex gap-2">
+                <span className="text-cyan-600">·</span>
+                Supplier-Risk-Coverage und Supply-Chain-Sicht
+              </li>
+            </ul>
             <Link
-              href="/tenant/compliance-overview"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "14px 28px",
-                background: "var(--sbs-gradient-amber)",
-                color: "#003366",
-                fontWeight: 700,
-                fontSize: "0.95rem",
-                borderRadius: "10px",
-                textDecoration: "none",
-                boxShadow: "var(--sbs-shadow-amber)",
-              }}
+              href="/board/nis2-kritis"
+              className={`${CH_BTN_SECONDARY} mt-6 w-full sm:w-auto`}
             >
-              Tenant öffnen →
+              NIS2-Drilldown
             </Link>
-            <Link href="/board/kpis" className="sbs-btn-secondary">
-              Board-KPIs
+          </article>
+
+          <article className={CH_CARD}>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-2xl" aria-hidden>
+                🤖
+              </span>
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-900">
+                EU AI Act
+              </span>
+            </div>
+            <h3 className="mt-4 text-xl font-semibold text-slate-900">EU AI Act Readiness</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              High-Risk-Fokus, kritische Anforderungen und Verknüpfung zu
+              Maßnahmen und Systemen.
+            </p>
+            <p className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800">
+              Stichtag High-Risk:{" "}
+              <time dateTime="2026-08-02">02.08.2026</time>
+            </p>
+            <Link
+              href="/board/eu-ai-act-readiness"
+              className={`${CH_BTN_PRIMARY} mt-6 w-full sm:w-auto`}
+            >
+              Readiness-Dashboard
             </Link>
-          </div>
+          </article>
+
+          <article className={`${CH_CARD} border-dashed border-cyan-200/80 bg-gradient-to-br from-white to-cyan-50/30`}>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-2xl" aria-hidden>
+                📁
+              </span>
+              <span className="rounded-full bg-white/80 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-700">
+                Audit
+              </span>
+            </div>
+            <h3 className="mt-4 text-xl font-semibold text-slate-900">
+              Audit-Ready / Beratermodus
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Board-Reports, KPI-Exporte und Prüfspuren – strukturiert für DMS,
+              Kanzlei und DATEV-Pipelines.
+            </p>
+            <Link href="/board/kpis" className={`${CH_BTN_SECONDARY} mt-6 w-full sm:w-auto`}>
+              Zu Exporten &amp; Reports
+            </Link>
+          </article>
         </div>
       </section>
-    </>
+    </div>
   );
 }

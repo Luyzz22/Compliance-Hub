@@ -7,18 +7,24 @@ import {
   type AIIncidentBySystem,
   type AIIncidentOverview,
 } from "@/lib/api";
-import { BOARD_PAGE_MAIN_CLASS } from "@/lib/boardLayout";
+import {
+  BOARD_PAGE_ROOT_CLASS,
+  CH_CARD,
+  CH_PAGE_SUB,
+  CH_PAGE_TITLE,
+  CH_SECTION_LABEL,
+} from "@/lib/boardLayout";
 
 function severityBadgeClass(severity: string): string {
   switch (severity) {
     case "high":
-      return "bg-red-100 text-red-800";
+      return "bg-red-100 text-red-800 ring-red-200/60";
     case "medium":
-      return "bg-amber-100 text-amber-800";
+      return "bg-amber-100 text-amber-900 ring-amber-200/60";
     case "low":
-      return "bg-emerald-100 text-emerald-800";
+      return "bg-emerald-100 text-emerald-800 ring-emerald-200/60";
     default:
-      return "bg-slate-100 text-slate-700";
+      return "bg-slate-100 text-slate-700 ring-slate-200/60";
   }
 }
 
@@ -51,18 +57,16 @@ export default async function BoardIncidentsPage() {
 
   if (!overview) {
     return (
-      <main className={BOARD_PAGE_MAIN_CLASS}>
-        <header className="mb-6">
-          <h1 className="sbs-h1">
-            AI Governance – Incident-Übersicht
-          </h1>
-          <p className="sbs-subtitle">
+      <div className={BOARD_PAGE_ROOT_CLASS}>
+        <header className="mb-8">
+          <h1 className={CH_PAGE_TITLE}>Incidents</h1>
+          <p className={CH_PAGE_SUB}>
             NIS2 Art. 21/23 · ISO 42001 Incident Management
           </p>
         </header>
         <div
           role="status"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
         >
           Incident-KPIs konnten nicht geladen werden. Bitte versuchen Sie es
           später erneut oder wenden Sie sich an das AI-Governance-Team.
@@ -70,31 +74,29 @@ export default async function BoardIncidentsPage() {
         <p className="mt-4">
           <Link
             href="/board/kpis"
-            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
           >
             ← Zurück zu Board-KPIs
           </Link>
         </p>
-      </main>
+      </div>
     );
   }
 
   const topSystems = bySystem.slice(0, 3);
 
   return (
-    <main className={BOARD_PAGE_MAIN_CLASS}>
-      <header className="mb-6">
-        <h1 className="sbs-h1">
-          AI Governance – Incident-Übersicht
-        </h1>
-        <p className="sbs-subtitle">
-          NIS2 Art. 21/23 (Incident & Business Continuity) · ISO 42001 Incident
-          Management · Standort Deutschland
+    <div className={BOARD_PAGE_ROOT_CLASS}>
+      <header className="mb-8">
+        <h1 className={CH_PAGE_TITLE}>Incidents</h1>
+        <p className={CH_PAGE_SUB}>
+          NIS2 Art. 21/23 (Incident &amp; Business Continuity) · ISO 42001 ·
+          Standort Deutschland
         </p>
-        <p className="mt-2">
+        <p className="mt-3">
           <Link
             href="/board/kpis"
-            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
             aria-label="Zurück zu Board-KPIs"
           >
             ← Zurück zu Board-KPIs
@@ -102,73 +104,91 @@ export default async function BoardIncidentsPage() {
         </p>
       </header>
 
+      <div
+        className="mb-8 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200/90 bg-white/90 p-4 shadow-sm"
+        aria-label="Filter (Demonstration)"
+      >
+        <div className="min-w-[12rem] flex-1">
+          <label className="text-xs font-semibold text-slate-500" htmlFor="inc-search">
+            Suche
+          </label>
+          <input
+            id="inc-search"
+            type="search"
+            placeholder="KI-System, ID…"
+            disabled
+            title="Demonstrativ – keine Filterlogik"
+            className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 opacity-80"
+          />
+        </div>
+        <div className="w-full min-w-[10rem] sm:w-48">
+          <span className="text-xs font-semibold text-slate-500">Schweregrad</span>
+          <select
+            disabled
+            title="Demonstrativ"
+            className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 opacity-80"
+            defaultValue="all"
+          >
+            <option value="all">Alle</option>
+            <option value="high">Hoch</option>
+            <option value="medium">Mittel</option>
+            <option value="low">Niedrig</option>
+          </select>
+        </div>
+      </div>
+
       <section
         aria-label="Incident-KPIs"
         className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Incidents letzte 12 Monate
-          </h2>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
-            {overview.total_incidents_last_12_months}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Gesamt (Rolling 12 Monate)</p>
-        </div>
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Aktuell offene Incidents
-          </h2>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
+        <div className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Offene Incidents</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
             {overview.open_incidents}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Status: offen</p>
+          <p className="mt-1 text-xs text-slate-500">Aktueller Bestand</p>
         </div>
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Major Incidents (NIS2-relevant)
-          </h2>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
+        <div className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>12 Monate</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
+            {overview.total_incidents_last_12_months}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">Gesamt (Rolling)</p>
+        </div>
+        <div className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Major (NIS2)</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
             {overview.major_incidents_last_12_months}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Schweregrad Hoch, 12 Monate</p>
+          <p className="mt-1 text-xs text-slate-500">Schweregrad hoch</p>
         </div>
-        <div className="sbs-panel flex min-w-0 flex-col p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            MTTA / MTTR
-          </h2>
-          <p className="mt-2 text-lg font-semibold text-slate-900">
+        <div className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>MTTA / MTTR</p>
+          <p className="mt-2 text-lg font-semibold tabular-nums text-slate-900">
             {overview.mean_time_to_ack_hours != null
               ? `~${overview.mean_time_to_ack_hours} h`
               : "–"}{" "}
-            /{" "}
+            <span className="text-slate-400">/</span>{" "}
             {overview.mean_time_to_recover_hours != null
               ? `~${overview.mean_time_to_recover_hours} h`
               : "–"}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Ø Zeit bis Bestätigung / Wiederherstellung
-          </p>
+          <p className="mt-1 text-xs text-slate-500">Ø Bestätigung / Recovery</p>
         </div>
       </section>
 
-      <section
-        aria-label="Incidents nach Schweregrad"
-        className="sbs-panel mb-8 p-4"
-      >
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">
-          Incidents nach Schweregrad
-        </h2>
+      <section aria-label="Incidents nach Schweregrad" className={`${CH_CARD} mb-8`}>
+        <h2 className="text-base font-semibold text-slate-900">Nach Schweregrad</h2>
         {overview.by_severity.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="mt-3 text-sm text-slate-500">
             In den letzten 12 Monaten keine Incidents erfasst.
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {overview.by_severity.map((entry) => (
               <span
                 key={entry.severity}
-                className={`rounded-full px-3 py-1 text-sm font-medium ${severityBadgeClass(entry.severity)}`}
+                className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-inset ${severityBadgeClass(entry.severity)}`}
               >
                 {severityLabel(entry.severity)}: {entry.count}
               </span>
@@ -180,28 +200,33 @@ export default async function BoardIncidentsPage() {
       {topSystems.length > 0 && (
         <section
           aria-label="Top-KI-Systeme nach Incident-Anzahl"
-          className="sbs-panel p-4"
+          className={CH_CARD}
         >
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">
-            Top 3 KI-Systeme mit den meisten Incidents (12 Monate)
+          <h2 className="text-base font-semibold text-slate-900">
+            Top 3 KI-Systeme (12 Monate)
           </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-slate-100">
+            <table className="w-full min-w-[320px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                  <th className="pb-2 font-semibold">KI-System</th>
-                  <th className="pb-2 font-semibold">Anzahl Incidents</th>
-                  <th className="pb-2 font-semibold">Letztes Incident</th>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-3">KI-System</th>
+                  <th className="px-4 py-3">Anzahl</th>
+                  <th className="px-4 py-3">Letztes Incident</th>
                 </tr>
               </thead>
               <tbody>
                 {topSystems.map((row) => (
-                  <tr key={row.ai_system_id} className="border-b border-slate-100">
-                    <td className="py-2 font-medium text-slate-900">
+                  <tr
+                    key={row.ai_system_id}
+                    className="border-b border-slate-100 transition hover:bg-cyan-50/40"
+                  >
+                    <td className="px-4 py-3 font-semibold text-slate-900">
                       {row.ai_system_name}
                     </td>
-                    <td className="py-2 text-slate-700">{row.incident_count}</td>
-                    <td className="py-2 text-slate-600">
+                    <td className="px-4 py-3 tabular-nums text-slate-700">
+                      {row.incident_count}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
                       {row.last_incident_at
                         ? new Date(row.last_incident_at).toLocaleString("de-DE", {
                             dateStyle: "short",
@@ -216,6 +241,6 @@ export default async function BoardIncidentsPage() {
           </div>
         </section>
       )}
-    </main>
+    </div>
   );
 }

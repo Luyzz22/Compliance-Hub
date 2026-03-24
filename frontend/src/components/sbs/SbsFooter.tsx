@@ -4,25 +4,27 @@ import React from "react";
 export function SbsFooter() {
   const y = new Date().getFullYear();
   return (
-    <footer className="sbs-footer-2026">
-      <div className="sbs-footer-inner">
-        <div>
-          © {y} Compliance Hub · Enterprise GRC für den DACH-Markt ·{" "}
-          <span style={{ color: "var(--sbs-text-muted)" }}>
-            Design angelehnt an{" "}
-            <a
-              href="https://sbsdeutschland.com/sbshomepage/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              SBS Deutschland
-            </a>
-          </span>
+    <footer className="mt-auto border-t border-slate-200/90 bg-white/90 py-8 backdrop-blur-sm">
+      <div className="mx-auto flex min-w-0 max-w-7xl flex-col gap-4 px-4 text-xs text-slate-500 md:flex-row md:items-center md:justify-between md:px-6">
+        <div className="leading-relaxed">
+          © {y} Compliance Hub · Enterprise GRC für den DACH-Markt
         </div>
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <Link href="/">Start</Link>
-          <Link href="/board/kpis">Board</Link>
-          <Link href="/tenant/compliance-overview">Tenant</Link>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          <Link href="/" className="font-medium text-slate-600 hover:text-slate-900">
+            Start
+          </Link>
+          <Link href="/board/kpis" className="font-medium text-slate-600 hover:text-slate-900">
+            Board KPIs
+          </Link>
+          <Link
+            href="/tenant/compliance-overview"
+            className="font-medium text-slate-600 hover:text-slate-900"
+          >
+            Tenant
+          </Link>
+          <Link href="/board/suppliers" className="font-medium text-slate-600 hover:text-slate-900">
+            Supplier
+          </Link>
         </div>
       </div>
     </footer>

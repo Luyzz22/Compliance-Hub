@@ -6,7 +6,13 @@ import {
   type EUAIActReadinessOverview,
   type ReadinessRequirementTraffic,
 } from "@/lib/api";
-import { BOARD_PAGE_MAIN_CLASS } from "@/lib/boardLayout";
+import {
+  BOARD_PAGE_ROOT_CLASS,
+  CH_CARD,
+  CH_PAGE_SUB,
+  CH_PAGE_TITLE,
+  CH_SECTION_LABEL,
+} from "@/lib/boardLayout";
 
 function aiSystemsFilterHref(systemIds: string[]): string {
   const q = systemIds.length
@@ -26,6 +32,40 @@ function trafficDot(traffic: ReadinessRequirementTraffic): string {
   }
 }
 
+function trafficLabel(traffic: ReadinessRequirementTraffic): string {
+  switch (traffic) {
+    case "red":
+      return "Rot";
+    case "amber":
+      return "Gelb";
+    default:
+      return "Grün";
+  }
+}
+
+function ReadinessRing({ percent }: { percent: number }) {
+  const p = Math.min(100, Math.max(0, percent));
+  return (
+    <div
+      className="relative mx-auto h-36 w-36 shrink-0"
+      aria-hidden
+    >
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: `conic-gradient(rgb(8 145 178) 0% ${p}%, rgb(226 232 240) ${p}% 100%)`,
+        }}
+      />
+      <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-white shadow-inner">
+        <span className="text-3xl font-semibold tabular-nums text-slate-900">{p}%</span>
+        <span className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+          Readiness
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default async function EuAiActReadinessPage() {
   let data: EUAIActReadinessOverview | null = null;
   try {
@@ -36,27 +76,26 @@ export default async function EuAiActReadinessPage() {
 
   if (!data) {
     return (
-      <main className={BOARD_PAGE_MAIN_CLASS}>
-        <header className="mb-6">
-          <h1 className="sbs-h1">
-            EU AI Act Readiness
-          </h1>
+      <div className={BOARD_PAGE_ROOT_CLASS}>
+        <header className="mb-8">
+          <h1 className={CH_PAGE_TITLE}>EU AI Act Readiness</h1>
+          <p className={CH_PAGE_SUB}>High-Risk-Systeme bis 02.08.2026</p>
         </header>
         <div
           role="status"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
         >
           Readiness-Daten konnten nicht geladen werden.
         </div>
         <p className="mt-4">
           <Link
             href="/board/kpis"
-            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
           >
             ← Zurück zu Board-KPIs
           </Link>
         </p>
-      </main>
+      </div>
     );
   }
 
@@ -65,136 +104,132 @@ export default async function EuAiActReadinessPage() {
   const q3done = data.days_remaining > 0 && data.overall_readiness >= 0.85;
 
   return (
-    <main className={BOARD_PAGE_MAIN_CLASS}>
-      <header className="mb-6">
-        <h1 className="sbs-h1">
-          EU AI Act Readiness (High-Risk)
-        </h1>
-        <p className="sbs-subtitle">
-          Stichtag {data.deadline} · noch {data.days_remaining} Tage ·
-          Gesamt-Readiness {readinessPct} %
+    <div className={BOARD_PAGE_ROOT_CLASS}>
+      <header className="mb-8">
+        <h1 className={CH_PAGE_TITLE}>EU AI Act Readiness</h1>
+        <p className={CH_PAGE_SUB}>
+          High-Risk-Systeme bis{" "}
+          <time dateTime="2026-08-02">02.08.2026</time>
+          {" · "}
+          noch {data.days_remaining} Tage · Gesamt {readinessPct}%
         </p>
-        <p className="mt-2">
+        <p className="mt-3">
           <Link
             href="/board/kpis"
-            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
           >
             ← Zurück zu Board-KPIs
           </Link>
         </p>
       </header>
 
-      <section
-        aria-label="Kernkennzahlen"
-        className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3"
-      >
-        <div className="sbs-panel min-w-0 p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Overall Readiness
-          </h2>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
-            {readinessPct} %
-          </p>
-        </div>
-        <div className="sbs-panel min-w-0 p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            High-Risk mit essenziellen Controls
-          </h2>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
-            {data.high_risk_systems_essential_complete}
-          </p>
-        </div>
-        <div className="sbs-panel min-w-0 p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            High-Risk mit Lücken
-          </h2>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
-            {data.high_risk_systems_essential_incomplete}
-          </p>
+      <section className={`${CH_CARD} mb-8`} aria-label="Readiness-Übersicht">
+        <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">
+          <ReadinessRing percent={readinessPct} />
+          <div className="min-w-0 space-y-6">
+            <div>
+              <p className={CH_SECTION_LABEL}>Fortschritt</p>
+              <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-teal-500 transition-all"
+                  style={{ width: `${readinessPct}%` }}
+                />
+              </div>
+              <p className="mt-2 text-sm text-slate-600">
+                Ziel empfohlen: ≥ 85&nbsp;% vor Stichtag.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
+                <p className="text-xs font-medium text-slate-500">Tage verbleibend</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+                  {data.days_remaining}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
+                <p className="text-xs font-medium text-slate-500">HR + Controls komplett</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+                  {data.high_risk_systems_essential_complete}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
+                <p className="text-xs font-medium text-slate-500">HR mit Lücken</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+                  {data.high_risk_systems_essential_incomplete}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section
-        aria-label="Roadmap"
-        className="sbs-panel-muted mb-8 p-4"
-      >
-        <h2 className="text-sm font-semibold text-slate-800">
-          Grobe Timeline bis Stichtag
-        </h2>
-        <ol className="mt-3 space-y-2 text-sm text-slate-700">
-          <li className="flex items-center gap-2">
+      <section aria-label="Roadmap" className={`${CH_CARD} mb-8`}>
+        <h2 className="text-base font-semibold text-slate-900">Roadmap bis Stichtag</h2>
+        <ol className="mt-4 space-y-3 text-sm text-slate-700">
+          <li className="flex items-start gap-3">
             <span
-              className={`h-2 w-2 rounded-full ${q2done ? "bg-emerald-500" : "bg-slate-300"}`}
+              className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${q2done ? "bg-emerald-500" : "bg-slate-300"}`}
             />
-            Q2 2026 – Fokus Lücken schließen (aktuell {readinessPct} % Readiness)
+            Q2 2026 – Lücken schließen (aktuell {readinessPct}% Readiness)
           </li>
-          <li className="flex items-center gap-2">
+          <li className="flex items-start gap-3">
             <span
-              className={`h-2 w-2 rounded-full ${q3done ? "bg-emerald-500" : "bg-slate-300"}`}
+              className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${q3done ? "bg-emerald-500" : "bg-slate-300"}`}
             />
-            Q3 2026 – Ziel ≥ 85 % Readiness vor Frist
+            Q3 2026 – Ziel ≥ 85&nbsp;% Readiness vor Frist
           </li>
         </ol>
       </section>
 
       <section className="mb-8" aria-label="Kritische Anforderungen">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-          Top Critical Requirements
-        </h2>
+        <h2 className={`${CH_SECTION_LABEL} mb-4`}>Top Critical Requirements</h2>
         {data.critical_requirements.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="text-sm text-slate-500">
             Keine priorisierten Lücken aus dem Compliance-Register.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <ul className="space-y-3">
             {data.critical_requirements.map((r) => (
               <li
                 key={r.requirement_id ?? `${r.code}-${r.name}`}
-                className="sbs-panel flex min-w-0 items-start gap-3 px-3 py-2 text-sm"
+                className={`${CH_CARD} flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start`}
               >
-                <span
-                  className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${trafficDot(r.traffic)}`}
-                  title={r.traffic}
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  <span
+                    className={`h-3 w-3 rounded-full ${trafficDot(r.traffic)}`}
+                    title={r.traffic}
+                  />
+                  <span className="text-xs font-semibold text-slate-600">
+                    {trafficLabel(r.traffic)}
+                  </span>
+                </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="font-medium text-slate-900">
-                      {r.code}: {r.name}
-                    </span>
-                    <span className="text-slate-500">
-                      {r.affected_systems_count} Systeme · Prio {r.priority}
-                    </span>
-                    {(r.open_actions_count_for_requirement ?? 0) > 0 ? (
-                      <span
-                        className="inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-900"
-                        title="Offene oder laufende Maßnahmen mit Bezug zu dieser Anforderung"
-                      >
-                        {r.open_actions_count_for_requirement} Maßnahme
-                        {(r.open_actions_count_for_requirement ?? 0) === 1 ? "" : "n"}
-                      </span>
-                    ) : null}
+                  <div className="font-semibold text-slate-900">
+                    {r.code}: {r.name}
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                  <p className="mt-1 text-sm text-slate-600">
+                    {r.affected_systems_count} Systeme · Priorität {r.priority}
+                  </p>
+                  {(r.open_actions_count_for_requirement ?? 0) > 0 ? (
+                    <span className="mt-2 inline-flex rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-900">
+                      {r.open_actions_count_for_requirement} offene Maßnahme
+                      {(r.open_actions_count_for_requirement ?? 0) === 1 ? "" : "n"}
+                    </span>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {(r.related_ai_system_ids?.length ?? 0) > 0 ? (
                       <Link
                         href={aiSystemsFilterHref(r.related_ai_system_ids ?? [])}
-                        className="font-medium text-slate-600 underline hover:text-slate-900"
+                        className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm hover:border-slate-300"
                       >
-                        Zu den betroffenen Systemen
+                        Betroffene Systeme
                       </Link>
                     ) : null}
                     <Link
                       href="/board/eu-ai-act-readiness#governance-actions"
-                      className="font-medium text-slate-600 underline hover:text-slate-900"
+                      className="inline-flex rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800"
                     >
-                      Maßnahmen ansehen
-                    </Link>
-                    <Link
-                      href="/board/eu-ai-act-readiness#governance-actions"
-                      className="font-medium text-slate-600 underline hover:text-slate-900"
-                      title="Neue Einträge z. B. über POST /api/v1/ai-governance/actions oder Ihr ITSM"
-                    >
-                      Maßnahme erfassen
+                      Maßnahmen
                     </Link>
                   </div>
                 </div>
@@ -205,25 +240,25 @@ export default async function EuAiActReadinessPage() {
       </section>
 
       <section className="mb-8" aria-label="Vorgeschlagene Maßnahmen">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+        <h2 className={`${CH_SECTION_LABEL} mb-4`}>
           Vorgeschlagene Maßnahmen (nicht persistiert)
         </h2>
         {data.suggested_actions.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="text-sm text-slate-500">
             Keine automatischen Vorschläge – oder alle Fokus-Systeme vollständig.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2 text-sm text-slate-700">
+          <ul className="space-y-3 text-sm text-slate-700">
             {data.suggested_actions.map((s, i) => (
               <li
                 key={`${s.title}-${i}`}
-                className="sbs-panel-muted border border-dashed border-[var(--sbs-border)] px-3 py-2"
+                className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3"
               >
-                <span className="font-medium">{s.title}</span>
+                <span className="font-semibold text-slate-900">{s.title}</span>
                 <span className="ml-2 text-xs text-slate-500">
                   {s.related_requirement} · Prio {s.suggested_priority}
                 </span>
-                <p className="mt-1 text-xs text-slate-600">{s.rationale}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">{s.rationale}</p>
               </li>
             ))}
           </ul>
@@ -231,38 +266,48 @@ export default async function EuAiActReadinessPage() {
       </section>
 
       <section id="governance-actions" aria-label="Offene Maßnahmen">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-          Offene Maßnahmen
-        </h2>
+        <h2 className={`${CH_SECTION_LABEL} mb-4`}>Offene Maßnahmen</h2>
         {data.open_governance_actions.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="text-sm text-slate-500">
             Keine offenen Einträge in{" "}
-            <code className="rounded bg-slate-100 px-1">ai_governance_actions</code>.
+            <code className="rounded bg-slate-100 px-1 text-xs">ai_governance_actions</code>.
           </p>
         ) : (
-          <ul className="sbs-panel mt-3 divide-y divide-[var(--sbs-border)] overflow-hidden p-0">
-            {data.open_governance_actions.map((a) => (
-              <li key={a.id} className="px-4 py-3 text-sm">
-                <div className="font-medium text-slate-900">{a.title}</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {a.related_requirement} · {a.status}
-                  {a.due_date
-                    ? ` · Fällig ${new Date(a.due_date).toLocaleDateString("de-DE")}`
-                    : ""}
-                </div>
-                {a.related_ai_system_id ? (
-                  <Link
-                    href="/tenant/eu-ai-act"
-                    className="mt-1 inline-block text-xs font-medium text-slate-600 underline hover:text-slate-900"
-                  >
-                    KI-System {a.related_ai_system_id} (EU-AI-Act-Ansicht)
-                  </Link>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <div className={`${CH_CARD} overflow-hidden p-0`}>
+            <ul className="divide-y divide-slate-100">
+              {data.open_governance_actions.map((a) => (
+                <li
+                  key={a.id}
+                  className="flex flex-col gap-2 px-5 py-4 transition hover:bg-slate-50/80 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-900">{a.title}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <span>{a.related_requirement}</span>
+                      <span
+                        className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-700"
+                      >
+                        {a.status}
+                      </span>
+                      {a.due_date
+                        ? ` · Fällig ${new Date(a.due_date).toLocaleDateString("de-DE")}`
+                        : null}
+                    </div>
+                    {a.related_ai_system_id ? (
+                      <Link
+                        href="/tenant/eu-ai-act"
+                        className="mt-2 inline-block text-xs font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
+                      >
+                        KI-System {a.related_ai_system_id}
+                      </Link>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </section>
-    </main>
+    </div>
   );
 }
