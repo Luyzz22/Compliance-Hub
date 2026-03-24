@@ -17,15 +17,9 @@ def scenario_profile_id_for_ai_system(system: AISystem) -> str | None:
         return "critical_infrastructure_predictive_maintenance"
     if any(x in bu or x in desc for x in ("fertig", "produktion", "manufactur", "qualität")):
         return "manufacturing_quality_control"
-    if any(
-        x in bu or x in desc
-        for x in ("gesund", "klinik", "medizin", "patient", "clinical")
-    ):
+    if any(x in bu or x in desc for x in ("gesund", "klinik", "medizin", "patient", "clinical")):
         return "clinical_decision_support"
-    if any(
-        x in bu or x in desc
-        for x in ("biometr", "überwachung", "grenz", "sicherheit")
-    ):
+    if any(x in bu or x in desc for x in ("biometr", "überwachung", "grenz", "sicherheit")):
         return "biometric_identification_high_risk"
     if any(x in bu or x in desc for x in ("personal", "hr", "recruit", "bewerb")):
         return "hr_recruitment_screening"

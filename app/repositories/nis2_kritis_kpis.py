@@ -79,9 +79,7 @@ class Nis2KritisKpiRepository:
             Nis2KritisKpiDB.tenant_id == tenant_id,
         )
         mean_val = self._session.execute(mean_stmt).scalar_one()
-        mean_percent: float | None = (
-            float(mean_val) if mean_val is not None else None
-        )
+        mean_percent: float | None = float(mean_val) if mean_val is not None else None
 
         systems_stmt = select(AISystemTable.id).where(AISystemTable.tenant_id == tenant_id)
         system_ids = list(self._session.execute(systems_stmt).scalars().all())

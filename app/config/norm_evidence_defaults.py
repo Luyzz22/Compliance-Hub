@@ -120,27 +120,20 @@ HIGH_RISK_SCENARIO_PROFILES: list[HighRiskScenarioProfileConfig] = [
                 "reference": "6.2",
                 "evidence_type": "board_report",
                 "note": (
-                    "AI-Ziele und Kenngrößen für die QS-KI (Schwellen, "
-                    "Fehlerquoten, Eskalation)."
+                    "AI-Ziele und Kenngrößen für die QS-KI (Schwellen, Fehlerquoten, Eskalation)."
                 ),
             },
             {
                 "framework": "ISO_42001",
                 "reference": "8.1",
                 "evidence_type": "board_report",
-                "note": (
-                    "Operative Steuerung der QS-Pipeline inkl. "
-                    "Daten- und Modellüberwachung."
-                ),
+                "note": ("Operative Steuerung der QS-Pipeline inkl. Daten- und Modellüberwachung."),
             },
             {
                 "framework": "ISO_42001",
                 "reference": "9.1",
                 "evidence_type": "board_report",
-                "note": (
-                    "Monitoring, Messung und Bewertung der KI-QS (Audit, "
-                    "Management Review)."
-                ),
+                "note": ("Monitoring, Messung und Bewertung der KI-QS (Audit, Management Review)."),
             },
         ],
         "recommended_incident_response_maturity_percent": 88,
@@ -187,8 +180,7 @@ HIGH_RISK_SCENARIO_PROFILES: list[HighRiskScenarioProfileConfig] = [
                 "reference": "6.1",
                 "evidence_type": "board_report",
                 "note": (
-                    "Maßnahmenplanung und Ressourcen für PM-KI (Alarmierung, "
-                    "Eskalation, Wartung)."
+                    "Maßnahmenplanung und Ressourcen für PM-KI (Alarmierung, Eskalation, Wartung)."
                 ),
             },
             {
@@ -196,8 +188,7 @@ HIGH_RISK_SCENARIO_PROFILES: list[HighRiskScenarioProfileConfig] = [
                 "reference": "9.1",
                 "evidence_type": "board_report",
                 "note": (
-                    "Leistungsüberwachung der KI-Prognosen (Drift, "
-                    "Fehlalarmquote, Verfügbarkeit)."
+                    "Leistungsüberwachung der KI-Prognosen (Drift, Fehlalarmquote, Verfügbarkeit)."
                 ),
             },
         ],
