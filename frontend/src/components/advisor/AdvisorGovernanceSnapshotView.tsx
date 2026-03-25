@@ -7,8 +7,11 @@ import ReactMarkdown from "react-markdown";
 import {
   ADVISOR_ID_FROM_ENV,
   fetchAdvisorClientGovernanceSnapshot,
+  fetchAdvisorTenantReadinessScore,
   postAdvisorGovernanceSnapshotMarkdown,
   type AdvisorClientGovernanceSnapshotDto,
+  type ReadinessScoreDimensionsDto,
+  type ReadinessScoreResponseDto,
 } from "@/lib/api";
 import {
   CH_BTN_PRIMARY,
@@ -17,7 +20,7 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
-import { featureAiComplianceBoardReport } from "@/lib/config";
+import { featureAiComplianceBoardReport, featureReadinessScore } from "@/lib/config";
 import { openWorkspaceTenantAndGo } from "@/lib/workspaceTenantClient";
 
 const mdComponents = {
@@ -36,6 +39,35 @@ const mdComponents = {
   li: (props: React.ComponentPropsWithoutRef<"li">) => <li className="pl-0.5" {...props} />,
 };
 
+function readinessRecommendations(d: ReadinessScoreDimensionsDto): string[] {
+  const out: string[] = [];
+  if (d.setup.score_0_100 < 60) {
+    out.push(
+      `AI-Governance-Setup-Wizard: fehlende Schritte abschließen (Setup-Dimension ${d.setup.score_0_100}/100).`,
+    );
+  }
+  if (d.coverage.score_0_100 < 60) {
+    out.push(
+      "Framework-Coverage erhöhen (Cross-Regulation Dashboard, Controls und Evidenzen verknüpfen).",
+    );
+  }
+  if (d.kpi.score_0_100 < 60) {
+    out.push(
+      "Mindestens zwei KPI-Zeitreihen pro High-Risk-System erfassen (AI-KPI/KRI-Register).",
+    );
+  }
+  if (d.gaps.score_0_100 < 60) {
+    out.push("Kritische regulatorische Gaps reduzieren (Gap-Assist-Empfehlungen priorisieren).");
+  }
+  if (d.reporting.score_0_100 < 60) {
+    out.push("Board-/Advisor-Reports erstellen und Historie aufbauen.");
+  }
+  if (out.length === 0) {
+    out.push("Niveau halten: KPI-Monitoring und regelmäßige Board-Reports beibehalten.");
+  }
+  return out.slice(0, 5);
+}
+
 export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenantId: string }) {
   const advisorId = ADVISOR_ID_FROM_ENV;
   const [snap, setSnap] = useState<AdvisorClientGovernanceSnapshotDto | null>(null);
@@ -44,6 +76,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
   const [mdBusy, setMdBusy] = useState(false);
   const [mdOut, setMdOut] = useState<string | null>(null);
   const [mdErr, setMdErr] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<ReadinessScoreResponseDto | null>(null);
 
   const load = useCallback(async () => {
     if (!advisorId) return;
@@ -63,6 +96,34 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
   useEffect(() => {
     void load();
   }, [load]);
+
+  const syncReadiness = useCallback(
+    async (loaded: AdvisorClientGovernanceSnapshotDto | null) => {
+      if (!featureReadinessScore() || !advisorId) {
+        setReadiness(null);
+        return;
+      }
+      if (!loaded) {
+        setReadiness(null);
+        return;
+      }
+      if (loaded.readiness) {
+        setReadiness(loaded.readiness);
+        return;
+      }
+      try {
+        const r = await fetchAdvisorTenantReadinessScore(advisorId, clientTenantId);
+        setReadiness(r);
+      } catch {
+        setReadiness(null);
+      }
+    },
+    [advisorId, clientTenantId],
+  );
+
+  useEffect(() => {
+    void syncReadiness(snap);
+  }, [snap, syncReadiness]);
 
   const genMd = async () => {
     if (!advisorId) return;
@@ -159,6 +220,35 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
               </div>
             </dl>
           </section>
+
+          {featureReadinessScore() && readiness ? (
+            <section className={CH_CARD} data-testid="snap-readiness">
+              <p className={CH_SECTION_LABEL}>AI &amp; Compliance Readiness</p>
+              <p className="mt-2 text-sm text-slate-700">{readiness.interpretation}</p>
+              <p className="mt-3 text-3xl font-bold tabular-nums text-slate-900">
+                <span className={readiness.score < 40 ? "text-rose-700" : readiness.score < 70 ? "text-amber-800" : "text-emerald-800"}>
+                  {readiness.score}
+                </span>
+                <span className="text-lg font-semibold text-slate-500">/100</span>
+                <span className="ml-2 text-base font-medium text-slate-600">
+                  ({readiness.level === "basic" ? "Basic" : readiness.level === "managed" ? "Managed" : "Embedded"})
+                </span>
+              </p>
+              <ul className="mt-3 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+                <li>Setup: {readiness.dimensions.setup.score_0_100}</li>
+                <li>Coverage: {readiness.dimensions.coverage.score_0_100}</li>
+                <li>KPIs: {readiness.dimensions.kpi.score_0_100}</li>
+                <li>Gaps: {readiness.dimensions.gaps.score_0_100}</li>
+                <li>Reporting: {readiness.dimensions.reporting.score_0_100}</li>
+              </ul>
+              <p className={`${CH_SECTION_LABEL} mt-4`}>Empfohlene Maßnahmen</p>
+              <ul className="mt-2 list-inside list-disc text-sm text-slate-700">
+                {readinessRecommendations(readiness.dimensions).map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           <section className={CH_CARD} data-testid="snap-setup">
             <p className={CH_SECTION_LABEL}>AI Governance Setup &amp; Playbook</p>

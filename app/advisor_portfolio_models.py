@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.advisor_client_snapshot_models import AdvisorTenantGovernanceBrief
+from app.readiness_score_models import ReadinessScoreSummary
 
 
 class AdvisorPortfolioTenantEntry(BaseModel):
@@ -29,6 +30,10 @@ class AdvisorPortfolioTenantEntry(BaseModel):
     governance_brief: AdvisorTenantGovernanceBrief | None = Field(
         default=None,
         description="Optional: Mandanten-Governance-Kurzinfo (ADVISOR_CLIENT_SNAPSHOT).",
+    )
+    readiness_summary: ReadinessScoreSummary | None = Field(
+        default=None,
+        description="Optional: Readiness Score (FEATURE_READINESS_SCORE).",
     )
 
 

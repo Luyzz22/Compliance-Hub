@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   fetchList: vi.fn(),
   fetchDetail: vi.fn(),
   createReport: vi.fn(),
+  fetchReadiness: vi.fn(),
 }));
 
 vi.mock("@/lib/api", async () => {
@@ -14,6 +15,17 @@ vi.mock("@/lib/api", async () => {
     fetchAiComplianceBoardReports: mocks.fetchList,
     fetchAiComplianceBoardReportDetail: mocks.fetchDetail,
     createAiComplianceBoardReport: mocks.createReport,
+    fetchTenantReadinessScore: mocks.fetchReadiness,
+  };
+});
+
+vi.mock("@/lib/config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/config")>();
+  return {
+    ...actual,
+    featureReadinessScore: () => true,
+    featureLlmEnabled: () => false,
+    featureLlmExplain: () => false,
   };
 });
 
@@ -25,7 +37,22 @@ afterEach(() => {
 });
 
 describe("AiComplianceBoardReportClient", () => {
+  const readinessPayload = {
+    tenant_id: "t1",
+    score: 50,
+    level: "managed" as const,
+    interpretation: "Kurz.",
+    dimensions: {
+      setup: { normalized: 0.5, score_0_100: 50 },
+      coverage: { normalized: 0.5, score_0_100: 50 },
+      kpi: { normalized: 0.5, score_0_100: 50 },
+      gaps: { normalized: 0.5, score_0_100: 50 },
+      reporting: { normalized: 0.5, score_0_100: 50 },
+    },
+  };
+
   it("lädt Historie und zeigt letzten Report", async () => {
+    mocks.fetchReadiness.mockResolvedValue(readinessPayload);
     mocks.fetchList.mockResolvedValue([
       {
         id: "rep-1",
@@ -49,10 +76,12 @@ describe("AiComplianceBoardReportClient", () => {
     await waitFor(() => {
       expect(screen.getByTestId("board-report-history")).toBeTruthy();
     });
+    expect(screen.getByTestId("board-readiness-card")).toBeTruthy();
     expect(screen.getAllByText("Test Report").length).toBeGreaterThanOrEqual(1);
   });
 
   it("rendert die Markdown-Section AI Performance & Risk KPIs", async () => {
+    mocks.fetchReadiness.mockResolvedValue(readinessPayload);
     mocks.fetchList.mockResolvedValue([
       {
         id: "rep-kpi",
@@ -82,6 +111,7 @@ describe("AiComplianceBoardReportClient", () => {
   });
 
   it("ruft beim Generieren den API-Endpoint auf", async () => {
+    mocks.fetchReadiness.mockResolvedValue(readinessPayload);
     mocks.fetchList.mockResolvedValue([]);
     mocks.createReport.mockResolvedValue({
       report_id: "new-1",

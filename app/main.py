@@ -158,6 +158,7 @@ from app.provisioning_models import (
     TenantApiKeyCreated,
     TenantApiKeyRead,
 )
+from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_act_docs import AIActDocRepository
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository
@@ -281,6 +282,8 @@ from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
+from app.services.readiness_score_explain import explain_readiness_score
+from app.services.readiness_score_service import compute_readiness_score
 from app.services.setup_status import compute_tenant_setup_status
 from app.services.tenant_ai_governance_setup import (
     apply_setup_patch,
@@ -2706,6 +2709,28 @@ def post_advisor_client_governance_snapshot_report(
 
 
 @app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/readiness-score",
+    response_model=ReadinessScoreResponse,
+    tags=["advisors"],
+)
+def get_advisor_tenant_readiness_score(
+    _ff_rs: Annotated[None, Depends(create_feature_guard(FeatureFlag.readiness_score))],
+    _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    tenant_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+) -> ReadinessScoreResponse:
+    """Readiness-Score für verknüpften Mandanten (entspricht dem Tenant-Endpunkt)."""
+    if advisor_repo.get_link(advisor_id, tenant_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not linked to this advisor",
+        )
+    return compute_readiness_score(session, tenant_id)
+
+
+@app.get(
     "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/report",
     tags=["advisors"],
     response_model=None,
@@ -3474,3 +3499,49 @@ def get_tenant_ai_kpis_summary(
         framework_key=framework_key,
         criticality=criticality,
     )
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/readiness-score",
+    response_model=ReadinessScoreResponse,
+    tags=["tenants"],
+)
+def get_tenant_readiness_score(
+    tenant_id: str,
+    _ff_rs: Annotated[None, Depends(create_feature_guard(FeatureFlag.readiness_score))],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> ReadinessScoreResponse:
+    """AI & Compliance Readiness Score (0–100) aus Setup, Coverage, KPIs, Gaps, Reports."""
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    return compute_readiness_score(session, tenant_id)
+
+
+@app.post(
+    "/api/v1/tenants/{tenant_id}/readiness-score/explain",
+    response_model=ReadinessScoreExplainResponse,
+    tags=["tenants"],
+)
+def post_tenant_readiness_score_explain(
+    tenant_id: str,
+    _ff_rs: Annotated[None, Depends(create_feature_guard(FeatureFlag.readiness_score))],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> ReadinessScoreExplainResponse:
+    """KI-Erklärung zum Readiness Score (aggregierte Kennzahlen, LLM_EXPLAIN + LLM_ENABLED)."""
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    snapshot = compute_readiness_score(session, tenant_id)
+    try:
+        return explain_readiness_score(session, tenant_id, snapshot)
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Readiness score explanation failed",
+        ) from exc

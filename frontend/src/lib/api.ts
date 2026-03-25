@@ -1318,6 +1318,32 @@ export function isAdvisorNavEnabled(): boolean {
   return ADVISOR_ID_FROM_ENV.length > 0;
 }
 
+export interface ReadinessDimensionDto {
+  normalized: number;
+  score_0_100: number;
+}
+
+export interface ReadinessScoreDimensionsDto {
+  setup: ReadinessDimensionDto;
+  coverage: ReadinessDimensionDto;
+  kpi: ReadinessDimensionDto;
+  gaps: ReadinessDimensionDto;
+  reporting: ReadinessDimensionDto;
+}
+
+export interface ReadinessScoreResponseDto {
+  tenant_id: string;
+  score: number;
+  level: "basic" | "managed" | "embedded";
+  interpretation: string;
+  dimensions: ReadinessScoreDimensionsDto;
+}
+
+export interface ReadinessScoreSummaryDto {
+  score: number;
+  level: "basic" | "managed" | "embedded";
+}
+
 export interface AdvisorTenantGovernanceBriefDto {
   wizard_progress_count: number;
   wizard_steps_total: number;
@@ -1341,6 +1367,7 @@ export interface AdvisorPortfolioTenantEntry {
   setup_total_steps: number;
   setup_progress_ratio: number;
   governance_brief?: AdvisorTenantGovernanceBriefDto | null;
+  readiness_summary?: ReadinessScoreSummaryDto | null;
 }
 
 export interface AdvisorPortfolioResponse {
@@ -1440,6 +1467,7 @@ export interface AdvisorClientGovernanceSnapshotDto {
     last_report_audience: string | null;
     last_report_title: string | null;
   };
+  readiness?: ReadinessScoreResponseDto | null;
 }
 
 export async function fetchAdvisorClientGovernanceSnapshot(
@@ -2039,4 +2067,39 @@ export async function fetchTenantAiKpiSummary(
       ? `/api/v1/tenants/${tid}/ai-kpis/summary?${qs}`
       : `/api/v1/tenants/${tid}/ai-kpis/summary`;
   return tenantApiFetch(path, tenantId);
+}
+
+export async function fetchTenantReadinessScore(tenantId: string): Promise<ReadinessScoreResponseDto> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/readiness-score`, tenantId);
+}
+
+export async function postTenantReadinessScoreExplain(
+  tenantId: string,
+): Promise<{ explanation: string; provider: string; model_id: string }> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/readiness-score/explain`, tenantId, {
+    method: "POST",
+    body: "{}",
+  });
+}
+
+export async function fetchAdvisorTenantReadinessScore(
+  advisorId: string,
+  clientTenantId: string,
+): Promise<ReadinessScoreResponseDto> {
+  const aid = encodeURIComponent(advisorId);
+  const tid = encodeURIComponent(clientTenantId);
+  const url = `${API_BASE_URL}/api/v1/advisors/${aid}/tenants/${tid}/readiness-score`;
+  const res = await fetch(url, {
+    headers: {
+      "x-api-key": API_KEY,
+      "x-advisor-id": advisorId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Advisor readiness score failed: ${res.status}`);
+  }
+  return res.json() as Promise<ReadinessScoreResponseDto>;
 }

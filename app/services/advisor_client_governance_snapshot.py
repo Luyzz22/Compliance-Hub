@@ -24,6 +24,7 @@ from app.ai_kpi_models import AiKpiSummaryResponse
 from app.ai_system_models import AISystemCriticality, AISystemRiskLevel
 from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.llm_models import LLMTaskType
+from app.readiness_score_models import ReadinessScoreResponse
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_compliance_board_reports import AiComplianceBoardReportRepository
 from app.repositories.ai_systems import AISystemRepository
@@ -33,6 +34,7 @@ from app.services.ai_kpi_service import build_ai_kpi_summary
 from app.services.cross_regulation import build_cross_regulation_summary
 from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
 from app.services.llm_router import LLMRouter
+from app.services.readiness_score_service import compute_readiness_score
 from app.services.setup_status import compute_tenant_setup_status
 from app.services.tenant_ai_governance_setup import build_setup_response, normalize_payload
 
@@ -230,6 +232,14 @@ def build_client_governance_snapshot(
         llm_gap_suggestions_count=None,
     )
 
+    readiness: ReadinessScoreResponse | None = None
+    if is_feature_enabled(FeatureFlag.readiness_score):
+        try:
+            readiness = compute_readiness_score(session, client_tenant_id)
+        except Exception:
+            logger.exception("snapshot_readiness_failed tenant=%s", client_tenant_id)
+            readiness = None
+
     return AdvisorClientGovernanceSnapshotResponse(
         advisor_id=advisor_id,
         client_tenant_id=client_tenant_id,
@@ -250,6 +260,7 @@ def build_client_governance_snapshot(
         cross_reg_summary=cross_list,
         gap_assist=gap_assist,
         reports_summary=reports,
+        readiness=readiness,
     )
 
 

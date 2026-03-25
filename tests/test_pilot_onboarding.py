@@ -40,6 +40,7 @@ def test_provision_tenant_sets_defaults_and_initial_key() -> None:
     assert flags.get("ai_governance_setup_wizard") is True
     assert flags.get("cross_regulation_dashboard") is True
     assert flags.get("api_keys_ui") is True
+    assert flags.get("readiness_score") is True
     assert flags.get("llm_enabled") is False
     assert flags.get("llm_legal_reasoning") is False
     assert flags.get("llm_kpi_suggestions") is False

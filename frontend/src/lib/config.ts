@@ -25,6 +25,11 @@ export function featureAdvisorClientSnapshot(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_ADVISOR_CLIENT_SNAPSHOT, true);
 }
 
+/** AI & Compliance Readiness Score (Backend COMPLIANCEHUB_FEATURE_READINESS_SCORE). */
+export function featureReadinessScore(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_READINESS_SCORE, true);
+}
+
 export function featureDemoSeeding(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_DEMO_SEEDING, true);
 }

@@ -23,6 +23,7 @@ class LLMTaskType(StrEnum):
     CROSS_REGULATION_GAP_ASSIST = "cross_regulation_gap_assist"
     AI_COMPLIANCE_BOARD_REPORT = "ai_compliance_board_report"
     ADVISOR_GOVERNANCE_SNAPSHOT = "advisor_governance_snapshot"
+    READINESS_SCORE_EXPLAIN = "readiness_score_explain"
 
 
 class LLMProvider(StrEnum):
