@@ -6,7 +6,7 @@ import { DemoWorkspaceBadge } from "./DemoWorkspaceBadge";
 const mockUse = vi.fn();
 
 vi.mock("@/hooks/useWorkspaceTenantMeta", () => ({
-  useWorkspaceTenantMeta: (_tenantId: string) => mockUse(),
+  useWorkspaceTenantMeta: () => mockUse(),
 }));
 
 afterEach(() => {

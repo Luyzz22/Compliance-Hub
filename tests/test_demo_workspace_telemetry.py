@@ -79,12 +79,9 @@ def test_demo_feature_used_inserts_event(demo_tenant_id: str) -> None:
 
     s = SessionLocal()
     try:
-        stmt = (
-            select(UsageEventTable.payload_json)
-            .where(
-                UsageEventTable.tenant_id == demo_tenant_id,
-                UsageEventTable.event_type == usage_event_logger.DEMO_FEATURE_USED,
-            )
+        stmt = select(UsageEventTable.payload_json).where(
+            UsageEventTable.tenant_id == demo_tenant_id,
+            UsageEventTable.event_type == usage_event_logger.DEMO_FEATURE_USED,
         )
         rows = s.execute(stmt).scalars().all()
         assert len(rows) >= 1
