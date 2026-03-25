@@ -15,6 +15,15 @@ Für **CISO/ISB** und **AI-Governance-Leads** liefert der Workspace unter **`/te
 
 Nach Abschluss der sieben Kriterien zeigt die Übersicht **7 von 7**; Board- und Export-Flows aus den folgenden Abschnitten bauen darauf auf.
 
+## Berater-Portfolio (Advisor-Workspace)
+
+Für **Steuerberatung / WP / GRC-Beratung** mit mehreren Mandanten:
+
+1. In der Tabelle **`advisor_tenants`** die Zuordnung **`advisor_id`** (z. B. E-Mail) → **`tenant_id`** pflegen; optional **`tenant_display_name`**, **`industry`**, **`country`**.
+2. **API:** `GET /api/v1/advisors/{advisor_id}/tenants/portfolio` mit Header **`x-advisor-id`** (identisch zum Pfad) und **`x-api-key`**. In Produktion **`COMPLIANCEHUB_ADVISOR_IDS`** setzen (Komma-getrennte erlaubte `advisor_id`-Werte).
+3. **Frontend:** `NEXT_PUBLIC_ADVISOR_ID` auf dieselbe `advisor_id` setzen; optional **`NEXT_PUBLIC_SHOW_ADVISOR_NAV=1`**, damit der Menüpunkt **Advisor** sichtbar ist. Route **`/advisor`**: Vergleich Readiness, NIS2-Mittelwert, Setup, High-Risk, offene Actions. **Tenant öffnen** setzt das Cookie **`ch_workspace_tenant`** und lädt **`/tenant/compliance-overview`** für diesen Mandanten.
+4. **Export:** `GET /api/v1/advisors/{advisor_id}/tenants/portfolio-export?format=json|csv` (Dateiname z. B. `advisor-portfolio-YYYY-MM-DD`).
+
 ## 1) KI-System anlegen
 
 1. Öffnen: **`/tenant/ai-systems`**.
@@ -46,4 +55,4 @@ Nach Abschluss der sieben Kriterien zeigt die Übersicht **7 von 7**; Board- und
 
 ---
 
-**API-Referenz (kurz):** `GET /api/v1/tenants/{tenant_id}/setup-status` → `POST /api/v1/ai-systems` oder `POST /api/v1/ai-systems/import` → `POST .../classify` → `POST .../nis2-kritis-kpis` → `POST /api/v1/ai-governance/actions` → `POST /api/v1/evidence/uploads` → `GET .../compliance/overview`, `GET .../readiness/eu-ai-act`, `GET .../board-kpis`, `GET .../alerts/board`, KPI-/Alert-Export.
+**API-Referenz (kurz):** `GET /api/v1/tenants/{tenant_id}/setup-status` → `GET /api/v1/advisors/{advisor_id}/tenants/portfolio` (optional Export) → `POST /api/v1/ai-systems` oder `POST /api/v1/ai-systems/import` → `POST .../classify` → `POST .../nis2-kritis-kpis` → `POST /api/v1/ai-governance/actions` → `POST /api/v1/evidence/uploads` → `GET .../compliance/overview`, `GET .../readiness/eu-ai-act`, `GET .../board-kpis`, `GET .../alerts/board`, KPI-/Alert-Export.

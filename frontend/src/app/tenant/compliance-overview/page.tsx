@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { GuidedSetupWizard } from "@/components/workspace/GuidedSetupWizard";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import {
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
@@ -17,10 +18,6 @@ import {
   CH_SHELL,
 } from "@/lib/boardLayout";
 
-const TENANT_ID =
-  process.env.NEXT_PUBLIC_TENANT_ID ||
-  process.env.COMPLIANCEHUB_TENANT_ID ||
-  "tenant-overview-001";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.COMPLIANCEHUB_API_BASE_URL ||
@@ -64,17 +61,19 @@ function defaultTenantSetupStatus(tenantId: string): TenantSetupStatus {
 }
 
 export default async function TenantComplianceOverviewPage() {
-  let setupStatus: TenantSetupStatus = defaultTenantSetupStatus(TENANT_ID);
+  const activeTenant = await getWorkspaceTenantIdServer();
+
+  let setupStatus: TenantSetupStatus = defaultTenantSetupStatus(activeTenant);
   let setupLoadFailed = false;
   try {
-    setupStatus = await fetchTenantSetupStatus();
+    setupStatus = await fetchTenantSetupStatus(activeTenant);
   } catch {
     setupLoadFailed = true;
   }
 
   const [systems, violations] = (await Promise.all([
-    fetchTenantAISystems(),
-    fetchTenantViolations(),
+    fetchTenantAISystems(activeTenant),
+    fetchTenantViolations(activeTenant),
   ])) as [AISystem[], Violation[]];
 
   const totalSystems = systems.length;
@@ -171,7 +170,7 @@ export default async function TenantComplianceOverviewPage() {
       >
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Mandant</p>
-          <p className="mt-2 font-mono text-sm font-semibold text-slate-900">{TENANT_ID}</p>
+          <p className="mt-2 font-mono text-sm font-semibold text-slate-900">{activeTenant}</p>
           <p className="mt-2 text-xs leading-relaxed text-slate-600">
             Anzeigename und Stammdaten des Mandanten; produktiv über Admin-API
             gepflegt.
