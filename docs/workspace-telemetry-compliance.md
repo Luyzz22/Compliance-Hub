@@ -16,14 +16,27 @@ Internes Referenzdokument für GRC, Security Operations und Enterprise-Kunden (S
 
 ### Payload-Felder (JSON, ohne PII)
 
+Jedes Event enthält mindestens:
+
 | Feld | Bedeutung |
 |------|-----------|
+| `event_type` | Gleich DB-Spalte `event_type` (SIEM-Export als Ein-Blob) |
+| `tenant_id` | Mandanten-ID (wie DB-Spalte) |
 | `workspace_mode` | `production` \| `demo` \| `playground` \| `unknown` |
 | `actor_type` | `tenant` (Mandanten-API-Key) \| `advisor` (Pfad unter `/api/v1/advisors/`) |
+| `timestamp` | ISO-8601 UTC (z. B. `2026-03-25T12:00:00Z`) |
+
+Optional:
+
+| Feld | Bedeutung |
+|------|-----------|
 | `result` | `success` \| `forbidden_demo_readonly` |
-| `feature_name` | Optionales UI-/Feature-Tag (snake_case), z. B. `board_ai_compliance_report` |
+| `feature_name` | UI-/Feature-Tag (snake_case), z. B. `board_ai_compliance_report` |
 | `route` | OpenAPI-Pfad-Template, z. B. `/api/v1/ai-systems` |
 | `method` | HTTP-Methode in Großbuchstaben |
+| weitere Schlüssel | Nur über `extra`, nach Allowlist/Denylist (keine E-Mails, kein Freitext) |
+
+**Sink:** Postgres-Tabelle `usage_events` (bestehend). Zusätzlich optional **`COMPLIANCEHUB_WORKSPACE_TELEMETRY_STRUCTURED_LOG=true`** → eine JSON-Zeile pro Event im App-Logger (PostHog/Collector-seitig abgreifbar).
 
 **Bewusst nicht enthalten (DSGVO / Datenminimierung):** IP-Adresse, User-Agent, API-Key-Wert, Korrelations-IDs, AI-System-Namen, Freitext aus Bodies.  
 **Ergänzung für strengere ISO/NIS2-Audits (Roadmap):** optionale `correlation_id` (technisch, keine PII), `high_risk_context` (bool oder Enum), Export in separates **Audit-Log** (immutabel) vs. **Usage-Telemetrie**.
@@ -47,8 +60,11 @@ Alte Konstanten `demo_session_started`, `demo_feature_used`, `demo_mutation_bloc
 
 ```json
 {
+  "event_type": "workspace_session_started",
+  "tenant_id": "demo-seed-tenant-1",
   "workspace_mode": "demo",
   "actor_type": "tenant",
+  "timestamp": "2026-03-25T12:00:00Z",
   "result": "success"
 }
 ```
@@ -57,8 +73,11 @@ Alte Konstanten `demo_session_started`, `demo_feature_used`, `demo_mutation_bloc
 
 ```json
 {
+  "event_type": "workspace_feature_used",
+  "tenant_id": "demo-seed-tenant-1",
   "workspace_mode": "demo",
   "actor_type": "tenant",
+  "timestamp": "2026-03-25T12:01:00Z",
   "feature_name": "board_ai_compliance_report",
   "result": "success"
 }
@@ -68,8 +87,11 @@ Alte Konstanten `demo_session_started`, `demo_feature_used`, `demo_mutation_bloc
 
 ```json
 {
+  "event_type": "workspace_mutation_blocked",
+  "tenant_id": "demo-seed-tenant-1",
   "workspace_mode": "demo",
   "actor_type": "tenant",
+  "timestamp": "2026-03-25T12:02:00Z",
   "result": "forbidden_demo_readonly",
   "route": "/api/v1/ai-systems",
   "method": "POST"
@@ -80,8 +102,11 @@ Alte Konstanten `demo_session_started`, `demo_feature_used`, `demo_mutation_bloc
 
 ```json
 {
+  "event_type": "workspace_session_started",
+  "tenant_id": "prod-tenant-1",
   "workspace_mode": "production",
   "actor_type": "tenant",
+  "timestamp": "2026-03-25T12:00:00Z",
   "result": "success"
 }
 ```
@@ -105,7 +130,8 @@ Alte Konstanten `demo_session_started`, `demo_feature_used`, `demo_mutation_bloc
 
 ## 5. Backend-Implementierung (Ist)
 
-- **Zentral:** `app/services/workspace_telemetry.py` – baut Payloads und ruft `log_usage_event` auf.
+- **Zentral:** `app/services/workspace_telemetry.py` – `emit_workspace_event` (Schema + optional strukturiertes Log), Wrapper `log_workspace_*`.
+- **Fehler / Performance:** synchroner Insert in derselben Request-Session; Fehler werden geschluckt (`log_usage_event`). Kein Blockieren durch Telemetrie-Timeouts außerhalb DB.
 - **Integration:** `GET /workspace/tenant-meta` (Demo) → `workspace_session_started`; `GET /workspace/feature-used` (Alias: `demo-feature-used`) → `workspace_feature_used`; Demo-Guard → `workspace_mutation_blocked`.
 - **Middleware:** bewusst nicht global; Guard + explizite Hooks halten die Pipeline schlank und vermeiden Doppelzählung.
 
