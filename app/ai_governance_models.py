@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -318,6 +319,49 @@ class BoardKpiExportJob(BaseModel):
     export_format: Literal["json", "csv"]
     metadata: dict[str, str] | None = None
     error_message: str | None = None
+
+
+class WhatIfBoardKpiType(StrEnum):
+    """Hypothetische KPI-Änderung für Board-Simulation (NIS2-/KRITIS-Tabelle + optional EU-Act)."""
+
+    INCIDENT_RESPONSE_MATURITY = "INCIDENT_RESPONSE_MATURITY"
+    SUPPLIER_RISK_COVERAGE = "SUPPLIER_RISK_COVERAGE"
+    OT_IT_SEGREGATION = "OT_IT_SEGREGATION"
+    EU_AI_ACT_CONTROL_FULFILLMENT = "EU_AI_ACT_CONTROL_FULFILLMENT"
+
+
+class WhatIfKpiAdjustment(BaseModel):
+    ai_system_id: str = Field(..., min_length=1)
+    kpi_type: WhatIfBoardKpiType
+    target_value_percent: int = Field(..., ge=0, le=100)
+
+
+class WhatIfScenarioInput(BaseModel):
+    """1–N hypothetische KPI-Zielwerte; keine Persistenz."""
+
+    kpi_adjustments: list[WhatIfKpiAdjustment] = Field(
+        default_factory=list,
+        max_length=32,
+    )
+
+
+class WhatIfScenarioResult(BaseModel):
+    original_readiness: float = Field(ge=0.0, le=1.0)
+    simulated_readiness: float = Field(ge=0.0, le=1.0)
+    original_board_kpis: AIBoardKpiSummary
+    simulated_board_kpis: AIBoardKpiSummary
+    original_compliance_overview: AIComplianceOverview
+    simulated_compliance_overview: AIComplianceOverview
+    original_alerts_count: int = Field(ge=0)
+    simulated_alerts_count: int = Field(ge=0)
+    alert_signatures_resolved: list[str] = Field(
+        default_factory=list,
+        description="kpi_key|severity die in der Simulation entfallen",
+    )
+    alert_signatures_new: list[str] = Field(
+        default_factory=list,
+        description="kpi_key|severity die neu auftreten",
+    )
 
 
 class HighRiskScenarioProfile(BaseModel):

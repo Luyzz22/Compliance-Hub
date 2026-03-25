@@ -26,6 +26,7 @@ GOVERNANCE_ACTION_CREATED = "governance_action_created"
 LLM_KPI_SUGGESTION_REQUESTED = "llm_kpi_suggestion_requested"
 LLM_EXPLAIN_REQUESTED = "llm_explain_requested"
 LLM_ACTION_DRAFT_REQUESTED = "llm_action_draft_requested"
+LLM_AI_ACT_DOC_DRAFT_REQUESTED = "llm_ai_act_doc_draft_requested"
 
 
 def _parse_tracking_enabled() -> bool:

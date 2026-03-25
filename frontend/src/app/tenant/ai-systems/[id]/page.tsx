@@ -2,6 +2,7 @@ import Link from "next/link";
 import React from "react";
 
 import { EvidenceAttachmentsSection } from "@/components/evidence/EvidenceAttachmentsSection";
+import { AiActDocumentationClient } from "@/components/tenant/AiActDocumentationClient";
 import { AiSystemSectionNav } from "@/components/tenant/AiSystemSectionNav";
 import { Nis2KpiAiAssistClient } from "@/components/tenant/Nis2KpiAiAssistClient";
 import {
@@ -301,6 +302,12 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
           </ul>
         )}
       </section>
+
+      {pickRisk(system) === "high" ? (
+        <div className="scroll-mt-32">
+          <AiActDocumentationClient aiSystemId={id} />
+        </div>
+      ) : null}
 
       <section
         id="sec-massnahmen"

@@ -52,6 +52,14 @@ export function featureLlmEnabled(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_ENABLED, false);
 }
 
+export function featureLlmLegalReasoning(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_LEGAL_REASONING, false);
+}
+
+export function featureLlmReportAssistant(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_REPORT_ASSISTANT, false);
+}
+
 export function featureLlmKpiSuggestions(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_KPI_SUGGESTIONS, false);
 }
@@ -62,4 +70,14 @@ export function featureLlmExplain(): boolean {
 
 export function featureLlmActionDrafts(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_ACTION_DRAFTS, false);
+}
+
+/** EU-AI-Act-Dokumentation pro High-Risk-System (Backend COMPLIANCEHUB_FEATURE_AI_ACT_DOCS). */
+export function featureAiActDocs(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_ACT_DOCS, true);
+}
+
+/** Board-What-if-Simulator (Backend COMPLIANCEHUB_FEATURE_WHAT_IF_SIMULATOR). */
+export function featureWhatIfSimulator(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_WHAT_IF_SIMULATOR, true);
 }

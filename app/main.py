@@ -27,6 +27,12 @@ from sqlalchemy.orm import Session
 
 from app.advisor_models import AdvisorTenantReport
 from app.advisor_portfolio_models import AdvisorPortfolioResponse
+from app.ai_act_doc_models import (
+    AIActDoc,
+    AIActDocListResponse,
+    AIActDocSectionKey,
+    AIActDocUpsertRequest,
+)
 from app.ai_governance_action_models import (
     AIGovernanceActionCreate,
     AIGovernanceActionDraftRequest,
@@ -52,12 +58,15 @@ from app.ai_governance_models import (
     NormEvidenceLink,
     NormEvidenceLinkCreate,
     NormFramework,
+    WhatIfScenarioInput,
+    WhatIfScenarioResult,
 )
 from app.ai_system_models import (
     AIImportResult,
     AISystem,
     AISystemComplianceReport,
     AISystemCreate,
+    AISystemRiskLevel,
     AISystemStatus,
     AISystemUpdate,
 )
@@ -85,7 +94,12 @@ from app.demo_templates import DemoTenantTemplate, list_demo_tenant_templates
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
 from app.explain_models import ExplainRequest, ExplainResponse
-from app.feature_flags import FeatureFlag, create_feature_guard, require_tenant_llm_features
+from app.feature_flags import (
+    FeatureFlag,
+    create_feature_guard,
+    is_feature_enabled,
+    require_tenant_llm_features,
+)
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.llm_models import LLMTaskType
 from app.models import (
@@ -114,6 +128,7 @@ from app.provisioning_models import (
     TenantApiKeyRead,
 )
 from app.repositories.advisor_tenants import AdvisorTenantRepository
+from app.repositories.ai_act_docs import AIActDocRepository
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
@@ -144,6 +159,9 @@ from app.services.advisor_portfolio import (
 from app.services.advisor_report_llm_enrichment import maybe_enrich_advisor_report_with_llm_summary
 from app.services.advisor_tenant_report import build_advisor_tenant_report
 from app.services.advisor_tenant_report_markdown import render_tenant_report_markdown
+from app.services.ai_act_docs import build_ai_act_doc_list_response, upsert_ai_act_doc
+from app.services.ai_act_docs_ai_assist import generate_ai_act_doc_draft
+from app.services.ai_act_docs_export import render_ai_act_documentation_markdown
 from app.services.ai_action_drafts import generate_action_drafts
 from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_explain import explain_kpi_or_alert
@@ -206,6 +224,7 @@ from app.services.tenant_compliance_overview import (
 )
 from app.services.tenant_provisioning import provision_tenant
 from app.services.tenant_usage_metrics import compute_tenant_usage_metrics
+from app.services.what_if_simulator import simulate_board_impact
 from app.setup_models import TenantSetupStatus
 from app.supplier_risk_models import (
     AISupplierRiskBySystemEntry,
@@ -355,6 +374,47 @@ def get_evidence_file_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> EvidenceFileRepository:
     return EvidenceFileRepository(session)
+
+
+def get_ai_act_doc_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> AIActDocRepository:
+    return AIActDocRepository(session)
+
+
+def _ensure_feature_ai_act_docs(tenant_id: str, session: Session) -> None:
+    if not is_feature_enabled(FeatureFlag.ai_act_docs, tenant_id, session=session):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI Act documentation feature is disabled for this tenant.",
+        )
+
+
+def _ensure_feature_what_if_simulator(tenant_id: str, session: Session) -> None:
+    if not is_feature_enabled(FeatureFlag.what_if_simulator, tenant_id, session=session):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="What-if simulator feature is disabled for this tenant.",
+        )
+
+
+def _require_high_risk_system(
+    tenant_id: str,
+    ai_repo: AISystemRepository,
+    ai_system_id: str,
+) -> AISystem:
+    system = ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id)
+    if system is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AISystem not found",
+        )
+    if system.risk_level != AISystemRiskLevel.high:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="EU AI Act documentation is only available for high-risk AI systems.",
+        )
+    return system
 
 
 def get_advisor_tenant_repository(
@@ -848,6 +908,197 @@ def post_nis2_kritis_kpi_suggestions(
         {"ai_system_id": ai_system_id},
     )
     return out
+
+
+@app.get(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs",
+    response_model=AIActDocListResponse,
+    tags=["ai-act-docs"],
+)
+def list_ai_act_docs_for_system(
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
+) -> AIActDocListResponse:
+    tenant_id = auth_context.tenant_id
+    _ensure_feature_ai_act_docs(tenant_id, session)
+    _require_high_risk_system(tenant_id, ai_repo, ai_system_id)
+    return build_ai_act_doc_list_response(ai_system_id, doc_repo, tenant_id)
+
+
+@app.post(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/{section_key}/draft",
+    response_model=AIActDoc,
+    tags=["ai-act-docs"],
+)
+def post_ai_act_doc_draft(
+    ai_system_id: str,
+    section_key: AIActDocSectionKey,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+) -> AIActDoc:
+    tenant_id = auth_context.tenant_id
+    _ensure_feature_ai_act_docs(tenant_id, session)
+    require_tenant_llm_features(
+        tenant_id,
+        session,
+        FeatureFlag.llm_legal_reasoning,
+        FeatureFlag.llm_report_assistant,
+    )
+    system = _require_high_risk_system(tenant_id, ai_repo, ai_system_id)
+    classification = cls_repo.get_for_system(tenant_id, ai_system_id)
+    kpis = nis2_repo.list_for_ai_system(tenant_id, ai_system_id)
+    actions = [
+        {"title": a.title, "status": a.status.value, "related_requirement": a.related_requirement}
+        for a in action_repo.list_for_tenant(tenant_id, limit=200)
+        if a.related_ai_system_id == ai_system_id
+    ]
+    ev = evidence_repo.list_for_tenant(tenant_id, ai_system_id=ai_system_id)
+    try:
+        draft = generate_ai_act_doc_draft(
+            system,
+            section_key,
+            tenant_id,
+            session=session,
+            classification=classification,
+            nis2_kpis=kpis,
+            actions_brief=actions,
+            evidence_file_count=len(ev),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMProviderHTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    usage_event_logger.log_usage_event(
+        session,
+        tenant_id,
+        usage_event_logger.LLM_AI_ACT_DOC_DRAFT_REQUESTED,
+        {"ai_system_id": ai_system_id, "section": section_key.value},
+    )
+    return draft
+
+
+@app.post(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/{section_key}",
+    response_model=AIActDoc,
+    tags=["ai-act-docs"],
+)
+def persist_ai_act_doc_section(
+    ai_system_id: str,
+    section_key: AIActDocSectionKey,
+    body: AIActDocUpsertRequest,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
+) -> AIActDoc:
+    tenant_id = auth_context.tenant_id
+    _ensure_feature_ai_act_docs(tenant_id, session)
+    _require_high_risk_system(tenant_id, ai_repo, ai_system_id)
+    actor = "api_client"
+    return upsert_ai_act_doc(doc_repo, tenant_id, ai_system_id, section_key, body, actor)
+
+
+@app.get(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/export",
+    tags=["ai-act-docs"],
+)
+def export_ai_act_docs_markdown(
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+    format: Annotated[
+        Literal["markdown"],
+        Query(description="Nur markdown unterstützt; PDF später extern."),
+    ] = "markdown",
+) -> Response:
+    tenant_id = auth_context.tenant_id
+    _ensure_feature_ai_act_docs(tenant_id, session)
+    system = _require_high_risk_system(tenant_id, ai_repo, ai_system_id)
+    if format != "markdown":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only format=markdown is supported.",
+        )
+    classification = cls_repo.get_for_system(tenant_id, ai_system_id)
+    kpis = nis2_repo.list_for_ai_system(tenant_id, ai_system_id)
+    actions = action_repo.list_for_tenant(tenant_id, limit=500)
+    ev = evidence_repo.list_for_tenant(tenant_id, ai_system_id=ai_system_id)
+    md = render_ai_act_documentation_markdown(
+        system=system,
+        classification=classification,
+        nis2_kpis=kpis,
+        actions=actions,
+        evidence_count=len(ev),
+        docs_repo=doc_repo,
+        tenant_id=tenant_id,
+    )
+    return Response(
+        content=md,
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="ai-act-documentation-{ai_system_id}.md"',
+        },
+    )
+
+
+@app.post(
+    "/api/v1/ai-governance/what-if/board-impact",
+    response_model=WhatIfScenarioResult,
+    tags=["ai-governance"],
+)
+def post_what_if_board_impact(
+    body: WhatIfScenarioInput,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+) -> WhatIfScenarioResult:
+    tenant_id = auth_context.tenant_id
+    _ensure_feature_what_if_simulator(tenant_id, session)
+    return simulate_board_impact(
+        body,
+        tenant_id,
+        session=session,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+        violation_repo=violation_repo,
+        nis2_repo=nis2_repo,
+    )
 
 
 @app.post(

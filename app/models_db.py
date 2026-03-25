@@ -383,6 +383,47 @@ class TenantLLMPolicyOverrideDB(Base):
     )
 
 
+class AIActDocDB(Base):
+    """EU-AI-Act-Technische-Dokumentation pro High-Risk-KI-System (mandantenisoliert)."""
+
+    __tablename__ = "ai_act_docs"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "ai_system_id",
+            "section_key",
+            name="uq_ai_act_docs_tenant_system_section",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    section_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    content_markdown: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    content_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    created_by: Mapped[str] = mapped_column(String(320), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+    updated_by: Mapped[str] = mapped_column(String(320), nullable=False)
+
+
 class LLMCallMetadataDB(Base):
     """Metadaten je LLM-Aufruf (ohne Prompt/Response-Inhalt, DSGVO-minimierend)."""
 
