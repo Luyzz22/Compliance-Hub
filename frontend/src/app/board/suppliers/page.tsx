@@ -7,6 +7,7 @@ import {
   type AISupplierRiskBySystem,
   type AISupplierRiskOverview,
 } from "@/lib/api";
+import { BoardToWorkspaceCtas } from "@/components/sbs/BoardToWorkspaceCtas";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   BOARD_PAGE_ROOT_CLASS,
@@ -94,6 +95,8 @@ export default async function BoardSuppliersPage() {
           </>
         }
       />
+
+      <BoardToWorkspaceCtas />
 
       <section
         aria-label="Supplier-Risiko-KPIs"

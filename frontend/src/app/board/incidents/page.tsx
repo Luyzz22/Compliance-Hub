@@ -8,6 +8,7 @@ import {
   type AIIncidentBySystem,
   type AIIncidentOverview,
 } from "@/lib/api";
+import { BoardToWorkspaceCtas } from "@/components/sbs/BoardToWorkspaceCtas";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { BOARD_PAGE_ROOT_CLASS, CH_PAGE_NAV_LINK } from "@/lib/boardLayout";
 
@@ -73,6 +74,8 @@ export default async function BoardIncidentsPage() {
           </>
         }
       />
+
+      <BoardToWorkspaceCtas />
 
       <IncidentsBoardClient overview={overview} bySystem={bySystem} />
     </div>
