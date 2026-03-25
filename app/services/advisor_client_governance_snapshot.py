@@ -23,8 +23,8 @@ from app.advisor_client_snapshot_models import (
 from app.ai_kpi_models import AiKpiSummaryResponse
 from app.ai_system_models import AISystemCriticality, AISystemRiskLevel
 from app.feature_flags import FeatureFlag, is_feature_enabled
-from app.readiness_score_models import ReadinessScoreResponse
 from app.llm_models import LLMTaskType
+from app.readiness_score_models import ReadinessScoreResponse
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_compliance_board_reports import AiComplianceBoardReportRepository
 from app.repositories.ai_systems import AISystemRepository

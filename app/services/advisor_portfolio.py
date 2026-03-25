@@ -21,9 +21,9 @@ from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.services.advisor_client_governance_snapshot import build_governance_brief_for_tenant
-from app.services.readiness_score_service import compute_readiness_score
 from app.services.ai_governance_kpis import compute_ai_governance_kpis
 from app.services.compliance_dashboard import compute_ai_compliance_overview
+from app.services.readiness_score_service import compute_readiness_score
 from app.services.setup_status import compute_tenant_setup_status
 
 logger = logging.getLogger(__name__)

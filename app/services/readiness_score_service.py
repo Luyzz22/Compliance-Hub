@@ -125,9 +125,7 @@ def _setup_completion(session: Session, tenant_id: str) -> float:
             payload = normalize_payload(raw)
             ag = build_setup_response(session, tenant_id, payload)
             prog = {
-                p
-                for p in ag.progress_steps
-                if isinstance(p, int) and 1 <= p <= WIZARD_STEPS_TOTAL
+                p for p in ag.progress_steps if isinstance(p, int) and 1 <= p <= WIZARD_STEPS_TOTAL
             }
             return len(prog) / float(WIZARD_STEPS_TOTAL)
         except Exception:

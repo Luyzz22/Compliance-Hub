@@ -151,7 +151,6 @@ from app.nis2_kritis_models import (
 )
 from app.policy_models import Violation
 from app.policy_service import evaluate_policies_for_ai_system
-from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
 from app.provisioning_models import (
     ProvisionTenantRequest,
     ProvisionTenantResponse,
@@ -159,6 +158,7 @@ from app.provisioning_models import (
     TenantApiKeyCreated,
     TenantApiKeyRead,
 )
+from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_act_docs import AIActDocRepository
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository
@@ -262,8 +262,6 @@ from app.services.cross_regulation_llm_gap_assistant import (
 )
 from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded
 from app.services.demo_tenant_seeder import seed_demo_tenant
-from app.services.readiness_score_explain import explain_readiness_score
-from app.services.readiness_score_service import compute_readiness_score
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
 from app.services.evidence_service import (
     delete_evidence as delete_evidence_file,
@@ -284,6 +282,8 @@ from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
+from app.services.readiness_score_explain import explain_readiness_score
+from app.services.readiness_score_service import compute_readiness_score
 from app.services.setup_status import compute_tenant_setup_status
 from app.services.tenant_ai_governance_setup import (
     apply_setup_patch,
@@ -2721,7 +2721,7 @@ def get_advisor_tenant_readiness_score(
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
 ) -> ReadinessScoreResponse:
-    """Readiness Score für einen verknüpften Mandanten (Proxy, gleiche Logik wie Tenant-Endpunkt)."""
+    """Readiness-Score für verknüpften Mandanten (entspricht dem Tenant-Endpunkt)."""
     if advisor_repo.get_link(advisor_id, tenant_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

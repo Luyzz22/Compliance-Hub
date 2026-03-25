@@ -48,7 +48,7 @@ def test_readiness_score_200_structure() -> None:
 
 def test_readiness_score_tenant_mismatch() -> None:
     tid = "tenant-readiness-a"
-    r = client.get(f"/api/v1/tenants/other/readiness-score", headers=_headers(tid))
+    r = client.get("/api/v1/tenants/other/readiness-score", headers=_headers(tid))
     assert r.status_code == 403
 
 
