@@ -301,3 +301,20 @@ class AuditLogTable(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
+
+class UsageEventTable(Base):
+    """Aggregierbare Nutzungsereignisse (kein technisches Audit-Log)."""
+
+    __tablename__ = "usage_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+        index=True,
+    )

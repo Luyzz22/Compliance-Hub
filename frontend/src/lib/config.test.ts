@@ -1,0 +1,58 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import {
+  featureAdvisorWorkspace,
+  featureDemoSeeding,
+  featureEvidencePreviewBadge,
+  featureEvidenceUploads,
+  featureGuidedSetup,
+} from "./config";
+
+const envKeys = [
+  "NEXT_PUBLIC_FEATURE_ADVISOR_WORKSPACE",
+  "NEXT_PUBLIC_FEATURE_DEMO_SEEDING",
+  "NEXT_PUBLIC_FEATURE_EVIDENCE_UPLOADS",
+  "NEXT_PUBLIC_FEATURE_GUIDED_SETUP",
+  "NEXT_PUBLIC_FEATURE_EVIDENCE_PREVIEW_BADGE",
+] as const;
+
+describe("feature flags from env", () => {
+  const saved: Partial<Record<(typeof envKeys)[number], string | undefined>> = {};
+
+  beforeEach(() => {
+    for (const k of envKeys) {
+      saved[k] = process.env[k];
+    }
+  });
+
+  afterEach(() => {
+    for (const k of envKeys) {
+      const v = saved[k];
+      if (v === undefined) {
+        delete process.env[k];
+      } else {
+        process.env[k] = v;
+      }
+    }
+  });
+
+  it("defaults to enabled when variables are unset", () => {
+    for (const k of envKeys) {
+      delete process.env[k];
+    }
+    expect(featureAdvisorWorkspace()).toBe(true);
+    expect(featureDemoSeeding()).toBe(true);
+    expect(featureEvidenceUploads()).toBe(true);
+    expect(featureGuidedSetup()).toBe(true);
+    expect(featureEvidencePreviewBadge()).toBe(false);
+  });
+
+  it("parses common false/true tokens", () => {
+    process.env.NEXT_PUBLIC_FEATURE_ADVISOR_WORKSPACE = "0";
+    process.env.NEXT_PUBLIC_FEATURE_DEMO_SEEDING = "off";
+    expect(featureAdvisorWorkspace()).toBe(false);
+    expect(featureDemoSeeding()).toBe(false);
+    process.env.NEXT_PUBLIC_FEATURE_EVIDENCE_UPLOADS = "yes";
+    expect(featureEvidenceUploads()).toBe(true);
+  });
+});

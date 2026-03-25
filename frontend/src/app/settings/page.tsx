@@ -3,12 +3,14 @@ import React from "react";
 
 import { DemoTenantSetupPanel } from "@/components/demo/DemoTenantSetupPanel";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { TenantUsageSummary } from "@/components/usage/TenantUsageSummary";
 import {
   CH_BTN_SECONDARY,
   CH_CARD,
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
+import { featureDemoSeeding } from "@/lib/config";
 
 const TENANT_ID =
   process.env.NEXT_PUBLIC_TENANT_ID ||
@@ -58,9 +60,15 @@ export default function SettingsPage() {
           </p>
         </article>
 
-        <article className={`${CH_CARD} md:col-span-2`}>
-          <DemoTenantSetupPanel defaultTenantId={TENANT_ID} />
-        </article>
+        {featureDemoSeeding() ? (
+          <article className={`${CH_CARD} md:col-span-2`}>
+            <DemoTenantSetupPanel defaultTenantId={TENANT_ID} />
+          </article>
+        ) : null}
+
+        <div className="md:col-span-2">
+          <TenantUsageSummary mode="tenant" tenantId={TENANT_ID} />
+        </div>
 
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Integrationen</p>

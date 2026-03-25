@@ -17,6 +17,7 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
+import { featureGuidedSetup } from "@/lib/config";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -102,7 +103,17 @@ export default async function TenantComplianceOverviewPage() {
         }
       />
 
-      <GuidedSetupWizard initialStatus={setupStatus} loadFailed={setupLoadFailed} />
+      {featureGuidedSetup() ? (
+        <GuidedSetupWizard initialStatus={setupStatus} loadFailed={setupLoadFailed} />
+      ) : (
+        <section className={CH_CARD} aria-label="Guided Setup">
+          <p className={CH_SECTION_LABEL}>Guided Setup</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Der Onboarding-Assistent ist in dieser Umgebung deaktiviert
+            (NEXT_PUBLIC_FEATURE_GUIDED_SETUP).
+          </p>
+        </section>
+      )}
 
       <section
         aria-label="Workspace-Home"

@@ -12,6 +12,7 @@ import {
   type EvidenceListFilter,
 } from "@/lib/api";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY } from "@/lib/boardLayout";
+import { featureEvidencePreviewBadge, featureEvidenceUploads } from "@/lib/config";
 
 function formatBytes(n: number): string {
   if (n < 1024) {
@@ -112,6 +113,10 @@ export function EvidenceAttachmentsSection(props: {
   }, [load]);
 
   async function onUpload() {
+    if (!featureEvidenceUploads()) {
+      setMessage("Uploads sind in dieser Umgebung deaktiviert (NEXT_PUBLIC_FEATURE_EVIDENCE_UPLOADS).");
+      return;
+    }
     if (!filter) {
       return;
     }
@@ -186,46 +191,64 @@ export function EvidenceAttachmentsSection(props: {
     ? "rounded-xl border border-slate-200/80 bg-white/90 p-3"
     : "rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm";
 
+  const uploadsEnabled = featureEvidenceUploads();
+  const previewBadge =
+    featureEvidencePreviewBadge() || !uploadsEnabled;
+
   return (
     <div className={shell}>
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        {previewBadge ? (
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+            Preview
+          </span>
+        ) : null}
+      </div>
       <p className="mt-1 text-xs leading-relaxed text-slate-600">{description}</p>
 
-      <div className="mt-3 flex flex-wrap items-end gap-2">
-        <div className="min-w-[10rem] flex-1">
-          <label className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-            Datei
-          </label>
+      {uploadsEnabled ? (
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <div className="min-w-[10rem] flex-1">
+            <label className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+              Datei
+            </label>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,application/pdf,image/*"
+              className="mt-0.5 block w-full text-xs text-slate-700 file:mr-2 file:rounded-lg file:border-0 file:bg-cyan-50 file:px-2 file:py-1.5 file:text-xs file:font-semibold file:text-cyan-900"
+            />
+          </div>
           <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,application/pdf,image/*"
-            className="mt-0.5 block w-full text-xs text-slate-700 file:mr-2 file:rounded-lg file:border-0 file:bg-cyan-50 file:px-2 file:py-1.5 file:text-xs file:font-semibold file:text-cyan-900"
+            type="text"
+            placeholder="Norm (z. B. EUAIACT)"
+            value={normFw}
+            onChange={(e) => setNormFw(e.target.value)}
+            className="w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
           />
+          <input
+            type="text"
+            placeholder="Ref. (z. B. Art. 9)"
+            value={normRef}
+            onChange={(e) => setNormRef(e.target.value)}
+            className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
+          />
+          <button
+            type="button"
+            disabled={busy}
+            className={`${CH_BTN_PRIMARY} px-3 py-2 text-xs`}
+            onClick={() => void onUpload()}
+          >
+            {busy ? "…" : "Hochladen"}
+          </button>
         </div>
-        <input
-          type="text"
-          placeholder="Norm (z. B. EUAIACT)"
-          value={normFw}
-          onChange={(e) => setNormFw(e.target.value)}
-          className="w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
-        />
-        <input
-          type="text"
-          placeholder="Ref. (z. B. Art. 9)"
-          value={normRef}
-          onChange={(e) => setNormRef(e.target.value)}
-          className="w-32 rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
-        />
-        <button
-          type="button"
-          disabled={busy}
-          className={`${CH_BTN_PRIMARY} px-3 py-2 text-xs`}
-          onClick={() => void onUpload()}
-        >
-          {busy ? "…" : "Hochladen"}
-        </button>
-      </div>
+      ) : (
+        <p className="mt-3 text-xs text-slate-600">
+          Datei-Uploads sind in dieser Umgebung deaktiviert. Liste und Download bleiben verfügbar,
+          sofern die API es zulässt.
+        </p>
+      )}
 
       {message ? (
         <p
