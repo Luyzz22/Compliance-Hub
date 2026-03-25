@@ -88,10 +88,13 @@ def test_post_ai_system_emits_workspace_mutation_blocked() -> None:
         )
         assert len(rows) == n0_count + 1
         payload = json.loads(rows[-1])
+        assert payload.get("event_type") == usage_event_logger.WORKSPACE_MUTATION_BLOCKED
+        assert payload.get("tenant_id") == tid
         assert payload["workspace_mode"] == "demo"
         assert payload["method"] == "POST"
         assert payload["result"] == "forbidden_demo_readonly"
         assert payload.get("actor_type") == "tenant"
         assert "/api/v1/ai-systems" in payload["route"]
+        assert payload.get("timestamp")
     finally:
         s2.close()

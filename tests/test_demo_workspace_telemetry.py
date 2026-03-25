@@ -69,9 +69,12 @@ def test_tenant_meta_logs_demo_session_started_deduped(demo_tenant_id: str) -> N
             UsageEventTable.event_type == usage_event_logger.DEMO_SESSION_STARTED,
         )
         payload = json.loads(s.execute(stmt).scalars().first() or "{}")
+        assert payload.get("event_type") == usage_event_logger.WORKSPACE_SESSION_STARTED
+        assert payload.get("tenant_id") == demo_tenant_id
         assert payload.get("workspace_mode") == "demo"
         assert payload.get("actor_type") == "tenant"
         assert payload.get("result") == "success"
+        assert payload.get("timestamp")
     finally:
         s.close()
 
@@ -94,10 +97,13 @@ def test_workspace_feature_used_inserts_event(demo_tenant_id: str) -> None:
         rows = s.execute(stmt).scalars().all()
         assert len(rows) >= 1
         payload = json.loads(rows[-1])
+        assert payload.get("event_type") == usage_event_logger.WORKSPACE_FEATURE_USED
+        assert payload.get("tenant_id") == demo_tenant_id
         assert payload["feature_name"] == "board_ai_compliance_report"
         assert payload.get("workspace_mode") == "demo"
         assert payload.get("actor_type") == "tenant"
         assert payload.get("result") == "success"
+        assert payload.get("timestamp")
     finally:
         s.close()
 
