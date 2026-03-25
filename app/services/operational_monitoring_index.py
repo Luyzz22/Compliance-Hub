@@ -90,10 +90,7 @@ def _components_from_agg(
         return z, 0, False
 
     oami_01 = (
-        _OAMI_WEIGHTS[0] * f
-        + _OAMI_WEIGHTS[1] * c
-        + _OAMI_WEIGHTS[2] * i
-        + _OAMI_WEIGHTS[3] * s
+        _OAMI_WEIGHTS[0] * f + _OAMI_WEIGHTS[1] * c + _OAMI_WEIGHTS[2] * i + _OAMI_WEIGHTS[3] * s
     )
     score = int(round(100.0 * max(0.0, min(1.0, oami_01))))
     comp = OamiComponentsOut(

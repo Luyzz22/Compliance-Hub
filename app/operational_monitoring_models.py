@@ -57,7 +57,11 @@ class OamiComponentsOut(BaseModel):
     freshness: float = Field(ge=0.0, le=1.0, description="Letzte Aktivität vs. Stille")
     activity_days: float = Field(ge=0.0, le=1.0, description="Distinct Tage mit Events")
     incident_stability: float = Field(ge=0.0, le=1.0, description="Weniger high/critical besser")
-    metric_stability: float = Field(ge=0.0, le=1.0, description="Weniger Schwellenverletzungen besser")
+    metric_stability: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Weniger Schwellenverletzungen besser",
+    )
 
 
 class SystemMonitoringIndexOut(BaseModel):

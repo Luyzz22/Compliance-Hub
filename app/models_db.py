@@ -723,12 +723,17 @@ class AiComplianceBoardReportDB(Base):
 
 
 class AiRuntimeEventTable(Base):
-    """Normalisierte Laufzeit-/Monitoring-Events (SAP AI Core u. a.), mandanten- und systemisoliert."""
+    """Laufzeit-/Monitoring-Events (SAP AI Core u. a.), mandanten- und systemisoliert."""
 
     __tablename__ = "ai_runtime_events"
     __table_args__ = (
         UniqueConstraint("tenant_id", "source_event_id", name="uq_ai_runtime_events_idempotent"),
-        Index("ix_ai_runtime_events_tenant_system_occurred", "tenant_id", "ai_system_id", "occurred_at"),
+        Index(
+            "ix_ai_runtime_events_tenant_system_occurred",
+            "tenant_id",
+            "ai_system_id",
+            "occurred_at",
+        ),
         Index(
             "ix_ai_runtime_events_tenant_system_type_occurred",
             "tenant_id",
@@ -791,7 +796,10 @@ class AiRuntimeIncidentSummaryTable(Base):
     window_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     incident_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     high_severity_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_incident_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_incident_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     computed_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,
