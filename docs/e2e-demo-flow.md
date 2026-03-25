@@ -2,6 +2,19 @@
 
 Dieser Ablauf spiegelt den **automatisierten Backend-Pfad** in `tests/test_e2e_high_risk_governance_flow.py` wider. Voraussetzung: Frontend gegen laufende API (`NEXT_PUBLIC_API_BASE_URL`), gültiger `x-api-key` / Mandanten-Kontext wie in der Entwicklungsumgebung.
 
+## Guided Setup für neue Tenants
+
+Für **CISO/ISB** und **AI-Governance-Leads** liefert der Workspace unter **`/tenant/compliance-overview`** den **Setup-Assistenten EU AI Act & NIS2**: eine Checkliste mit Fortschrittsbalken („X von 7 Schritten“). Der Status wird **nicht manuell abgehakt**, sondern aus Mandantendaten berechnet (`GET /api/v1/tenants/{tenant_id}/setup-status`).
+
+**Typischer Ablauf aus Sicht CISO / AI-Governance:**
+
+1. **Perspektive wählen** (optional, nur UI): CISO/Security, AI-Governance/Legal/DSB oder Fachbereich – beeinflusst Reihenfolge/Hervorhebung der Schritte (lokal im Browser gespeichert).
+2. Schritte der Reihe nach über **„Jetzt erledigen“**-Links öffnen: KI-Register (`/tenant/ai-systems`), EU-AI-Act-Cockpit, Policies, Readiness-Board, System-Detail für KPIs und Evidenz.
+3. **Policies:** Beim ersten Anlegen/Import eines KI-Systems legt die API Standard-Policy-Zeilen in der Datenbank an; im UI prüfen Sie die Inhalte unter **`/tenant/policies`**.
+4. **Readiness-Baseline:** Der Assistent wertet u. a. fortgeschrittene **Compliance-Status-Einträge** (über `not_started` hinaus) als Signal, dass die Readiness-/Gap-Arbeit begonnen hat – zusätzlich zur reinen Ansicht von **`/board/eu-ai-act-readiness`**.
+
+Nach Abschluss der sieben Kriterien zeigt die Übersicht **7 von 7**; Board- und Export-Flows aus den folgenden Abschnitten bauen darauf auf.
+
 ## 1) KI-System anlegen
 
 1. Öffnen: **`/tenant/ai-systems`**.
@@ -33,4 +46,4 @@ Dieser Ablauf spiegelt den **automatisierten Backend-Pfad** in `tests/test_e2e_h
 
 ---
 
-**API-Referenz (kurz):** `POST /api/v1/ai-systems` oder `POST /api/v1/ai-systems/import` → `POST .../classify` → `POST .../nis2-kritis-kpis` → `POST /api/v1/ai-governance/actions` → `POST /api/v1/evidence/uploads` → `GET .../compliance/overview`, `GET .../readiness/eu-ai-act`, `GET .../board-kpis`, `GET .../alerts/board`, KPI-/Alert-Export.
+**API-Referenz (kurz):** `GET /api/v1/tenants/{tenant_id}/setup-status` → `POST /api/v1/ai-systems` oder `POST /api/v1/ai-systems/import` → `POST .../classify` → `POST .../nis2-kritis-kpis` → `POST /api/v1/ai-governance/actions` → `POST /api/v1/evidence/uploads` → `GET .../compliance/overview`, `GET .../readiness/eu-ai-act`, `GET .../board-kpis`, `GET .../alerts/board`, KPI-/Alert-Export.
