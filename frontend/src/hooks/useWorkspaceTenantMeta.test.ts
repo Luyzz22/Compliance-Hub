@@ -25,6 +25,9 @@ describe("useWorkspaceTenantMeta", () => {
       is_demo: true,
       demo_playground: false,
       mutation_blocked: true,
+      workspace_mode: "demo",
+      mode_label: "Demo (schreibgeschützt)",
+      mode_hint: "Nur Lesen.",
       demo_mode_feature_enabled: true,
     });
 

@@ -1,16 +1,12 @@
 import Link from "next/link";
 import React from "react";
 
-import { AiSystemsImportPanel } from "@/components/tenant/AiSystemsImportPanel";
+import { AiSystemsMutationsToolbar } from "@/components/tenant/AiSystemsMutationsToolbar";
 import { AiSystemsRegistryTableClient } from "@/components/tenant/AiSystemsRegistryTableClient";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { fetchTenantAISystems } from "@/lib/api";
-import {
-  CH_BTN_PRIMARY,
-  CH_CARD,
-  CH_PAGE_NAV_LINK,
-  CH_SHELL,
-} from "@/lib/boardLayout";
+import { CH_CARD, CH_PAGE_NAV_LINK, CH_SHELL } from "@/lib/boardLayout";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
 type AISystem = {
   id: string;
@@ -27,6 +23,7 @@ type PageProps = {
 };
 
 export default async function TenantAISystemsPage({ searchParams }: PageProps) {
+  const workspaceTenantId = await getWorkspaceTenantIdServer();
   const systems = (await fetchTenantAISystems()) as AISystem[];
 
   const sp =
@@ -51,11 +48,7 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
         eyebrow="Tenant"
         title="KI-System-Register"
         description="Zentrales Inventar aller KI-Systeme des Mandanten – Ausgangspunkt für Klassifizierung, NIS2-KPIs und Board-Reporting."
-        actions={
-          <button type="button" className={`${CH_BTN_PRIMARY} text-sm`}>
-            Neues System
-          </button>
-        }
+        actions={<AiSystemsMutationsToolbar tenantId={workspaceTenantId} />}
         below={
           <>
             <Link href="/tenant/eu-ai-act" className={CH_PAGE_NAV_LINK}>
@@ -105,7 +98,6 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
             AI‑Systeme
           </h2>
           <div className="flex flex-wrap items-center gap-3">
-            <AiSystemsImportPanel />
             <span className="text-xs text-[var(--sbs-text-secondary)]">
               {total} Einträge
               {idSet.size > 0 ? " (gefiltert)" : ""}

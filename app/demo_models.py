@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -40,6 +42,20 @@ class TenantWorkspaceMetaResponse(BaseModel):
     mutation_blocked: bool = Field(
         default=False,
         description="True, wenn die API mutierende Requests (403 demo_tenant_readonly) ablehnt.",
+    )
+    workspace_mode: Literal["production", "demo", "playground"] = Field(
+        ...,
+        description="production | demo (read-only) | playground (sandbox writes allowed).",
+    )
+    mode_label: str = Field(
+        ...,
+        max_length=255,
+        description="Kurzlabel für Shell/Banner (Deutsch).",
+    )
+    mode_hint: str = Field(
+        ...,
+        max_length=512,
+        description="Einzeiler für Tooltip/Banner (Deutsch).",
     )
     demo_mode_feature_enabled: bool = Field(
         default=False,

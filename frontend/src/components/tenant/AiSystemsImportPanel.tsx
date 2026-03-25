@@ -13,7 +13,14 @@ import { CH_BTN_PRIMARY, CH_BTN_SECONDARY } from "@/lib/boardLayout";
 const EXPECTED_HEADERS =
   "id, name, description, business_unit, risk_level, ai_act_category, owner_email, criticality, data_sensitivity, has_incident_runbook, has_supplier_risk_register, has_backup_runbook, gdpr_dpia_required";
 
-export function AiSystemsImportPanel() {
+type PanelProps = {
+  /** Demo read-only: Import deaktivieren. */
+  mutationsBlocked?: boolean;
+  blockedHint?: string;
+};
+
+export function AiSystemsImportPanel(props: PanelProps = {}) {
+  const { mutationsBlocked = false, blockedHint } = props;
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -56,8 +63,17 @@ export function AiSystemsImportPanel() {
     return (
       <button
         type="button"
-        className={`${CH_BTN_SECONDARY} shrink-0 text-xs`}
-        onClick={() => setOpen(true)}
+        className={`${CH_BTN_SECONDARY} shrink-0 text-xs disabled:cursor-not-allowed disabled:opacity-50`}
+        onClick={() => {
+          if (!mutationsBlocked) setOpen(true);
+        }}
+        disabled={mutationsBlocked}
+        title={
+          mutationsBlocked
+            ? blockedHint || "Im Demo-Mandanten (read-only) nicht verfügbar"
+            : undefined
+        }
+        data-testid="ai-systems-import-trigger"
       >
         AI-Systeme importieren (CSV/Excel)
       </button>

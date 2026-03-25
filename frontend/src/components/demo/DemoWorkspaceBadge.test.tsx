@@ -5,8 +5,8 @@ import { DemoWorkspaceBadge } from "./DemoWorkspaceBadge";
 
 const mockUse = vi.fn();
 
-vi.mock("@/hooks/useWorkspaceTenantMeta", () => ({
-  useWorkspaceTenantMeta: () => mockUse(),
+vi.mock("@/hooks/useWorkspaceMode", () => ({
+  useWorkspaceMode: () => mockUse(),
 }));
 
 afterEach(() => {
@@ -17,34 +17,33 @@ describe("DemoWorkspaceBadge", () => {
   it("rendert nichts wenn nicht Demo-Mandant", () => {
     mockUse.mockReturnValue({
       loading: false,
-      isDemoTenant: false,
-      isPlaygroundTenant: false,
-      mutationBlocked: false,
+      isDemo: false,
+      modeLabel: "",
+      modeHint: "",
     });
     const { container } = render(<DemoWorkspaceBadge tenantId="t1" />);
     expect(container.firstChild).toBeNull();
   });
 
-  it("blendet Demo-Label und read-only-Hinweis ein", () => {
+  it("zeigt mode_label aus Workspace-Meta", () => {
     mockUse.mockReturnValue({
       loading: false,
-      isDemoTenant: true,
-      isPlaygroundTenant: false,
-      mutationBlocked: true,
+      isDemo: true,
+      modeLabel: "Demo (schreibgeschützt)",
+      modeHint: "Kurzer Hinweis",
     });
     render(<DemoWorkspaceBadge tenantId="t1" />);
-    const badge = screen.getByText(/Demo/i);
-    expect(badge.textContent).toMatch(/read-only/i);
+    expect(screen.getByText("Demo (schreibgeschützt)")).toBeTruthy();
   });
 
-  it("zeigt Playground statt Demo wenn demo_playground", () => {
+  it("zeigt Playground-Label", () => {
     mockUse.mockReturnValue({
       loading: false,
-      isDemoTenant: true,
-      isPlaygroundTenant: true,
-      mutationBlocked: false,
+      isDemo: true,
+      modeLabel: "Playground",
+      modeHint: "Sandbox",
     });
     render(<DemoWorkspaceBadge tenantId="t1" />);
-    expect(screen.getByText(/Playground/i)).toBeTruthy();
+    expect(screen.getByText("Playground")).toBeTruthy();
   });
 });

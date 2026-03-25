@@ -1,10 +1,12 @@
-"""Demo-Mandanten: Schreibschutz für is_demo (optional demo_playground)."""
+"""Telemetrie demo_mutation_blocked bei 403 durch Demo-Schreibschutz."""
 
 from __future__ import annotations
 
+import json
 import uuid
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.ai_system_models import (
     AIActCategory,
@@ -14,21 +16,23 @@ from app.ai_system_models import (
 )
 from app.db import SessionLocal
 from app.main import app
+from app.models_db import UsageEventTable
 from app.repositories.tenant_registry import TenantRegistryRepository
+from app.services import usage_event_logger
 
 client = TestClient(app)
 
 
 def _ai_payload(suffix: str) -> dict:
     return {
-        "id": f"demo-ro-ai-{suffix}",
-        "name": "Demo RO System",
+        "id": f"demo-tel-ai-{suffix}",
+        "name": "Telemetry System",
         "description": "x",
         "business_unit": "IT",
         "risk_level": AISystemRiskLevel.low.value,
         "ai_act_category": AIActCategory.minimal_risk.value,
         "gdpr_dpia_required": False,
-        "owner_email": "ro@example.com",
+        "owner_email": "tel@example.com",
         "criticality": AISystemCriticality.low.value,
         "data_sensitivity": DataSensitivity.internal.value,
         "has_incident_runbook": True,
@@ -37,13 +41,13 @@ def _ai_payload(suffix: str) -> dict:
     }
 
 
-def test_demo_tenant_blocks_post_ai_system() -> None:
-    tid = f"demo-ro-{uuid.uuid4().hex[:10]}"
+def test_post_ai_system_emits_demo_mutation_blocked() -> None:
+    tid = f"demo-mut-tel-{uuid.uuid4().hex[:10]}"
     s = SessionLocal()
     try:
         TenantRegistryRepository(s).create(
             tenant_id=tid,
-            display_name="RO Demo",
+            display_name="Mut Tel",
             industry="IT",
             country="DE",
             nis2_scope="in_scope",
@@ -55,37 +59,37 @@ def test_demo_tenant_blocks_post_ai_system() -> None:
         s.close()
 
     h = {"x-api-key": "board-kpi-key", "x-tenant-id": tid}
-    assert client.get("/api/v1/ai-systems", headers=h).status_code == 200
+    before = SessionLocal()
+    try:
+        n0 = before.execute(
+            select(UsageEventTable.id).where(
+                UsageEventTable.tenant_id == tid,
+                UsageEventTable.event_type == usage_event_logger.DEMO_MUTATION_BLOCKED,
+            )
+        ).all()
+        n0_count = len(n0)
+    finally:
+        before.close()
 
     r = client.post("/api/v1/ai-systems", headers=h, json=_ai_payload(uuid.uuid4().hex[:8]))
     assert r.status_code == 403
-    d = r.json()["detail"]
-    detail_lc = d.lower() if isinstance(d, str) else str(d.get("message", "")).lower()
-    code_ok = isinstance(d, dict) and d.get("code") == "demo_tenant_readonly"
-    assert "read-only" in detail_lc or code_ok
-    if isinstance(d, dict):
-        assert d.get("hint")
-        assert "write" in str(d["hint"]).lower()
 
-
-def test_demo_playground_allows_post_ai_system() -> None:
-    tid = f"demo-pg-{uuid.uuid4().hex[:10]}"
-    s = SessionLocal()
+    s2 = SessionLocal()
     try:
-        TenantRegistryRepository(s).create(
-            tenant_id=tid,
-            display_name="PG Demo",
-            industry="IT",
-            country="DE",
-            nis2_scope="in_scope",
-            ai_act_scope="in_scope",
-            is_demo=True,
-            demo_playground=True,
+        rows = (
+            s2.execute(
+                select(UsageEventTable.payload_json).where(
+                    UsageEventTable.tenant_id == tid,
+                    UsageEventTable.event_type == usage_event_logger.DEMO_MUTATION_BLOCKED,
+                )
+            )
+            .scalars()
+            .all()
         )
+        assert len(rows) == n0_count + 1
+        payload = json.loads(rows[-1])
+        assert payload["workspace_mode"] == "demo"
+        assert payload["http_method"] == "POST"
+        assert "/api/v1/ai-systems" in payload["route"]
     finally:
-        s.close()
-
-    suf = uuid.uuid4().hex[:8]
-    h = {"x-api-key": "board-kpi-key", "x-tenant-id": tid}
-    r = client.post("/api/v1/ai-systems", headers=h, json=_ai_payload(suf))
-    assert r.status_code == 200, r.text
+        s2.close()

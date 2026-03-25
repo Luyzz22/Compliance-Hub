@@ -16,8 +16,8 @@ vi.mock("@/lib/config", async () => {
   };
 });
 
-vi.mock("@/hooks/useWorkspaceTenantMeta", () => ({
-  useWorkspaceTenantMeta: () => ({
+vi.mock("@/hooks/useWorkspaceMode", () => ({
+  useWorkspaceMode: () => ({
     meta: null,
     loading: false,
     error: null,
@@ -25,6 +25,13 @@ vi.mock("@/hooks/useWorkspaceTenantMeta", () => ({
     isDemoTenant: false,
     isPlaygroundTenant: false,
     refetch: vi.fn(),
+    workspaceMode: "production" as const,
+    modeLabel: "",
+    modeHint: "",
+    mutationsBlocked: false,
+    isDemo: false,
+    isPlaygroundWritable: false,
+    docsUrl: "",
   }),
 }));
 
