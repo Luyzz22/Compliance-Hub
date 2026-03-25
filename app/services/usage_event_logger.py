@@ -23,6 +23,9 @@ TENANT_PROVISIONED = "tenant_provisioned"
 EVIDENCE_UPLOADED = "evidence_uploaded"
 GUIDED_SETUP_COMPLETED = "guided_setup_completed"
 GOVERNANCE_ACTION_CREATED = "governance_action_created"
+LLM_KPI_SUGGESTION_REQUESTED = "llm_kpi_suggestion_requested"
+LLM_EXPLAIN_REQUESTED = "llm_explain_requested"
+LLM_ACTION_DRAFT_REQUESTED = "llm_action_draft_requested"
 
 
 def _parse_tracking_enabled() -> bool:

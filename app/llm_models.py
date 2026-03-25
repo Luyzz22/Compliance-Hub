@@ -17,6 +17,9 @@ class LLMTaskType(StrEnum):
     CHAT_ASSISTANT = "chat_assistant"
     EMBEDDING_RETRIEVAL = "embedding_retrieval"
     ON_PREM_SENSITIVE = "on_prem_sensitive"
+    KPI_SUGGESTION_ASSIST = "kpi_suggestion_assist"
+    EXPLAIN_KPI_ALERT = "explain_kpi_alert"
+    ACTION_DRAFT_GENERATION = "action_draft_generation"
 
 
 class LLMProvider(StrEnum):

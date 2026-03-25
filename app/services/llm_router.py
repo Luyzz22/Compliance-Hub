@@ -59,6 +59,10 @@ def _static_fallback_chain(task_type: LLMTaskType) -> list[LLMProvider]:
         return [LLMProvider.LLAMA, LLMProvider.OPENAI]
     if task_type == LLMTaskType.ON_PREM_SENSITIVE:
         return [LLMProvider.LLAMA]
+    if task_type == LLMTaskType.KPI_SUGGESTION_ASSIST:
+        return [LLMProvider.GEMINI, LLMProvider.OPENAI, LLMProvider.CLAUDE, LLMProvider.LLAMA]
+    if task_type in (LLMTaskType.EXPLAIN_KPI_ALERT, LLMTaskType.ACTION_DRAFT_GENERATION):
+        return [LLMProvider.CLAUDE, LLMProvider.OPENAI, LLMProvider.GEMINI, LLMProvider.LLAMA]
     return list(LLMProvider)
 
 
@@ -71,6 +75,7 @@ def _prefer_low_cost_gemini(
     return task_type in (
         LLMTaskType.CLASSIFICATION_TAGGING,
         LLMTaskType.CHAT_ASSISTANT,
+        LLMTaskType.KPI_SUGGESTION_ASSIST,
     )
 
 
@@ -83,6 +88,7 @@ def _prefer_low_latency_gemini(
     return task_type in (
         LLMTaskType.CLASSIFICATION_TAGGING,
         LLMTaskType.CHAT_ASSISTANT,
+        LLMTaskType.KPI_SUGGESTION_ASSIST,
     )
 
 

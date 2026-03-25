@@ -29,6 +29,8 @@ from app.advisor_models import AdvisorTenantReport
 from app.advisor_portfolio_models import AdvisorPortfolioResponse
 from app.ai_governance_action_models import (
     AIGovernanceActionCreate,
+    AIGovernanceActionDraftRequest,
+    AIGovernanceActionDraftResponse,
     AIGovernanceActionRead,
     AIGovernanceActionUpdate,
     GovernanceActionStatus,
@@ -82,7 +84,8 @@ from app.demo_models import DemoSeedRequest, DemoSeedResponse
 from app.demo_templates import DemoTenantTemplate, list_demo_tenant_templates
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
-from app.feature_flags import FeatureFlag, create_feature_guard
+from app.explain_models import ExplainRequest, ExplainResponse
+from app.feature_flags import FeatureFlag, create_feature_guard, require_tenant_llm_features
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.llm_models import LLMTaskType
 from app.models import (
@@ -96,6 +99,9 @@ from app.nis2_kritis_models import (
     Nis2KritisKpi,
     Nis2KritisKpiDrilldown,
     Nis2KritisKpiListResponse,
+    Nis2KritisKpiSuggestionBody,
+    Nis2KritisKpiSuggestionRequest,
+    Nis2KritisKpiSuggestionResponse,
     Nis2KritisKpiUpsertRequest,
 )
 from app.policy_models import Violation
@@ -138,7 +144,9 @@ from app.services.advisor_portfolio import (
 from app.services.advisor_report_llm_enrichment import maybe_enrich_advisor_report_with_llm_summary
 from app.services.advisor_tenant_report import build_advisor_tenant_report
 from app.services.advisor_tenant_report_markdown import render_tenant_report_markdown
+from app.services.ai_action_drafts import generate_action_drafts
 from app.services.ai_board_alerts import compute_board_alerts
+from app.services.ai_explain import explain_kpi_or_alert
 from app.services.ai_governance_incidents import (
     compute_ai_incident_overview,
     compute_ai_incidents_by_system,
@@ -187,6 +195,7 @@ from app.services.evidence_service import (
 from app.services.evidence_storage import get_evidence_storage
 from app.services.high_risk_scenarios import list_high_risk_scenarios
 from app.services.llm_router import LLMRouter
+from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
@@ -782,6 +791,141 @@ def upsert_nis2_kritis_kpi(
         evidence_ref=body.evidence_ref,
         last_reviewed_at=body.last_reviewed_at,
     )
+
+
+@app.post(
+    "/api/v1/ai-systems/{ai_system_id}/nis2-kritis-kpi-suggestions",
+    response_model=Nis2KritisKpiSuggestionResponse,
+    tags=["nis2-kritis"],
+)
+def post_nis2_kritis_kpi_suggestions(
+    ai_system_id: str,
+    body: Nis2KritisKpiSuggestionBody,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+) -> Nis2KritisKpiSuggestionResponse:
+    """KI-Vorschläge für NIS2-/KRITIS-KPIs aus Freitext (ohne Persistenz)."""
+    tenant_id = auth_context.tenant_id
+    require_tenant_llm_features(tenant_id, session, FeatureFlag.llm_kpi_suggestions)
+    system = ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id)
+    if system is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AISystem not found",
+        )
+    kpis = nis2_repo.list_for_ai_system(tenant_id, ai_system_id)
+    existing = [{"kpi_type": k.kpi_type.value, "value_percent": k.value_percent} for k in kpis]
+    req = Nis2KritisKpiSuggestionRequest(ai_system_id=ai_system_id, free_text=body.free_text)
+    try:
+        out = generate_nis2_kpi_suggestions(
+            system,
+            req,
+            tenant_id,
+            session=session,
+            existing_kpis_summary=existing,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMProviderHTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    usage_event_logger.log_usage_event(
+        session,
+        tenant_id,
+        usage_event_logger.LLM_KPI_SUGGESTION_REQUESTED,
+        {"ai_system_id": ai_system_id},
+    )
+    return out
+
+
+@app.post(
+    "/api/v1/ai-governance/explain",
+    response_model=ExplainResponse,
+    tags=["ai-governance"],
+)
+def post_ai_governance_explain(
+    body: ExplainRequest,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> ExplainResponse:
+    """Kurzerklärung zu Board-KPI oder Alert (LLM, nicht persistiert)."""
+    tenant_id = auth_context.tenant_id
+    require_tenant_llm_features(tenant_id, session, FeatureFlag.llm_explain)
+    try:
+        result = explain_kpi_or_alert(body, tenant_id, session=session)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMProviderHTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    usage_event_logger.log_usage_event(
+        session,
+        tenant_id,
+        usage_event_logger.LLM_EXPLAIN_REQUESTED,
+        {"kpi_key": body.kpi_key},
+    )
+    return result
+
+
+@app.post(
+    "/api/v1/ai-governance/action-drafts",
+    response_model=AIGovernanceActionDraftResponse,
+    tags=["ai-governance"],
+)
+def post_ai_governance_action_drafts(
+    body: AIGovernanceActionDraftRequest,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> AIGovernanceActionDraftResponse:
+    """Governance-Action-Entwürfe aus Lücken (LLM, ohne Persistenz)."""
+    tenant_id = auth_context.tenant_id
+    require_tenant_llm_features(tenant_id, session, FeatureFlag.llm_action_drafts)
+    try:
+        out = generate_action_drafts(body, tenant_id, session=session)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMProviderHTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    usage_event_logger.log_usage_event(
+        session,
+        tenant_id,
+        usage_event_logger.LLM_ACTION_DRAFT_REQUESTED,
+        {"requirement_count": len(body.requirements)},
+    )
+    return out
 
 
 @app.get(

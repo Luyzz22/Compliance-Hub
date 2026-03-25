@@ -25,6 +25,8 @@ import {
   chKpiStatusFromRatio,
 } from "@/lib/boardLayout";
 
+import { KpiExplainButton } from "@/components/ai/KpiExplainButton";
+
 import { BoardKpiAdvisorExport } from "./BoardKpiAdvisorExport";
 import { BoardReportAuditSection } from "./BoardReportAuditSection";
 import { BoardReportExportForm } from "./BoardReportExportForm";
@@ -259,13 +261,26 @@ export default async function BoardKpisPage() {
           <p className="mt-4 text-4xl font-semibold tabular-nums text-slate-900">
             {euReadinessRatio != null ? formatPercent(euReadinessRatio) : "–"}
           </p>
-          <p className="mt-3">
+          <p className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href="/board/eu-ai-act-readiness"
               className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
             >
               Zur Readiness-Roadmap →
             </Link>
+            <KpiExplainButton
+              request={{
+                kpi_key: "eu_ai_act_readiness",
+                current_value:
+                  euReadinessRatio != null
+                    ? Math.round(euReadinessRatio * 100)
+                    : null,
+                value_is_percent: true,
+                tenant_context: {
+                  high_risk_systems_count: kpis.high_risk_systems,
+                },
+              }}
+            />
           </p>
         </div>
 
@@ -283,13 +298,23 @@ export default async function BoardKpisPage() {
           <p className="mt-4 text-4xl font-semibold tabular-nums text-slate-900">
             {formatPercent(kpis.nis2_incident_readiness_ratio)}
           </p>
-          <p className="mt-3">
+          <p className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href="/board/incidents"
               className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
             >
               Zum Incident-Drilldown →
             </Link>
+            <KpiExplainButton
+              request={{
+                kpi_key: "nis2_incident_readiness_ratio",
+                current_value: Math.round(kpis.nis2_incident_readiness_ratio * 100),
+                value_is_percent: true,
+                tenant_context: {
+                  high_risk_systems_count: kpis.high_risk_systems,
+                },
+              }}
+            />
           </p>
         </div>
 
@@ -307,13 +332,23 @@ export default async function BoardKpisPage() {
           <p className="mt-4 text-4xl font-semibold tabular-nums text-slate-900">
             {formatPercent(kpis.nis2_supplier_risk_coverage_ratio)}
           </p>
-          <p className="mt-3">
+          <p className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href="/board/suppliers"
               className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
             >
               Supplier-Drilldown →
             </Link>
+            <KpiExplainButton
+              request={{
+                kpi_key: "nis2_supplier_risk_coverage_ratio",
+                current_value: Math.round(kpis.nis2_supplier_risk_coverage_ratio * 100),
+                value_is_percent: true,
+                tenant_context: {
+                  high_risk_systems_count: kpis.high_risk_systems,
+                },
+              }}
+            />
           </p>
         </div>
 
@@ -331,13 +366,23 @@ export default async function BoardKpisPage() {
           <p className="mt-4 text-4xl font-semibold tabular-nums text-slate-900">
             {formatPercent(isoScore)}
           </p>
-          <p className="mt-3">
+          <p className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href="/tenant/eu-ai-act"
               className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
             >
               Tenant-Cockpit →
             </Link>
+            <KpiExplainButton
+              request={{
+                kpi_key: "iso42001_governance_score",
+                current_value: Math.round(isoScore * 100),
+                value_is_percent: true,
+                tenant_context: {
+                  high_risk_systems_count: kpis.high_risk_systems,
+                },
+              }}
+            />
           </p>
         </div>
       </section>

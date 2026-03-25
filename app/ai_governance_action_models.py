@@ -41,3 +41,32 @@ class AIGovernanceActionRead(BaseModel):
     owner: str | None
     created_at_utc: datetime
     updated_at_utc: datetime
+
+
+class ActionDraftRequirementInput(BaseModel):
+    framework: str = Field(..., min_length=1, max_length=64)
+    reference: str = Field(..., min_length=1, max_length=256)
+    gap_description: str = Field(..., min_length=3, max_length=8000)
+
+
+class AIGovernanceActionDraftRequest(BaseModel):
+    ai_system_id: str | None = Field(default=None, max_length=255)
+    requirements: list[ActionDraftRequirementInput] = Field(
+        ...,
+        min_length=1,
+        max_length=20,
+    )
+
+
+class AIGovernanceActionDraft(BaseModel):
+    title: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=8000)
+    framework: str = Field(..., max_length=64)
+    reference: str = Field(..., max_length=256)
+    priority: str = Field(..., max_length=32)
+    suggested_role: str = Field(..., max_length=120)
+
+
+class AIGovernanceActionDraftResponse(BaseModel):
+    ai_system_id: str | None
+    drafts: list[AIGovernanceActionDraft]

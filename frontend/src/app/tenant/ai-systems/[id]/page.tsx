@@ -3,6 +3,7 @@ import React from "react";
 
 import { EvidenceAttachmentsSection } from "@/components/evidence/EvidenceAttachmentsSection";
 import { AiSystemSectionNav } from "@/components/tenant/AiSystemSectionNav";
+import { Nis2KpiAiAssistClient } from "@/components/tenant/Nis2KpiAiAssistClient";
 import {
   fetchEuAiActReadiness,
   fetchIncidentsBySystem,
@@ -212,6 +213,7 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
             ))}
           </ul>
         )}
+        <Nis2KpiAiAssistClient aiSystemId={id} />
       </section>
 
       <section id="sec-incidents" className={`${CH_CARD} scroll-mt-32`} aria-label="Incidents">

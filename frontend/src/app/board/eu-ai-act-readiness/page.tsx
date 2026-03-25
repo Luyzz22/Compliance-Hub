@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 
+import { ReadinessActionDraftButton } from "@/components/board/ReadinessActionDraftButton";
 import { GovernanceActionsTableWithEvidence } from "@/components/board/GovernanceActionsTableWithEvidence";
 import {
   fetchEuAiActReadiness,
@@ -269,6 +270,13 @@ export default async function EuAiActReadinessPage() {
                     >
                       Maßnahme erstellen
                     </Link>
+                    <ReadinessActionDraftButton
+                      code={r.code}
+                      name={r.name}
+                      traffic={r.traffic}
+                      requirementId={r.requirement_id ?? undefined}
+                      relatedAiSystemId={r.related_ai_system_ids?.[0] ?? null}
+                    />
                   </div>
                 </div>
               </li>

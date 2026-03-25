@@ -835,6 +835,97 @@ export async function upsertNis2KritisKpi(
   });
 }
 
+export interface Nis2KritisKpiSuggestion {
+  kpi_type: Nis2KritisKpiType;
+  suggested_value_percent: number;
+  confidence: number;
+  rationale: string;
+}
+
+export interface Nis2KritisKpiSuggestionResponse {
+  ai_system_id: string;
+  suggestions: Nis2KritisKpiSuggestion[];
+}
+
+export async function postNis2KritisKpiSuggestions(
+  aiSystemId: string,
+  freeText: string
+): Promise<Nis2KritisKpiSuggestionResponse> {
+  return apiFetch(
+    `/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/nis2-kritis-kpi-suggestions`,
+    {
+      method: "POST",
+      body: JSON.stringify({ free_text: freeText }),
+    }
+  );
+}
+
+export interface ExplainTenantContextInput {
+  industry?: string | null;
+  nis2_scope?: string | null;
+  high_risk_systems_count?: number | null;
+}
+
+export interface ExplainRequestInput {
+  kpi_key: string;
+  current_value?: number | null;
+  value_is_percent?: boolean;
+  alert_key?: string | null;
+  threshold_warning?: number | null;
+  threshold_critical?: number | null;
+  tenant_context?: ExplainTenantContextInput | null;
+}
+
+export interface ExplainResponsePayload {
+  title: string;
+  summary: string;
+  why_it_matters: string[];
+  suggested_actions: string[];
+}
+
+export async function postAiGovernanceExplain(
+  body: ExplainRequestInput
+): Promise<ExplainResponsePayload> {
+  return apiFetch("/api/v1/ai-governance/explain", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export interface ActionDraftRequirementInput {
+  framework: string;
+  reference: string;
+  gap_description: string;
+}
+
+export interface AIGovernanceActionDraftRequestInput {
+  ai_system_id?: string | null;
+  requirements: ActionDraftRequirementInput[];
+}
+
+export interface AIGovernanceActionDraft {
+  title: string;
+  description: string;
+  framework: string;
+  reference: string;
+  priority: string;
+  suggested_role: string;
+}
+
+export interface AIGovernanceActionDraftResponsePayload {
+  ai_system_id: string | null;
+  drafts: AIGovernanceActionDraft[];
+}
+
+export async function postAiGovernanceActionDrafts(
+  body: AIGovernanceActionDraftRequestInput
+): Promise<AIGovernanceActionDraftResponsePayload> {
+  return apiFetch("/api/v1/ai-governance/action-drafts", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export interface Nis2KritisKpiHistogramBucket {
   range_min_inclusive: number;
   range_max_exclusive: number;
@@ -923,6 +1014,31 @@ export interface EUAIActReadinessOverview {
 
 export async function fetchEuAiActReadiness(): Promise<EUAIActReadinessOverview> {
   return apiFetch("/api/v1/ai-governance/readiness/eu-ai-act");
+}
+
+export interface AIGovernanceActionCreateInput {
+  related_ai_system_id?: string | null;
+  related_requirement: string;
+  title: string;
+  status?: GovernanceActionStatus;
+  due_date?: string | null;
+  owner?: string | null;
+}
+
+export async function createAIGovernanceAction(
+  input: AIGovernanceActionCreateInput
+): Promise<AIGovernanceActionRead> {
+  return apiFetch("/api/v1/ai-governance/actions", {
+    method: "POST",
+    body: JSON.stringify({
+      related_ai_system_id: input.related_ai_system_id ?? null,
+      related_requirement: input.related_requirement,
+      title: input.title,
+      status: input.status ?? "open",
+      due_date: input.due_date ?? null,
+      owner: input.owner ?? null,
+    }),
+  });
 }
 
 // ─── Guided Setup (Tenant-Onboarding) ─────────────────────────────────────────
