@@ -10,7 +10,11 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
-import { featureAiGovernancePlaybook, featureCrossRegulationDashboard } from "@/lib/config";
+import {
+  featureAiComplianceBoardReport,
+  featureAiGovernancePlaybook,
+  featureCrossRegulationDashboard,
+} from "@/lib/config";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
 import {
@@ -52,6 +56,26 @@ export default async function AiGovernancePlaybookPage() {
       <p className="mb-6 text-sm text-slate-500">
         Mandant: <span className="font-mono font-semibold text-slate-800">{tenantId}</span>
       </p>
+
+      {featureAiComplianceBoardReport() ? (
+        <section
+          className={`${CH_CARD} mb-8 border-cyan-200 bg-cyan-50/40`}
+          aria-label="Board-Report"
+          data-testid="playbook-board-report-hint"
+        >
+          <p className={CH_SECTION_LABEL}>Board-Report</p>
+          <p className="mt-2 max-w-3xl text-sm text-slate-700">
+            Aus Coverage, Gaps und KI-Empfehlungen ein konsistentes Markdown-Snippet für Vorstand,
+            Management oder Mandantenreports erzeugen.
+          </p>
+          <Link
+            href="/board/ai-compliance-report"
+            className={`${CH_BTN_PRIMARY} mt-4 inline-flex text-sm no-underline`}
+          >
+            AI Compliance Report öffnen
+          </Link>
+        </section>
+      ) : null}
 
       <section className={CH_CARD} aria-labelledby="playbook-raci-heading" data-testid="playbook-raci">
         <h2 id="playbook-raci-heading" className={CH_SECTION_LABEL}>

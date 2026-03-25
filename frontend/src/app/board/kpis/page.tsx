@@ -237,6 +237,9 @@ export default async function BoardKpisPage() {
             <Link href="/board/suppliers" className={CH_PAGE_NAV_LINK}>
               Supplier-Risiko
             </Link>
+            <Link href="/board/ai-compliance-report" className={CH_PAGE_NAV_LINK}>
+              AI Compliance Report
+            </Link>
           </>
         }
       />

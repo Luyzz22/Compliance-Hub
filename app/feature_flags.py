@@ -29,6 +29,7 @@ class FeatureFlag(StrEnum):
     ai_governance_playbook = "ai_governance_playbook"
     cross_regulation_dashboard = "cross_regulation_dashboard"
     cross_regulation_llm_assist = "cross_regulation_llm_assist"
+    ai_compliance_board_report = "ai_compliance_board_report"
 
 
 _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
@@ -51,6 +52,7 @@ _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
     FeatureFlag.ai_governance_playbook: "COMPLIANCEHUB_FEATURE_AI_GOVERNANCE_PLAYBOOK",
     FeatureFlag.cross_regulation_dashboard: "COMPLIANCEHUB_FEATURE_CROSS_REGULATION_DASHBOARD",
     FeatureFlag.cross_regulation_llm_assist: "COMPLIANCEHUB_FEATURE_CROSS_REGULATION_LLM_ASSIST",
+    FeatureFlag.ai_compliance_board_report: "COMPLIANCEHUB_FEATURE_AI_COMPLIANCE_BOARD_REPORT",
 }
 
 # LLM master switch defaults off until keys and policies are configured.

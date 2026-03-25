@@ -1300,6 +1300,61 @@ export async function fetchAdvisorPortfolioExportBlob(
   return res.blob();
 }
 
+export interface AdvisorBoardReportListRowDto {
+  tenant_id: string;
+  tenant_display_name: string | null;
+  report_id: string;
+  title: string;
+  audience_type: string;
+  created_at: string;
+}
+
+export interface AdvisorBoardReportsPortfolioResponseDto {
+  advisor_id: string;
+  reports: AdvisorBoardReportListRowDto[];
+}
+
+export async function fetchAdvisorPortfolioBoardReports(
+  advisorId: string,
+  limitPerTenant = 30,
+): Promise<AdvisorBoardReportsPortfolioResponseDto> {
+  const aid = encodeURIComponent(advisorId);
+  const url = `${API_BASE_URL}/api/v1/advisors/${aid}/tenants/board-reports?limit_per_tenant=${encodeURIComponent(String(limitPerTenant))}`;
+  const res = await fetch(url, {
+    headers: {
+      "x-api-key": API_KEY,
+      "x-advisor-id": advisorId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Advisor board reports failed: ${res.status}`);
+  }
+  return res.json() as Promise<AdvisorBoardReportsPortfolioResponseDto>;
+}
+
+export async function fetchAdvisorBoardReportDetail(
+  advisorId: string,
+  tenantId: string,
+  reportId: string,
+): Promise<AiComplianceBoardReportDetailDto> {
+  const aid = encodeURIComponent(advisorId);
+  const tid = encodeURIComponent(tenantId);
+  const rid = encodeURIComponent(reportId);
+  const url = `${API_BASE_URL}/api/v1/advisors/${aid}/tenants/${tid}/board/ai-compliance-reports/${rid}`;
+  const res = await fetch(url, {
+    headers: {
+      "x-api-key": API_KEY,
+      "x-advisor-id": advisorId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Advisor board report detail failed: ${res.status}`);
+  }
+  return res.json() as Promise<AiComplianceBoardReportDetailDto>;
+}
+
 /** Same-origin Proxy: `/api/advisor/tenant-report` (serverseitig API-Key, optional COMPLIANCEHUB_ADVISOR_ID). */
 export function getAdvisorTenantReportUrl(
   tenantId: string,
@@ -1595,5 +1650,90 @@ export async function postCrossRegulationLlmGapAssistant(
         max_suggestions: body.max_suggestions ?? 8,
       }),
     },
+  );
+}
+
+export type AiComplianceBoardReportAudience = "board" | "management" | "advisor_client";
+
+export interface FrameworkCoverageSnapshotDto {
+  framework_key: string;
+  name: string;
+  coverage_percent: number;
+  total_requirements: number;
+  covered_requirements: number;
+  gap_count: number;
+  partial_count: number;
+  planned_only_count: number;
+}
+
+export interface AiComplianceBoardReportCreateBody {
+  audience_type: AiComplianceBoardReportAudience;
+  focus_frameworks?: string[] | null;
+  include_ai_act_only?: boolean;
+  language?: "de";
+}
+
+export interface AiComplianceBoardReportCreateResponseDto {
+  report_id: string;
+  title: string;
+  rendered_markdown: string;
+  coverage_snapshot: FrameworkCoverageSnapshotDto[];
+  created_at: string;
+  audience_type: string;
+}
+
+export interface AiComplianceBoardReportListItemDto {
+  id: string;
+  title: string;
+  audience_type: string;
+  created_at: string;
+}
+
+export interface AiComplianceBoardReportDetailDto {
+  id: string;
+  tenant_id: string;
+  title: string;
+  audience_type: string;
+  created_at: string;
+  rendered_markdown: string;
+  raw_payload: Record<string, unknown>;
+}
+
+export async function createAiComplianceBoardReport(
+  tenantId: string,
+  body: AiComplianceBoardReportCreateBody,
+): Promise<AiComplianceBoardReportCreateResponseDto> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(
+    `/api/v1/tenants/${tid}/board/ai-compliance-report`,
+    tenantId,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        audience_type: body.audience_type,
+        focus_frameworks: body.focus_frameworks ?? null,
+        include_ai_act_only: body.include_ai_act_only ?? false,
+        language: body.language ?? "de",
+      }),
+    },
+  );
+}
+
+export async function fetchAiComplianceBoardReports(
+  tenantId: string,
+): Promise<AiComplianceBoardReportListItemDto[]> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/board/ai-compliance-reports`, tenantId);
+}
+
+export async function fetchAiComplianceBoardReportDetail(
+  tenantId: string,
+  reportId: string,
+): Promise<AiComplianceBoardReportDetailDto> {
+  const tid = encodeURIComponent(tenantId);
+  const rid = encodeURIComponent(reportId);
+  return tenantApiFetch(
+    `/api/v1/tenants/${tid}/board/ai-compliance-reports/${rid}`,
+    tenantId,
   );
 }
