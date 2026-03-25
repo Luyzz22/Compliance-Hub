@@ -91,3 +91,8 @@ export function featureAiGovernancePlaybook(): boolean {
 export function featureCrossRegulationDashboard(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_CROSS_REGULATION_DASHBOARD, true);
 }
+
+/** KI-Gap-Assist im Cross-Regulation-Dashboard (Backend COMPLIANCEHUB_FEATURE_CROSS_REGULATION_LLM_ASSIST). */
+export function featureCrossRegulationLlmAssist(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_CROSS_REGULATION_LLM_ASSIST, true);
+}

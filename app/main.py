@@ -94,6 +94,8 @@ from app.compliance_gap_models import (
 from app.config.nis2_kritis_board_alert_thresholds import NIS2_KRITIS_OT_IT_ALERT_THRESHOLD_PCT
 from app.cross_regulation_models import (
     AISystemRegulatoryHintOut,
+    CrossRegLlmGapAssistantRequestBody,
+    CrossRegLlmGapAssistantResponse,
     CrossRegulationSummaryResponse,
     RegulatoryControlOut,
     RegulatoryFrameworkOut,
@@ -215,6 +217,10 @@ from app.services.cross_regulation import (
     list_regulatory_controls,
     list_regulatory_frameworks,
     list_regulatory_requirement_rows,
+)
+from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
+from app.services.cross_regulation_llm_gap_assistant import (
+    generate_cross_regulation_llm_gap_suggestions,
 )
 from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded
 from app.services.demo_tenant_seeder import seed_demo_tenant
@@ -3013,3 +3019,69 @@ def cross_regulation_ai_system_regulatory_context(
 ) -> list[AISystemRegulatoryHintOut]:
     require_path_tenant_matches_auth(tenant_id, auth_context)
     return list_ai_system_regulatory_hints(session, tenant_id, ai_system_id)
+
+
+@app.post(
+    "/api/v1/tenants/{tenant_id}/compliance/cross-regulation/llm-gap-assistant",
+    response_model=CrossRegLlmGapAssistantResponse,
+)
+def cross_regulation_llm_gap_assistant(
+    tenant_id: str,
+    body: CrossRegLlmGapAssistantRequestBody,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    _ff_cr: Annotated[None, Depends(create_feature_guard(FeatureFlag.cross_regulation_dashboard))],
+    _ff_gap: Annotated[
+        None,
+        Depends(create_feature_guard(FeatureFlag.cross_regulation_llm_assist)),
+    ],
+) -> CrossRegLlmGapAssistantResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    payload = compute_cross_regulation_gaps(
+        session,
+        tenant_id,
+        focus_framework_keys=body.focus_frameworks,
+    )
+    try:
+        out = generate_cross_regulation_llm_gap_suggestions(
+            payload,
+            tenant_id,
+            session=session,
+            max_suggestions=body.max_suggestions,
+        )
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMProviderHTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    audit_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=None,
+        entity_type="cross_regulation_llm_gap_assist",
+        entity_id=tenant_id,
+        action="completed",
+        metadata={
+            "suggestion_count": len(out.suggestions),
+            "gap_count_used": out.gap_count_used,
+            "focus_framework_keys": body.focus_frameworks or [],
+        },
+    )
+    return out

@@ -5,6 +5,7 @@ import {
   featureAiActDocs,
   featureAiGovernancePlaybook,
   featureCrossRegulationDashboard,
+  featureCrossRegulationLlmAssist,
   featureApiKeysUi,
   featureDemoSeeding,
   featureEvidencePreviewBadge,
@@ -30,6 +31,7 @@ const envKeys = [
   "NEXT_PUBLIC_FEATURE_WHAT_IF_SIMULATOR",
   "NEXT_PUBLIC_FEATURE_AI_GOVERNANCE_PLAYBOOK",
   "NEXT_PUBLIC_FEATURE_CROSS_REGULATION_DASHBOARD",
+  "NEXT_PUBLIC_FEATURE_CROSS_REGULATION_LLM_ASSIST",
   "NEXT_PUBLIC_FEATURE_LLM_ENABLED",
   "NEXT_PUBLIC_FEATURE_LLM_KPI_SUGGESTIONS",
   "NEXT_PUBLIC_FEATURE_LLM_EXPLAIN",
@@ -75,6 +77,7 @@ describe("feature flags from env", () => {
     expect(featureWhatIfSimulator()).toBe(true);
     expect(featureAiGovernancePlaybook()).toBe(true);
     expect(featureCrossRegulationDashboard()).toBe(true);
+    expect(featureCrossRegulationLlmAssist()).toBe(true);
   });
 
   it("parses common false/true tokens", () => {

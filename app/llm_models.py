@@ -20,6 +20,7 @@ class LLMTaskType(StrEnum):
     KPI_SUGGESTION_ASSIST = "kpi_suggestion_assist"
     EXPLAIN_KPI_ALERT = "explain_kpi_alert"
     ACTION_DRAFT_GENERATION = "action_draft_generation"
+    CROSS_REGULATION_GAP_ASSIST = "cross_regulation_gap_assist"
 
 
 class LLMProvider(StrEnum):

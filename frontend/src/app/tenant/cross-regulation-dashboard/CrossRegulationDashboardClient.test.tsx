@@ -148,6 +148,19 @@ describe("CrossRegulationDashboardClient", () => {
     expect(within(table).queryByText(/Art\.21/)).toBeNull();
   });
 
+  it("zeigt KI-Gap-Panel wenn llmAssistEnabled", () => {
+    render(
+      <CrossRegulationDashboardClient
+        tenantId="t1"
+        summary={summary}
+        requirements={requirements}
+        controls={[]}
+        llmAssistEnabled
+      />,
+    );
+    expect(screen.getByTestId("cross-reg-llm-gap-panel")).toBeTruthy();
+  });
+
   it("filtert nach Coverage Lücke", () => {
     render(
       <CrossRegulationDashboardClient

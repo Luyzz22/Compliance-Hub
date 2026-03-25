@@ -79,3 +79,57 @@ class AISystemRegulatoryHintOut(BaseModel):
     title: str
     framework_key: str
     via_control_name: str
+
+
+class CrossRegGapLinkedControlSnapshot(BaseModel):
+    """Nur Metadaten (keine Freitext-Evidenz) für LLM-Gap-Kontext."""
+
+    control_id: str
+    name: str
+    status: str
+    coverage_level: str
+    owner_role: str | None = None
+    ai_system_ids: list[str] = Field(default_factory=list)
+    policy_ids: list[str] = Field(default_factory=list)
+    action_ids: list[str] = Field(default_factory=list)
+
+
+class CrossRegGapRequirementItem(BaseModel):
+    requirement_id: int
+    framework_key: str
+    code: str
+    title: str
+    criticality: str
+    requirement_type: str
+    coverage_status: str
+    linked_controls: list[CrossRegGapLinkedControlSnapshot] = Field(default_factory=list)
+
+
+class CrossRegulationGapsPayload(BaseModel):
+    tenant_id: str
+    tenant_industry_hint: str | None = None
+    coverage: list[CrossRegFrameworkSummary]
+    gaps: list[CrossRegGapRequirementItem]
+
+
+class CrossRegLlmGapAssistantRequestBody(BaseModel):
+    focus_frameworks: list[str] | None = None
+    max_suggestions: int = Field(default=8, ge=1, le=10)
+
+
+class CrossRegLlmGapSuggestion(BaseModel):
+    requirement_ids: list[int]
+    frameworks: list[str]
+    recommendation_type: str
+    suggested_control_name: str
+    suggested_control_description: str
+    rationale: str = ""
+    priority: str
+    suggested_owner_role: str
+    suggested_actions: list[str] = Field(default_factory=list)
+
+
+class CrossRegLlmGapAssistantResponse(BaseModel):
+    tenant_id: str
+    suggestions: list[CrossRegLlmGapSuggestion]
+    gap_count_used: int = 0

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
 
+import { CrossRegulationLlmGapPanel } from "@/app/tenant/cross-regulation-dashboard/CrossRegulationLlmGapPanel";
 import {
   fetchRequirementControlsDetail,
   type CrossRegFrameworkSummaryDto,
@@ -47,6 +48,7 @@ export interface CrossRegulationDashboardClientProps {
   summary: CrossRegFrameworkSummaryDto[];
   requirements: RegulatoryRequirementRowDto[];
   controls: RegulatoryControlRowDto[];
+  llmAssistEnabled?: boolean;
 }
 
 export function CrossRegulationDashboardClient({
@@ -54,6 +56,7 @@ export function CrossRegulationDashboardClient({
   summary,
   requirements,
   controls,
+  llmAssistEnabled = false,
 }: CrossRegulationDashboardClientProps) {
   const [frameworkFilter, setFrameworkFilter] = useState<FrameworkFilter>("all");
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
@@ -140,6 +143,10 @@ export function CrossRegulationDashboardClient({
           ))}
         </div>
       </section>
+
+      {llmAssistEnabled ? (
+        <CrossRegulationLlmGapPanel tenantId={tenantId} requirements={requirements} />
+      ) : null}
 
       <section aria-label="Anforderungen und Controls" data-testid="cross-reg-requirements-table">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
