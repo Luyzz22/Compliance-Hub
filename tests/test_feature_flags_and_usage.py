@@ -37,6 +37,7 @@ def test_feature_flag_defaults_true() -> None:
     assert is_feature_enabled(FeatureFlag.advisor_workspace) is True
     assert is_feature_enabled(FeatureFlag.demo_seeding) is True
     assert is_feature_enabled(FeatureFlag.ai_governance_playbook) is True
+    assert is_feature_enabled(FeatureFlag.cross_regulation_dashboard) is True
 
 
 def test_feature_flag_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -47,6 +48,11 @@ def test_feature_flag_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_ai_governance_playbook_flag_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_AI_GOVERNANCE_PLAYBOOK", "false")
     assert is_feature_enabled(FeatureFlag.ai_governance_playbook) is False
+
+
+def test_cross_regulation_dashboard_flag_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_CROSS_REGULATION_DASHBOARD", "false")
+    assert is_feature_enabled(FeatureFlag.cross_regulation_dashboard) is False
 
 
 def test_advisor_portfolio_forbidden_when_feature_off(

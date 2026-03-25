@@ -10,7 +10,7 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
-import { featureAiGovernancePlaybook } from "@/lib/config";
+import { featureAiGovernancePlaybook, featureCrossRegulationDashboard } from "@/lib/config";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
 import {
@@ -206,6 +206,27 @@ export default async function AiGovernancePlaybookPage() {
           ))}
         </div>
       </section>
+
+      {featureCrossRegulationDashboard() ? (
+        <section
+          className={`${CH_CARD} mt-8 border-slate-300 bg-slate-50/80`}
+          aria-labelledby="playbook-cross-reg-heading"
+        >
+          <h2 id="playbook-cross-reg-heading" className={CH_SECTION_LABEL}>
+            Schritt 2: Frameworks konsolidieren
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm text-slate-700">
+            Öffnen Sie das Cross-Regulation Dashboard, um zu sehen, welche regulatorischen Pflichten durch
+            Ihre Controls abgedeckt sind – und wo noch Lücken bestehen (Map once, comply many).
+          </p>
+          <Link
+            href="/tenant/cross-regulation-dashboard"
+            className={`${CH_BTN_PRIMARY} mt-4 inline-flex text-xs`}
+          >
+            Cross-Regulation Dashboard
+          </Link>
+        </section>
+      ) : null}
 
       <section className={`${CH_CARD} mt-8`} aria-labelledby="playbook-pilot-heading">
         <h2 id="playbook-pilot-heading" className={CH_SECTION_LABEL}>

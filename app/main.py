@@ -71,7 +71,11 @@ from app.ai_system_models import (
     AISystemUpdate,
 )
 from app.audit_models import AuditEvent, AuditLog
-from app.auth_dependencies import get_api_key_and_tenant, get_auth_context
+from app.auth_dependencies import (
+    get_api_key_and_tenant,
+    get_auth_context,
+    require_path_tenant_matches_auth,
+)
 from app.classification_models import (
     ClassificationOverrideRequest,
     ClassificationQuestionnaire,
@@ -88,6 +92,14 @@ from app.compliance_gap_models import (
     ComplianceStatusUpdate,
 )
 from app.config.nis2_kritis_board_alert_thresholds import NIS2_KRITIS_OT_IT_ALERT_THRESHOLD_PCT
+from app.cross_regulation_models import (
+    AISystemRegulatoryHintOut,
+    CrossRegulationSummaryResponse,
+    RegulatoryControlOut,
+    RegulatoryFrameworkOut,
+    RegulatoryRequirementOut,
+    RequirementControlsDetailResponse,
+)
 from app.db import engine, get_session
 from app.demo_models import DemoSeedRequest, DemoSeedResponse
 from app.demo_templates import DemoTenantTemplate, list_demo_tenant_templates
@@ -196,6 +208,15 @@ from app.services.compliance_dashboard import (
     compute_compliance_dashboard,
 )
 from app.services.compliance_engine import build_audit_hash, derive_actions
+from app.services.cross_regulation import (
+    build_cross_regulation_summary,
+    get_requirement_controls_detail,
+    list_ai_system_regulatory_hints,
+    list_regulatory_controls,
+    list_regulatory_frameworks,
+    list_regulatory_requirement_rows,
+)
+from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded
 from app.services.demo_tenant_seeder import seed_demo_tenant
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
 from app.services.evidence_service import (
@@ -258,6 +279,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup phase
     Base.metadata.create_all(bind=engine)
+    with Session(engine) as seed_session:
+        ensure_cross_regulation_catalog_seeded(seed_session)
     yield
     # Shutdown phase
 
@@ -2897,3 +2920,96 @@ def get_compliance_dashboard(
         cls_repo=cls_repo,
         gap_repo=gap_repo,
     )
+
+
+# ─── Cross-Regulation / Regelwerksgraph ───────────────────────────────────────
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/compliance/cross-regulation/summary",
+    response_model=CrossRegulationSummaryResponse,
+)
+def cross_regulation_summary(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.cross_regulation_dashboard))],
+) -> CrossRegulationSummaryResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    return build_cross_regulation_summary(session, tenant_id)
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/compliance/frameworks",
+    response_model=list[RegulatoryFrameworkOut],
+)
+def cross_regulation_frameworks(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.cross_regulation_dashboard))],
+) -> list[RegulatoryFrameworkOut]:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    return list_regulatory_frameworks(session)
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/compliance/regulatory-requirements",
+    response_model=list[RegulatoryRequirementOut],
+)
+def cross_regulation_regulatory_requirements(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.cross_regulation_dashboard))],
+    framework: Annotated[str | None, Query(description="Framework key, z. B. eu_ai_act")] = None,
+) -> list[RegulatoryRequirementOut]:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    return list_regulatory_requirement_rows(session, tenant_id, framework_key=framework)
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/compliance/regulatory-controls",
+    response_model=list[RegulatoryControlOut],
+)
+def cross_regulation_regulatory_controls(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.cross_regulation_dashboard))],
+) -> list[RegulatoryControlOut]:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    return list_regulatory_controls(session, tenant_id)
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/compliance/regulatory-requirements/{requirement_id}/controls",
+    response_model=RequirementControlsDetailResponse,
+)
+def cross_regulation_requirement_controls(
+    tenant_id: str,
+    requirement_id: int,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.cross_regulation_dashboard))],
+) -> RequirementControlsDetailResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    detail = get_requirement_controls_detail(session, tenant_id, requirement_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
+    return detail
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/ai-systems/{ai_system_id}/regulatory-context",
+    response_model=list[AISystemRegulatoryHintOut],
+)
+def cross_regulation_ai_system_regulatory_context(
+    tenant_id: str,
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.cross_regulation_dashboard))],
+) -> list[AISystemRegulatoryHintOut]:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    return list_ai_system_regulatory_hints(session, tenant_id, ai_system_id)

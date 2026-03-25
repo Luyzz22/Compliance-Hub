@@ -6,6 +6,7 @@ import { AiActDocumentationClient } from "@/components/tenant/AiActDocumentation
 import { AiSystemSectionNav } from "@/components/tenant/AiSystemSectionNav";
 import { Nis2KpiAiAssistClient } from "@/components/tenant/Nis2KpiAiAssistClient";
 import {
+  fetchAiSystemRegulatoryContext,
   fetchEuAiActReadiness,
   fetchIncidentsBySystem,
   fetchNis2KritisKpis,
@@ -15,6 +16,8 @@ import {
   fetchClassification,
   type AISystem,
 } from "@/lib/api";
+import { featureCrossRegulationDashboard } from "@/lib/config";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   CH_BTN_PRIMARY,
@@ -42,6 +45,7 @@ function pickRisk(s: AISystem): string {
 
 export default async function TenantAiSystemDetailPage({ params }: PageProps) {
   const { id } = await params;
+  const workspaceTenantId = await getWorkspaceTenantIdServer();
   const systems = await fetchTenantAISystems();
   const system = systems.find((x) => x.id === id);
 
@@ -67,6 +71,11 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
     fetchIncidentsBySystem().catch(() => []),
     fetchEuAiActReadiness().catch(() => null),
   ]);
+
+  const regulatoryHints =
+    featureCrossRegulationDashboard() && system
+      ? await fetchAiSystemRegulatoryContext(workspaceTenantId, id).catch(() => [])
+      : [];
 
   let classification: Awaited<ReturnType<typeof fetchClassification>> | null = null;
   try {
@@ -248,6 +257,54 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
           </Link>
         </p>
       </section>
+
+      {regulatoryHints.length > 0 ? (
+        <section
+          className={`${CH_CARD} scroll-mt-32`}
+          aria-label="Cross-Regulation-Kontext"
+        >
+          <h2 className="text-base font-semibold text-slate-900">
+            Cross-Regulation (über verknüpfte Controls)
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Pflichten aus dem Regelwerkskatalog, die über Controls mit diesem KI-System verknüpft sind.
+          </p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {regulatoryHints.map((h) => (
+              <li
+                key={`${h.requirement_id}-${h.framework_key}`}
+                className="rounded-lg border border-cyan-100 bg-cyan-50/50 px-3 py-2"
+              >
+                <span className="font-semibold text-slate-900">
+                  {h.framework_key.toUpperCase()} {h.code}
+                </span>
+                <span className="text-slate-700"> – {h.title}</span>
+                <div className="mt-1 text-xs text-slate-500">via {h.via_control_name}</div>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs">
+            <Link
+              href="/tenant/cross-regulation-dashboard"
+              className="font-semibold text-cyan-800 underline"
+            >
+              Zum Cross-Regulation Dashboard
+            </Link>
+          </p>
+        </section>
+      ) : featureCrossRegulationDashboard() ? (
+        <section className={`${CH_CARD} scroll-mt-32`} aria-label="Cross-Regulation-Hinweis">
+          <h2 className="text-base font-semibold text-slate-900">Cross-Regulation</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Noch keine Pflichten über Controls mit diesem System verknüpft. Im Dashboard können Sie
+            Coverage über alle Frameworks steuern; Verknüpfungen erfolgen über tenant-Controls und Links
+            im Backend-Datenmodell.
+          </p>
+          <Link href="/tenant/cross-regulation-dashboard" className={`${CH_BTN_SECONDARY} mt-3 inline-flex text-xs`}>
+            Cross-Regulation Dashboard
+          </Link>
+        </section>
+      ) : null}
 
       <section
         id="sec-compliance"

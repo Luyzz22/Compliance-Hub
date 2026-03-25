@@ -10,6 +10,7 @@ vi.mock("@/lib/config", async () => {
   return {
     ...actual,
     featureAiGovernancePlaybook: () => true,
+    featureCrossRegulationDashboard: () => true,
   };
 });
 
@@ -25,6 +26,7 @@ describe("AiGovernancePlaybookPage", () => {
     expect(screen.getByRole("heading", { name: /Governance-Rollen.*RACI/i })).toBeTruthy();
     expect(screen.getByTestId("playbook-phases")).toBeTruthy();
     expect(screen.getByRole("heading", { name: /Phasenplan/i })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Frameworks konsolidieren/i })).toBeTruthy();
 
     expect(screen.getByText(/playbook-tenant-1/)).toBeTruthy();
 

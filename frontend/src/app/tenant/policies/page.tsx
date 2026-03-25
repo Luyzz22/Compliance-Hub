@@ -9,6 +9,7 @@ import {
   CH_PAGE_NAV_LINK,
   CH_SHELL,
 } from "@/lib/boardLayout";
+import { featureCrossRegulationDashboard } from "@/lib/config";
 
 export default async function TenantPoliciesPage() {
   const policies: Record<string, unknown>[] = [];
@@ -47,6 +48,22 @@ export default async function TenantPoliciesPage() {
           </>
         }
       />
+
+      {featureCrossRegulationDashboard() ? (
+        <section
+          className="mb-6 rounded-xl border border-dashed border-cyan-200 bg-cyan-50/40 px-4 py-3 text-sm text-slate-700"
+          aria-label="Cross-Regulation Controls"
+        >
+          <span className="font-semibold text-cyan-950">Regelwerksgraph: </span>
+          Policies können im Datenmodell mit tenant-Controls verknüpft werden (
+          <code className="rounded bg-white/80 px-1 text-xs">compliance_control_policies</code>
+          ). Im{" "}
+          <Link href="/tenant/cross-regulation-dashboard" className="font-semibold text-cyan-900 underline">
+            Cross-Regulation Dashboard
+          </Link>{" "}
+          erscheinen verknüpfte Pflichten und Deep-Links zu diesem Bereich.
+        </section>
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">
         <div className={CH_CARD}>

@@ -1448,3 +1448,116 @@ export async function revokeTenantApiKey(tenantId: string, keyId: string): Promi
     throw new Error(`API-Key konnte nicht deaktiviert werden (${res.status})`);
   }
 }
+
+// ─── Cross-Regulation / Regelwerksgraph ──────────────────────────────────────
+
+export interface CrossRegFrameworkSummaryDto {
+  framework_key: string;
+  name: string;
+  subtitle: string;
+  total_requirements: number;
+  covered_requirements: number;
+  gap_count: number;
+  coverage_percent: number;
+  partial_count: number;
+  planned_only_count: number;
+}
+
+export interface CrossRegulationSummaryResponseDto {
+  tenant_id: string;
+  frameworks: CrossRegFrameworkSummaryDto[];
+}
+
+export interface RegulatoryRequirementRowDto {
+  id: number;
+  framework_key: string;
+  framework_name: string;
+  code: string;
+  title: string;
+  description: string | null;
+  requirement_type: string;
+  criticality: string;
+  coverage_status: string;
+  linked_control_count: number;
+  primary_control_names: string[];
+  related_framework_keys: string[];
+}
+
+export interface RegulatoryControlRowDto {
+  id: string;
+  name: string;
+  description: string | null;
+  control_type: string;
+  owner_role: string | null;
+  status: string;
+  requirement_count: number;
+  framework_count: number;
+  framework_keys: string[];
+}
+
+export interface RequirementControlLinkDetailDto {
+  link_id: number;
+  control_id: string;
+  control_name: string;
+  coverage_level: string;
+  control_status: string;
+  owner_role: string | null;
+  ai_system_ids: string[];
+  policy_ids: string[];
+  action_ids: string[];
+}
+
+export interface RequirementControlsDetailResponseDto {
+  requirement: RegulatoryRequirementRowDto;
+  links: RequirementControlLinkDetailDto[];
+}
+
+export interface AISystemRegulatoryHintDto {
+  requirement_id: number;
+  code: string;
+  title: string;
+  framework_key: string;
+  via_control_name: string;
+}
+
+export async function fetchCrossRegulationSummary(
+  tenantId: string,
+): Promise<CrossRegulationSummaryResponseDto> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/compliance/cross-regulation/summary`, tenantId);
+}
+
+export async function fetchRegulatoryRequirements(
+  tenantId: string,
+  framework?: string | null,
+): Promise<RegulatoryRequirementRowDto[]> {
+  const tid = encodeURIComponent(tenantId);
+  const q = framework ? `?framework=${encodeURIComponent(framework)}` : "";
+  return tenantApiFetch(`/api/v1/tenants/${tid}/compliance/regulatory-requirements${q}`, tenantId);
+}
+
+export async function fetchRegulatoryControls(tenantId: string): Promise<RegulatoryControlRowDto[]> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/compliance/regulatory-controls`, tenantId);
+}
+
+export async function fetchRequirementControlsDetail(
+  tenantId: string,
+  requirementId: number,
+): Promise<RequirementControlsDetailResponseDto> {
+  const tid = encodeURIComponent(tenantId);
+  const rid = encodeURIComponent(String(requirementId));
+  return tenantApiFetch(
+    `/api/v1/tenants/${tid}/compliance/regulatory-requirements/${rid}/controls`,
+    tenantId,
+  );
+}
+
+export async function fetchAiSystemRegulatoryContext(
+  tenantId: string,
+  aiSystemId: string,
+): Promise<AISystemRegulatoryHintDto[]> {
+  const tid = encodeURIComponent(tenantId);
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/ai-systems/${sid}/regulatory-context`, tenantId);
+}

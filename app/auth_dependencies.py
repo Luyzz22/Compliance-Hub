@@ -65,3 +65,11 @@ def get_auth_context(
 ) -> AuthContext:
     tid, key = resolve_tenant_id_for_api_key(session, x_api_key, x_tenant_id)
     return AuthContext(tenant_id=tid, api_key=key)
+
+
+def require_path_tenant_matches_auth(tenant_id: str, auth: AuthContext) -> None:
+    if tenant_id != auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="tenant_id in path must match x-tenant-id",
+        )
