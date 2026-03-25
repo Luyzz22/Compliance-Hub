@@ -7,6 +7,11 @@ import { AdvisorPortfolioTable } from "./AdvisorPortfolioTable";
 
 vi.mock("@/lib/workspaceTenantClient", () => ({
   openWorkspaceTenantAndGoComplianceOverview: vi.fn(),
+  openWorkspaceTenantAndGo: vi.fn(),
+}));
+
+vi.mock("@/lib/config", () => ({
+  featurePilotRunbook: () => true,
 }));
 
 const sampleRows: AdvisorPortfolioTenantEntry[] = [

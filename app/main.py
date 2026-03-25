@@ -60,6 +60,7 @@ from app.ai_system_models import (
     AISystemUpdate,
 )
 from app.audit_models import AuditEvent, AuditLog
+from app.auth_dependencies import get_api_key_and_tenant, get_auth_context
 from app.classification_models import (
     ClassificationOverrideRequest,
     ClassificationQuestionnaire,
@@ -89,7 +90,7 @@ from app.models import (
     DocumentType,
     EInvoiceFormat,
 )
-from app.models_db import Base
+from app.models_db import Base, TenantApiKeyDB
 from app.nis2_kritis_models import (
     Nis2KritisKpi,
     Nis2KritisKpiDrilldown,
@@ -98,6 +99,13 @@ from app.nis2_kritis_models import (
 )
 from app.policy_models import Violation
 from app.policy_service import evaluate_policies_for_ai_system
+from app.provisioning_models import (
+    ProvisionTenantRequest,
+    ProvisionTenantResponse,
+    TenantApiKeyCreateBody,
+    TenantApiKeyCreated,
+    TenantApiKeyRead,
+)
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository
 from app.repositories.ai_systems import AISystemRepository
@@ -109,13 +117,13 @@ from app.repositories.evidence_files import EvidenceFileRepository
 from app.repositories.incidents import IncidentRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
+from app.repositories.tenant_api_keys import TenantApiKeyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import (
     AuthContext,
     delete_evidence_allowed_for_api_key,
     ensure_demo_tenant_seed_allowed,
-    get_api_key_and_tenant,
-    get_auth_context,
+    require_admin_provision_api_key,
     require_advisor_api_access,
     require_demo_seed_api_key,
 )
@@ -183,6 +191,7 @@ from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
     compute_tenant_compliance_overview,
 )
+from app.services.tenant_provisioning import provision_tenant
 from app.services.tenant_usage_metrics import compute_tenant_usage_metrics
 from app.setup_models import TenantSetupStatus
 from app.supplier_risk_models import (
@@ -326,6 +335,20 @@ def get_advisor_tenant_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> AdvisorTenantRepository:
     return AdvisorTenantRepository(session)
+
+
+def get_tenant_api_key_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> TenantApiKeyRepository:
+    return TenantApiKeyRepository(session)
+
+
+def _ensure_tenant_path_matches_auth(tenant_id: str, auth: AuthContext) -> None:
+    if auth.tenant_id != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant ID does not match authenticated tenant",
+        )
 
 
 def require_evidence_delete_capability(
@@ -1789,6 +1812,147 @@ def get_tenant_usage_metrics_endpoint(
     if tenant_id != auth_context.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
     return compute_tenant_usage_metrics(session, tenant_id)
+
+
+def _api_key_row_to_read(row: TenantApiKeyDB) -> TenantApiKeyRead:
+    created = row.created_at_utc
+    created_s = created.isoformat() if hasattr(created, "isoformat") else str(created)
+    return TenantApiKeyRead(
+        id=row.id,
+        name=row.name,
+        key_last4=row.key_last4,
+        created_at=created_s,
+        active=bool(row.active),
+    )
+
+
+@app.post(
+    "/api/v1/tenants/provision",
+    response_model=ProvisionTenantResponse,
+    tags=["tenants"],
+)
+def post_provision_tenant(
+    body: ProvisionTenantRequest,
+    _admin: Annotated[str, Depends(require_admin_provision_api_key)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+) -> ProvisionTenantResponse:
+    """
+    Internes Pilot-Onboarding: Mandant, Default-Feature-Flags, initialer API-Key.
+    Schutz über COMPLIANCEHUB_ADMIN_API_KEYS (Header x-api-key).
+    """
+    try:
+        result = provision_tenant(session, body)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    usage_event_logger.log_usage_event(
+        session,
+        result.tenant_id,
+        usage_event_logger.TENANT_PROVISIONED,
+        {
+            "advisor_linked": result.advisor_linked,
+            "demo_seed_requested": body.enable_demo_seed,
+        },
+    )
+
+    if not body.enable_demo_seed:
+        return result
+
+    try:
+        seed_demo_tenant(
+            session,
+            "kritis_energy",
+            result.tenant_id,
+            advisor_id=body.advisor_id.strip() if body.advisor_id else None,
+            ai_repo=ai_repo,
+            cls_repo=cls_repo,
+            nis2_repo=nis2_repo,
+            policy_repo=policy_repo,
+            action_repo=action_repo,
+            evidence_repo=evidence_repo,
+        )
+        usage_event_logger.log_usage_event(
+            session,
+            result.tenant_id,
+            usage_event_logger.TENANT_SEEDED,
+            {"template_key": "kritis_energy", "source": "provision"},
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+    return result.model_copy(update={"demo_seeded": True})
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/api-keys",
+    response_model=list[TenantApiKeyRead],
+    tags=["tenants"],
+)
+def list_tenant_api_keys(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    key_repo: Annotated[TenantApiKeyRepository, Depends(get_tenant_api_key_repository)],
+) -> list[TenantApiKeyRead]:
+    _ensure_tenant_path_matches_auth(tenant_id, auth_context)
+    rows = key_repo.list_for_tenant(tenant_id)
+    return [_api_key_row_to_read(r) for r in rows]
+
+
+@app.post(
+    "/api/v1/tenants/{tenant_id}/api-keys",
+    response_model=TenantApiKeyCreated,
+    tags=["tenants"],
+)
+def create_tenant_api_key(
+    tenant_id: str,
+    body: TenantApiKeyCreateBody,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    key_repo: Annotated[TenantApiKeyRepository, Depends(get_tenant_api_key_repository)],
+) -> TenantApiKeyCreated:
+    _ensure_tenant_path_matches_auth(tenant_id, auth_context)
+    row, plain = key_repo.create_key(tenant_id=tenant_id, name=body.name)
+    read = _api_key_row_to_read(row)
+    return TenantApiKeyCreated(
+        id=read.id,
+        name=read.name,
+        key_last4=read.key_last4,
+        created_at=read.created_at,
+        active=read.active,
+        plain_key=plain,
+    )
+
+
+@app.delete(
+    "/api/v1/tenants/{tenant_id}/api-keys/{key_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["tenants"],
+)
+def revoke_tenant_api_key(
+    tenant_id: str,
+    key_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    key_repo: Annotated[TenantApiKeyRepository, Depends(get_tenant_api_key_repository)],
+) -> Response:
+    _ensure_tenant_path_matches_auth(tenant_id, auth_context)
+    row = key_repo.revoke(tenant_id=tenant_id, key_id=key_id)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.get(

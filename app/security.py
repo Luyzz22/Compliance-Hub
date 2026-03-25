@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 from functools import lru_cache
 from typing import Annotated
@@ -84,38 +85,40 @@ def require_advisor_api_access(
     return advisor_id
 
 
-def get_api_key_and_tenant(
-    x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
-    x_tenant_id: Annotated[str | None, Header(alias="x-tenant-id")] = None,
-) -> str:
-    if x_tenant_id is None or not x_tenant_id.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing x-tenant-id header",
-        )
+def hash_api_key(raw: str) -> str:
+    """SHA-256 Hex-Digest für tenant_api_keys.key_hash (Klartext nur bei Create)."""
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    if x_api_key is None or not x_api_key.strip():
+
+def admin_provision_api_keys() -> frozenset[str]:
+    """COMPLIANCEHUB_ADMIN_API_KEYS – komma-separiert, für POST /tenants/provision."""
+    raw = os.getenv("COMPLIANCEHUB_ADMIN_API_KEYS", "").strip()
+    if not raw:
+        return frozenset()
+    return frozenset(part.strip() for part in raw.split(",") if part.strip())
+
+
+def require_admin_provision_api_key(
+    x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
+) -> str:
+    allowed = admin_provision_api_keys()
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Tenant provisioning is disabled (no COMPLIANCEHUB_ADMIN_API_KEYS)",
+        )
+    if x_api_key is None or not str(x_api_key).strip():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing API key",
         )
-
-    settings = get_settings()
-    if x_api_key not in settings.api_keys:
+    key = str(x_api_key).strip()
+    if key not in allowed:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
+            detail="Invalid admin API key",
         )
-
-    return x_tenant_id
-
-
-def get_auth_context(
-    x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
-    x_tenant_id: Annotated[str | None, Header(alias="x-tenant-id")] = None,
-) -> AuthContext:
-    tenant_id = get_api_key_and_tenant(x_api_key=x_api_key, x_tenant_id=x_tenant_id)
-    return AuthContext(tenant_id=tenant_id, api_key=x_api_key or "")
+    return key
 
 
 def demo_seed_api_keys() -> frozenset[str]:

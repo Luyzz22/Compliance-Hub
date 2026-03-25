@@ -36,3 +36,13 @@ export function featureGuidedSetup(): boolean {
 export function featureEvidencePreviewBadge(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_EVIDENCE_PREVIEW_BADGE, false);
 }
+
+/** Pilot-Runbook-Seite und Verlinkungen (Kunden-Workspace). */
+export function featurePilotRunbook(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_PILOT_RUNBOOK, true);
+}
+
+/** API-Key-Verwaltung unter Einstellungen. */
+export function featureApiKeysUi(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_API_KEYS_UI, true);
+}

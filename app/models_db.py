@@ -16,6 +16,54 @@ from sqlalchemy.orm import Mapped, declarative_base, mapped_column
 Base = declarative_base()
 
 
+class TenantDB(Base):
+    """Registrierter Mandant (Pilot-/Enterprise-Provisioning)."""
+
+    __tablename__ = "tenants"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    industry: Mapped[str] = mapped_column(String(128), nullable=False)
+    country: Mapped[str] = mapped_column(String(64), nullable=False, default="DE")
+    nis2_scope: Mapped[str] = mapped_column(String(64), nullable=False, default="in_scope")
+    ai_act_scope: Mapped[str] = mapped_column(String(64), nullable=False, default="in_scope")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class TenantApiKeyDB(Base):
+    """API-Schlüssel pro Mandant (Hash-only, Klartext nur bei Erstellung)."""
+
+    __tablename__ = "tenant_api_keys"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    key_last4: Mapped[str] = mapped_column(String(4), nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class TenantFeatureFlagOverrideDB(Base):
+    """Mandanten-spezifische Feature-Flag-Overrides (Pilot-Defaults vs. ENV-Fallback)."""
+
+    __tablename__ = "tenant_feature_flag_overrides"
+    __table_args__ = (UniqueConstraint("tenant_id", "flag_key", name="uq_tenant_feature_flag"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    flag_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
 class AdvisorTenantDB(Base):
     """Zuordnung Berater → Mandanten (Portfolio-Sicht, ohne Tenant-Daten zu mischen)."""
 

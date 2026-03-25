@@ -3,7 +3,11 @@
 import { getAdvisorTenantReportUrl, type AdvisorPortfolioTenantEntry } from "@/lib/api";
 import { portfolioHealth, type PortfolioHealth } from "@/lib/advisorPortfolioHealth";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD } from "@/lib/boardLayout";
-import { openWorkspaceTenantAndGoComplianceOverview } from "@/lib/workspaceTenantClient";
+import { featurePilotRunbook } from "@/lib/config";
+import {
+  openWorkspaceTenantAndGo,
+  openWorkspaceTenantAndGoComplianceOverview,
+} from "@/lib/workspaceTenantClient";
 
 function badgeClasses(h: PortfolioHealth): string {
   if (h === "critical") {
@@ -118,13 +122,24 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                     )}
                   </td>
                   <td className="text-right">
-                    <button
-                      type="button"
-                      className={`${CH_BTN_PRIMARY} text-xs`}
-                      onClick={() => openWorkspaceTenantAndGoComplianceOverview(t.tenant_id)}
-                    >
-                      Tenant öffnen
-                    </button>
+                    <div className="flex flex-col items-end gap-1">
+                      <button
+                        type="button"
+                        className={`${CH_BTN_PRIMARY} text-xs`}
+                        onClick={() => openWorkspaceTenantAndGoComplianceOverview(t.tenant_id)}
+                      >
+                        Tenant öffnen
+                      </button>
+                      {featurePilotRunbook() ? (
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-cyan-800 underline decoration-cyan-300 underline-offset-2 hover:text-cyan-950"
+                          onClick={() => openWorkspaceTenantAndGo(t.tenant_id, "/tenant/pilot-runbook")}
+                        >
+                          Pilot-Runbook (Kunde)
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               );

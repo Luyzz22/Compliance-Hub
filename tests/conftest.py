@@ -26,6 +26,7 @@ def setup_test_db() -> None:
     os.environ["COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS"] = _TEST_API_KEYS
     os.environ["COMPLIANCEHUB_DEMO_SEED_API_KEYS"] = "demo-seed-key"
     os.environ["COMPLIANCEHUB_DEMO_SEED_TENANT_IDS"] = _DEMO_SEED_TENANTS
+    os.environ["COMPLIANCEHUB_ADMIN_API_KEYS"] = "provision-admin-test-key"
     get_settings.cache_clear()
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
@@ -38,6 +39,7 @@ def _restore_api_keys_superset() -> None:
     os.environ["COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS"] = _TEST_API_KEYS
     os.environ["COMPLIANCEHUB_DEMO_SEED_API_KEYS"] = "demo-seed-key"
     os.environ["COMPLIANCEHUB_DEMO_SEED_TENANT_IDS"] = _DEMO_SEED_TENANTS
+    os.environ["COMPLIANCEHUB_ADMIN_API_KEYS"] = "provision-admin-test-key"
     get_settings.cache_clear()
 
 

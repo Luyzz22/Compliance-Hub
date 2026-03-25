@@ -1115,3 +1115,53 @@ export async function fetchAdvisorTenantUsageMetrics(
   }
   return res.json() as Promise<TenantUsageMetrics>;
 }
+
+// ─── Mandanten-API-Keys (Pilot / ERP / ETL) ───────────────────────────────────
+
+export interface TenantApiKeyReadDto {
+  id: string;
+  name: string;
+  key_last4: string;
+  created_at: string;
+  active: boolean;
+}
+
+export interface TenantApiKeyCreatedDto extends TenantApiKeyReadDto {
+  plain_key: string;
+}
+
+export async function fetchTenantApiKeys(tenantId: string): Promise<TenantApiKeyReadDto[]> {
+  return tenantApiFetch(
+    `/api/v1/tenants/${encodeURIComponent(tenantId)}/api-keys`,
+    tenantId,
+  );
+}
+
+export async function createTenantApiKey(
+  tenantId: string,
+  name: string,
+): Promise<TenantApiKeyCreatedDto> {
+  return tenantApiFetch(
+    `/api/v1/tenants/${encodeURIComponent(tenantId)}/api-keys`,
+    tenantId,
+    {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    },
+  );
+}
+
+export async function revokeTenantApiKey(tenantId: string, keyId: string): Promise<void> {
+  const url = `${API_BASE_URL}/api/v1/tenants/${encodeURIComponent(tenantId)}/api-keys/${encodeURIComponent(keyId)}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      "x-api-key": API_KEY,
+      "x-tenant-id": tenantId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`API-Key konnte nicht deaktiviert werden (${res.status})`);
+  }
+}
