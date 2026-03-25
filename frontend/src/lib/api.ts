@@ -903,4 +903,24 @@ export async function fetchEuAiActReadiness(): Promise<EUAIActReadinessOverview>
   return apiFetch("/api/v1/ai-governance/readiness/eu-ai-act");
 }
 
+// ─── Guided Setup (Tenant-Onboarding) ─────────────────────────────────────────
+
+export interface TenantSetupStatus {
+  tenant_id: string;
+  ai_inventory_completed: boolean;
+  classification_completed: boolean;
+  classification_coverage_ratio: number;
+  nis2_kpis_seeded: boolean;
+  policies_published: boolean;
+  actions_defined: boolean;
+  evidence_attached: boolean;
+  eu_ai_act_readiness_baseline_created: boolean;
+  completed_steps: number;
+  total_steps: number;
+}
+
+export async function fetchTenantSetupStatus(): Promise<TenantSetupStatus> {
+  const tid = encodeURIComponent(TENANT_ID);
+  return apiFetch(`/api/v1/tenants/${tid}/setup-status`);
+}
 

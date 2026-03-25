@@ -3,9 +3,12 @@ import React from "react";
 
 import {
   fetchTenantAISystems,
+  fetchTenantSetupStatus,
   fetchTenantViolations,
+  type TenantSetupStatus,
 } from "@/lib/api";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { GuidedSetupWizard } from "@/components/workspace/GuidedSetupWizard";
 import {
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
@@ -44,7 +47,31 @@ function classNames(...values: (string | false | null | undefined)[]) {
   return values.filter(Boolean).join(" ");
 }
 
+function defaultTenantSetupStatus(tenantId: string): TenantSetupStatus {
+  return {
+    tenant_id: tenantId,
+    ai_inventory_completed: false,
+    classification_completed: false,
+    classification_coverage_ratio: 0,
+    nis2_kpis_seeded: false,
+    policies_published: false,
+    actions_defined: false,
+    evidence_attached: false,
+    eu_ai_act_readiness_baseline_created: false,
+    completed_steps: 0,
+    total_steps: 7,
+  };
+}
+
 export default async function TenantComplianceOverviewPage() {
+  let setupStatus: TenantSetupStatus = defaultTenantSetupStatus(TENANT_ID);
+  let setupLoadFailed = false;
+  try {
+    setupStatus = await fetchTenantSetupStatus();
+  } catch {
+    setupLoadFailed = true;
+  }
+
   const [systems, violations] = (await Promise.all([
     fetchTenantAISystems(),
     fetchTenantViolations(),
@@ -75,6 +102,8 @@ export default async function TenantComplianceOverviewPage() {
           </>
         }
       />
+
+      <GuidedSetupWizard initialStatus={setupStatus} loadFailed={setupLoadFailed} />
 
       <section
         aria-label="Workspace-Home"

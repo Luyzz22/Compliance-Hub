@@ -160,10 +160,12 @@ from app.services.high_risk_scenarios import list_high_risk_scenarios
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
+from app.services.setup_status import compute_tenant_setup_status
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
     compute_tenant_compliance_overview,
 )
+from app.setup_models import TenantSetupStatus
 from app.supplier_risk_models import (
     AISupplierRiskBySystemEntry,
     AISupplierRiskOverview,
@@ -405,6 +407,7 @@ def create_ai_system(
 ) -> AISystem:
     tenant_id = auth_context.tenant_id
     created = repository.create(tenant_id, payload)
+    policy_repo.ensure_default_policy_rules(tenant_id)
 
     audit_repo.record_event(
         tenant_id=tenant_id,
@@ -1694,6 +1697,22 @@ def get_ai_governance_kpis(
         audit_repository=audit_repository,
         nis2_kritis_kpi_repository=nis2_repo,
     )
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/setup-status",
+    response_model=TenantSetupStatus,
+    tags=["tenants"],
+)
+def get_tenant_setup_status(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> TenantSetupStatus:
+    """Aggregierter Guided-Setup-Status aus Mandantendaten (ohne eigene Setup-Tabelle)."""
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    return compute_tenant_setup_status(session, tenant_id)
 
 
 @app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)

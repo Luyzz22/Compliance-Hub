@@ -306,6 +306,7 @@ def _after_create(
     policy_repo: PolicyRepository,
     violation_repo: ViolationRepository,
 ) -> None:
+    policy_repo.ensure_default_policy_rules(tenant_id)
     audit_log_repo.record_event(
         tenant_id=tenant_id,
         actor="system",
