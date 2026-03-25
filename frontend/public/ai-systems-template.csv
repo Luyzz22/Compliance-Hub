@@ -1,0 +1,3 @@
+id,name,description,business_unit,risk_level,ai_act_category,owner_email,criticality,data_sensitivity,has_incident_runbook,has_supplier_risk_register,has_backup_runbook,gdpr_dpia_required
+,Beispiel KI Assistenz,Interner Chat-Assistent für Mitarbeitende,IT,limited,limited_risk,it.owner@firma.de,medium,internal,ja,nein,nein,false
+risk-scoring-001,Risiko-Scoring,Unterstützung bei Kreditentscheidungen,Risk,high,high_risk,risk@firma.de,high,confidential,ja,ja,ja,true

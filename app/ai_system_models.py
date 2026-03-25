@@ -124,3 +124,15 @@ class AISystemComplianceReport(BaseModel):
     by_ai_act_category: list[AISystemAIActSummary]
     by_criticality: list[AISystemCriticalitySummary]
     by_data_sensitivity: list[AISystemDataSensitivitySummary]
+
+
+class AIImportRowError(BaseModel):
+    row_number: int
+    message: str
+
+
+class AIImportResult(BaseModel):
+    total_rows: int
+    imported_count: int
+    failed_count: int
+    errors: list[AIImportRowError]

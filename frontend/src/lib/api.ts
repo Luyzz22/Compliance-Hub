@@ -71,6 +71,41 @@ export async function fetchTenantAISystems(): Promise<AISystem[]> {
   return apiFetch("/api/v1/ai-systems");
 }
 
+export interface AIImportRowError {
+  row_number: number;
+  message: string;
+}
+
+export interface AIImportResult {
+  total_rows: number;
+  imported_count: number;
+  failed_count: number;
+  errors: AIImportRowError[];
+}
+
+/** Multipart-Upload der Stammdaten-Datei (CSV oder .xlsx). */
+export async function importAiSystemsFile(file: File): Promise<AIImportResult> {
+  const url = `${API_BASE_URL}/api/v1/ai-systems/import`;
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "x-api-key": API_KEY,
+      "x-tenant-id": TENANT_ID,
+    },
+    body: formData,
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `Import fehlgeschlagen (${res.status}): ${text || res.statusText}`
+    );
+  }
+  return res.json() as Promise<AIImportResult>;
+}
+
 // Violations eines Tenants
 export async function fetchTenantViolations(): Promise<Violation[]> {
   return apiFetch("/api/v1/violations");

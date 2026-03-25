@@ -1,8 +1,9 @@
 import Link from "next/link";
 import React from "react";
 
-import { fetchTenantAISystems } from "@/lib/api";
+import { AiSystemsImportPanel } from "@/components/tenant/AiSystemsImportPanel";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { fetchTenantAISystems } from "@/lib/api";
 import {
   CH_BTN_PRIMARY,
   CH_CARD,
@@ -102,14 +103,17 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
       </section>
 
       <section className={`${CH_CARD} overflow-hidden p-0`}>
-        <div className="flex items-center justify-between border-b border-[var(--sbs-border)] px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--sbs-border)] px-5 py-3">
           <h2 className="text-sm font-bold text-[var(--sbs-text-primary)]">
             AI‑Systeme
           </h2>
-          <span className="text-xs text-[var(--sbs-text-secondary)]">
-            {total} Einträge
-            {idSet.size > 0 ? " (gefiltert)" : ""}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <AiSystemsImportPanel />
+            <span className="text-xs text-[var(--sbs-text-secondary)]">
+              {total} Einträge
+              {idSet.size > 0 ? " (gefiltert)" : ""}
+            </span>
+          </div>
         </div>
         <div className="sbs-table-wrap">
           <table className="sbs-table">

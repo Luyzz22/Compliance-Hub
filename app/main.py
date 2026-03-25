@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Response, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -38,6 +38,7 @@ from app.ai_governance_models import (
     NormFramework,
 )
 from app.ai_system_models import (
+    AIImportResult,
     AISystem,
     AISystemComplianceReport,
     AISystemCreate,
@@ -63,6 +64,7 @@ from app.compliance_gap_models import (
 from app.config.nis2_kritis_board_alert_thresholds import NIS2_KRITIS_OT_IT_ALERT_THRESHOLD_PCT
 from app.db import engine, get_session
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
+from app.evidence_upload_models import EvidenceUploadMetadata, EvidenceUploadRegisterRequest
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.models import (
     ComplianceAction,
@@ -100,6 +102,7 @@ from app.services.ai_governance_suppliers import (
     compute_ai_supplier_risk_by_system,
     compute_ai_supplier_risk_overview,
 )
+from app.services.ai_system_import import import_ai_systems_from_file
 from app.services.board_kpi_export import board_kpi_export_csv, build_board_kpi_export_envelope
 from app.services.board_kpi_export_jobs import get_kpi_job, register_kpi_export_job
 from app.services.board_report_audit_records import (
@@ -122,6 +125,7 @@ from app.services.compliance_dashboard import (
 )
 from app.services.compliance_engine import build_audit_hash, derive_actions
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
+from app.services.evidence_uploads import evidence_upload_service
 from app.services.high_risk_scenarios import list_high_risk_scenarios
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
@@ -371,6 +375,48 @@ def create_ai_system(
         actor_id=auth_context.api_key,
     )
     return created
+
+
+@app.post("/api/v1/ai-systems/import", response_model=AIImportResult)
+async def import_ai_systems(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+    audit_event_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    file: UploadFile = File(..., description="CSV- oder Excel-Datei (.xlsx)"),
+) -> AIImportResult:
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty upload",
+        )
+    return import_ai_systems_from_file(
+        tenant_id=auth_context.tenant_id,
+        auth=auth_context,
+        filename=file.filename or "import.csv",
+        data=raw,
+        repository=repository,
+        audit_log_repo=audit_repo,
+        audit_event_repo=audit_event_repo,
+        policy_repo=policy_repo,
+        violation_repo=violation_repo,
+    )
+
+
+@app.post(
+    "/api/v1/evidence/uploads",
+    response_model=EvidenceUploadMetadata,
+    status_code=status.HTTP_201_CREATED,
+)
+def register_evidence_upload_placeholder(
+    body: EvidenceUploadRegisterRequest,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> EvidenceUploadMetadata:
+    # TODO: Datei-Stream in S3/Blob-Storage ablegen; Metadaten in PostgreSQL persistieren.
+    return evidence_upload_service.register(auth_context.tenant_id, body)
 
 
 @app.patch("/api/v1/ai-systems/{aisystem_id}", response_model=AISystem)
