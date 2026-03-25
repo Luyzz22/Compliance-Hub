@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { TenantSetupStatus } from "@/lib/api";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
+import { featureAiGovernancePlaybook } from "@/lib/config";
 
 type SetupStepKey =
   | "INVENTORY"
@@ -200,6 +201,20 @@ export function GuidedSetupWizard({ initialStatus, loadFailed = false }: GuidedS
             Policies, Maßnahmen, Evidenzen und erste Readiness-Baseline – abgeleitet aus echten
             Mandantendaten, ohne manuelles Abhaken.
           </p>
+          {featureAiGovernancePlaybook() ? (
+            <p className="mt-2 max-w-3xl text-sm">
+              <Link
+                href="/tenant/ai-governance-playbook"
+                className="font-semibold text-cyan-800 underline decoration-cyan-300 underline-offset-2 hover:text-cyan-950"
+              >
+                Mehr dazu im AI Governance Playbook
+              </Link>
+              <span className="text-[var(--sbs-text-secondary)]">
+                {" "}
+                (RACI, Phasenplan, Pilot-Wochen).
+              </span>
+            </p>
+          ) : null}
         </div>
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
           <label className="text-xs font-semibold text-[var(--sbs-text-secondary)]" htmlFor="guided-setup-persona">

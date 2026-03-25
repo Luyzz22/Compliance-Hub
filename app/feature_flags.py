@@ -26,6 +26,7 @@ class FeatureFlag(StrEnum):
     llm_action_drafts = "llm_action_drafts"
     ai_act_docs = "ai_act_docs"
     what_if_simulator = "what_if_simulator"
+    ai_governance_playbook = "ai_governance_playbook"
 
 
 _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
@@ -45,6 +46,7 @@ _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
     FeatureFlag.llm_action_drafts: "COMPLIANCEHUB_FEATURE_LLM_ACTION_DRAFTS",
     FeatureFlag.ai_act_docs: "COMPLIANCEHUB_FEATURE_AI_ACT_DOCS",
     FeatureFlag.what_if_simulator: "COMPLIANCEHUB_FEATURE_WHAT_IF_SIMULATOR",
+    FeatureFlag.ai_governance_playbook: "COMPLIANCEHUB_FEATURE_AI_GOVERNANCE_PLAYBOOK",
 }
 
 # LLM master switch defaults off until keys and policies are configured.
