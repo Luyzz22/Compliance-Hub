@@ -1,0 +1,32 @@
+from __future__ import annotations
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class AdvisorPortfolioTenantEntry(BaseModel):
+    """Eine Zeile im Berater-Portfolio (Meta-Ebene pro Mandant)."""
+
+    tenant_id: str
+    tenant_name: str
+    industry: str | None = None
+    country: str | None = None
+    eu_ai_act_readiness: float = Field(ge=0.0, le=1.0)
+    nis2_kritis_kpi_mean_percent: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=100.0,
+    )
+    nis2_kritis_systems_full_coverage_ratio: float = Field(ge=0.0, le=1.0)
+    high_risk_systems_count: int = Field(ge=0)
+    open_governance_actions_count: int = Field(ge=0)
+    setup_completed_steps: int = Field(ge=0)
+    setup_total_steps: int = Field(ge=1)
+    setup_progress_ratio: float = Field(ge=0.0, le=1.0)
+
+
+class AdvisorPortfolioResponse(BaseModel):
+    advisor_id: str
+    generated_at_utc: datetime
+    tenants: list[AdvisorPortfolioTenantEntry]

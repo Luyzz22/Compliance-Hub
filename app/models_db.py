@@ -16,6 +16,26 @@ from sqlalchemy.orm import Mapped, declarative_base, mapped_column
 Base = declarative_base()
 
 
+class AdvisorTenantDB(Base):
+    """Zuordnung Berater → Mandanten (Portfolio-Sicht, ohne Tenant-Daten zu mischen)."""
+
+    __tablename__ = "advisor_tenants"
+    __table_args__ = (
+        UniqueConstraint(
+            "advisor_id",
+            "tenant_id",
+            name="uq_advisor_tenants_advisor_tenant",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    advisor_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    tenant_display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    industry: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
 class RiskClassificationDB(Base):
     __tablename__ = "risk_classifications"
 

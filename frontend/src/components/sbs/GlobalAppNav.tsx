@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 
+import { isAdvisorNavEnabled } from "@/lib/api";
 import {
   BOARD_NAV_ITEMS,
   WORKSPACE_NAV_ITEMS,
@@ -116,6 +117,8 @@ export function GlobalAppNav() {
   const incidentsActive =
     pathname === "/incidents" || pathname.startsWith("/board/incidents");
   const settingsActive = pathname === "/settings";
+  const advisorActive = pathname.startsWith("/advisor");
+  const showAdvisorNav = isAdvisorNavEnabled();
 
   return (
     <nav
@@ -145,6 +148,12 @@ export function GlobalAppNav() {
       <Link href="/incidents" className={navLinkClass(incidentsActive)}>
         Incidents
       </Link>
+
+      {showAdvisorNav ? (
+        <Link href="/advisor" className={navLinkClass(advisorActive)}>
+          Advisor
+        </Link>
+      ) : null}
 
       <Link
         href="/settings"

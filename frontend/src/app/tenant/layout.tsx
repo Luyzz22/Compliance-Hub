@@ -1,12 +1,15 @@
 import React from "react";
 
 import { TenantNav } from "@/components/sbs/TenantNav";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
-export default function TenantLayout({
+export default async function TenantLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const workspaceTenantId = await getWorkspaceTenantIdServer();
+
   return (
     <div className="flex w-full min-w-0 flex-col gap-0 lg:flex-row lg:items-start">
       <aside className="w-full shrink-0 border-b border-slate-200 bg-white lg:w-60 lg:border-b-0 lg:border-r lg:border-slate-200">
@@ -16,7 +19,7 @@ export default function TenantLayout({
           </div>
           <div className="mt-1 text-sm text-slate-700">
             Mandant{" "}
-            <span className="font-semibold text-slate-900">tenant-overview-001</span>
+            <span className="font-semibold text-slate-900">{workspaceTenantId}</span>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-slate-500">
             Workspace für Register, Policies, Evidenzen und operative Umsetzung.

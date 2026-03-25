@@ -6,10 +6,30 @@ const API_KEY =
   process.env.NEXT_PUBLIC_API_KEY ||
   process.env.COMPLIANCEHUB_API_KEY ||
   "tenant-overview-key";
-const TENANT_ID =
+export const TENANT_ID =
   process.env.NEXT_PUBLIC_TENANT_ID ||
   process.env.COMPLIANCEHUB_TENANT_ID ||
   "tenant-overview-001";
+
+async function tenantApiFetch(path: string, tenantId: string, init?: RequestInit) {
+  const url = `${API_BASE_URL}${path}`;
+  const res = await fetch(url, {
+    ...init,
+    headers: {
+      "x-api-key": API_KEY,
+      "x-tenant-id": tenantId,
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`API ${path} failed with ${res.status}`);
+  }
+
+  return res.json();
+}
 
 async function apiFetch(path: string, init?: RequestInit) {
   const url = `${API_BASE_URL}${path}`;
@@ -67,8 +87,8 @@ export interface Violation {
 }
 
 // Liste aller AI-Systeme für Tenant
-export async function fetchTenantAISystems(): Promise<AISystem[]> {
-  return apiFetch("/api/v1/ai-systems");
+export async function fetchTenantAISystems(tenantId: string = TENANT_ID): Promise<AISystem[]> {
+  return tenantApiFetch("/api/v1/ai-systems", tenantId);
 }
 
 export interface AIImportRowError {
@@ -245,8 +265,8 @@ export async function deleteEvidenceFile(evidenceId: string): Promise<void> {
 }
 
 // Violations eines Tenants
-export async function fetchTenantViolations(): Promise<Violation[]> {
-  return apiFetch("/api/v1/violations");
+export async function fetchTenantViolations(tenantId: string = TENANT_ID): Promise<Violation[]> {
+  return tenantApiFetch("/api/v1/violations", tenantId);
 }
 
 // Detail eines AI-Systems
@@ -919,8 +939,77 @@ export interface TenantSetupStatus {
   total_steps: number;
 }
 
-export async function fetchTenantSetupStatus(): Promise<TenantSetupStatus> {
-  const tid = encodeURIComponent(TENANT_ID);
-  return apiFetch(`/api/v1/tenants/${tid}/setup-status`);
+export async function fetchTenantSetupStatus(
+  tenantId: string = TENANT_ID
+): Promise<TenantSetupStatus> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/setup-status`, tenantId);
 }
 
+// ─── Advisor-Portfolio (Multi-Mandant / Berater) ─────────────────────────────
+
+export const ADVISOR_ID_FROM_ENV =
+  process.env.NEXT_PUBLIC_ADVISOR_ID?.trim() || "";
+
+export function isAdvisorNavEnabled(): boolean {
+  if (process.env.NEXT_PUBLIC_SHOW_ADVISOR_NAV === "1") return true;
+  return ADVISOR_ID_FROM_ENV.length > 0;
+}
+
+export interface AdvisorPortfolioTenantEntry {
+  tenant_id: string;
+  tenant_name: string;
+  industry?: string | null;
+  country?: string | null;
+  eu_ai_act_readiness: number;
+  nis2_kritis_kpi_mean_percent?: number | null;
+  nis2_kritis_systems_full_coverage_ratio: number;
+  high_risk_systems_count: number;
+  open_governance_actions_count: number;
+  setup_completed_steps: number;
+  setup_total_steps: number;
+  setup_progress_ratio: number;
+}
+
+export interface AdvisorPortfolioResponse {
+  advisor_id: string;
+  generated_at_utc: string;
+  tenants: AdvisorPortfolioTenantEntry[];
+}
+
+export async function fetchAdvisorPortfolio(
+  advisorId: string
+): Promise<AdvisorPortfolioResponse> {
+  const aid = encodeURIComponent(advisorId);
+  const url = `${API_BASE_URL}/api/v1/advisors/${aid}/tenants/portfolio`;
+  const res = await fetch(url, {
+    headers: {
+      "x-api-key": API_KEY,
+      "x-advisor-id": advisorId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Advisor portfolio failed: ${res.status}`);
+  }
+  return res.json() as Promise<AdvisorPortfolioResponse>;
+}
+
+export async function fetchAdvisorPortfolioExportBlob(
+  advisorId: string,
+  format: "json" | "csv"
+): Promise<Blob> {
+  const aid = encodeURIComponent(advisorId);
+  const url = `${API_BASE_URL}/api/v1/advisors/${aid}/tenants/portfolio-export?format=${format}`;
+  const res = await fetch(url, {
+    headers: {
+      "x-api-key": API_KEY,
+      "x-advisor-id": advisorId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Advisor export failed: ${res.status}`);
+  }
+  return res.blob();
+}

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.ai_governance_action_models import (
@@ -60,6 +60,19 @@ class AIGovernanceActionRepository:
         )
         row = self._session.execute(stmt).scalar_one_or_none()
         return self._to_read(row) if row else None
+
+    def count_open_or_in_progress(self, tenant_id: str) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(AIGovernanceActionDB)
+            .where(
+                AIGovernanceActionDB.tenant_id == tenant_id,
+                AIGovernanceActionDB.status.in_(
+                    (GovernanceActionStatus.open.value, GovernanceActionStatus.in_progress.value),
+                ),
+            )
+        )
+        return int(self._session.execute(stmt).scalar_one() or 0)
 
     def list_for_tenant(
         self,

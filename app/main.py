@@ -25,6 +25,7 @@ from fastapi import (
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.advisor_portfolio_models import AdvisorPortfolioResponse
 from app.ai_governance_action_models import (
     AIGovernanceActionCreate,
     AIGovernanceActionRead,
@@ -93,6 +94,7 @@ from app.nis2_kritis_models import (
 )
 from app.policy_models import Violation
 from app.policy_service import evaluate_policies_for_ai_system
+from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
@@ -109,6 +111,12 @@ from app.security import (
     delete_evidence_allowed_for_api_key,
     get_api_key_and_tenant,
     get_auth_context,
+    require_advisor_api_access,
+)
+from app.services.advisor_portfolio import (
+    advisor_portfolio_to_csv,
+    advisor_portfolio_to_json_bytes,
+    build_advisor_portfolio,
 )
 from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_governance_incidents import (
@@ -300,6 +308,12 @@ def get_evidence_file_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> EvidenceFileRepository:
     return EvidenceFileRepository(session)
+
+
+def get_advisor_tenant_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> AdvisorTenantRepository:
+    return AdvisorTenantRepository(session)
 
 
 def require_evidence_delete_capability(
@@ -1713,6 +1727,96 @@ def get_tenant_setup_status(
     if tenant_id != auth_context.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
     return compute_tenant_setup_status(session, tenant_id)
+
+
+@app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/portfolio",
+    response_model=AdvisorPortfolioResponse,
+    tags=["advisors"],
+)
+def get_advisor_portfolio(
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+) -> AdvisorPortfolioResponse:
+    """Berater-Portfolio: Kern-KPIs je zugeordnetem Mandant (keine Cross-Tenant-SQL)."""
+    return build_advisor_portfolio(
+        session,
+        advisor_id,
+        advisor_repo,
+        ai_repo,
+        cls_repo,
+        gap_repo,
+        nis2_repo,
+        policy_repo,
+        violation_repo,
+        audit_repo,
+        action_repo,
+    )
+
+
+@app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/portfolio-export",
+    tags=["advisors"],
+)
+def export_advisor_portfolio(
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    export_format: Annotated[Literal["json", "csv"], Query(alias="format")] = "json",
+) -> Response:
+    """Portfolio als JSON- oder CSV-Datei (Partnermeeting, interne Steuerung)."""
+    portfolio = build_advisor_portfolio(
+        session,
+        advisor_id,
+        advisor_repo,
+        ai_repo,
+        cls_repo,
+        gap_repo,
+        nis2_repo,
+        policy_repo,
+        violation_repo,
+        audit_repo,
+        action_repo,
+    )
+    day = portfolio.generated_at_utc.strftime("%Y-%m-%d")
+    if export_format == "csv":
+        body = advisor_portfolio_to_csv(portfolio)
+        fname = f"advisor-portfolio-{day}.csv"
+        return Response(
+            content=body.encode("utf-8"),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": _evidence_content_disposition(fname)},
+        )
+    raw = advisor_portfolio_to_json_bytes(portfolio)
+    fname = f"advisor-portfolio-{day}.json"
+    return Response(
+        content=raw,
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": _evidence_content_disposition(fname)},
+    )
 
 
 @app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)
