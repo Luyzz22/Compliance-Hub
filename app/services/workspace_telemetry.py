@@ -38,6 +38,7 @@ _EXTRA_ALLOWED_KEYS = frozenset(
         "job_id",
         "report_id",
         "requirement_id",
+        "route_name",
         "surface",
         "template_key",
     }

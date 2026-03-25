@@ -136,7 +136,7 @@ def test_production_tenant_meta_logs_session_started_deduped() -> None:
         s2.close()
 
 
-def test_demo_feature_used_404_when_not_demo() -> None:
+def test_workspace_feature_used_ok_for_non_demo_tenant() -> None:
     tid = f"non-demo-{uuid.uuid4().hex[:12]}"
     s = SessionLocal()
     try:
@@ -154,7 +154,28 @@ def test_demo_feature_used_404_when_not_demo() -> None:
 
     r = client.get(
         "/api/v1/workspace/demo-feature-used",
-        params={"feature_key": "wizard"},
+        params={
+            "feature_key": "playbook_overview",
+            "route_name": "/tenant/ai-governance-playbook",
+            "framework_key": "EU_AI_ACT",
+        },
         headers=_headers(tid),
     )
-    assert r.status_code == 404
+    assert r.status_code == 200, r.text
+    assert r.json() == {"ok": True}
+
+    s2 = SessionLocal()
+    try:
+        stmt = select(UsageEventTable.payload_json).where(
+            UsageEventTable.tenant_id == tid,
+            UsageEventTable.event_type == usage_event_logger.DEMO_FEATURE_USED,
+        )
+        rows = s2.execute(stmt).scalars().all()
+        assert len(rows) >= 1
+        payload = json.loads(rows[-1])
+        assert payload.get("feature_name") == "playbook_overview"
+        assert payload.get("route_name") == "/tenant/ai-governance-playbook"
+        assert payload.get("framework_key") == "EU_AI_ACT"
+        assert payload.get("workspace_mode") == "production"
+    finally:
+        s2.close()

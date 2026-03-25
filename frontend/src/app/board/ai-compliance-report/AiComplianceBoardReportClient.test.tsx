@@ -1,14 +1,31 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { TenantWorkspaceMetaDto } from "@/lib/api";
+import { resetWorkspaceTelemetryDebounceForTests } from "@/lib/workspaceTelemetry";
+
+function tenantMeta(over: Partial<TenantWorkspaceMetaDto> = {}): TenantWorkspaceMetaDto {
+  return {
+    tenant_id: "t1",
+    display_name: "X",
+    is_demo: false,
+    demo_playground: false,
+    mutation_blocked: false,
+    workspace_mode: "production",
+    mode_label: "",
+    mode_hint: "",
+    demo_mode_feature_enabled: false,
+    ...over,
+  };
+}
 
 const mocks = vi.hoisted(() => ({
   fetchList: vi.fn(),
   fetchDetail: vi.fn(),
   createReport: vi.fn(),
   fetchReadiness: vi.fn(),
-  logDemoFeatureUsed: vi.fn().mockResolvedValue(undefined),
   useWorkspaceMode: vi.fn(() => ({
-    meta: null,
+    meta: tenantMeta(),
     loading: false,
     error: null,
     mutationBlocked: false,
@@ -20,6 +37,8 @@ const mocks = vi.hoisted(() => ({
     modeHint: "",
     mutationsBlocked: false,
     isDemo: false,
+    isProduction: true,
+    isPlayground: false,
     isPlaygroundWritable: false,
     docsUrl: "",
   })),
@@ -33,7 +52,6 @@ vi.mock("@/lib/api", async () => {
     fetchAiComplianceBoardReportDetail: mocks.fetchDetail,
     createAiComplianceBoardReport: mocks.createReport,
     fetchTenantReadinessScore: mocks.fetchReadiness,
-    logDemoFeatureUsed: mocks.logDemoFeatureUsed,
   };
 });
 
@@ -53,11 +71,20 @@ vi.mock("@/lib/config", async (importOriginal) => {
 
 import { AiComplianceBoardReportClient } from "./AiComplianceBoardReportClient";
 
+beforeEach(() => {
+  resetWorkspaceTelemetryDebounceForTests();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 })),
+  );
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
   mocks.useWorkspaceMode.mockImplementation(() => ({
-    meta: null,
+    meta: tenantMeta(),
     loading: false,
     error: null,
     mutationBlocked: false,
@@ -69,6 +96,8 @@ afterEach(() => {
     modeHint: "",
     mutationsBlocked: false,
     isDemo: false,
+    isProduction: true,
+    isPlayground: false,
     isPlaygroundWritable: false,
     docsUrl: "",
   }));
@@ -150,11 +179,11 @@ describe("AiComplianceBoardReportClient", () => {
 
   it("zeigt Demo-read-only-Hinweis und deaktiviert den Report-CTA bei mutationsBlocked", async () => {
     mocks.useWorkspaceMode.mockReturnValue({
-      meta: null,
+      meta: tenantMeta({ workspace_mode: "demo", mutation_blocked: true, is_demo: true }),
       loading: false,
       error: null,
-      mutationBlocked: false,
-      isDemoTenant: false,
+      mutationBlocked: true,
+      isDemoTenant: true,
       isPlaygroundTenant: false,
       refetch: vi.fn(),
       workspaceMode: "demo",
@@ -162,6 +191,8 @@ describe("AiComplianceBoardReportClient", () => {
       modeHint: "Hint",
       mutationsBlocked: true,
       isDemo: true,
+      isProduction: false,
+      isPlayground: false,
       isPlaygroundWritable: false,
       docsUrl: "",
     });
@@ -212,5 +243,26 @@ describe("AiComplianceBoardReportClient", () => {
         expect.objectContaining({ audience_type: "board", language: "de" }),
       );
     });
+  });
+
+  it("sendet genau ein board_reports_overview-Telemetrie-Event beim Mount", async () => {
+    const fetchSpy = vi.mocked(globalThis.fetch);
+    mocks.fetchReadiness.mockResolvedValue(readinessPayload);
+    mocks.fetchList.mockResolvedValue([]);
+
+    render(<AiComplianceBoardReportClient tenantId="t1" />);
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+    const telemetryCalls = fetchSpy.mock.calls.filter((c) => c[0] === "/api/workspace/feature-used");
+    expect(telemetryCalls.length).toBe(1);
+    const init = telemetryCalls[0][1] as RequestInit;
+    const body = JSON.parse(init.body as string);
+    expect(body).toEqual({
+      tenant_id: "t1",
+      feature_name: "board_reports_overview",
+      workspace_mode: "production",
+      route_name: "/board/ai-compliance-report",
+    });
+    expect(body).not.toHaveProperty("display_name");
   });
 });

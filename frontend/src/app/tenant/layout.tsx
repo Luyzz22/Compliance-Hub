@@ -1,7 +1,7 @@
 import React from "react";
 
 import { DemoWorkspaceBadge } from "@/components/demo/DemoWorkspaceBadge";
-import { WorkspaceShellModeBanner } from "@/components/demo/WorkspaceShellModeBanner";
+import { TenantWorkspaceShell } from "@/components/workspace/TenantWorkspaceShell";
 import { TenantNav } from "@/components/sbs/TenantNav";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
@@ -33,8 +33,7 @@ export default async function TenantLayout({
         <TenantNav />
       </aside>
       <div className="min-w-0 flex-1 bg-slate-50/90 px-4 py-8 md:px-6 md:py-10">
-        <WorkspaceShellModeBanner tenantId={workspaceTenantId} />
-        {children}
+        <TenantWorkspaceShell tenantId={workspaceTenantId}>{children}</TenantWorkspaceShell>
       </div>
     </div>
   );

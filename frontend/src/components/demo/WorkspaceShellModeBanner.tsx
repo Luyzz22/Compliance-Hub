@@ -4,16 +4,24 @@ import React from "react";
 
 import { useWorkspaceMode } from "@/hooks/useWorkspaceMode";
 
-type Props = {
-  tenantId: string;
+export type WorkspaceShellModeBannerViewProps = {
+  loading: boolean;
+  workspaceMode: "production" | "demo" | "playground";
+  modeLabel: string;
+  modeHint: string;
+  docsUrl: string;
 };
 
 /**
- * Dezenter Hinweis in der Mandanten-Shell: Demo / Playground vs. Produktiv.
+ * Präsentation: Demo / Playground vs. Produktiv (ohne Hook, für einmaliges useWorkspaceMode in der Shell).
  */
-export function WorkspaceShellModeBanner({ tenantId }: Props) {
-  const { loading, workspaceMode, modeLabel, modeHint, docsUrl } = useWorkspaceMode(tenantId);
-
+export function WorkspaceShellModeBannerView({
+  loading,
+  workspaceMode,
+  modeLabel,
+  modeHint,
+  docsUrl,
+}: WorkspaceShellModeBannerViewProps) {
   if (loading || workspaceMode === "production") {
     return null;
   }
@@ -40,5 +48,25 @@ export function WorkspaceShellModeBanner({ tenantId }: Props) {
         </>
       ) : null}
     </div>
+  );
+}
+
+type Props = {
+  tenantId: string;
+};
+
+/**
+ * Dezenter Hinweis in der Mandanten-Shell: Demo / Playground vs. Produktiv.
+ */
+export function WorkspaceShellModeBanner({ tenantId }: Props) {
+  const mode = useWorkspaceMode(tenantId);
+  return (
+    <WorkspaceShellModeBannerView
+      loading={mode.loading}
+      workspaceMode={mode.workspaceMode}
+      modeLabel={mode.modeLabel}
+      modeHint={mode.modeHint}
+      docsUrl={mode.docsUrl}
+    />
   );
 }

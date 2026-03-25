@@ -20,8 +20,8 @@ import {
 } from "@/lib/boardLayout";
 import { BoardReadinessCard } from "@/components/board/BoardReadinessCard";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { GovernanceViewFeatureTelemetry } from "@/components/workspace/GovernanceViewFeatureTelemetry";
 import { useWorkspaceMode } from "@/hooks/useWorkspaceMode";
-import { logDemoFeatureUsed } from "@/lib/api";
 
 const ALL_FRAMEWORKS: { key: string; label: string }[] = [
   { key: "eu_ai_act", label: "EU AI Act" },
@@ -55,7 +55,7 @@ const mdComponents = {
 };
 
 export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }) {
-  const { mutationsBlocked, isDemo } = useWorkspaceMode(tenantId);
+  const { mutationsBlocked } = useWorkspaceMode(tenantId);
   const [history, setHistory] = useState<AiComplianceBoardReportListItemDto[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AiComplianceBoardReportDetailDto | null>(null);
@@ -85,11 +85,6 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
   useEffect(() => {
     void refreshHistory();
   }, [refreshHistory]);
-
-  useEffect(() => {
-    if (!isDemo) return;
-    void logDemoFeatureUsed(tenantId, "board_ai_compliance_report").catch(() => {});
-  }, [isDemo, tenantId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -171,6 +166,11 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
 
   return (
     <div className={BOARD_PAGE_ROOT_CLASS}>
+      <GovernanceViewFeatureTelemetry
+        tenantId={tenantId}
+        featureName="board_reports_overview"
+        routeName="/board/ai-compliance-report"
+      />
       <EnterprisePageHeader
         eyebrow="Board"
         title="AI Compliance Board-Report"

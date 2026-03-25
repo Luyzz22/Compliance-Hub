@@ -8,9 +8,9 @@ import { useWorkspaceMode } from "@/hooks/useWorkspaceMode";
  * Kompaktes Badge in der Mandanten-Shell: Label aus Workspace-Meta (Server-Vertrag).
  */
 export function DemoWorkspaceBadge({ tenantId }: { tenantId: string }) {
-  const { loading, isDemo, modeLabel, modeHint } = useWorkspaceMode(tenantId);
+  const { loading, isDemoTenant, modeLabel, modeHint } = useWorkspaceMode(tenantId);
 
-  if (loading || !isDemo) {
+  if (loading || !isDemoTenant) {
     return null;
   }
 
