@@ -51,10 +51,10 @@ export async function fetchTenantWorkspaceMeta(tenantId: string): Promise<Tenant
   return tenantApiFetch("/api/v1/workspace/tenant-meta", tenantId) as Promise<TenantWorkspaceMetaDto>;
 }
 
-/** Demo-Telemetrie (GET, kein Schreibkonflikt mit read-only Demo-Mandanten). */
+/** Workspace-Feature-Telemetrie (GET → workspace_feature_used; Server setzt workspace_mode/actor_type). */
 export async function logDemoFeatureUsed(tenantId: string, featureKey: string): Promise<void> {
   const k = encodeURIComponent(featureKey);
-  await tenantApiFetch(`/api/v1/workspace/demo-feature-used?feature_key=${k}`, tenantId);
+  await tenantApiFetch(`/api/v1/workspace/feature-used?feature_key=${k}`, tenantId);
 }
 
 async function apiFetch(path: string, init?: RequestInit) {

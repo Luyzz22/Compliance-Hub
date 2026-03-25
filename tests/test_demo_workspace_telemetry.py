@@ -1,4 +1,4 @@
-"""Demo-Workspace-Telemetrie: tenant-meta (demo_session_started) und demo-feature-used (GET)."""
+"""Workspace-Telemetrie: workspace_session_started und workspace_feature_used (GET)."""
 
 from __future__ import annotations
 
@@ -70,13 +70,15 @@ def test_tenant_meta_logs_demo_session_started_deduped(demo_tenant_id: str) -> N
         )
         payload = json.loads(s.execute(stmt).scalars().first() or "{}")
         assert payload.get("workspace_mode") == "demo"
+        assert payload.get("actor_type") == "tenant"
+        assert payload.get("result") == "success"
     finally:
         s.close()
 
 
-def test_demo_feature_used_inserts_event(demo_tenant_id: str) -> None:
+def test_workspace_feature_used_inserts_event(demo_tenant_id: str) -> None:
     r = client.get(
-        "/api/v1/workspace/demo-feature-used",
+        "/api/v1/workspace/feature-used",
         params={"feature_key": "board_ai_compliance_report"},
         headers=_headers(demo_tenant_id),
     )
@@ -92,8 +94,10 @@ def test_demo_feature_used_inserts_event(demo_tenant_id: str) -> None:
         rows = s.execute(stmt).scalars().all()
         assert len(rows) >= 1
         payload = json.loads(rows[-1])
-        assert payload["feature_key"] == "board_ai_compliance_report"
+        assert payload["feature_name"] == "board_ai_compliance_report"
         assert payload.get("workspace_mode") == "demo"
+        assert payload.get("actor_type") == "tenant"
+        assert payload.get("result") == "success"
     finally:
         s.close()
 

@@ -2,6 +2,8 @@
 
 ComplianceHub unterstützt **geführte Demos** (Sales, Founder, Berater) und die Vorbereitung eines **read-only Playgrounds** für Website-Leads.
 
+**Workspace-Telemetrie (NIS2/ISO):** siehe [workspace-telemetry-compliance.md](./workspace-telemetry-compliance.md) (Event-Schema, SIEM-Beispiele, Audit-Lücken).
+
 ## Aktivierung
 
 ### Backend
@@ -91,28 +93,25 @@ Kontextzeile: **„Demo-Hinweis · Schritt X von 7“** erscheint auf den passen
 
 Frontend: Hook **`useWorkspaceMode`** kapselt Meta und ersetzt verstreute Demo-Flags.
 
-Bei **`is_demo=true`** wird (sofern `COMPLIANCEHUB_USAGE_TRACKING` nicht deaktiviert ist) höchstens einmal pro 24h **`demo_session_started`** geschrieben (Dedupe), Payload nur: `{"workspace_mode": "demo"|"playground"}`.
+Bei **`is_demo=true`** wird (sofern `COMPLIANCEHUB_USAGE_TRACKING` nicht deaktiviert ist) höchstens einmal pro 24h **`workspace_session_started`** geschrieben (Dedupe), Payload u. a. `workspace_mode`, `actor_type`, `result` (siehe Compliance-Doc).
 
 ### Blockierte Schreibversuche (Usage, kein Audit-Log)
 
-Bei **403** durch Demo-Schreibschutz wird **`demo_mutation_blocked`** protokolliert mit:
+Bei **403** durch Demo-Schreibschutz wird **`workspace_mutation_blocked`** protokolliert mit u. a. `method`, `route`, `workspace_mode`, `actor_type`, `result=forbidden_demo_readonly`.
 
-- `http_method`, `route` (OpenAPI-Pfad-Template, z. B. `/api/v1/ai-systems/{aisystem_id}`),
-- `workspace_mode` (`production` | `demo` | `playground` — Klassifikation des Mandanten, keine PII).
+### Feature-Telemetrie (ohne PII)
 
-### Demo-Feature-Telemetrie (ohne PII)
-
-`GET /api/v1/workspace/demo-feature-used?feature_key=<snake_case>` (nur **`is_demo=true`**): **`demo_feature_used`** mit `feature_key` und `workspace_mode`. **GET** vermeidet Konflikt mit read-only.
+`GET /api/v1/workspace/feature-used?feature_key=<snake_case>` (kanonisch; Alias **`/workspace/demo-feature-used`**) — nur **`is_demo=true`**: **`workspace_feature_used`** mit `feature_name`, `workspace_mode`, `actor_type`, `result`. **GET** vermeidet Konflikt mit read-only.
 
 ### Interpretation für GTM / Compliance-Monitoring
 
 | Event | Nutzen |
 |-------|--------|
-| `demo_session_started` | Reichweite Demo-/Pilot-Mandanten (Dedupe 24h) |
-| `demo_feature_used` | Welche Story-Module in Demos geöffnet werden |
-| `demo_mutation_blocked` | Verhinderte Schreibversuche (Sicherheits-Story, keine Inhalte/PII) |
+| `workspace_session_started` | Reichweite Demo-/Pilot-Mandanten (Dedupe 24h) |
+| `workspace_feature_used` | Welche Story-Module in Demos geöffnet werden |
+| `workspace_mutation_blocked` | Verhinderte Schreibversuche (Sicherheits-Story, keine Inhalte/PII) |
 
-KPI-Idee: Verhältnis `demo_mutation_blocked` zu Demo-Sessions zeigt, ob Nutzer verstehen, dass der Mandant read-only ist.
+KPI-Idee: Verhältnis `workspace_mutation_blocked` zu `workspace_session_started` zeigt, ob Nutzer read-only verstehen.
 
 ## Berater & Sales
 

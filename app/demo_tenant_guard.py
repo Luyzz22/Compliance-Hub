@@ -9,7 +9,7 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.repositories.tenant_registry import TenantRegistryRepository
-from app.services import usage_event_logger
+from app.services import workspace_telemetry
 
 DEMO_TENANT_READONLY_CODE = "demo_tenant_readonly"
 
@@ -133,15 +133,13 @@ def demo_readonly_http_exception() -> HTTPException:
 
 
 def _log_demo_mutation_blocked(session: Session, tenant_id: str, request: Request) -> None:
-    usage_event_logger.log_usage_event(
+    workspace_telemetry.log_workspace_mutation_blocked(
         session,
         tenant_id,
-        usage_event_logger.DEMO_MUTATION_BLOCKED,
-        {
-            "http_method": str(request.method).upper(),
-            "route": route_template_for_request(request),
-            "workspace_mode": workspace_mode_for_telemetry(session, tenant_id),
-        },
+        workspace_mode=workspace_mode_for_telemetry(session, tenant_id),
+        http_method=str(request.method),
+        route=route_template_for_request(request),
+        request_path=request.url.path,
     )
 
 
