@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -719,3 +720,106 @@ class AiComplianceBoardReportDB(Base):
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
     rendered_markdown: Mapped[str] = mapped_column(Text, nullable=False)
     rendered_html: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class AiRuntimeEventTable(Base):
+    """Laufzeit-/Monitoring-Events (SAP AI Core u. a.), mandanten- und systemisoliert."""
+
+    __tablename__ = "ai_runtime_events"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "source_event_id", name="uq_ai_runtime_events_idempotent"),
+        Index(
+            "ix_ai_runtime_events_tenant_system_occurred",
+            "tenant_id",
+            "ai_system_id",
+            "occurred_at",
+        ),
+        Index(
+            "ix_ai_runtime_events_tenant_system_type_occurred",
+            "tenant_id",
+            "ai_system_id",
+            "event_type",
+            "occurred_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_event_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    metric_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    incident_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    delta: Mapped[float | None] = mapped_column(Float, nullable=True)
+    threshold_breached: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    environment: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    model_version: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    extra: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class AiRuntimeIncidentSummaryTable(Base):
+    """Aggregate Incidents pro System und Zeitfenster (Board / OAMI, optional materialisiert)."""
+
+    __tablename__ = "ai_runtime_incident_summaries"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "ai_system_id",
+            "window_start",
+            "window_end",
+            name="uq_ai_runtime_incident_summary_window",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    window_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    incident_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    high_severity_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_incident_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    computed_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class TenantOperationalMonitoringSnapshotTable(Base):
+    """Cache Tenant-OAMI für schnelle APIs (optional, durch Job oder on-read aktualisierbar)."""
+
+    __tablename__ = "tenant_operational_monitoring_snapshots"
+    __table_args__ = (UniqueConstraint("tenant_id", "window_days", name="uq_tenant_oami_window"),)
+
+    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    window_days: Mapped[int] = mapped_column(Integer, primary_key=True)
+    index_value: Mapped[int] = mapped_column(Integer, nullable=False)
+    level: Mapped[str] = mapped_column(String(16), nullable=False)
+    breakdown_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    computed_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
