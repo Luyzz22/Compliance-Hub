@@ -1765,10 +1765,7 @@ def get_tenant_setup_status(
     if tenant_id != auth_context.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
     status_obj = compute_tenant_setup_status(session, tenant_id)
-    if (
-        status_obj.total_steps > 0
-        and status_obj.completed_steps >= status_obj.total_steps
-    ):
+    if status_obj.total_steps > 0 and status_obj.completed_steps >= status_obj.total_steps:
         usage_event_logger.log_usage_event(
             session,
             tenant_id,
