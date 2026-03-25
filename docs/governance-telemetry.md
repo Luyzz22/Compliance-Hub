@@ -281,6 +281,7 @@ Optional JOIN/Anreicherung in DWH: `ai_system_id` gegen Register-Tabelle filtern
 | Client-Helper | `frontend/src/lib/workspaceTelemetry.ts` |
 | View-Hook / Shell | `frontend/src/hooks/useWorkspaceMode.ts`, `TenantWorkspaceShell` |
 | Governance Activity Index (Nutzungs-Indikator) | [`docs/governance-activity-index.md`](./governance-activity-index.md) |
+| Governance Maturity Lens (Readiness + GAI + Roadmap OAMI) | [`docs/governance-maturity-lens.md`](./governance-maturity-lens.md) |
 
 ---
 

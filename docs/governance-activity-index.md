@@ -280,6 +280,7 @@ WHERE tenant_id = :tid
 | Usage Events Repo | `app/repositories/usage_events.py` |
 | Readiness-Modelle | `app/readiness_score_models.py` |
 | Readiness-Service / Explain | `app/services/readiness_score_service.py`, `readiness_score_explain.py` |
+| Governance Maturity Lens (Readiness + GAI + OAMI-Roadmap) | [`docs/governance-maturity-lens.md`](./governance-maturity-lens.md) |
 
 ---
 
