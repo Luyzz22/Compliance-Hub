@@ -33,6 +33,7 @@ from app.repositories.classifications import ClassificationRepository
 from app.repositories.evidence_files import EvidenceFileRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
+from app.services.demo_tenant_seed_extras import apply_demo_seed_extensions
 from app.services.evidence_storage import EvidenceStorageBackend, get_evidence_storage
 
 
@@ -523,6 +524,13 @@ def seed_demo_tenant(
         or 0,
     )
 
+    extra = apply_demo_seed_extensions(
+        session,
+        tenant_id,
+        primary_ai_system_id=primary,
+        secondary_ai_system_id=secondary,
+    )
+
     return DemoSeedResponse(
         template_key=template_key,
         tenant_id=tenant_id,
@@ -533,4 +541,7 @@ def seed_demo_tenant(
         policy_rows_count=n_policies,
         classifications_count=n_class,
         advisor_linked=advisor_linked,
+        board_reports_count=int(extra.get("board_reports_count", 0)),
+        ai_kpi_value_rows_count=int(extra.get("ai_kpi_value_rows_count", 0)),
+        cross_reg_control_rows_count=int(extra.get("cross_reg_control_rows_count", 0)),
     )

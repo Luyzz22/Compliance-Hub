@@ -29,6 +29,8 @@ class TenantDB(Base):
     country: Mapped[str] = mapped_column(String(64), nullable=False, default="DE")
     nis2_scope: Mapped[str] = mapped_column(String(64), nullable=False, default="in_scope")
     ai_act_scope: Mapped[str] = mapped_column(String(64), nullable=False, default="in_scope")
+    is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    demo_playground: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,

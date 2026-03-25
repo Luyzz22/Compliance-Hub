@@ -25,6 +25,8 @@ class TenantRegistryRepository:
         country: str,
         nis2_scope: str,
         ai_act_scope: str,
+        is_demo: bool = False,
+        demo_playground: bool = False,
     ) -> TenantDB:
         row = TenantDB(
             id=tenant_id,
@@ -33,6 +35,8 @@ class TenantRegistryRepository:
             country=country,
             nis2_scope=nis2_scope,
             ai_act_scope=ai_act_scope,
+            is_demo=is_demo,
+            demo_playground=demo_playground,
             created_at_utc=datetime.now(UTC),
         )
         self._session.add(row)

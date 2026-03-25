@@ -17,7 +17,7 @@ from app.repositories.tenant_api_keys import TenantApiKeyRepository
 from app.repositories.tenant_feature_overrides import TenantFeatureOverrideRepository
 from app.repositories.tenant_registry import TenantRegistryRepository
 
-_PILOT_DEFAULT_FLAGS: dict[str, bool] = {
+PILOT_TENANT_FEATURE_DEFAULTS: dict[str, bool] = {
     FeatureFlag.advisor_workspace.value: False,
     FeatureFlag.advisor_client_snapshot.value: True,
     FeatureFlag.readiness_score.value: True,
@@ -68,7 +68,7 @@ def provision_tenant(session: Session, body: ProvisionTenantRequest) -> Provisio
         ai_act_scope=body.ai_act_scope.strip() or "in_scope",
     )
 
-    flags_repo.set_many(tenant_id, dict(_PILOT_DEFAULT_FLAGS))
+    flags_repo.set_many(tenant_id, dict(PILOT_TENANT_FEATURE_DEFAULTS))
 
     key_row, plain = keys_repo.create_key(tenant_id=tenant_id, name=_INITIAL_KEY_NAME)
 

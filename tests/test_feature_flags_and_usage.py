@@ -36,6 +36,7 @@ def advisor_allowlist(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_feature_flag_defaults_true() -> None:
     assert is_feature_enabled(FeatureFlag.advisor_workspace) is True
     assert is_feature_enabled(FeatureFlag.demo_seeding) is True
+    assert is_feature_enabled(FeatureFlag.demo_mode) is False
     assert is_feature_enabled(FeatureFlag.ai_governance_playbook) is True
     assert is_feature_enabled(FeatureFlag.cross_regulation_dashboard) is True
     assert is_feature_enabled(FeatureFlag.cross_regulation_llm_assist) is True
