@@ -11,7 +11,12 @@ export type UseWorkspaceModeResult = ReturnType<typeof useWorkspaceTenantMeta> &
   modeHint: string;
   /** Alias zu mutation_blocked für CTAs. */
   mutationsBlocked: boolean;
+  /** API-Feld is_demo (Pilot/Seed), unabhängig von workspace_mode. */
+  isDemoTenant: boolean;
+  /** workspace_mode === "demo". */
   isDemo: boolean;
+  isProduction: boolean;
+  isPlayground: boolean;
   /** Nur echtes Playground ohne Schreibblock. */
   isPlaygroundWritable: boolean;
   /** Interne Doku (NEXT_PUBLIC_WORKSPACE_MODE_DOCS_URL), sonst leer. */
@@ -36,7 +41,10 @@ export function useWorkspaceMode(tenantId: string | null | undefined): UseWorksp
       modeLabel: base.meta?.mode_label ?? "",
       modeHint: base.meta?.mode_hint ?? "",
       mutationsBlocked: base.mutationBlocked,
-      isDemo: base.isDemoTenant,
+      isDemoTenant: base.isDemoTenant,
+      isDemo: wm === "demo",
+      isProduction: wm === "production",
+      isPlayground: wm === "playground",
       isPlaygroundWritable: base.isPlaygroundTenant && !base.mutationBlocked,
       docsUrl,
     };

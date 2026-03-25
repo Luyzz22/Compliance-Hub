@@ -2,6 +2,7 @@ import Link from "next/link";
 import React from "react";
 
 import { EvidenceAttachmentsSection } from "@/components/evidence/EvidenceAttachmentsSection";
+import { GovernanceViewFeatureTelemetry } from "@/components/workspace/GovernanceViewFeatureTelemetry";
 import { AiActDocumentationClient } from "@/components/tenant/AiActDocumentationClient";
 import { AiSystemKpiPanel } from "@/components/tenant/AiSystemKpiPanel";
 import { AiSystemSectionNav } from "@/components/tenant/AiSystemSectionNav";
@@ -95,6 +96,12 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
 
   return (
     <div className={CH_SHELL}>
+      <GovernanceViewFeatureTelemetry
+        tenantId={workspaceTenantId}
+        featureName="ai_system_detail"
+        routeName={`/tenant/ai-systems/${id}`}
+        aiSystemId={id}
+      />
       <EnterprisePageHeader
         eyebrow="Tenant · KI-System"
         title={system.name}

@@ -17,7 +17,7 @@ describe("DemoWorkspaceBadge", () => {
   it("rendert nichts wenn nicht Demo-Mandant", () => {
     mockUse.mockReturnValue({
       loading: false,
-      isDemo: false,
+      isDemoTenant: false,
       modeLabel: "",
       modeHint: "",
     });
@@ -28,7 +28,7 @@ describe("DemoWorkspaceBadge", () => {
   it("zeigt mode_label aus Workspace-Meta", () => {
     mockUse.mockReturnValue({
       loading: false,
-      isDemo: true,
+      isDemoTenant: true,
       modeLabel: "Demo (schreibgeschützt)",
       modeHint: "Kurzer Hinweis",
     });
@@ -39,7 +39,7 @@ describe("DemoWorkspaceBadge", () => {
   it("zeigt Playground-Label", () => {
     mockUse.mockReturnValue({
       loading: false,
-      isDemo: true,
+      isDemoTenant: true,
       modeLabel: "Playground",
       modeHint: "Sandbox",
     });

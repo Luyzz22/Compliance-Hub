@@ -38,7 +38,10 @@ describe("useWorkspaceMode", () => {
     expect(result.current.workspaceMode).toBe("demo");
     expect(result.current.mutationsBlocked).toBe(true);
     expect(result.current.modeLabel).toBe("Demo RO");
+    expect(result.current.isDemoTenant).toBe(true);
     expect(result.current.isDemo).toBe(true);
+    expect(result.current.isProduction).toBe(false);
+    expect(result.current.isPlayground).toBe(false);
     expect(result.current.isPlaygroundWritable).toBe(false);
   });
 
@@ -59,5 +62,30 @@ describe("useWorkspaceMode", () => {
     const { result } = renderHook(() => useWorkspaceMode("t1"));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.docsUrl).toBe("https://example.com/docs");
+    expect(result.current.isProduction).toBe(true);
+    expect(result.current.isDemo).toBe(false);
+    expect(result.current.isPlayground).toBe(false);
+  });
+
+  it("setzt isPlayground im Playground-Workspace", async () => {
+    vi.mocked(fetchTenantWorkspaceMeta).mockResolvedValue({
+      tenant_id: "t1",
+      display_name: "X",
+      is_demo: true,
+      demo_playground: true,
+      mutation_blocked: false,
+      workspace_mode: "playground",
+      mode_label: "Playground",
+      mode_hint: "Sandbox",
+      demo_mode_feature_enabled: true,
+    });
+
+    const { result } = renderHook(() => useWorkspaceMode("t1"));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.isPlayground).toBe(true);
+    expect(result.current.isProduction).toBe(false);
+    expect(result.current.isDemo).toBe(false);
+    expect(result.current.isPlaygroundWritable).toBe(true);
   });
 });

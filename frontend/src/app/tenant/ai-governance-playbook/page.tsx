@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import React from "react";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { GovernanceViewFeatureTelemetry } from "@/components/workspace/GovernanceViewFeatureTelemetry";
 import {
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
@@ -43,6 +44,11 @@ export default async function AiGovernancePlaybookPage() {
 
   return (
     <div className={CH_SHELL}>
+      <GovernanceViewFeatureTelemetry
+        tenantId={tenantId}
+        featureName="playbook_overview"
+        routeName="/tenant/ai-governance-playbook"
+      />
       <EnterprisePageHeader
         eyebrow="Tenant"
         title="AI Governance Playbook"

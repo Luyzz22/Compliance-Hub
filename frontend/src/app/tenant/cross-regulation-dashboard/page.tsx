@@ -4,6 +4,7 @@ import React from "react";
 
 import { CrossRegulationDashboardClient } from "@/app/tenant/cross-regulation-dashboard/CrossRegulationDashboardClient";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { GovernanceViewFeatureTelemetry } from "@/components/workspace/GovernanceViewFeatureTelemetry";
 import {
   CH_BTN_SECONDARY,
   CH_CARD,
@@ -59,6 +60,11 @@ export default async function CrossRegulationDashboardPage() {
 
   return (
     <div className={CH_SHELL}>
+      <GovernanceViewFeatureTelemetry
+        tenantId={tenantId}
+        featureName="cross_regulation_summary"
+        routeName="/tenant/cross-regulation-dashboard"
+      />
       <EnterprisePageHeader
         eyebrow="Tenant"
         title="Cross-Regulation Dashboard"

@@ -143,7 +143,7 @@ export function AiGovernanceSetupWizardClient({
   tenantId,
   initialSetup,
 }: AiGovernanceSetupWizardClientProps) {
-  const { mutationsBlocked, isDemo } = useWorkspaceMode(tenantId);
+  const { mutationsBlocked, isDemoTenant } = useWorkspaceMode(tenantId);
 
   const [setup, setSetup] = useState<TenantAiGovernanceSetupDto>(
     () => initialSetup ?? emptySetup(tenantId),
@@ -188,9 +188,9 @@ export function AiGovernanceSetupWizardClient({
   const [lastReportId, setLastReportId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isDemo) return;
+    if (!isDemoTenant) return;
     void logDemoFeatureUsed(tenantId, "ai_governance_setup_wizard").catch(() => {});
-  }, [isDemo, tenantId]);
+  }, [isDemoTenant, tenantId]);
 
   useEffect(() => {
     if (initialSetup) return;

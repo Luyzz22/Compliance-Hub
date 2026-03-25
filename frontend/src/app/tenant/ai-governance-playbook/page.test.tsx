@@ -15,6 +15,10 @@ vi.mock("@/lib/config", async () => {
   };
 });
 
+vi.mock("@/components/workspace/GovernanceViewFeatureTelemetry", () => ({
+  GovernanceViewFeatureTelemetry: () => null,
+}));
+
 import AiGovernancePlaybookPage from "./page";
 
 describe("AiGovernancePlaybookPage", () => {

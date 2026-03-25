@@ -3055,14 +3055,24 @@ def log_workspace_feature_used(
     feature_key: Annotated[str, Query(min_length=1, max_length=64, pattern=r"^[a-z0-9_]+$")],
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
+    ai_system_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    framework_key: Annotated[str | None, Query(min_length=1, max_length=64)] = None,
+    route_name: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
 ) -> dict[str, bool]:
-    """workspace_feature_used (keine PII). GET; nur is_demo-Mandanten (read-only-kompatibel)."""
+    """workspace_feature_used (keine PII). GET; alle registrierten Mandanten (read-only-kompatibel)."""
     row = TenantRegistryRepository(session).get_by_id(auth_context.tenant_id)
-    if row is None or not row.is_demo:
+    if row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Demo telemetry only for registered demo tenants",
+            detail="Tenant not registered",
         )
+    extra: dict[str, str] = {}
+    if ai_system_id is not None:
+        extra["ai_system_id"] = ai_system_id
+    if framework_key is not None:
+        extra["framework_key"] = framework_key
+    if route_name is not None:
+        extra["route_name"] = route_name
     workspace_telemetry.log_workspace_feature_used(
         session,
         auth_context.tenant_id,
@@ -3071,6 +3081,7 @@ def log_workspace_feature_used(
         request_path=request.url.path,
         route=workspace_telemetry.route_template_from_request(request),
         method=request.method,
+        extra=extra or None,
     )
     return {"ok": True}
 

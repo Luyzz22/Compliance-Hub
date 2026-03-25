@@ -30,6 +30,8 @@ vi.mock("@/hooks/useWorkspaceMode", () => ({
     modeHint: "",
     mutationsBlocked: false,
     isDemo: false,
+    isProduction: true,
+    isPlayground: false,
     isPlaygroundWritable: false,
     docsUrl: "",
   }),
