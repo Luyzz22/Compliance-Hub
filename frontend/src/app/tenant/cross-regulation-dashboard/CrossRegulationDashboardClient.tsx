@@ -3,6 +3,7 @@
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
 
+import { AiKpiPortfolioStrip } from "@/components/ai/AiKpiPortfolioStrip";
 import { CrossRegulationLlmGapPanel } from "@/app/tenant/cross-regulation-dashboard/CrossRegulationLlmGapPanel";
 import {
   fetchRequirementControlsDetail,
@@ -17,6 +18,7 @@ import {
   CH_CARD,
   CH_SECTION_LABEL,
 } from "@/lib/boardLayout";
+import { featureAiKpiKri } from "@/lib/config";
 
 type FrameworkFilter = "all" | string;
 type CoverageFilter = "all" | "gap" | "partial" | "full" | "planned_only";
@@ -92,6 +94,8 @@ export function CrossRegulationDashboardClient({
 
   return (
     <div className="space-y-10">
+      {featureAiKpiKri() ? <AiKpiPortfolioStrip tenantId={tenantId} /> : null}
+
       <section aria-label="Framework-Übersicht" data-testid="cross-reg-framework-cards">
         <p className={CH_SECTION_LABEL}>Framework-Übersicht</p>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">

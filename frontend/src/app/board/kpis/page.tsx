@@ -8,10 +8,12 @@ import {
   fetchBoardAlertsExport,
   getBoardReportDownloadUrl,
   getBoardReportMarkdownDownloadUrl,
+  TENANT_ID,
   type AIComplianceOverview,
   type AIKpiAlert,
   type BoardKpiSummary,
 } from "@/lib/api";
+import { AiKpiPortfolioStrip } from "@/components/ai/AiKpiPortfolioStrip";
 import { BoardToWorkspaceCtas } from "@/components/sbs/BoardToWorkspaceCtas";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
@@ -28,6 +30,7 @@ import {
 import { KpiExplainButton } from "@/components/ai/KpiExplainButton";
 
 import { BoardWhatIfSimulatorClient } from "@/components/board/BoardWhatIfSimulatorClient";
+import { featureAiKpiKri } from "@/lib/config";
 
 import { BoardKpiAdvisorExport } from "./BoardKpiAdvisorExport";
 import { BoardReportAuditSection } from "./BoardReportAuditSection";
@@ -247,6 +250,8 @@ export default async function BoardKpisPage() {
       <BoardToWorkspaceCtas />
 
       <BoardWhatIfSimulatorClient />
+
+      {featureAiKpiKri() ? <AiKpiPortfolioStrip tenantId={TENANT_ID} boardLayout /> : null}
 
       <section
         aria-label="Executive KPIs"

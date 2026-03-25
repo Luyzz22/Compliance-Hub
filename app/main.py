@@ -68,6 +68,12 @@ from app.ai_governance_models import (
     WhatIfScenarioInput,
     WhatIfScenarioResult,
 )
+from app.ai_kpi_models import (
+    AiKpiSummaryResponse,
+    AiSystemKpisListResponse,
+    AiSystemKpiUpsertBody,
+    AiSystemKpiUpsertResponse,
+)
 from app.ai_system_models import (
     AIImportResult,
     AISystem,
@@ -204,6 +210,12 @@ from app.services.ai_governance_suppliers import (
     compute_ai_supplier_risk_by_system,
     compute_ai_supplier_risk_overview,
 )
+from app.services.ai_kpi_seed import ensure_ai_kpi_definitions_seeded
+from app.services.ai_kpi_service import (
+    build_ai_kpi_summary,
+    list_kpis_for_ai_system,
+    upsert_kpi_value,
+)
 from app.services.ai_system_import import import_ai_systems_from_file
 from app.services.board_kpi_export import board_kpi_export_csv, build_board_kpi_export_envelope
 from app.services.board_kpi_export_jobs import get_kpi_job, register_kpi_export_job
@@ -303,6 +315,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Base.metadata.create_all(bind=engine)
     with Session(engine) as seed_session:
         ensure_cross_regulation_catalog_seeded(seed_session)
+        ensure_ai_kpi_definitions_seeded(seed_session)
     yield
     # Shutdown phase
 
@@ -3244,3 +3257,86 @@ def get_ai_compliance_board_report_by_id(
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     return detail
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/ai-systems/{ai_system_id}/kpis",
+    response_model=AiSystemKpisListResponse,
+    tags=["ai-kpis"],
+)
+def get_tenant_ai_system_kpis(
+    tenant_id: str,
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_kpi_kri))],
+) -> AiSystemKpisListResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    ai_repo = AISystemRepository(session)
+    if ai_repo.get_by_id(tenant_id, ai_system_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AISystem not found")
+    return list_kpis_for_ai_system(session, tenant_id, ai_system_id)
+
+
+@app.post(
+    "/api/v1/tenants/{tenant_id}/ai-systems/{ai_system_id}/kpis",
+    response_model=AiSystemKpiUpsertResponse,
+    tags=["ai-kpis"],
+)
+def post_tenant_ai_system_kpi(
+    tenant_id: str,
+    ai_system_id: str,
+    body: AiSystemKpiUpsertBody,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_kpi_kri))],
+) -> AiSystemKpiUpsertResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    ai_repo = AISystemRepository(session)
+    if ai_repo.get_by_id(tenant_id, ai_system_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AISystem not found")
+    try:
+        return upsert_kpi_value(
+            session,
+            tenant_id,
+            ai_system_id,
+            kpi_definition_id=body.kpi_definition_id,
+            period_start=body.period_start,
+            period_end=body.period_end,
+            value=body.value,
+            source=body.source,
+            comment=body.comment,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/ai-kpis/summary",
+    response_model=AiKpiSummaryResponse,
+    tags=["ai-kpis"],
+)
+def get_tenant_ai_kpis_summary(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_kpi_kri))],
+    framework_key: Annotated[
+        str | None,
+        Query(description="Filter: eu_ai_act, iso_42001, …"),
+    ] = None,
+    criticality: Annotated[
+        str | None,
+        Query(description="Kommagetrennt, z. B. high,very_high"),
+    ] = None,
+) -> AiKpiSummaryResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    return build_ai_kpi_summary(
+        session,
+        tenant_id,
+        framework_key=framework_key,
+        criticality=criticality,
+    )

@@ -38,6 +38,32 @@ class CompressedGapSuggestion(BaseModel):
     recommendation_type: str = ""
 
 
+class BoardReportSystemKpiValueBrief(BaseModel):
+    """Einzelmetrik für Board-LLM (High-Risk-System)."""
+
+    kpi_key: str
+    name: str
+    unit: str
+    latest_value: float
+    trend: str
+
+
+class BoardReportKpiSystemRowBrief(BaseModel):
+    ai_system_id: str
+    ai_system_name: str
+    risk_level: str
+    kpis: list[BoardReportSystemKpiValueBrief] = Field(default_factory=list)
+
+
+class BoardReportKpiPortfolioRowBrief(BaseModel):
+    kpi_key: str
+    name: str
+    unit: str
+    avg_high_risk_latest: float | None = None
+    trend_vs_prior_period: str = "flat"
+    systems_with_data: int = Field(default=0, ge=0)
+
+
 class AIInventoryBrief(BaseModel):
     total_systems: int = Field(ge=0)
     high_risk_ai_systems: int = Field(
@@ -65,6 +91,14 @@ class AiComplianceBoardReportInput(BaseModel):
     trend_note: str | None = Field(
         default=None,
         description="Hinweis, falls keine historische Zeitreihe vorliegt",
+    )
+    high_risk_kpi_summaries: list[BoardReportKpiSystemRowBrief] = Field(
+        default_factory=list,
+        description="KPI-Snapshots je High-Risk-KI-System",
+    )
+    kpi_portfolio_aggregates: list[BoardReportKpiPortfolioRowBrief] = Field(
+        default_factory=list,
+        description="Aggregierte KPIs über High-Risk-Systeme",
     )
 
 

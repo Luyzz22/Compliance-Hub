@@ -6,6 +6,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -181,6 +182,63 @@ class Nis2KritisKpiDB(Base):
     last_reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+
+
+class AiKpiDefinitionDB(Base):
+    """Globale KPI-/KRI-Definitionen (EU AI Act Post-Market / ISO 42001 Performance Evaluation)."""
+
+    __tablename__ = "ai_kpi_definitions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    key: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    recommended_direction: Mapped[str] = mapped_column(String(16), nullable=False)
+    framework_tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    alert_threshold_high: Mapped[float | None] = mapped_column(Float, nullable=True)
+    alert_threshold_low: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class AiSystemKpiValueDB(Base):
+    """Zeitreihenwerte je KI-System und KPI-Definition (mandantenisoliert)."""
+
+    __tablename__ = "ai_system_kpi_values"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "ai_system_id",
+            "kpi_definition_id",
+            "period_start",
+            name="uq_ai_system_kpi_value_period",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kpi_definition_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ai_kpi_definitions.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
     )
 
 

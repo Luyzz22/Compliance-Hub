@@ -12,7 +12,9 @@ from app.ai_compliance_board_report_models import (
     FrameworkCoverageSnapshot,
     GapSnapshotBrief,
 )
+from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.repositories.ai_systems import AISystemRepository
+from app.services.ai_kpi_service import build_board_report_kpi_briefs
 from app.services.cross_regulation import build_cross_regulation_summary
 from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
 
@@ -137,6 +139,11 @@ def assemble_ai_compliance_board_report_input(
 
     inv = build_ai_inventory_brief(ai_repo, tenant_id)
 
+    if is_feature_enabled(FeatureFlag.ai_kpi_kri, tenant_id, session=session):
+        hr_kpis, port_kpis = build_board_report_kpi_briefs(session, tenant_id)
+    else:
+        hr_kpis, port_kpis = [], []
+
     return AiComplianceBoardReportInput(
         tenant_id=tenant_id,
         audience_type=audience_type,
@@ -146,4 +153,6 @@ def assemble_ai_compliance_board_report_input(
         gap_assist_hints=[],
         ai_inventory=inv,
         trend_note="Keine historische Trendzeitreihe in dieser Version hinterlegt.",
+        high_risk_kpi_summaries=hr_kpis,
+        kpi_portfolio_aggregates=port_kpis,
     )
