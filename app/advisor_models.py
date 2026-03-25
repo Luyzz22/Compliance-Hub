@@ -58,3 +58,10 @@ class AdvisorTenantReport(BaseModel):
         default_factory=list,
         description="Noch offene Guided-Setup-Schritte (Kurzlabels).",
     )
+    executive_summary_narrative: str | None = Field(
+        default=None,
+        description=(
+            "Optional sprachlich verdichtete Kurzfassung aus deterministischen Kennzahlen "
+            "(LLM-Assist); keine neuen Fakten gegenüber den strukturierten Feldern."
+        ),
+    )

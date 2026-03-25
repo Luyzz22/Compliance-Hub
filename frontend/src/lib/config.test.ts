@@ -7,6 +7,7 @@ import {
   featureEvidencePreviewBadge,
   featureEvidenceUploads,
   featureGuidedSetup,
+  featureLlmEnabled,
   featurePilotRunbook,
 } from "./config";
 
@@ -18,6 +19,7 @@ const envKeys = [
   "NEXT_PUBLIC_FEATURE_EVIDENCE_PREVIEW_BADGE",
   "NEXT_PUBLIC_FEATURE_PILOT_RUNBOOK",
   "NEXT_PUBLIC_FEATURE_API_KEYS_UI",
+  "NEXT_PUBLIC_FEATURE_LLM_ENABLED",
 ] as const;
 
 describe("feature flags from env", () => {
@@ -51,6 +53,7 @@ describe("feature flags from env", () => {
     expect(featureEvidencePreviewBadge()).toBe(false);
     expect(featurePilotRunbook()).toBe(true);
     expect(featureApiKeysUi()).toBe(true);
+    expect(featureLlmEnabled()).toBe(false);
   });
 
   it("parses common false/true tokens", () => {

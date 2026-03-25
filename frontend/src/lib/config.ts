@@ -46,3 +46,8 @@ export function featurePilotRunbook(): boolean {
 export function featureApiKeysUi(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_API_KEYS_UI, true);
 }
+
+/** Globaler Schalter für LLM-/Router-Funktionen (Client-Hinweise; Backend erzwingt separat). */
+export function featureLlmEnabled(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_ENABLED, false);
+}
