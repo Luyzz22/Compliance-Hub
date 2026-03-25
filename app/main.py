@@ -25,6 +25,7 @@ from fastapi import (
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.advisor_models import AdvisorTenantReport
 from app.advisor_portfolio_models import AdvisorPortfolioResponse
 from app.ai_governance_action_models import (
     AIGovernanceActionCreate,
@@ -118,6 +119,8 @@ from app.services.advisor_portfolio import (
     advisor_portfolio_to_json_bytes,
     build_advisor_portfolio,
 )
+from app.services.advisor_tenant_report import build_advisor_tenant_report
+from app.services.advisor_tenant_report_markdown import render_tenant_report_markdown
 from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_governance_incidents import (
     compute_ai_incident_overview,
@@ -1817,6 +1820,56 @@ def export_advisor_portfolio(
         media_type="application/json; charset=utf-8",
         headers={"Content-Disposition": _evidence_content_disposition(fname)},
     )
+
+
+@app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/report",
+    tags=["advisors"],
+    response_model=None,
+)
+def get_advisor_tenant_report(
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    tenant_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    export_format: Annotated[Literal["json", "markdown"], Query(alias="format")] = "json",
+) -> AdvisorTenantReport | Response:
+    """Mandanten-Steckbrief (JSON oder Markdown) nur bei Zuordnung in advisor_tenants."""
+    link = advisor_repo.get_link(advisor_id, tenant_id)
+    if link is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not linked to this advisor",
+        )
+    report = build_advisor_tenant_report(
+        session,
+        tenant_id,
+        link=link,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+        nis2_repo=nis2_repo,
+        violation_repo=violation_repo,
+        action_repo=action_repo,
+    )
+    if export_format == "markdown":
+        md = render_tenant_report_markdown(report)
+        fname = f"tenant-report-{tenant_id}.md"
+        return Response(
+            content=md.encode("utf-8"),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": _evidence_content_disposition(fname)},
+        )
+    return report
 
 
 @app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)

@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdvisorPortfolioTenantEntry } from "@/lib/api";
+import { getAdvisorTenantReportUrl, type AdvisorPortfolioTenantEntry } from "@/lib/api";
 import { portfolioHealth, type PortfolioHealth } from "@/lib/advisorPortfolioHealth";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD } from "@/lib/boardLayout";
 import { openWorkspaceTenantAndGoComplianceOverview } from "@/lib/workspaceTenantClient";
@@ -23,9 +23,11 @@ function badgeLabel(h: PortfolioHealth): string {
 
 export interface AdvisorPortfolioTableProps {
   rows: AdvisorPortfolioTenantEntry[];
+  /** Für Steckbrief-Links (Proxy); leer = keine Download-CTAs. */
+  advisorId: string;
 }
 
-export function AdvisorPortfolioTable({ rows }: AdvisorPortfolioTableProps) {
+export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTableProps) {
   if (rows.length === 0) {
     return (
       <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600">
@@ -48,6 +50,7 @@ export function AdvisorPortfolioTable({ rows }: AdvisorPortfolioTableProps) {
               <th>Setup</th>
               <th>Offene Actions</th>
               <th>Status</th>
+              <th>Mandanten-Steckbrief</th>
               <th />
             </tr>
           </thead>
@@ -91,6 +94,28 @@ export function AdvisorPortfolioTable({ rows }: AdvisorPortfolioTableProps) {
                     >
                       {badgeLabel(h)}
                     </span>
+                  </td>
+                  <td className="text-right align-top">
+                    {advisorId ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <a
+                          href={getAdvisorTenantReportUrl(t.tenant_id, "markdown", advisorId)}
+                          className={`${CH_BTN_SECONDARY} inline-block text-xs no-underline`}
+                          title="Mandanten-Steckbrief für Angebot, Board oder Kickoff (Markdown)"
+                        >
+                          Steckbrief (MD)
+                        </a>
+                        <a
+                          href={getAdvisorTenantReportUrl(t.tenant_id, "json", advisorId)}
+                          className="text-xs font-medium text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
+                          title="Strukturierte Daten für Integrationen"
+                        >
+                          JSON
+                        </a>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">–</span>
+                    )}
                   </td>
                   <td className="text-right">
                     <button
