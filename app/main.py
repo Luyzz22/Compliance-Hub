@@ -1410,15 +1410,27 @@ def get_ai_governance_board_kpis(
     response_model=AIComplianceOverview,
 )
 def get_ai_compliance_overview(
+    request: Request,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
     nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
 ) -> AIComplianceOverview:
     """Board-fähiger EU AI Act / ISO 42001 Readiness-Überblick."""
+    tid = auth_context.tenant_id
+    workspace_telemetry.log_workspace_feature_used(
+        session,
+        tid,
+        workspace_mode=workspace_mode_for_telemetry(session, tid),
+        feature_name="ai_governance_playbook",
+        request_path=request.url.path,
+        route=workspace_telemetry.route_template_from_request(request),
+        method=request.method,
+    )
     return compute_ai_compliance_overview(
-        tenant_id=auth_context.tenant_id,
+        tenant_id=tid,
         ai_repo=ai_repo,
         cls_repo=cls_repo,
         gap_repo=gap_repo,
@@ -2861,6 +2873,7 @@ def get_advisor_portfolio_board_reports_endpoint(
     tags=["advisors"],
 )
 def get_advisor_accessible_board_report_detail(
+    request: Request,
     _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
     _ff_br: Annotated[
         None,
@@ -2885,6 +2898,16 @@ def get_advisor_accessible_board_report_detail(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Report not found or tenant not linked to advisor",
         )
+    workspace_telemetry.log_workspace_feature_used(
+        session,
+        tenant_id,
+        workspace_mode=workspace_mode_for_telemetry(session, tenant_id),
+        feature_name="board_report_detail",
+        request_path=request.url.path,
+        route=workspace_telemetry.route_template_from_request(request),
+        method=request.method,
+        extra={"report_id": report_id},
+    )
     return detail
 
 
@@ -3005,14 +3028,13 @@ def get_workspace_tenant_meta(
         demo_playground=bool(row.demo_playground),
         mutation_blocked=mut_blocked,
     )
-    if row.is_demo:
-        workspace_telemetry.log_workspace_session_started(
-            session,
-            tid,
-            workspace_mode=workspace_mode_for_telemetry(session, tid),
-            request_path=request.url.path,
-            dedupe_same_type_hours=24,
-        )
+    workspace_telemetry.log_workspace_session_started(
+        session,
+        tid,
+        workspace_mode=workspace_mode_for_telemetry(session, tid),
+        request_path=request.url.path,
+        dedupe_same_type_hours=24,
+    )
     return TenantWorkspaceMetaResponse(
         tenant_id=row.id,
         display_name=row.display_name,
@@ -3047,6 +3069,8 @@ def log_workspace_feature_used(
         workspace_mode=workspace_mode_for_telemetry(session, auth_context.tenant_id),
         feature_name=feature_key,
         request_path=request.url.path,
+        route=workspace_telemetry.route_template_from_request(request),
+        method=request.method,
     )
     return {"ok": True}
 
@@ -3276,12 +3300,22 @@ def get_compliance_dashboard(
     response_model=CrossRegulationSummaryResponse,
 )
 def cross_regulation_summary(
+    request: Request,
     tenant_id: str,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
     _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.cross_regulation_dashboard))],
 ) -> CrossRegulationSummaryResponse:
     require_path_tenant_matches_auth(tenant_id, auth_context)
+    workspace_telemetry.log_workspace_feature_used(
+        session,
+        tenant_id,
+        workspace_mode=workspace_mode_for_telemetry(session, tenant_id),
+        feature_name="cross_regulation_dashboard",
+        request_path=request.url.path,
+        route=workspace_telemetry.route_template_from_request(request),
+        method=request.method,
+    )
     return build_cross_regulation_summary(session, tenant_id)
 
 
@@ -3499,6 +3533,7 @@ def get_ai_compliance_board_reports_list(
     response_model=AiComplianceBoardReportDetailResponse,
 )
 def get_ai_compliance_board_report_by_id(
+    request: Request,
     tenant_id: str,
     report_id: str,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
@@ -3509,6 +3544,16 @@ def get_ai_compliance_board_report_by_id(
     detail = get_ai_compliance_board_report_detail(session, tenant_id, report_id)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    workspace_telemetry.log_workspace_feature_used(
+        session,
+        tenant_id,
+        workspace_mode=workspace_mode_for_telemetry(session, tenant_id),
+        feature_name="board_report_detail",
+        request_path=request.url.path,
+        route=workspace_telemetry.route_template_from_request(request),
+        method=request.method,
+        extra={"report_id": report_id},
+    )
     return detail
 
 
