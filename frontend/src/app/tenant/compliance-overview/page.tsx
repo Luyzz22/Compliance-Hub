@@ -19,6 +19,7 @@ import {
 } from "@/lib/boardLayout";
 import {
   featureAiGovernancePlaybook,
+  featureAiGovernanceSetupWizard,
   featureCrossRegulationDashboard,
   featureGuidedSetup,
   featurePilotRunbook,
@@ -120,6 +121,22 @@ export default async function TenantComplianceOverviewPage() {
             className={`${CH_BTN_PRIMARY} mt-4 inline-flex text-xs`}
           >
             Zum Playbook
+          </Link>
+        </section>
+      ) : null}
+
+      {featureAiGovernanceSetupWizard() ? (
+        <section className={CH_CARD} aria-label="Enterprise AI Governance Setup">
+          <p className={CH_SECTION_LABEL}>Enterprise AI Governance Setup</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Mehrstufiger Wizard für Mandanten- und Berater-Teams: Frameworks, High-Risk-Register,
+            KPI-Basis, Cross-Regulation und Board-Report in einer geführten Journey.
+          </p>
+          <Link
+            href="/tenant/ai-governance-setup"
+            className={`${CH_BTN_SECONDARY} mt-4 inline-flex text-xs`}
+          >
+            Geführtes Setup starten
           </Link>
         </section>
       ) : null}

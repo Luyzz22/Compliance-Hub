@@ -6,6 +6,7 @@ import React from "react";
 
 import {
   featureAiGovernancePlaybook,
+  featureAiGovernanceSetupWizard,
   featureCrossRegulationDashboard,
   featurePilotRunbook,
 } from "@/lib/config";
@@ -23,6 +24,9 @@ const items = [
   ...baseItems.slice(0, 1),
   ...(featureAiGovernancePlaybook()
     ? [{ href: "/tenant/ai-governance-playbook" as const, label: "AI Governance Playbook" }]
+    : []),
+  ...(featureAiGovernanceSetupWizard()
+    ? [{ href: "/tenant/ai-governance-setup" as const, label: "AI Governance Setup" }]
     : []),
   ...(featureCrossRegulationDashboard()
     ? [{ href: "/tenant/cross-regulation-dashboard" as const, label: "Cross-Regulation" }]

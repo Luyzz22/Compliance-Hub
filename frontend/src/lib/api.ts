@@ -1231,6 +1231,82 @@ export async function fetchTenantSetupStatus(
   return tenantApiFetch(`/api/v1/tenants/${tid}/setup-status`, tenantId);
 }
 
+// ─── AI-Governance-Setup-Wizard ──────────────────────────────────────────────
+
+export interface TenantAiGovernanceSetupDto {
+  tenant_id: string;
+  tenant_kind: "enterprise" | "advisor" | null;
+  compliance_scopes: string[];
+  governance_roles: Record<string, string>;
+  active_frameworks: string[];
+  steps_marked_complete: number[];
+  flags: Record<string, boolean>;
+  progress_steps: number[];
+}
+
+export async function fetchTenantAiGovernanceSetup(
+  tenantId: string,
+): Promise<TenantAiGovernanceSetupDto> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/ai-governance-setup`, tenantId);
+}
+
+export async function putTenantAiGovernanceSetup(
+  tenantId: string,
+  body: {
+    tenant_kind?: "enterprise" | "advisor" | null;
+    compliance_scopes?: string[];
+    governance_roles?: Record<string, string>;
+    active_frameworks?: string[];
+    mark_steps_complete?: number[];
+    flags?: Record<string, boolean>;
+  },
+): Promise<TenantAiGovernanceSetupDto> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/ai-governance-setup`, tenantId, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function createTenantAiSystem(
+  tenantId: string,
+  body: {
+    id: string;
+    name: string;
+    description: string;
+    business_unit: string;
+    risk_level: string;
+    ai_act_category: string;
+    gdpr_dpia_required: boolean;
+    owner_email?: string | null;
+    criticality?: string;
+    data_sensitivity?: string;
+    has_incident_runbook?: boolean;
+    has_supplier_risk_register?: boolean;
+    has_backup_runbook?: boolean;
+  },
+): Promise<AISystem> {
+  return tenantApiFetch("/api/v1/ai-systems", tenantId, {
+    method: "POST",
+    body: JSON.stringify({
+      id: body.id,
+      name: body.name,
+      description: body.description,
+      business_unit: body.business_unit,
+      risk_level: body.risk_level,
+      ai_act_category: body.ai_act_category,
+      gdpr_dpia_required: body.gdpr_dpia_required,
+      owner_email: body.owner_email ?? null,
+      criticality: body.criticality ?? "medium",
+      data_sensitivity: body.data_sensitivity ?? "internal",
+      has_incident_runbook: body.has_incident_runbook ?? false,
+      has_supplier_risk_register: body.has_supplier_risk_register ?? false,
+      has_backup_runbook: body.has_backup_runbook ?? false,
+    }),
+  });
+}
+
 // ─── Advisor-Portfolio (Multi-Mandant / Berater) ─────────────────────────────
 
 export const ADVISOR_ID_FROM_ENV =

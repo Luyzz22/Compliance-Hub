@@ -13,6 +13,7 @@ import {
 import {
   featureAiComplianceBoardReport,
   featureAiGovernancePlaybook,
+  featureAiGovernanceSetupWizard,
   featureCrossRegulationDashboard,
 } from "@/lib/config";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
@@ -56,6 +57,26 @@ export default async function AiGovernancePlaybookPage() {
       <p className="mb-6 text-sm text-slate-500">
         Mandant: <span className="font-mono font-semibold text-slate-800">{tenantId}</span>
       </p>
+
+      {featureAiGovernanceSetupWizard() ? (
+        <section
+          className={`${CH_CARD} mb-8 border-emerald-200 bg-emerald-50/35`}
+          aria-label="Geführtes AI-Governance-Setup"
+          data-testid="playbook-setup-wizard-cta"
+        >
+          <p className={CH_SECTION_LABEL}>Geführtes Setup</p>
+          <p className="mt-2 max-w-3xl text-sm text-slate-700">
+            Alle Module in einer Journey bündeln: Rollen, Frameworks, High-Risk-Inventar, KPI-Basis,
+            Cross-Regulation und ersten Board-Report – für Board- und NIS2-Reife.
+          </p>
+          <Link
+            href="/tenant/ai-governance-setup"
+            className={`${CH_BTN_PRIMARY} mt-4 inline-flex text-sm no-underline`}
+          >
+            Jetzt geführtes Setup starten
+          </Link>
+        </section>
+      ) : null}
 
       {featureAiComplianceBoardReport() ? (
         <section
