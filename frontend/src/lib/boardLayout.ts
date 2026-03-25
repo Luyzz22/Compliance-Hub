@@ -1,12 +1,15 @@
 /** Seiten-Root innerhalb des globalen `<main>` (kein verschachteltes `<main>`). */
 export const BOARD_PAGE_ROOT_CLASS = "min-w-0";
 
-/** Einheitliche Karten (Apple-/AI-SaaS-inspiriert). */
+/** Vertikaler Rhythmus für Tenant-/Marketing-Seiten ohne überlappende Section-Abstände. */
+export const CH_SHELL = "min-w-0 space-y-8 md:space-y-10";
+
+/** Einheitliche Karten – helles Enterprise (dezenter Schatten). */
 export const CH_CARD =
-  "rounded-2xl border border-slate-200/90 bg-white p-5 shadow-md shadow-slate-200/50";
+  "rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40";
 
 export const CH_CARD_MUTED =
-  "rounded-2xl border border-slate-200/60 bg-slate-50/80 p-5 shadow-sm";
+  "rounded-2xl border border-slate-200/60 bg-slate-50/90 p-5 shadow-sm";
 
 export const CH_PAGE_TITLE =
   "text-3xl font-semibold tracking-tight text-slate-900 sm:text-[2rem] sm:leading-tight";
@@ -14,8 +17,15 @@ export const CH_PAGE_TITLE =
 export const CH_PAGE_SUB =
   "mt-2 max-w-2xl text-base leading-relaxed text-slate-600";
 
+export const CH_EYEBROW =
+  "text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700";
+
 export const CH_SECTION_LABEL =
   "text-xs font-semibold uppercase tracking-[0.12em] text-slate-500";
+
+/** Inline-Navigation unter dem Seitentitel */
+export const CH_PAGE_NAV_LINK =
+  "text-sm font-medium text-cyan-700 underline decoration-cyan-600/25 underline-offset-4 transition hover:text-cyan-900";
 
 export const CH_BTN_PRIMARY =
   "inline-flex items-center justify-center rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700";

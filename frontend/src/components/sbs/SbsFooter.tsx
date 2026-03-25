@@ -4,7 +4,7 @@ import React from "react";
 export function SbsFooter() {
   const y = new Date().getFullYear();
   return (
-    <footer className="mt-auto border-t border-slate-200/90 bg-white/90 py-8 backdrop-blur-sm">
+    <footer className="mt-auto border-t border-slate-200/90 bg-white py-10">
       <div className="mx-auto flex min-w-0 max-w-7xl flex-col gap-4 px-4 text-xs text-slate-500 md:flex-row md:items-center md:justify-between md:px-6">
         <div className="leading-relaxed">
           © {y} Compliance Hub · Enterprise GRC für den DACH-Markt

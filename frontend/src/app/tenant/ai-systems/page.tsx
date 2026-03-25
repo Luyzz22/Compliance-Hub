@@ -2,6 +2,13 @@ import Link from "next/link";
 import React from "react";
 
 import { fetchTenantAISystems } from "@/lib/api";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import {
+  CH_BTN_PRIMARY,
+  CH_CARD,
+  CH_PAGE_NAV_LINK,
+  CH_SHELL,
+} from "@/lib/boardLayout";
 
 type AISystem = {
   id: string;
@@ -41,42 +48,60 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
   const highRisk = filtered.filter((s) => s.risklevel === "high").length;
 
   return (
-    <>
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="sbs-h1">AI‑System Registry</h1>
-          <p className="sbs-subtitle">
-            Zentrale Übersicht aller registrierten AI‑Systeme dieses Tenants.
-          </p>
-        </div>
-        <button type="button" className="sbs-btn-primary text-sm">
-          Neues AI‑System anlegen
-        </button>
-      </header>
+    <div className={CH_SHELL}>
+      <EnterprisePageHeader
+        eyebrow="Tenant"
+        title="KI-System-Register"
+        description="Zentrales Inventar aller KI-Systeme des Mandanten – Ausgangspunkt für Klassifizierung, NIS2-KPIs und Board-Reporting."
+        actions={
+          <button type="button" className={`${CH_BTN_PRIMARY} text-sm`}>
+            Neues System
+          </button>
+        }
+        below={
+          <>
+            <Link href="/tenant/eu-ai-act" className={CH_PAGE_NAV_LINK}>
+              EU AI Act Cockpit
+            </Link>
+            <Link href="/tenant/compliance-overview" className={CH_PAGE_NAV_LINK}>
+              Mandanten-Übersicht
+            </Link>
+          </>
+        }
+      />
 
       {idSet.size > 0 ? (
-        <div role="status" className="sbs-alert-warn mb-4 text-xs">
-          Gefilterte Ansicht: {filtered.length} von {systems.length} Systemen
-          (Deep-Link aus EU-AI-Act-Readiness).
+        <div
+          role="status"
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950"
+        >
+          Gefilterte Ansicht: {filtered.length} von {systems.length} Systemen (Deep-Link aus
+          EU-AI-Act-Readiness).
         </div>
       ) : null}
 
-      <section className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="sbs-kpi-tile">
-          <div className="sbs-kpi-label">AI‑Systeme gesamt</div>
-          <div className="sbs-kpi-value">{total}</div>
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className={CH_CARD}>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Gesamt
+          </p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">{total}</p>
         </div>
-        <div className="sbs-kpi-tile">
-          <div className="sbs-kpi-label">Aktive Systeme</div>
-          <div className="sbs-kpi-value text-emerald-600">{active}</div>
+        <div className={CH_CARD}>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Aktiv
+          </p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-emerald-700">{active}</p>
         </div>
-        <div className="sbs-kpi-tile">
-          <div className="sbs-kpi-label">High‑Risk Systeme</div>
-          <div className="sbs-kpi-value text-amber-600">{highRisk}</div>
+        <div className={CH_CARD}>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+            High-Risk
+          </p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-amber-700">{highRisk}</p>
         </div>
       </section>
 
-      <section className="sbs-panel overflow-hidden p-0">
+      <section className={`${CH_CARD} overflow-hidden p-0`}>
         <div className="flex items-center justify-between border-b border-[var(--sbs-border)] px-5 py-3">
           <h2 className="text-sm font-bold text-[var(--sbs-text-primary)]">
             AI‑Systeme
@@ -142,9 +167,9 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
                   <td>
                     <Link
                       href={`/tenant/ai-systems/${encodeURIComponent(s.id)}`}
-                      className="text-xs font-semibold text-[var(--sbs-text-accent)] underline decoration-[var(--sbs-text-accent)]/30 underline-offset-2 hover:text-[var(--sbs-navy-deep)]"
+                      className={CH_PAGE_NAV_LINK + " text-xs no-underline hover:underline"}
                     >
-                      Öffnen
+                      Detail
                     </Link>
                   </td>
                 </tr>
@@ -163,6 +188,6 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
           </table>
         </div>
       </section>
-    </>
+    </div>
   );
 }

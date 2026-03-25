@@ -5,50 +5,42 @@ import { usePathname } from "next/navigation";
 import React from "react";
 
 const items = [
-  { href: "/tenant/compliance-overview", label: "Mandant & Einstellungen" },
+  { href: "/tenant/compliance-overview", label: "Mandant & Übersicht" },
   { href: "/tenant/eu-ai-act", label: "EU AI Act" },
-  { href: "/tenant/ai-systems", label: "AI Systems" },
-  { href: "/tenant/policies", label: "Policies & Rules" },
-  { href: "/tenant/audit-log", label: "Audit Log" },
-  { href: "/tenant/blueprints", label: "Blueprints & Settings" },
+  { href: "/tenant/ai-systems", label: "KI-Systeme" },
+  { href: "/tenant/policies", label: "Policies & Regeln" },
+  { href: "/tenant/audit-log", label: "Audit & Evidence" },
+  { href: "/tenant/blueprints", label: "Blueprints" },
 ];
 
 export function TenantNav() {
   const pathname = usePathname();
   return (
     <nav
-      className="px-3 py-4 space-y-1"
-      style={{ fontSize: "0.875rem" }}
+      className="space-y-1 px-3 py-4 text-sm"
       aria-label="Tenant-Navigation"
     >
-      <div
-        className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide"
-        style={{ color: "#64748b" }}
-      >
-        Overview
+      <div className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        Arbeitsbereich
       </div>
       {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active =
+          pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
           <Link
             key={item.href}
             href={item.href}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              borderRadius: "0.5rem",
-              padding: "0.4rem 0.5rem",
-              textDecoration: "none",
-              color: active ? "#fff" : "#94a3b8",
-              background: active ? "rgba(0, 102, 179, 0.35)" : "transparent",
-            }}
+            className={`flex items-center gap-2 rounded-lg px-2 py-2 no-underline transition ${
+              active
+                ? "bg-cyan-50 font-semibold text-cyan-900"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
           >
             <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{
-                background: active ? "#fbbf24" : "#475569",
-              }}
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                active ? "bg-cyan-500" : "bg-slate-300"
+              }`}
+              aria-hidden
             />
             {item.label}
           </Link>

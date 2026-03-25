@@ -2,12 +2,19 @@
 
 import React, { useEffect, useState } from "react";
 
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   fetchNis2KritisKpis,
   upsertNis2KritisKpi,
   type Nis2KritisKpiListResponse,
   type Nis2KritisKpiType,
 } from "@/lib/api";
+import {
+  CH_BTN_PRIMARY,
+  CH_BTN_SECONDARY,
+  CH_CARD,
+  CH_SHELL,
+} from "@/lib/boardLayout";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -126,8 +133,7 @@ const RISK_BADGE: Record<string, string> = {
     "bg-amber-50 text-amber-900 border border-amber-200",
   minimal_risk:
     "bg-emerald-50 text-emerald-900 border border-emerald-200",
-  unclassified:
-    "bg-slate-100 text-[var(--sbs-text-secondary)] border border-slate-200",
+  unclassified: "bg-slate-100 text-slate-600 border border-slate-200",
 };
 
 const RISK_LABEL: Record<string, string> = {
@@ -142,8 +148,7 @@ const STATUS_BADGE: Record<string, string> = {
   not_started: "bg-red-50 text-red-900 border border-red-200",
   in_progress: "bg-amber-50 text-amber-900 border border-amber-200",
   completed: "bg-emerald-50 text-emerald-900 border border-emerald-200",
-  not_applicable:
-    "bg-slate-100 text-[var(--sbs-text-secondary)] border border-slate-200",
+  not_applicable: "bg-slate-100 text-slate-600 border border-slate-200",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -211,7 +216,7 @@ function CircularProgress({ value, size = 80 }: { value: number; size?: number }
       <svg width={size} height={size}>
         <circle
           cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke="#1e293b" strokeWidth={6}
+          fill="none" stroke="#e2e8f0" strokeWidth={6}
         />
         <circle
           cx={size / 2} cy={size / 2} r={r}
@@ -221,7 +226,7 @@ function CircularProgress({ value, size = 80 }: { value: number; size?: number }
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </svg>
-      <span className="absolute text-sm font-semibold text-emerald-300">
+      <span className="absolute text-sm font-semibold text-emerald-800">
         {pct}%
       </span>
     </div>
@@ -373,75 +378,71 @@ export default function EUAIActPage() {
 
   if (view === "dashboard") {
     return (
-      <>
-        <header className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="sbs-h1">EU AI Act – Compliance Dashboard</h1>
-            <p className="mt-1 text-sm text-[var(--sbs-text-secondary)]">
-              Risikoeinstufung und Lückenanalyse aller AI-Systeme gemäß EU AI Act.
-            </p>
-          </div>
-          {dashboard && (
-            <div className="flex items-center gap-4">
-              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center">
-                <div className="text-xs text-amber-300 font-medium">
-                  Frist: 2. August 2026
-                </div>
-                <div className="text-lg font-semibold text-amber-200">
+      <div className={CH_SHELL}>
+        <EnterprisePageHeader
+          eyebrow="Tenant"
+          title="EU AI Act · Compliance"
+          description="Risikoeinstufung, Klassifizierung und Lückenanalyse für alle KI-Systeme im Mandanten."
+          actions={
+            dashboard ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center shadow-sm">
+                <div className="text-xs font-medium text-amber-900">Frist High-Risk</div>
+                <div className="text-xl font-semibold tabular-nums text-amber-950">
                   {dashboard.days_remaining} Tage
                 </div>
+                <div className="text-[0.65rem] text-amber-800/90">bis 02.08.2026</div>
               </div>
-            </div>
-          )}
-        </header>
+            ) : null
+          }
+        />
 
         {loading ? (
-          <div className="text-center text-[var(--sbs-text-muted)] py-16">Laden…</div>
+          <div className="text-center text-slate-500 py-16">Laden…</div>
         ) : (
           <>
             {/* KPI Row */}
-            <section className="mb-8 grid gap-4 md:grid-cols-4">
-              <div className="sbs-panel p-5 text-center">
-                <div className="text-xs font-medium text-[var(--sbs-text-secondary)]">
+            <section className="grid gap-4 md:grid-cols-4">
+              <div className={`${CH_CARD} p-5 text-center`}>
+                <div className="text-xs font-medium text-slate-600">
                   Gesamtbereitschaft
                 </div>
                 <div className="mt-3 flex justify-center">
                   <CircularProgress value={dashboard?.overall_readiness ?? 0} />
                 </div>
               </div>
-              <div className="sbs-panel p-5">
-                <div className="text-xs font-medium text-[var(--sbs-text-secondary)]">Verboten</div>
-                <div className="mt-2 text-3xl font-semibold text-red-300">
+              <div className={`${CH_CARD} p-5`}>
+                <div className="text-xs font-medium text-slate-600">Verboten</div>
+                <div className="mt-2 text-3xl font-semibold text-red-700">
                   {summary?.prohibited ?? 0}
                 </div>
               </div>
-              <div className="sbs-panel p-5">
-                <div className="text-xs font-medium text-[var(--sbs-text-secondary)]">Hochrisiko</div>
-                <div className="mt-2 text-3xl font-semibold text-rose-300">
+              <div className={`${CH_CARD} p-5`}>
+                <div className="text-xs font-medium text-slate-600">Hochrisiko</div>
+                <div className="mt-2 text-3xl font-semibold text-rose-700">
                   {summary?.high_risk ?? 0}
                 </div>
               </div>
-              <div className="sbs-panel p-5">
-                <div className="text-xs font-medium text-[var(--sbs-text-secondary)]">
+              <div className={`${CH_CARD} p-5`}>
+                <div className="text-xs font-medium text-slate-600">
                   Begrenztes / Minimales Risiko
                 </div>
-                <div className="mt-2 text-3xl font-semibold text-emerald-300">
+                <div className="mt-2 text-3xl font-semibold text-emerald-700">
                   {(summary?.limited_risk ?? 0) + (summary?.minimal_risk ?? 0)}
                 </div>
               </div>
             </section>
 
             {/* Systems Table */}
-            <section className="mb-8 sbs-panel">
-              <div className="flex items-center justify-between border-b border-[var(--sbs-border)] px-5 py-3">
-                <h2 className="text-sm font-semibold">AI-Systeme Übersicht</h2>
-                <span className="text-xs text-[var(--sbs-text-muted)]">
+            <section className={`${CH_CARD} overflow-hidden p-0`}>
+              <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4">
+                <h2 className="text-sm font-semibold text-slate-900">AI-Systeme Übersicht</h2>
+                <span className="text-xs text-slate-500">
                   {systems.length} Systeme
                 </span>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="bg-slate-100 text-xs uppercase text-[var(--sbs-text-secondary)]">
+                  <thead className="bg-slate-100 text-xs uppercase text-slate-600">
                     <tr>
                       <th className="px-5 py-2 font-medium">Name</th>
                       <th className="px-3 py-2 font-medium">Risikostufe</th>
@@ -458,13 +459,13 @@ export default function EUAIActPage() {
                       return (
                         <tr
                           key={sys.id}
-                          className="border-t border-[var(--sbs-border)]/80 hover:bg-slate-50"
+                          className="border-t border-slate-200/80 hover:bg-slate-50"
                         >
                           <td className="px-5 py-2">
-                            <div className="font-medium text-[var(--sbs-text-primary)]">
+                            <div className="font-medium text-slate-900">
                               {sys.name}
                             </div>
-                            <div className="text-xs text-[var(--sbs-text-muted)]">{sys.id}</div>
+                            <div className="text-xs text-slate-500">{sys.id}</div>
                           </td>
                           <td className="px-3 py-2">
                             <span
@@ -480,26 +481,26 @@ export default function EUAIActPage() {
                             {sr && sr.total_requirements > 0 ? (
                               <div>
                                 <ProgressBar value={sr.readiness_score} />
-                                <div className="mt-1 text-xs text-[var(--sbs-text-secondary)]">
+                                <div className="mt-1 text-xs text-slate-600">
                                   {Math.round(sr.readiness_score * 100)}% –{" "}
                                   {sr.completed}/{sr.total_requirements} erledigt
                                 </div>
                               </div>
                             ) : (
-                              <span className="text-xs text-[var(--sbs-text-muted)]">–</span>
+                              <span className="text-xs text-slate-500">–</span>
                             )}
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex gap-2">
                               <button
                                 onClick={() => openWizard(sys.id)}
-                                className="rounded border border-[var(--sbs-border)] px-2 py-1 text-xs text-[var(--sbs-text-primary)] hover:bg-slate-100"
+                                className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-900 hover:bg-slate-100"
                               >
                                 Klassifizieren
                               </button>
                               <button
                                 onClick={() => openGap(sys.id)}
-                                className="rounded border border-[var(--sbs-border)] px-2 py-1 text-xs text-[var(--sbs-text-primary)] hover:bg-slate-100"
+                                className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-900 hover:bg-slate-100"
                               >
                                 Lückenanalyse
                               </button>
@@ -512,7 +513,7 @@ export default function EUAIActPage() {
                       <tr>
                         <td
                           colSpan={4}
-                          className="px-5 py-6 text-center text-xs text-[var(--sbs-text-muted)]"
+                          className="px-5 py-6 text-center text-xs text-slate-500"
                         >
                           Keine AI-Systeme registriert.
                         </td>
@@ -525,9 +526,9 @@ export default function EUAIActPage() {
 
             {/* Urgent Gaps */}
             {dashboard && dashboard.urgent_gaps.length > 0 && (
-              <section className="sbs-panel">
-                <div className="border-b border-[var(--sbs-border)] px-5 py-3">
-                  <h2 className="text-sm font-semibold">
+              <section className={`${CH_CARD} overflow-hidden p-0`}>
+                <div className="border-b border-slate-200/80 px-5 py-4">
+                  <h2 className="text-sm font-semibold text-slate-900">
                     Dringendste Lücken (Top 3)
                   </h2>
                 </div>
@@ -535,12 +536,12 @@ export default function EUAIActPage() {
                   {dashboard.urgent_gaps.map((gap, i) => (
                     <div
                       key={i}
-                      className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3"
+                      className="rounded-xl border border-rose-200 bg-rose-50/80 p-3"
                     >
-                      <div className="text-sm text-rose-200 font-medium">
+                      <div className="text-sm font-medium text-rose-900">
                         {gap.article}: {gap.requirement_name}
                       </div>
-                      <div className="text-xs text-rose-300/80 mt-1">
+                      <div className="mt-1 text-xs text-rose-800/90">
                         System: {gap.ai_system_name} ({gap.ai_system_id})
                       </div>
                     </div>
@@ -550,7 +551,7 @@ export default function EUAIActPage() {
             )}
           </>
         )}
-      </>
+      </div>
     );
   }
 
@@ -565,22 +566,22 @@ export default function EUAIActPage() {
 
     if (wizardResult) {
       return (
-        <>
+        <div className={CH_SHELL}>
           <header className="mb-6">
             <button
               onClick={() => { setView("dashboard"); loadDashboard(); }}
-              className="text-xs text-[var(--sbs-text-secondary)] hover:text-[var(--sbs-text-primary)] mb-2 inline-block"
+              className="text-xs text-slate-600 hover:text-slate-900 mb-2 inline-block"
             >
               ← Zurück zum Dashboard
             </button>
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
               Klassifizierungsergebnis – {systemName}
             </h1>
           </header>
 
           <div className="max-w-2xl space-y-6">
-            <div className="sbs-panel p-6 text-center">
-              <div className="text-xs text-[var(--sbs-text-secondary)] mb-2">Risikostufe</div>
+            <div className={`${CH_CARD} p-6 text-center`}>
+              <div className="text-xs text-slate-600 mb-2">Risikostufe</div>
               <span
                 className={cn(
                   "inline-flex rounded-full px-4 py-1.5 text-sm font-semibold",
@@ -589,11 +590,11 @@ export default function EUAIActPage() {
               >
                 {RISK_LABEL[wizardResult.risk_level]}
               </span>
-              <div className="mt-4 text-sm text-[var(--sbs-text-primary)]">
+              <div className="mt-4 text-sm text-slate-900">
                 {wizardResult.classification_rationale}
               </div>
               {wizardResult.classification_path !== "none" && (
-                <div className="mt-3 text-xs text-[var(--sbs-text-muted)]">
+                <div className="mt-3 text-xs text-slate-500">
                   Pfad: {wizardResult.classification_path} | Konfidenz:{" "}
                   {Math.round(wizardResult.confidence_score * 100)}%
                 </div>
@@ -601,29 +602,30 @@ export default function EUAIActPage() {
             </div>
 
             <button
+              type="button"
               onClick={() => { setView("dashboard"); loadDashboard(); }}
-              className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20"
+              className={CH_BTN_SECONDARY}
             >
               Zurück zum Dashboard
             </button>
           </div>
-        </>
+        </div>
       );
     }
 
     return (
-      <>
+      <div className={CH_SHELL}>
         <header className="mb-6">
           <button
             onClick={() => setView("dashboard")}
-            className="text-xs text-[var(--sbs-text-secondary)] hover:text-[var(--sbs-text-primary)] mb-2 inline-block"
+            className="text-xs text-slate-600 hover:text-slate-900 mb-2 inline-block"
           >
             ← Zurück zum Dashboard
           </button>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Klassifizierungs-Assistent – {systemName}
           </h1>
-          <p className="mt-1 text-sm text-[var(--sbs-text-secondary)]">
+          <p className="mt-1 text-sm text-slate-600">
             Schritt {wizardStep} von 5: {STEP_TITLES[wizardStep]}
           </p>
         </header>
@@ -641,10 +643,10 @@ export default function EUAIActPage() {
           ))}
         </div>
 
-        <div className="max-w-2xl sbs-panel p-6 space-y-4">
+        <div className="max-w-2xl space-y-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/40">
           {wizardStep === 1 && (
             <>
-              <h3 className="text-sm font-semibold mb-3">
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">
                 Prüfung auf verbotene Praktiken (Art. 5)
               </h3>
               {[
@@ -653,12 +655,12 @@ export default function EUAIActPage() {
                 { key: "exploits_vulnerabilities", label: "Ausnutzung von Schwachstellen (Alter, Behinderung)" },
                 { key: "involves_realtime_biometric_public", label: "Biometrische Echtzeit-Fernidentifizierung in öffentlichen Räumen" },
               ].map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-3 text-sm text-[var(--sbs-text-primary)]">
+                <label key={key} className="flex items-center gap-3 text-sm text-slate-900">
                   <input
                     type="checkbox"
                     checked={!!wizardData[key]}
                     onChange={(e) => setField(key, e.target.checked)}
-                    className="rounded border-[var(--sbs-border)] bg-slate-50"
+                    className="rounded border-slate-200 bg-slate-50"
                   />
                   {label}
                 </label>
@@ -668,7 +670,7 @@ export default function EUAIActPage() {
 
           {wizardStep === 2 && (
             <>
-              <h3 className="text-sm font-semibold mb-3">
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">
                 Anhang I – Sicherheitskomponente unter EU-Harmonisierungsrecht
               </h3>
               {[
@@ -676,18 +678,18 @@ export default function EUAIActPage() {
                 { key: "covered_by_eu_harmonisation_legislation", label: "Fällt unter EU-Harmonisierungsrecht" },
                 { key: "requires_third_party_conformity", label: "Drittanbieter-Konformitätsbewertung erforderlich" },
               ].map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-3 text-sm text-[var(--sbs-text-primary)]">
+                <label key={key} className="flex items-center gap-3 text-sm text-slate-900">
                   <input
                     type="checkbox"
                     checked={!!wizardData[key]}
                     onChange={(e) => setField(key, e.target.checked)}
-                    className="rounded border-[var(--sbs-border)] bg-slate-50"
+                    className="rounded border-slate-200 bg-slate-50"
                   />
                   {label}
                 </label>
               ))}
               <div>
-                <label className="block text-xs text-[var(--sbs-text-secondary)] mb-1">
+                <label className="block text-xs text-slate-600 mb-1">
                   Gesetzesreferenz (optional)
                 </label>
                 <input
@@ -695,7 +697,7 @@ export default function EUAIActPage() {
                   value={(wizardData.legislation_reference as string) || ""}
                   onChange={(e) => setField("legislation_reference", e.target.value || null)}
                   placeholder="z.B. Machinery Regulation 2023/1230"
-                  className="w-full rounded border border-[var(--sbs-border)] bg-white px-3 py-1.5 text-sm text-[var(--sbs-text-primary)] placeholder:text-slate-600"
+                  className="w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-600"
                 />
               </div>
             </>
@@ -703,17 +705,17 @@ export default function EUAIActPage() {
 
           {wizardStep === 3 && (
             <>
-              <h3 className="text-sm font-semibold mb-3">
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">
                 Anhang III – Anwendungsbereich
               </h3>
               <div>
-                <label className="block text-xs text-[var(--sbs-text-secondary)] mb-1">
+                <label className="block text-xs text-slate-600 mb-1">
                   Einsatzbereich
                 </label>
                 <select
                   value={(wizardData.use_case_domain as string) || ""}
                   onChange={(e) => setField("use_case_domain", e.target.value || null)}
-                  className="w-full rounded border border-[var(--sbs-border)] bg-white px-3 py-1.5 text-sm text-[var(--sbs-text-primary)]"
+                  className="w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900"
                 >
                   <option value="">– Keiner der aufgeführten Bereiche –</option>
                   <option value="biometrics">Biometrie</option>
@@ -727,14 +729,14 @@ export default function EUAIActPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-[var(--sbs-text-secondary)] mb-1">
+                <label className="block text-xs text-slate-600 mb-1">
                   Spezifischer Anwendungsfall (optional)
                 </label>
                 <input
                   type="text"
                   value={(wizardData.specific_use_case as string) || ""}
                   onChange={(e) => setField("specific_use_case", e.target.value || null)}
-                  className="w-full rounded border border-[var(--sbs-border)] bg-white px-3 py-1.5 text-sm text-[var(--sbs-text-primary)]"
+                  className="w-full rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900"
                 />
               </div>
             </>
@@ -742,7 +744,7 @@ export default function EUAIActPage() {
 
           {wizardStep === 4 && (
             <>
-              <h3 className="text-sm font-semibold mb-3">
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">
                 Art. 6(3) – Ausnahmen von der Hochrisiko-Einstufung
               </h3>
               {[
@@ -751,23 +753,23 @@ export default function EUAIActPage() {
                 { key: "detects_patterns_without_replacing_human", label: "Erkennt Muster ohne menschliche Bewertung zu ersetzen" },
                 { key: "is_preparatory_task_only", label: "Rein vorbereitende Aufgabe" },
               ].map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-3 text-sm text-[var(--sbs-text-primary)]">
+                <label key={key} className="flex items-center gap-3 text-sm text-slate-900">
                   <input
                     type="checkbox"
                     checked={!!wizardData[key]}
                     onChange={(e) => setField(key, e.target.checked)}
-                    className="rounded border-[var(--sbs-border)] bg-slate-50"
+                    className="rounded border-slate-200 bg-slate-50"
                   />
                   {label}
                 </label>
               ))}
-              <div className="border-t border-[var(--sbs-border)] pt-3 mt-3">
-                <label className="flex items-center gap-3 text-sm text-rose-300">
+              <div className="border-t border-slate-200 pt-3 mt-3">
+                <label className="flex items-center gap-3 text-sm font-medium text-rose-800">
                   <input
                     type="checkbox"
                     checked={!!wizardData.profiles_natural_persons}
                     onChange={(e) => setField("profiles_natural_persons", e.target.checked)}
-                    className="rounded border-[var(--sbs-border)] bg-slate-50"
+                    className="rounded border-slate-200 bg-slate-50"
                   />
                   Profiliert natürliche Personen (Ausnahme entfällt!)
                 </label>
@@ -777,7 +779,7 @@ export default function EUAIActPage() {
 
           {wizardStep === 5 && (
             <>
-              <h3 className="text-sm font-semibold mb-3">
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">
                 Transparenzpflichten
               </h3>
               {[
@@ -785,12 +787,12 @@ export default function EUAIActPage() {
                 { key: "generates_deepfakes", label: "Erzeugt Deepfakes" },
                 { key: "involves_emotion_recognition", label: "Emotionserkennung" },
               ].map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-3 text-sm text-[var(--sbs-text-primary)]">
+                <label key={key} className="flex items-center gap-3 text-sm text-slate-900">
                   <input
                     type="checkbox"
                     checked={!!wizardData[key]}
                     onChange={(e) => setField(key, e.target.checked)}
-                    className="rounded border-[var(--sbs-border)] bg-slate-50"
+                    className="rounded border-slate-200 bg-slate-50"
                   />
                   {label}
                 </label>
@@ -799,32 +801,34 @@ export default function EUAIActPage() {
           )}
 
           {/* Nav buttons */}
-          <div className="flex justify-between pt-4 border-t border-[var(--sbs-border)]">
+          <div className="flex justify-between pt-4 border-t border-slate-200">
             <button
               onClick={() => setWizardStep((s) => Math.max(1, s - 1) as WizardStep)}
               disabled={wizardStep === 1}
-              className="rounded border border-[var(--sbs-border)] px-3 py-1.5 text-xs text-[var(--sbs-text-primary)] hover:bg-slate-100 disabled:opacity-40"
+              className="rounded border border-slate-200 px-3 py-1.5 text-xs text-slate-900 hover:bg-slate-100 disabled:opacity-40"
             >
               Zurück
             </button>
             {wizardStep < 5 ? (
               <button
+                type="button"
                 onClick={() => setWizardStep((s) => Math.min(5, s + 1) as WizardStep)}
-                className="rounded border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+                className={`${CH_BTN_SECONDARY} px-3 py-1.5 text-xs`}
               >
                 Weiter
               </button>
             ) : (
               <button
-                onClick={submitClassification}
-                className="rounded border border-emerald-500/50 bg-emerald-500/10 px-4 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20"
+                type="button"
+                onClick={() => void submitClassification()}
+                className={`${CH_BTN_PRIMARY} px-4 py-1.5 text-xs`}
               >
                 Klassifizierung abschließen
               </button>
             )}
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -836,18 +840,18 @@ export default function EUAIActPage() {
     const sr = dashboard?.systems.find((s) => s.ai_system_id === gapSystemId);
 
     return (
-      <>
+      <div className={CH_SHELL}>
         <header className="mb-6">
           <button
             onClick={() => { setView("dashboard"); loadDashboard(); }}
-            className="text-xs text-[var(--sbs-text-secondary)] hover:text-[var(--sbs-text-primary)] mb-2 inline-block"
+            className="text-xs text-slate-600 hover:text-slate-900 mb-2 inline-block"
           >
             ← Zurück zum Dashboard
           </button>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Lückenanalyse – {systemName}
           </h1>
-          <p className="mt-1 text-sm text-[var(--sbs-text-secondary)]">
+          <p className="mt-1 text-sm text-slate-600">
             Compliance-Status der einzelnen Anforderungen (Art. 9–49) für dieses System.
           </p>
         </header>
@@ -856,11 +860,11 @@ export default function EUAIActPage() {
           <div className="mb-6 flex items-center gap-6">
             <CircularProgress value={sr.readiness_score} size={90} />
             <div>
-              <div className="text-sm text-[var(--sbs-text-secondary)]">Gesamtbereitschaft</div>
+              <div className="text-sm text-slate-600">Gesamtbereitschaft</div>
               <div className="text-2xl font-semibold">
                 {Math.round(sr.readiness_score * 100)}%
               </div>
-              <div className="text-xs text-[var(--sbs-text-muted)] mt-1">
+              <div className="text-xs text-slate-500 mt-1">
                 {sr.completed} abgeschlossen, {sr.in_progress} in Bearbeitung,{" "}
                 {sr.not_started} offen
               </div>
@@ -868,17 +872,17 @@ export default function EUAIActPage() {
           </div>
         )}
 
-        <section className="mb-8 sbs-panel p-5">
-          <h2 className="text-sm font-semibold text-[var(--sbs-text-primary)]">
+        <section className={`${CH_CARD} p-5`}>
+          <h2 className="text-sm font-semibold text-slate-900">
             NIS2 / KRITIS KPIs
           </h2>
-          <p className="mt-1 text-xs text-[var(--sbs-text-muted)]">
+          <p className="mt-1 text-xs text-slate-500">
             Operative Kennzahlen (0–100 %) mit optionaler Evidenz-Referenz. Empfohlene
             Ziele aus dem High-Risk-Szenario-Profil, sofern das System als High-Risk
             eingeordnet ist.
           </p>
           {nis2Kpis?.recommended?.scenario_label && (
-            <p className="mt-2 text-xs text-indigo-300">
+            <p className="mt-2 text-xs font-medium text-indigo-800">
               Szenario-Mapping: {nis2Kpis.recommended.scenario_label}
             </p>
           )}
@@ -893,15 +897,18 @@ export default function EUAIActPage() {
               const recPct = nis2RecommendedPercent(kpiType, nis2Kpis?.recommended ?? null);
               const draft = nis2Draft[kpiType];
               return (
-                <div key={kpiType} className="border-t border-[var(--sbs-border)] pt-4 first:border-t-0 first:pt-0">
+                <div
+                  key={kpiType}
+                  className="border-t border-slate-200/80 pt-4 first:border-t-0 first:pt-0"
+                >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="text-sm font-medium text-[var(--sbs-text-primary)]">
+                    <span className="text-sm font-medium text-slate-900">
                       {NIS2_KPI_LABEL[kpiType]}
                     </span>
                     {recPct != null && (
-                      <span className="text-xs text-[var(--sbs-text-muted)]">
+                        <span className="text-xs text-slate-500">
                         Empfehlung:{" "}
-                        <span className="text-emerald-400 font-medium">{recPct}%</span>
+                        <span className="font-medium text-emerald-700">{recPct}%</span>
                       </span>
                     )}
                   </div>
@@ -919,7 +926,7 @@ export default function EUAIActPage() {
                       }
                       className="flex-1 accent-emerald-500"
                     />
-                    <span className="w-10 text-right text-sm tabular-nums text-[var(--sbs-text-primary)]">
+                    <span className="w-10 text-right text-sm tabular-nums text-slate-900">
                       {draft.value}%
                     </span>
                   </div>
@@ -931,7 +938,7 @@ export default function EUAIActPage() {
                       />
                     </div>
                   )}
-                  <label className="mt-2 block text-xs text-[var(--sbs-text-muted)]">
+                  <label className="mt-2 block text-xs text-slate-500">
                     Evidenz (optional, z. B. NormEvidence-IDs)
                     <input
                       type="text"
@@ -942,14 +949,14 @@ export default function EUAIActPage() {
                           [kpiType]: { ...prev[kpiType], evidence: e.target.value },
                         }))
                       }
-                      className="mt-1 w-full rounded border border-[var(--sbs-border)] bg-white px-2 py-1 text-xs text-[var(--sbs-text-primary)]"
+                      className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900"
                     />
                   </label>
                   <button
                     type="button"
                     onClick={() => void saveNis2Kpi(kpiType)}
                     disabled={nis2Saving === kpiType}
-                    className="mt-2 rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
+                    className={`${CH_BTN_SECONDARY} mt-2 px-3 py-1 text-xs disabled:opacity-50`}
                   >
                     {nis2Saving === kpiType ? "Speichern…" : "Speichern"}
                   </button>
@@ -960,7 +967,7 @@ export default function EUAIActPage() {
         </section>
 
         {gapStatuses.length === 0 ? (
-          <div className="sbs-panel p-8 text-center text-sm text-[var(--sbs-text-muted)]">
+          <div className={`${CH_CARD} p-8 text-center text-sm text-slate-500`}>
             Keine Anforderungen für dieses System vorhanden.
             Bitte zuerst eine Klassifizierung durchführen.
           </div>
@@ -971,14 +978,14 @@ export default function EUAIActPage() {
               return (
                 <div
                   key={entry.requirement_id}
-                  className="sbs-panel p-4"
+                  className={`${CH_CARD} p-4`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm font-medium text-[var(--sbs-text-primary)]">
+                      <div className="text-sm font-medium text-slate-900">
                         {req?.article}: {req?.name || entry.requirement_id}
                       </div>
-                      <div className="text-xs text-[var(--sbs-text-secondary)] mt-1">
+                      <div className="text-xs text-slate-600 mt-1">
                         {req?.description}
                       </div>
                     </div>
@@ -988,7 +995,7 @@ export default function EUAIActPage() {
                         onChange={(e) =>
                           updateStatus(entry.requirement_id, e.target.value)
                         }
-                        className="rounded border border-[var(--sbs-border)] bg-white px-2 py-1 text-xs text-[var(--sbs-text-primary)]"
+                        className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900"
                       >
                         <option value="not_started">Nicht begonnen</option>
                         <option value="in_progress">In Bearbeitung</option>
@@ -1006,7 +1013,7 @@ export default function EUAIActPage() {
                     </div>
                   </div>
                   {entry.evidence_notes && (
-                    <div className="mt-2 text-xs text-[var(--sbs-text-muted)] bg-slate-200/50 rounded p-2">
+                    <div className="mt-2 text-xs text-slate-500 bg-slate-200/50 rounded p-2">
                       {entry.evidence_notes}
                     </div>
                   )}
@@ -1015,7 +1022,7 @@ export default function EUAIActPage() {
             })}
           </div>
         )}
-      </>
+      </div>
     );
   }
 
