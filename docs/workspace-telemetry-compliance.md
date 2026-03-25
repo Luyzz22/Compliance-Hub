@@ -31,12 +31,21 @@ Optional:
 | Feld | Bedeutung |
 |------|-----------|
 | `result` | `success` \| `forbidden_demo_readonly` |
-| `feature_name` | UI-/Feature-Tag (snake_case), z. B. `board_ai_compliance_report` |
-| `route` | OpenAPI-Pfad-Template, z. B. `/api/v1/ai-systems` |
+| `feature_name` | UI-/Feature-Tag (snake_case), z. B. `board_report_detail` |
+| `route` | OpenAPI-Pfad-Template, z. B. `/api/v1/tenants/{tenant_id}/board/ai-compliance-reports/{report_id}` |
 | `method` | HTTP-Methode in Großbuchstaben |
-| weitere Schlüssel | Nur über `extra`, nach Allowlist/Denylist (keine E-Mails, kein Freitext) |
+| Zusatzfelder | Nur über `extra`, **ausschließlich Whitelist** (siehe unten) |
 
-**Sink:** Postgres-Tabelle `usage_events` (bestehend). Zusätzlich optional **`COMPLIANCEHUB_WORKSPACE_TELEMETRY_STRUCTURED_LOG=true`** → eine JSON-Zeile pro Event im App-Logger (PostHog/Collector-seitig abgreifbar).
+### Policy für `extra` (Whitelist)
+
+Erlaubte Schlüssel (Implementierung: `app/services/workspace_telemetry.py`):
+
+`action_id`, `ai_system_id`, `audit_record_id`, `classification_id`, `control_id`, `evidence_id`, `export_job_id`, `framework_key`, `job_id`, `report_id`, `requirement_id`, `surface`, `template_key`
+
+- Werte: `bool`, begrenzte `int`, oder `str` mit maximal 128 Zeichen und nur Zeichen aus `[a-zA-Z0-9_.:/-]` (keine Leerzeichen, kein `@`, kein Freitext).
+- Alle anderen Schlüssel und ungültige Werte werden **still verworfen** (kein Leak in Logs/DB).
+
+**Sink:** Postgres-Tabelle `usage_events` (bestehend). Zusätzlich optional **`COMPLIANCEHUB_WORKSPACE_TELEMETRY_STRUCTURED_LOG=true`** → eine JSON-Zeile pro Event im App-Logger (`logger.info("workspace_telemetry <json>")`), SIEM-tauglich.
 
 **Bewusst nicht enthalten (DSGVO / Datenminimierung):** IP-Adresse, User-Agent, API-Key-Wert, Korrelations-IDs, AI-System-Namen, Freitext aus Bodies.  
 **Ergänzung für strengere ISO/NIS2-Audits (Roadmap):** optionale `correlation_id` (technisch, keine PII), `high_risk_context` (bool oder Enum), Export in separates **Audit-Log** (immutabel) vs. **Usage-Telemetrie**.
@@ -45,8 +54,8 @@ Optional:
 
 | `event_type` | Zweck |
 |--------------|--------|
-| `workspace_session_started` | Modus-bewusster Session-Start (derzeit: Demo-Mandant bei `GET /workspace/tenant-meta`, Dedupe 24h) |
-| `workspace_feature_used` | Nutzung eines Demo-Story-Features (`GET /workspace/feature-used?feature_key=…`) |
+| `workspace_session_started` | Modus-bewusster Session-Start bei **`GET /workspace/tenant-meta`** für **alle** registrierten Mandanten (Dedupe 24h pro `tenant_id` + `event_type`) |
+| `workspace_feature_used` | Sinnvolle Produktzugriffe (z. B. Playbook-Overview, Cross-Regulation-Dashboard, Board-Report-Detail) sowie Demo-Story (`GET /workspace/feature-used?feature_key=…`) |
 | `workspace_mutation_blocked` | Schreibversuch in read-only Demo/Playground (Policy), inkl. Route/Methode |
 | `workspace_incident_flagged` | **Reserviert** – noch keine Emission; für AI-Governance-/Security-Incidents |
 
@@ -54,22 +63,28 @@ Optional:
 
 Alte Konstanten `demo_session_started`, `demo_feature_used`, `demo_mutation_blocked` sind im Code **Aliase auf dieselben String-Werte** wie die `workspace_*`-Typen (keine doppelten Events). Bestehende SIEM-Regeln sollten auf die neuen Namen umgestellt werden.
 
-## 3. Beispiel-JSON
+## 3. Beispiel-JSON (mit Audit-Mapping)
 
-### workspace_session_started (Demo-Mandant)
+### A) `workspace_session_started` – Produktiv-Mandant (tenant-meta)
 
 ```json
 {
   "event_type": "workspace_session_started",
-  "tenant_id": "demo-seed-tenant-1",
-  "workspace_mode": "demo",
+  "tenant_id": "prod-tenant-1",
+  "workspace_mode": "production",
   "actor_type": "tenant",
   "timestamp": "2026-03-25T12:00:00Z",
   "result": "success"
 }
 ```
 
-### workspace_feature_used
+- **NIS2:** Nachweis, dass Mandanten-Arbeitskontexte erkannt und protokolliert werden (ohne Personenbezug).
+- **ISO 27001 (Logging):** Zeitgestempeltes Zugriffs-/Kontextsignal für Auswertung in SIEM.
+- **ISO 42001:** Trennung `workspace_mode=production` vs. Demo/Playground für AI-Governance-Reporting.
+
+*Hinweis:* `GET /workspace/tenant-meta` liefert üblicherweise `actor_type: tenant` (Mandanten-API-Key). Berater-Sessions über dedizierte Advisor-Routen erscheinen bei **`workspace_feature_used`** mit `actor_type: advisor` (siehe Beispiel D).
+
+### B) `workspace_feature_used` – AI Governance Playbook (Demo)
 
 ```json
 {
@@ -78,12 +93,17 @@ Alte Konstanten `demo_session_started`, `demo_feature_used`, `demo_mutation_bloc
   "workspace_mode": "demo",
   "actor_type": "tenant",
   "timestamp": "2026-03-25T12:01:00Z",
-  "feature_name": "board_ai_compliance_report",
-  "result": "success"
+  "feature_name": "ai_governance_playbook",
+  "result": "success",
+  "route": "/api/v1/ai-governance/compliance/overview",
+  "method": "GET"
 }
 ```
 
-### workspace_mutation_blocked
+- **ISO 42001:** Nachweis der Inanspruchnahme von AI-Compliance-/Governance-Übersichten (Überwachung Hochrisiko-Kontexte auf aggregierter Ebene).
+- **NIS2:** Sichtbarkeit relevanter Fachanwendungszugriffe für „normal use“ vs. Anomalien.
+
+### C) `workspace_mutation_blocked` – Schreibversuch Demo
 
 ```json
 {
@@ -98,20 +118,28 @@ Alte Konstanten `demo_session_started`, `demo_feature_used`, `demo_mutation_bloc
 }
 ```
 
-### workspace_session_started (Produktiv – sobald ausgeweitet)
+- **NIS2 / ISO 27001 A.9:** Policy durchgesetzt; blockierte Änderungen an Konfiguration/Daten im Demo-Kontext.
+- **ISO 42001:** Read-only Sandbox schützt vor irreführenden „Produktions“-Mutationen in Story-Umgebungen.
+
+### D) `workspace_feature_used` – Board-Report durch Berater (Produktion)
 
 ```json
 {
-  "event_type": "workspace_session_started",
-  "tenant_id": "prod-tenant-1",
+  "event_type": "workspace_feature_used",
+  "tenant_id": "client-tenant-1",
   "workspace_mode": "production",
-  "actor_type": "tenant",
-  "timestamp": "2026-03-25T12:00:00Z",
-  "result": "success"
+  "actor_type": "advisor",
+  "timestamp": "2026-03-25T12:03:00Z",
+  "feature_name": "board_report_detail",
+  "result": "success",
+  "route": "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/board/ai-compliance-reports/{report_id}",
+  "method": "GET",
+  "report_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 
-*Hinweis: Session-Telemetrie für reine Produktiv-Mandanten ist aktuell nicht aktiv (nur `is_demo` bei tenant-meta); Schema ist dafür vorbereitet.*
+- **ISO 27001 A.9:** Unterscheidung Mandanten- vs. Berater-Zugriff auf API-Ebene.
+- **ISO 42001 / NIS2:** Oversight-relevante Einblicke in Board-Reporting ohne Inhalte der Reports im Payload.
 
 ## 4. NIS2 / ISO 27001 / ISO 42001 – Mapping (hochlevel)
 
@@ -130,9 +158,15 @@ Alte Konstanten `demo_session_started`, `demo_feature_used`, `demo_mutation_bloc
 
 ## 5. Backend-Implementierung (Ist)
 
-- **Zentral:** `app/services/workspace_telemetry.py` – `emit_workspace_event` (Schema + optional strukturiertes Log), Wrapper `log_workspace_*`.
-- **Fehler / Performance:** synchroner Insert in derselben Request-Session; Fehler werden geschluckt (`log_usage_event`). Kein Blockieren durch Telemetrie-Timeouts außerhalb DB.
-- **Integration:** `GET /workspace/tenant-meta` (Demo) → `workspace_session_started`; `GET /workspace/feature-used` (Alias: `demo-feature-used`) → `workspace_feature_used`; Demo-Guard → `workspace_mutation_blocked`.
+- **Zentral:** `app/services/workspace_telemetry.py` – `build_workspace_event_body`, `emit_workspace_event` (Schema + `extra`-Whitelist + optional strukturiertes Log), Wrapper `log_workspace_*`.
+- **Fehler / Performance:** DB-Insert in `log_usage_event` mit `commit`; Fehler werden geschluckt (kein Request-Break). Strukturiertes Logging nach dem Insert, ebenfalls ohne Raise.
+- **Integration:**
+  - `GET /workspace/tenant-meta` → `workspace_session_started` (alle registrierten Mandanten, Dedupe 24h)
+  - `GET /workspace/feature-used` (Alias `demo-feature-used`) → `workspace_feature_used`
+  - `GET /api/v1/ai-governance/compliance/overview` → `workspace_feature_used` (`ai_governance_playbook`)
+  - `GET .../compliance/cross-regulation/summary` → `workspace_feature_used` (`cross_regulation_dashboard`)
+  - `GET .../board/ai-compliance-reports/{report_id}` (Mandant + Berater-Pfad) → `workspace_feature_used` (`board_report_detail`, optional `report_id` in Payload)
+  - Demo-Guard → `workspace_mutation_blocked`
 - **Middleware:** bewusst nicht global; Guard + explizite Hooks halten die Pipeline schlank und vermeiden Doppelzählung.
 
 ## 6. Frontend-Vertrag

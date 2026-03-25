@@ -2,8 +2,18 @@
 
 from __future__ import annotations
 
+import json
+import logging
+
+import pytest
+
+from app.db import SessionLocal
 from app.services import usage_event_logger
-from app.services.workspace_telemetry import actor_type_for_request_path, build_workspace_event_body
+from app.services.workspace_telemetry import (
+    actor_type_for_request_path,
+    build_workspace_event_body,
+    emit_workspace_event,
+)
 
 
 def test_actor_type_advisor_path() -> None:
@@ -55,3 +65,56 @@ def test_build_body_extra_sanitizes_keys_and_values() -> None:
     assert "owner_email" not in p
     assert "user_message" not in p
     assert "note" not in p
+
+
+def test_build_body_extra_drops_unknown_whitelist_keys() -> None:
+    p = build_workspace_event_body(
+        event_type=usage_event_logger.WORKSPACE_FEATURE_USED,
+        tenant_id="t1",
+        workspace_mode="production",
+        actor_type="tenant",
+        extra={"malicious_key": "safe_looking", "framework_key": "iso_42001"},
+    )
+    assert p.get("framework_key") == "iso_42001"
+    assert "malicious_key" not in p
+
+
+def test_build_body_extra_drops_non_matching_string_values() -> None:
+    p = build_workspace_event_body(
+        event_type=usage_event_logger.WORKSPACE_FEATURE_USED,
+        tenant_id="t1",
+        workspace_mode="production",
+        actor_type="tenant",
+        extra={"framework_key": "has illegal spaces"},
+    )
+    assert "framework_key" not in p
+
+
+def test_emit_workspace_event_structured_log_json(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_WORKSPACE_TELEMETRY_STRUCTURED_LOG", "1")
+    s = SessionLocal()
+    try:
+        with caplog.at_level(logging.INFO, logger="app.services.workspace_telemetry"):
+            emit_workspace_event(
+                s,
+                usage_event_logger.WORKSPACE_FEATURE_USED,
+                "t-struct",
+                workspace_mode="production",
+                actor_type="tenant",
+                feature_name="probe",
+                result="success",
+                route="/api/v1/probe",
+                method="GET",
+            )
+    finally:
+        s.close()
+
+    recs = [r for r in caplog.records if r.name == "app.services.workspace_telemetry"]
+    assert recs
+    suffix = recs[-1].getMessage().split("workspace_telemetry ", 1)[-1]
+    blob = json.loads(suffix)
+    assert blob["event_type"] == usage_event_logger.WORKSPACE_FEATURE_USED
+    assert blob["tenant_id"] == "t-struct"
+    assert blob["timestamp"].endswith("Z")

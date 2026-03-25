@@ -2,6 +2,9 @@
 
 Zentrale API: ``emit_workspace_event`` → ``usage_events`` (+ optional strukturiertes App-Log).
 Alle Emissionen sind **best-effort** (Fehler brechen den Request nicht).
+
+``extra`` ist **ausschließlich nach Whitelist** (Schlüssel + Typ/Wert-Regeln).
+Kein Freitext, keine PII.
 """
 
 from __future__ import annotations
@@ -21,35 +24,40 @@ logger = logging.getLogger(__name__)
 
 ActorTypeTelemetry = Literal["tenant", "advisor", "system", "unknown"]
 
-# Schlüssel, die typischerweise PII oder Rohinhalte anzeigen (keine Aufnahme in extra)
-_EXTRA_KEY_DENYLIST_SUBSTRINGS = (
-    "email",
-    "mail",
-    "phone",
-    "password",
-    "token",
-    "secret",
-    "payload",
-    "body",
-    "content",
-    "prompt",
-    "message",
-    "firstname",
-    "lastname",
-    "address",
-    "ip",
-    "user_name",
-    "username",
-    "displayname",
-)
+# Nur explizit erlaubte Kontext-Schlüssel (Referenz-IDs / Enums, keine Personen-/Freitextfelder)
+_EXTRA_ALLOWED_KEYS = frozenset({
+    "action_id",
+    "ai_system_id",
+    "audit_record_id",
+    "classification_id",
+    "control_id",
+    "evidence_id",
+    "export_job_id",
+    "framework_key",
+    "job_id",
+    "report_id",
+    "requirement_id",
+    "surface",
+    "template_key",
+})
 
-# Erlaubte Zeichen in extra-Stringwerten (IDs, Keys, Enums) — kein Freitext
+# Erlaubte Zeichen in String-Werten: technische IDs und Keys, kein Freitext
 _EXTRA_STR_VALUE_PATTERN = re.compile(r"^[a-zA-Z0-9_.:/\-]{1,128}$")
 
 
 def _env_truthy(key: str) -> bool:
     raw = os.getenv(key, "").strip().lower()
     return raw in ("1", "true", "yes", "on")
+
+
+def route_template_from_request(request: Any) -> str:
+    """OpenAPI-Pfad-Template (zyklusfrei; dupliziert Logik aus demo_tenant_guard)."""
+    route = request.scope.get("route")
+    if route is not None:
+        path = getattr(route, "path", None)
+        if path:
+            return str(path)
+    return str(request.url.path)
 
 
 def actor_type_for_request_path(path: str) -> ActorTypeTelemetry:
@@ -61,22 +69,22 @@ def actor_type_for_request_path(path: str) -> ActorTypeTelemetry:
 
 
 def _sanitize_extra(extra: dict[str, Any] | None) -> dict[str, Any]:
-    """Nur nicht-sensitive Kontextfelder (z. B. framework_key, ai_system_id)."""
+    """Whitelist-only: unbekannte Schlüssel und ungültige Werte werden verworfen."""
     if not extra:
         return {}
     out: dict[str, Any] = {}
     for k, v in extra.items():
         if not isinstance(k, str) or not k.strip():
             continue
-        kl = k.lower().replace("-", "_")
-        if any(bad in kl for bad in _EXTRA_KEY_DENYLIST_SUBSTRINGS):
+        kn = k.strip()
+        if kn not in _EXTRA_ALLOWED_KEYS:
             continue
         if isinstance(v, bool):
-            out[k] = v
+            out[kn] = v
         elif isinstance(v, int) and -1_000_000_000 <= v <= 1_000_000_000:
-            out[k] = v
+            out[kn] = v
         elif isinstance(v, str) and _EXTRA_STR_VALUE_PATTERN.fullmatch(v):
-            out[k] = v
+            out[kn] = v
     return out
 
 
@@ -135,8 +143,6 @@ def emit_workspace_event(
     Zentrale Workspace-Telemetrie (synchron, ORM-Session).
 
     - Wirft **nie** nach außen: Fehler nur intern geloggt (wie ``log_usage_event``).
-    - Kein async nötig: Aufruf aus FastAPI-Sync-Routen/Dependencies; Latenz = ein DB-Insert.
-      (Background-Tasks wären möglich, erfordern aber separate Session-Pro Session.)
     """
     body = build_workspace_event_body(
         event_type=event_type,
@@ -158,7 +164,8 @@ def emit_workspace_event(
     )
     if _env_truthy("COMPLIANCEHUB_WORKSPACE_TELEMETRY_STRUCTURED_LOG"):
         try:
-            logger.info("workspace_telemetry %s", json.dumps(body, separators=(",", ":")))
+            line = json.dumps(body, separators=(",", ":"), ensure_ascii=False)
+            logger.info("workspace_telemetry %s", line)
         except Exception:
             logger.exception("workspace_telemetry_structured_log_failed")
 
@@ -189,6 +196,8 @@ def log_workspace_feature_used(
     workspace_mode: str,
     feature_name: str,
     request_path: str,
+    route: str | None = None,
+    method: str | None = None,
     extra: dict[str, Any] | None = None,
 ) -> None:
     emit_workspace_event(
@@ -199,6 +208,8 @@ def log_workspace_feature_used(
         actor_type=actor_type_for_request_path(request_path),
         feature_name=feature_name,
         result="success",
+        route=route,
+        method=method,
         extra=extra,
     )
 

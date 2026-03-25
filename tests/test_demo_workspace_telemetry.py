@@ -108,6 +108,34 @@ def test_workspace_feature_used_inserts_event(demo_tenant_id: str) -> None:
         s.close()
 
 
+def test_production_tenant_meta_logs_session_started_deduped() -> None:
+    tid = f"prod-sess-{uuid.uuid4().hex[:12]}"
+    s = SessionLocal()
+    try:
+        TenantRegistryRepository(s).create(
+            tenant_id=tid,
+            display_name="Prod Sess",
+            industry="IT",
+            country="DE",
+            nis2_scope="in_scope",
+            ai_act_scope="in_scope",
+            is_demo=False,
+        )
+    finally:
+        s.close()
+
+    h = _headers(tid)
+    assert client.get("/api/v1/workspace/tenant-meta", headers=h).status_code == 200
+    assert client.get("/api/v1/workspace/tenant-meta", headers=h).status_code == 200
+
+    s2 = SessionLocal()
+    try:
+        n = _count_usage(s2, tid, usage_event_logger.WORKSPACE_SESSION_STARTED)
+        assert n == 1
+    finally:
+        s2.close()
+
+
 def test_demo_feature_used_404_when_not_demo() -> None:
     tid = f"non-demo-{uuid.uuid4().hex[:12]}"
     s = SessionLocal()
