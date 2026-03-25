@@ -109,9 +109,7 @@ def build_advisor_tenant_report(
         eu_ai_act_days_remaining=readiness.days_remaining,
         nis2_incident_readiness_percent=round(board.nis2_incident_readiness_ratio * 100, 1),
         nis2_supplier_risk_coverage_percent=round(board.nis2_supplier_risk_coverage_ratio * 100, 1),
-        nis2_ot_it_segregation_mean_percent=(
-            round(ot_it, 1) if ot_it is not None else None
-        ),
+        nis2_ot_it_segregation_mean_percent=(round(ot_it, 1) if ot_it is not None else None),
         nis2_critical_focus_systems_count=critical_focus,
         governance_open_actions_count=open_actions,
         governance_overdue_actions_count=overdue,
