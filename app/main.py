@@ -3059,7 +3059,7 @@ def log_workspace_feature_used(
     framework_key: Annotated[str | None, Query(min_length=1, max_length=64)] = None,
     route_name: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
 ) -> dict[str, bool]:
-    """workspace_feature_used (keine PII). GET; alle registrierten Mandanten (read-only-kompatibel)."""
+    """workspace_feature_used (keine PII). GET; alle registrierten Mandanten."""
     row = TenantRegistryRepository(session).get_by_id(auth_context.tenant_id)
     if row is None:
         raise HTTPException(
