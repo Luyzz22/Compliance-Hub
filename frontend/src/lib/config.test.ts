@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   featureAdvisorWorkspace,
+  featureApiKeysUi,
   featureDemoSeeding,
   featureEvidencePreviewBadge,
   featureEvidenceUploads,
   featureGuidedSetup,
+  featurePilotRunbook,
 } from "./config";
 
 const envKeys = [
@@ -14,6 +16,8 @@ const envKeys = [
   "NEXT_PUBLIC_FEATURE_EVIDENCE_UPLOADS",
   "NEXT_PUBLIC_FEATURE_GUIDED_SETUP",
   "NEXT_PUBLIC_FEATURE_EVIDENCE_PREVIEW_BADGE",
+  "NEXT_PUBLIC_FEATURE_PILOT_RUNBOOK",
+  "NEXT_PUBLIC_FEATURE_API_KEYS_UI",
 ] as const;
 
 describe("feature flags from env", () => {
@@ -45,6 +49,8 @@ describe("feature flags from env", () => {
     expect(featureEvidenceUploads()).toBe(true);
     expect(featureGuidedSetup()).toBe(true);
     expect(featureEvidencePreviewBadge()).toBe(false);
+    expect(featurePilotRunbook()).toBe(true);
+    expect(featureApiKeysUi()).toBe(true);
   });
 
   it("parses common false/true tokens", () => {

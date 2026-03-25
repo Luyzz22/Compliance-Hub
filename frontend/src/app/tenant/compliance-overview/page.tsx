@@ -17,7 +17,7 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
-import { featureGuidedSetup } from "@/lib/config";
+import { featureGuidedSetup, featurePilotRunbook } from "@/lib/config";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -114,6 +114,22 @@ export default async function TenantComplianceOverviewPage() {
           </p>
         </section>
       )}
+
+      {featurePilotRunbook() ? (
+        <section className={CH_CARD} aria-label="Pilot-Runbook">
+          <p className={CH_SECTION_LABEL}>Pilot</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Wochenplan, Rollen und Checkliste für einen fokussierten Piloten – AI Act, NIS2 und
+            Board-Readiness.
+          </p>
+          <Link
+            href="/tenant/pilot-runbook"
+            className={`${CH_BTN_SECONDARY} mt-4 inline-flex text-xs`}
+          >
+            Pilot-Runbook anzeigen
+          </Link>
+        </section>
+      ) : null}
 
       <section
         aria-label="Workspace-Home"

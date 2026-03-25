@@ -2,6 +2,7 @@ import Link from "next/link";
 import React from "react";
 
 import { DemoTenantSetupPanel } from "@/components/demo/DemoTenantSetupPanel";
+import { TenantApiKeysPanel } from "@/components/settings/TenantApiKeysPanel";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { TenantUsageSummary } from "@/components/usage/TenantUsageSummary";
 import {
@@ -10,7 +11,7 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
-import { featureDemoSeeding } from "@/lib/config";
+import { featureApiKeysUi, featureDemoSeeding } from "@/lib/config";
 
 const TENANT_ID =
   process.env.NEXT_PUBLIC_TENANT_ID ||
@@ -40,17 +41,23 @@ export default function SettingsPage() {
           </Link>
         </article>
 
-        <article className={CH_CARD}>
-          <p className={CH_SECTION_LABEL}>API-Keys</p>
-          <p className="mt-2 text-sm text-slate-600">
-            Setzen Sie <code className="rounded bg-slate-100 px-1">COMPLIANCEHUB_API_KEY</code>{" "}
-            serverseitig; im Browser nur{" "}
-            <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_*</code> für Demo-Umgebungen.
-          </p>
-          <p className="mt-3 text-xs text-slate-500">
-            Rotieren und scoped Keys folgen über das geplante Admin-Portal.
-          </p>
-        </article>
+        {featureApiKeysUi() ? (
+          <article className={`${CH_CARD} md:col-span-2`}>
+            <TenantApiKeysPanel tenantId={TENANT_ID} />
+          </article>
+        ) : (
+          <article className={CH_CARD}>
+            <p className={CH_SECTION_LABEL}>API-Keys</p>
+            <p className="mt-2 text-sm text-slate-600">
+              API-Key-UI ist in dieser Umgebung deaktiviert (NEXT_PUBLIC_FEATURE_API_KEYS_UI).
+            </p>
+            <p className="mt-3 text-xs text-slate-500">
+              Setzen Sie <code className="rounded bg-slate-100 px-1">COMPLIANCEHUB_API_KEY</code>{" "}
+              serverseitig; im Browser nur{" "}
+              <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_*</code> für Demo-Umgebungen.
+            </p>
+          </article>
+        )}
 
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Benutzer & Rollen</p>
@@ -70,15 +77,6 @@ export default function SettingsPage() {
           <TenantUsageSummary mode="tenant" tenantId={TENANT_ID} />
         </div>
 
-        <article className={CH_CARD}>
-          <p className={CH_SECTION_LABEL}>Integrationen</p>
-          <p className="mt-2 text-sm text-slate-600">
-            DATEV-Export, SAP BTP / S4HANA-Anbindung und DMS-Konnektoren als Roadmap-Module.
-          </p>
-          <p className="mt-3 text-xs text-slate-500">
-            Keine produktiven Credentials in dieser Oberfläche hinterlegen.
-          </p>
-        </article>
       </section>
     </div>
   );

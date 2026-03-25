@@ -4,13 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 
-const items = [
+import { featurePilotRunbook } from "@/lib/config";
+
+const baseItems = [
   { href: "/tenant/compliance-overview", label: "Mandant & Übersicht" },
   { href: "/tenant/eu-ai-act", label: "EU AI Act" },
   { href: "/tenant/ai-systems", label: "KI-Systeme" },
   { href: "/tenant/policies", label: "Policies & Regeln" },
   { href: "/tenant/audit-log", label: "Audit & Evidence" },
   { href: "/tenant/blueprints", label: "Blueprints" },
+];
+
+const items = [
+  ...baseItems.slice(0, 1),
+  ...(featurePilotRunbook()
+    ? [{ href: "/tenant/pilot-runbook" as const, label: "Pilot-Runbook" }]
+    : []),
+  ...baseItems.slice(1),
 ];
 
 export function TenantNav() {
