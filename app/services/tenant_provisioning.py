@@ -19,6 +19,7 @@ from app.repositories.tenant_registry import TenantRegistryRepository
 
 _PILOT_DEFAULT_FLAGS: dict[str, bool] = {
     FeatureFlag.advisor_workspace.value: False,
+    FeatureFlag.advisor_client_snapshot.value: True,
     FeatureFlag.demo_seeding.value: False,
     FeatureFlag.evidence_uploads.value: True,
     FeatureFlag.guided_setup.value: True,

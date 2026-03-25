@@ -1318,6 +1318,15 @@ export function isAdvisorNavEnabled(): boolean {
   return ADVISOR_ID_FROM_ENV.length > 0;
 }
 
+export interface AdvisorTenantGovernanceBriefDto {
+  wizard_progress_count: number;
+  wizard_steps_total: number;
+  active_framework_keys: string[];
+  cross_reg_mean_coverage_percent: number | null;
+  regulatory_gap_count: number;
+  nis2_critical_ai_count: number;
+}
+
 export interface AdvisorPortfolioTenantEntry {
   tenant_id: string;
   tenant_name: string;
@@ -1331,6 +1340,7 @@ export interface AdvisorPortfolioTenantEntry {
   setup_completed_steps: number;
   setup_total_steps: number;
   setup_progress_ratio: number;
+  governance_brief?: AdvisorTenantGovernanceBriefDto | null;
 }
 
 export interface AdvisorPortfolioResponse {
@@ -1374,6 +1384,105 @@ export async function fetchAdvisorPortfolioExportBlob(
     throw new Error(`Advisor export failed: ${res.status}`);
   }
   return res.blob();
+}
+
+export interface AdvisorClientGovernanceSnapshotDto {
+  advisor_id: string;
+  client_tenant_id: string;
+  generated_at_utc: string;
+  client_info: {
+    tenant_id: string;
+    display_name: string;
+    industry?: string | null;
+    country?: string | null;
+    tenant_kind?: string | null;
+    registry_nis2_scope?: string | null;
+    registry_ai_act_scope?: string | null;
+  };
+  setup_status: {
+    guided_setup_completed_steps: number;
+    guided_setup_total_steps: number;
+    ai_governance_wizard_progress_steps: number[];
+    ai_governance_wizard_steps_total: number;
+    ai_governance_wizard_marked_steps: number[];
+  };
+  framework_scope: {
+    active_frameworks: string[];
+    compliance_scopes: string[];
+  };
+  ai_systems_summary: {
+    total_count: number;
+    high_risk_count: number;
+    nis2_critical_count: number;
+    by_risk_level: Record<string, number>;
+  };
+  kpi_summary: {
+    high_risk_systems_in_scope: number;
+    systems_with_kpi_values: number;
+    critical_kpi_system_rows: number;
+    aggregate_trends_non_flat: number;
+  };
+  cross_reg_summary: {
+    framework_key: string;
+    name: string;
+    coverage_percent: number;
+    gap_count: number;
+    total_requirements: number;
+  }[];
+  gap_assist: {
+    regulatory_gap_items_count: number;
+    llm_gap_suggestions_count: number | null;
+  };
+  reports_summary: {
+    reports_total: number;
+    last_report_id: string | null;
+    last_report_created_at: string | null;
+    last_report_audience: string | null;
+    last_report_title: string | null;
+  };
+}
+
+export async function fetchAdvisorClientGovernanceSnapshot(
+  advisorId: string,
+  clientTenantId: string,
+): Promise<AdvisorClientGovernanceSnapshotDto> {
+  const aid = encodeURIComponent(advisorId);
+  const tid = encodeURIComponent(clientTenantId);
+  const url = `${API_BASE_URL}/api/v1/advisors/${aid}/tenants/${tid}/governance-snapshot`;
+  const res = await fetch(url, {
+    headers: {
+      "x-api-key": API_KEY,
+      "x-advisor-id": advisorId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Governance snapshot failed: ${res.status}`);
+  }
+  return res.json() as Promise<AdvisorClientGovernanceSnapshotDto>;
+}
+
+export async function postAdvisorGovernanceSnapshotMarkdown(
+  advisorId: string,
+  clientTenantId: string,
+): Promise<{ markdown: string; provider: string; model_id: string }> {
+  const aid = encodeURIComponent(advisorId);
+  const tid = encodeURIComponent(clientTenantId);
+  const url = `${API_BASE_URL}/api/v1/advisors/${aid}/tenants/${tid}/governance-snapshot-report`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "x-api-key": API_KEY,
+      "x-advisor-id": advisorId,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Governance snapshot report failed: ${res.status}`);
+  }
+  return res.json() as Promise<{ markdown: string; provider: string; model_id: string }>;
 }
 
 export interface AdvisorBoardReportListRowDto {

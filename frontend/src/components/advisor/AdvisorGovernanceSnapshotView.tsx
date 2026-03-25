@@ -1,0 +1,289 @@
+"use client";
+
+import Link from "next/link";
+import React, { useCallback, useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+
+import {
+  ADVISOR_ID_FROM_ENV,
+  fetchAdvisorClientGovernanceSnapshot,
+  postAdvisorGovernanceSnapshotMarkdown,
+  type AdvisorClientGovernanceSnapshotDto,
+} from "@/lib/api";
+import {
+  CH_BTN_PRIMARY,
+  CH_BTN_SECONDARY,
+  CH_CARD,
+  CH_SECTION_LABEL,
+  CH_SHELL,
+} from "@/lib/boardLayout";
+import { featureAiComplianceBoardReport } from "@/lib/config";
+import { openWorkspaceTenantAndGo } from "@/lib/workspaceTenantClient";
+
+const mdComponents = {
+  h2: (props: React.ComponentPropsWithoutRef<"h2">) => (
+    <h2 className="mt-4 border-b border-slate-200 pb-1 text-base font-bold text-slate-900" {...props} />
+  ),
+  h3: (props: React.ComponentPropsWithoutRef<"h3">) => (
+    <h3 className="mt-3 text-sm font-bold text-slate-800" {...props} />
+  ),
+  p: (props: React.ComponentPropsWithoutRef<"p">) => (
+    <p className="mt-2 text-sm leading-relaxed text-slate-700" {...props} />
+  ),
+  ul: (props: React.ComponentPropsWithoutRef<"ul">) => (
+    <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-700" {...props} />
+  ),
+  li: (props: React.ComponentPropsWithoutRef<"li">) => <li className="pl-0.5" {...props} />,
+};
+
+export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenantId: string }) {
+  const advisorId = ADVISOR_ID_FROM_ENV;
+  const [snap, setSnap] = useState<AdvisorClientGovernanceSnapshotDto | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [mdBusy, setMdBusy] = useState(false);
+  const [mdOut, setMdOut] = useState<string | null>(null);
+  const [mdErr, setMdErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!advisorId) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const s = await fetchAdvisorClientGovernanceSnapshot(advisorId, clientTenantId);
+      setSnap(s);
+    } catch (e) {
+      setSnap(null);
+      setErr(e instanceof Error ? e.message : "Snapshot konnte nicht geladen werden");
+    } finally {
+      setBusy(false);
+    }
+  }, [advisorId, clientTenantId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const genMd = async () => {
+    if (!advisorId) return;
+    setMdBusy(true);
+    setMdErr(null);
+    setMdOut(null);
+    try {
+      const r = await postAdvisorGovernanceSnapshotMarkdown(advisorId, clientTenantId);
+      setMdOut(r.markdown);
+    } catch (e) {
+      setMdErr(e instanceof Error ? e.message : "KI-Export fehlgeschlagen");
+    } finally {
+      setMdBusy(false);
+    }
+  };
+
+  if (!advisorId) {
+    return (
+      <div className={CH_SHELL}>
+        <p className="text-sm text-rose-800">Kein Berater konfiguriert (NEXT_PUBLIC_ADVISOR_ID).</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={CH_SHELL} data-testid="advisor-governance-snapshot-view">
+      <header className="mb-8">
+        <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-cyan-800">Berater</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+          Mandanten-Governance-Snapshot
+        </h1>
+        <p className="mt-2 font-mono text-sm text-slate-600">{clientTenantId}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/advisor" className={`${CH_BTN_SECONDARY} text-xs no-underline`}>
+            Zurück zum Portfolio
+          </Link>
+          <button
+            type="button"
+            className={`${CH_BTN_PRIMARY} text-xs`}
+            disabled={busy}
+            onClick={() => void load()}
+          >
+            Aktualisieren
+          </button>
+        </div>
+      </header>
+
+      {err ? (
+        <div className="mb-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          {err}
+        </div>
+      ) : null}
+
+      {busy && !snap ? (
+        <p className="text-sm text-slate-600">Lade Snapshot…</p>
+      ) : null}
+
+      {snap ? (
+        <div className="space-y-6">
+          <section className={CH_CARD} data-testid="snap-client-info">
+            <p className={CH_SECTION_LABEL}>Mandant &amp; Scope</p>
+            <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-xs font-semibold text-slate-500">Anzeigename</dt>
+                <dd className="font-medium text-slate-900">{snap.client_info.display_name}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold text-slate-500">Branche / Land</dt>
+                <dd className="text-slate-800">
+                  {[snap.client_info.industry, snap.client_info.country].filter(Boolean).join(" · ") ||
+                    "–"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold text-slate-500">Tenant-Typ (Wizard)</dt>
+                <dd className="text-slate-800">{snap.client_info.tenant_kind ?? "–"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold text-slate-500">Aktive Frameworks</dt>
+                <dd className="flex flex-wrap gap-1">
+                  {snap.framework_scope.active_frameworks.length ? (
+                    snap.framework_scope.active_frameworks.map((k) => (
+                      <span
+                        key={k}
+                        className="rounded-full bg-cyan-50 px-2 py-0.5 text-xs font-semibold text-cyan-900"
+                      >
+                        {k}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-slate-500">–</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className={CH_CARD} data-testid="snap-setup">
+            <p className={CH_SECTION_LABEL}>AI Governance Setup &amp; Playbook</p>
+            <p className="mt-2 text-sm text-slate-700">
+              Guided Setup: {snap.setup_status.guided_setup_completed_steps}/
+              {snap.setup_status.guided_setup_total_steps} Schritte · Wizard-Fortschritt:{" "}
+              {snap.setup_status.ai_governance_wizard_progress_steps.length}/
+              {snap.setup_status.ai_governance_wizard_steps_total} markierte Meilensteine
+            </p>
+          </section>
+
+          <section className={CH_CARD} data-testid="snap-ai-systems">
+            <p className={CH_SECTION_LABEL}>AI-Systeme &amp; High-Risk</p>
+            <ul className="mt-2 list-inside list-disc text-sm text-slate-700">
+              <li>Gesamt: {snap.ai_systems_summary.total_count}</li>
+              <li>High-Risk: {snap.ai_systems_summary.high_risk_count}</li>
+              <li>NIS2-kritisch (criticality very_high): {snap.ai_systems_summary.nis2_critical_count}</li>
+            </ul>
+          </section>
+
+          <section className={CH_CARD} data-testid="snap-kpis">
+            <p className={CH_SECTION_LABEL}>AI KPIs &amp; Monitoring</p>
+            <ul className="mt-2 list-inside list-disc text-sm text-slate-700">
+              <li>High-Risk-Systeme im KPI-Scope: {snap.kpi_summary.high_risk_systems_in_scope}</li>
+              <li>Systeme mit KPI-Werten (Proxy): {snap.kpi_summary.systems_with_kpi_values}</li>
+              <li>Kritische KPI-Zeilen: {snap.kpi_summary.critical_kpi_system_rows}</li>
+              <li>Trends sichtbar (KPI-Definitionen): {snap.kpi_summary.aggregate_trends_non_flat}</li>
+            </ul>
+          </section>
+
+          <section className={CH_CARD} data-testid="snap-cross-reg">
+            <p className={CH_SECTION_LABEL}>Framework-Coverage &amp; Gaps</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Regulatorische Gap-Positionen: {snap.gap_assist.regulatory_gap_items_count}
+            </p>
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-[480px] w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
+                    <th className="py-2 pr-3">Framework</th>
+                    <th className="py-2 pr-3">Coverage</th>
+                    <th className="py-2">Gaps</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snap.cross_reg_summary.map((f) => (
+                    <tr key={f.framework_key} className="border-b border-slate-100">
+                      <td className="py-2 pr-3 font-medium text-slate-900">{f.name}</td>
+                      <td className="py-2 pr-3 tabular-nums">{f.coverage_percent}%</td>
+                      <td className="py-2 tabular-nums">{f.gap_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className={CH_CARD} data-testid="snap-reports">
+            <p className={CH_SECTION_LABEL}>Board- / Advisor-Reports</p>
+            <p className="mt-2 text-sm text-slate-700">
+              Anzahl Reports: {snap.reports_summary.reports_total}
+              {snap.reports_summary.last_report_created_at ? (
+                <>
+                  {" "}
+                  · zuletzt: {snap.reports_summary.last_report_created_at.slice(0, 10)} (
+                  {snap.reports_summary.last_report_audience ?? "?"})
+                </>
+              ) : null}
+            </p>
+            {featureAiComplianceBoardReport() ? (
+              <button
+                type="button"
+                className={`${CH_BTN_SECONDARY} mt-3 text-xs`}
+                onClick={() =>
+                  openWorkspaceTenantAndGo(clientTenantId, "/board/ai-compliance-report")
+                }
+              >
+                Board-Report-Ansicht öffnen (Mandanten-Workspace)
+              </button>
+            ) : null}
+          </section>
+
+          <section className={CH_CARD} data-testid="snap-actions">
+            <p className={CH_SECTION_LABEL}>Aktionen</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`${CH_BTN_PRIMARY} text-xs`}
+                disabled={mdBusy}
+                onClick={() => void genMd()}
+                data-testid="snap-gen-md"
+              >
+                {mdBusy ? "KI generiert…" : "Snapshot als Markdown generieren (KI)"}
+              </button>
+              <button
+                type="button"
+                className={`${CH_BTN_SECONDARY} text-xs`}
+                onClick={() => openWorkspaceTenantAndGo(clientTenantId, "/tenant/ai-governance-setup")}
+              >
+                AI Governance Setup Wizard öffnen
+              </button>
+              <button
+                type="button"
+                className={`${CH_BTN_SECONDARY} text-xs`}
+                onClick={() =>
+                  openWorkspaceTenantAndGo(clientTenantId, "/tenant/cross-regulation-dashboard")
+                }
+              >
+                Cross-Regulation Dashboard öffnen
+              </button>
+            </div>
+            {mdErr ? (
+              <p className="mt-3 text-sm text-rose-800">{mdErr}</p>
+            ) : null}
+            {mdOut ? (
+              <div
+                className="mt-4 rounded-lg border border-slate-200 bg-white p-4 text-sm"
+                data-testid="snap-md-preview"
+              >
+                <ReactMarkdown components={mdComponents}>{mdOut}</ReactMarkdown>
+              </div>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
+    </div>
+  );
+}

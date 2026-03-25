@@ -42,6 +42,12 @@ def test_feature_flag_defaults_true() -> None:
     assert is_feature_enabled(FeatureFlag.ai_compliance_board_report) is True
     assert is_feature_enabled(FeatureFlag.ai_kpi_kri) is True
     assert is_feature_enabled(FeatureFlag.ai_governance_setup_wizard) is True
+    assert is_feature_enabled(FeatureFlag.advisor_client_snapshot) is True
+
+
+def test_advisor_client_snapshot_flag_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_ADVISOR_CLIENT_SNAPSHOT", "false")
+    assert is_feature_enabled(FeatureFlag.advisor_client_snapshot) is False
 
 
 def test_feature_flag_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:

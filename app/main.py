@@ -25,6 +25,10 @@ from fastapi import (
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.advisor_client_snapshot_models import (
+    AdvisorClientGovernanceSnapshotResponse,
+    AdvisorGovernanceSnapshotMarkdownResponse,
+)
 from app.advisor_models import AdvisorTenantReport
 from app.advisor_portfolio_models import AdvisorPortfolioResponse
 from app.ai_act_doc_models import (
@@ -182,6 +186,10 @@ from app.services import usage_event_logger as usage_event_logger
 from app.services.advisor_board_reports import (
     get_board_report_detail_for_advisor,
     list_advisor_portfolio_board_reports,
+)
+from app.services.advisor_client_governance_snapshot import (
+    build_client_governance_snapshot,
+    generate_advisor_governance_snapshot_markdown,
 )
 from app.services.advisor_portfolio import (
     advisor_portfolio_to_csv,
@@ -2638,6 +2646,63 @@ def export_advisor_portfolio(
         media_type="application/json; charset=utf-8",
         headers={"Content-Disposition": _evidence_content_disposition(fname)},
     )
+
+
+@app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/governance-snapshot",
+    response_model=AdvisorClientGovernanceSnapshotResponse,
+    tags=["advisors"],
+)
+def get_advisor_client_governance_snapshot(
+    _ff_snap: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_client_snapshot))],
+    _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    tenant_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+) -> AdvisorClientGovernanceSnapshotResponse:
+    """Strukturierter Governance-Snapshot für einen verknüpften Mandanten."""
+    snap = build_client_governance_snapshot(session, advisor_id, tenant_id, advisor_repo)
+    if snap is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not linked to this advisor",
+        )
+    return snap
+
+
+@app.post(
+    "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/governance-snapshot-report",
+    response_model=AdvisorGovernanceSnapshotMarkdownResponse,
+    tags=["advisors"],
+)
+def post_advisor_client_governance_snapshot_report(
+    _ff_snap: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_client_snapshot))],
+    _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    tenant_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+) -> AdvisorGovernanceSnapshotMarkdownResponse:
+    """KI-Markdown-Snapshot (nur aggregierte Kennzahlen, keine PII)."""
+    snap = build_client_governance_snapshot(session, advisor_id, tenant_id, advisor_repo)
+    if snap is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not linked to this advisor",
+        )
+    try:
+        return generate_advisor_governance_snapshot_markdown(session, tenant_id, snap)
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="LLM snapshot generation failed",
+        ) from exc
 
 
 @app.get(
