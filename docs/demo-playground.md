@@ -18,6 +18,7 @@ ComplianceHub unterstützt **geführte Demos** (Sales, Founder, Berater) und die
 | `NEXT_PUBLIC_FEATURE_DEMO_MODE=true` | Banner, Demo-Guide, kontextuelle Demo-Hinweise |
 | `NEXT_PUBLIC_DEMO_WORKSPACE_TENANT_ID` | Optional: bei `?demo=1` wird der Workspace-Mandant per Cookie gesetzt |
 | `NEXT_PUBLIC_DEMO_DOCS_URL` | Optional: Link „Mehr zur Demo“ im Banner (Default: Platzhalter-URL) |
+| `NEXT_PUBLIC_WORKSPACE_MODE_DOCS_URL` | Optional: Link „Technische Doku“ im **Workspace-Modus-Banner** (Tenant-Shell) |
 
 ### Session / Einstieg
 
@@ -55,7 +56,7 @@ Der Seed enthält u. a. KI-Systeme (Hochrisiko/NIS2), NIS2-KPIs, AI-KPI-Zeitreih
 ## Schreibschutz
 
 - **`is_demo=true`** und **`demo_playground=false`**: schreibende HTTP-Methoden für diesen Mandanten werden mit **403** abgewiesen (über Auth-Dependencies und zusätzlich an ausgewählten Endpunkten ohne Tenant-Auth, z. B. Dokument-Intake, Berater-Snapshot-Report).
-- Antwort-**detail** (JSON): stabiler Code `demo_tenant_readonly` und englische `message` (für API-Clients); UI-Hinweise bleiben deutsch.
+- Antwort-**detail** (JSON): stabiler Code `demo_tenant_readonly`, englische `message`, plus `hint` (Handlungsempfehlung für Clients/Monitoring).
 - **`COMPLIANCEHUB_DEMO_BLOCK_ALL_MUTATIONS=true`**: blockiert Schreiben auch für **`demo_playground=true`** (strenger Pilot).
 - **`demo_playground=true`**: Schreiben bleibt möglich, solange die strenge ENV-Variable nicht gesetzt ist (Sandbox-Variante).
 
@@ -83,14 +84,35 @@ Kontextzeile: **„Demo-Hinweis · Schritt X von 7“** erscheint auf den passen
 `GET /api/v1/workspace/tenant-meta` (mit `x-api-key`, `x-tenant-id`):
 
 - `is_demo`, `demo_playground`
-- **`mutation_blocked`**: entspricht der Server-Policy (Schreibschutz); das Frontend nutzt das für deaktivierte CTAs und Demo-Labels.
+- **`mutation_blocked`**: entspricht der Server-Policy (Schreibschutz); konsistent mit `demo_tenant_guard`.
+- **`workspace_mode`**: `production` | `demo` | `playground` (für Telemetrie- und UI-Logik).
+- **`mode_label`**, **`mode_hint`**: kurze deutsche Texte für Shell/Banner (ein DB-Lookup pro Aufruf).
 - `demo_mode_feature_enabled` (Spiegel von `COMPLIANCEHUB_FEATURE_DEMO_MODE`)
 
-Bei **`is_demo=true`** wird (sofern `COMPLIANCEHUB_USAGE_TRACKING` nicht deaktiviert ist) höchstens einmal pro 24h ein Nutzungsereignis **`demo_session_started`** ohne Payload geschrieben (Dedupe).
+Frontend: Hook **`useWorkspaceMode`** kapselt Meta und ersetzt verstreute Demo-Flags.
+
+Bei **`is_demo=true`** wird (sofern `COMPLIANCEHUB_USAGE_TRACKING` nicht deaktiviert ist) höchstens einmal pro 24h **`demo_session_started`** geschrieben (Dedupe), Payload nur: `{"workspace_mode": "demo"|"playground"}`.
+
+### Blockierte Schreibversuche (Usage, kein Audit-Log)
+
+Bei **403** durch Demo-Schreibschutz wird **`demo_mutation_blocked`** protokolliert mit:
+
+- `http_method`, `route` (OpenAPI-Pfad-Template, z. B. `/api/v1/ai-systems/{aisystem_id}`),
+- `workspace_mode` (`production` | `demo` | `playground` — Klassifikation des Mandanten, keine PII).
 
 ### Demo-Feature-Telemetrie (ohne PII)
 
-`GET /api/v1/workspace/demo-feature-used?feature_key=<snake_case>` (nur für registrierte Mandanten mit **`is_demo=true`**): schreibt **`demo_feature_used`** mit `{"feature_key": "..."}`. **GET** vermeidet Konflikte mit dem globalen Schreibschutz für Demo-Mandanten.
+`GET /api/v1/workspace/demo-feature-used?feature_key=<snake_case>` (nur **`is_demo=true`**): **`demo_feature_used`** mit `feature_key` und `workspace_mode`. **GET** vermeidet Konflikt mit read-only.
+
+### Interpretation für GTM / Compliance-Monitoring
+
+| Event | Nutzen |
+|-------|--------|
+| `demo_session_started` | Reichweite Demo-/Pilot-Mandanten (Dedupe 24h) |
+| `demo_feature_used` | Welche Story-Module in Demos geöffnet werden |
+| `demo_mutation_blocked` | Verhinderte Schreibversuche (Sicherheits-Story, keine Inhalte/PII) |
+
+KPI-Idee: Verhältnis `demo_mutation_blocked` zu Demo-Sessions zeigt, ob Nutzer verstehen, dass der Mandant read-only ist.
 
 ## Berater & Sales
 

@@ -20,7 +20,7 @@ import {
 } from "@/lib/boardLayout";
 import { BoardReadinessCard } from "@/components/board/BoardReadinessCard";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
-import { useWorkspaceTenantMeta } from "@/hooks/useWorkspaceTenantMeta";
+import { useWorkspaceMode } from "@/hooks/useWorkspaceMode";
 import { logDemoFeatureUsed } from "@/lib/api";
 
 const ALL_FRAMEWORKS: { key: string; label: string }[] = [
@@ -55,7 +55,7 @@ const mdComponents = {
 };
 
 export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }) {
-  const { mutationBlocked, isDemoTenant } = useWorkspaceTenantMeta(tenantId);
+  const { mutationsBlocked, isDemo } = useWorkspaceMode(tenantId);
   const [history, setHistory] = useState<AiComplianceBoardReportListItemDto[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AiComplianceBoardReportDetailDto | null>(null);
@@ -87,9 +87,9 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
   }, [refreshHistory]);
 
   useEffect(() => {
-    if (!isDemoTenant) return;
+    if (!isDemo) return;
     void logDemoFeatureUsed(tenantId, "board_ai_compliance_report").catch(() => {});
-  }, [isDemoTenant, tenantId]);
+  }, [isDemo, tenantId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -126,7 +126,7 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
   };
 
   const runGenerate = async () => {
-    if (mutationBlocked) {
+    if (mutationsBlocked) {
       setGenErr("Im Demo-Mandanten (read-only) kann kein neuer Report erzeugt werden.");
       return;
     }
@@ -191,7 +191,7 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
         </div>
       ) : null}
 
-      {mutationBlocked ? (
+      {mutationsBlocked ? (
         <div
           className="mb-6 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-950"
           role="status"
@@ -234,14 +234,14 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
             className={`${CH_BTN_PRIMARY} mt-4 text-sm disabled:cursor-not-allowed disabled:opacity-50`}
             onClick={() => setWizardOpen(true)}
             data-testid="board-report-open-wizard"
-            disabled={mutationBlocked}
+            disabled={mutationsBlocked}
             title={
-              mutationBlocked
+              mutationsBlocked
                 ? "Demo-Mandant: keine neue Report-Generierung"
                 : "Assistent zur Report-Erstellung öffnen"
             }
           >
-            {mutationBlocked ? "Demo-Report ansehen (unten)" : "Neuen Report erzeugen (KI)"}
+            {mutationsBlocked ? "Demo-Report ansehen (unten)" : "Neuen Report erzeugen (KI)"}
           </button>
         </article>
       </div>

@@ -29,6 +29,7 @@ LLM_ACTION_DRAFT_REQUESTED = "llm_action_draft_requested"
 LLM_AI_ACT_DOC_DRAFT_REQUESTED = "llm_ai_act_doc_draft_requested"
 DEMO_SESSION_STARTED = "demo_session_started"
 DEMO_FEATURE_USED = "demo_feature_used"
+DEMO_MUTATION_BLOCKED = "demo_mutation_blocked"
 
 
 def _parse_tracking_enabled() -> bool:

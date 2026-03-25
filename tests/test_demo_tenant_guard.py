@@ -99,3 +99,5 @@ def test_raise_if_demo_includes_stable_code() -> None:
         assert isinstance(body, dict)
         assert body["code"] == DEMO_TENANT_READONLY_CODE
         assert "read-only" in body["message"].lower()
+        assert "hint" in body
+        assert "write" in body["hint"].lower()

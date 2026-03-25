@@ -97,6 +97,9 @@ def test_post_demo_seed_creates_expected_entities() -> None:
     mj = meta.json()
     assert mj["is_demo"] is True
     assert mj["mutation_blocked"] is True
+    assert mj["workspace_mode"] == "demo"
+    assert "Demo" in mj["mode_label"]
+    assert len(mj["mode_hint"]) > 10
 
 
 def test_post_demo_seed_idempotent_conflict() -> None:

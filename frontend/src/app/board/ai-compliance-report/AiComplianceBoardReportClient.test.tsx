@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   createReport: vi.fn(),
   fetchReadiness: vi.fn(),
   logDemoFeatureUsed: vi.fn().mockResolvedValue(undefined),
-  useWorkspaceTenantMeta: vi.fn(() => ({
+  useWorkspaceMode: vi.fn(() => ({
     meta: null,
     loading: false,
     error: null,
@@ -15,6 +15,13 @@ const mocks = vi.hoisted(() => ({
     isDemoTenant: false,
     isPlaygroundTenant: false,
     refetch: vi.fn(),
+    workspaceMode: "production" as const,
+    modeLabel: "",
+    modeHint: "",
+    mutationsBlocked: false,
+    isDemo: false,
+    isPlaygroundWritable: false,
+    docsUrl: "",
   })),
 }));
 
@@ -30,8 +37,8 @@ vi.mock("@/lib/api", async () => {
   };
 });
 
-vi.mock("@/hooks/useWorkspaceTenantMeta", () => ({
-  useWorkspaceTenantMeta: (tenantId: string) => mocks.useWorkspaceTenantMeta(tenantId),
+vi.mock("@/hooks/useWorkspaceMode", () => ({
+  useWorkspaceMode: (tenantId: string) => mocks.useWorkspaceMode(tenantId),
 }));
 
 vi.mock("@/lib/config", async (importOriginal) => {
@@ -49,7 +56,7 @@ import { AiComplianceBoardReportClient } from "./AiComplianceBoardReportClient";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  mocks.useWorkspaceTenantMeta.mockImplementation(() => ({
+  mocks.useWorkspaceMode.mockImplementation(() => ({
     meta: null,
     loading: false,
     error: null,
@@ -57,6 +64,13 @@ afterEach(() => {
     isDemoTenant: false,
     isPlaygroundTenant: false,
     refetch: vi.fn(),
+    workspaceMode: "production",
+    modeLabel: "",
+    modeHint: "",
+    mutationsBlocked: false,
+    isDemo: false,
+    isPlaygroundWritable: false,
+    docsUrl: "",
   }));
 });
 
@@ -134,15 +148,22 @@ describe("AiComplianceBoardReportClient", () => {
     });
   });
 
-  it("zeigt Demo-read-only-Hinweis und deaktiviert den Report-CTA bei mutationBlocked", async () => {
-    mocks.useWorkspaceTenantMeta.mockReturnValue({
+  it("zeigt Demo-read-only-Hinweis und deaktiviert den Report-CTA bei mutationsBlocked", async () => {
+    mocks.useWorkspaceMode.mockReturnValue({
       meta: null,
       loading: false,
       error: null,
-      mutationBlocked: true,
-      isDemoTenant: true,
+      mutationBlocked: false,
+      isDemoTenant: false,
       isPlaygroundTenant: false,
       refetch: vi.fn(),
+      workspaceMode: "demo",
+      modeLabel: "Demo",
+      modeHint: "Hint",
+      mutationsBlocked: true,
+      isDemo: true,
+      isPlaygroundWritable: false,
+      docsUrl: "",
     });
     mocks.fetchReadiness.mockResolvedValue(readinessPayload);
     mocks.fetchList.mockResolvedValue([]);

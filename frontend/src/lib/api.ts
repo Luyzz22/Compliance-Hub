@@ -33,12 +33,17 @@ async function tenantApiFetch(path: string, tenantId: string, init?: RequestInit
   return res.json();
 }
 
+export type WorkspaceModeDto = "production" | "demo" | "playground";
+
 export interface TenantWorkspaceMetaDto {
   tenant_id: string;
   display_name: string;
   is_demo: boolean;
   demo_playground: boolean;
   mutation_blocked: boolean;
+  workspace_mode: WorkspaceModeDto;
+  mode_label: string;
+  mode_hint: string;
   demo_mode_feature_enabled: boolean;
 }
 
