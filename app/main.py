@@ -77,6 +77,8 @@ from app.compliance_gap_models import (
 )
 from app.config.nis2_kritis_board_alert_thresholds import NIS2_KRITIS_OT_IT_ALERT_THRESHOLD_PCT
 from app.db import engine, get_session
+from app.demo_models import DemoSeedRequest, DemoSeedResponse
+from app.demo_templates import DemoTenantTemplate, list_demo_tenant_templates
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
@@ -110,9 +112,11 @@ from app.repositories.violations import ViolationRepository
 from app.security import (
     AuthContext,
     delete_evidence_allowed_for_api_key,
+    ensure_demo_tenant_seed_allowed,
     get_api_key_and_tenant,
     get_auth_context,
     require_advisor_api_access,
+    require_demo_seed_api_key,
 )
 from app.services.advisor_portfolio import (
     advisor_portfolio_to_csv,
@@ -153,6 +157,7 @@ from app.services.compliance_dashboard import (
     compute_compliance_dashboard,
 )
 from app.services.compliance_engine import build_audit_hash, derive_actions
+from app.services.demo_tenant_seeder import seed_demo_tenant
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
 from app.services.evidence_service import (
     delete_evidence as delete_evidence_file,
@@ -1870,6 +1875,68 @@ def get_advisor_tenant_report(
             headers={"Content-Disposition": _evidence_content_disposition(fname)},
         )
     return report
+
+
+@app.get(
+    "/api/v1/demo/tenant-templates",
+    response_model=list[DemoTenantTemplate],
+    tags=["demo"],
+)
+def list_demo_tenant_template_definitions(
+    _api_key: Annotated[str, Depends(require_demo_seed_api_key)],
+) -> list[DemoTenantTemplate]:
+    """Demo/Pilot: verfügbare Mandanten-Templates (geschützter API-Key)."""
+    return list_demo_tenant_templates()
+
+
+@app.post(
+    "/api/v1/demo/tenants/seed",
+    response_model=DemoSeedResponse,
+    tags=["demo"],
+)
+def post_demo_tenant_seed(
+    body: DemoSeedRequest,
+    session: Annotated[Session, Depends(get_session)],
+    _api_key: Annotated[str, Depends(require_demo_seed_api_key)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    policy_repo: Annotated[PolicyRepository, Depends(get_policy_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+) -> DemoSeedResponse:
+    """
+    Demo/Pilot: leeren Mandanten aus Template befüllen.
+    Nur für tenant_id in COMPLIANCEHUB_DEMO_SEED_TENANT_IDS und mit Demo-Seed-API-Key.
+    """
+    ensure_demo_tenant_seed_allowed(body.tenant_id)
+    try:
+        return seed_demo_tenant(
+            session,
+            body.template_key,
+            body.tenant_id,
+            advisor_id=body.advisor_id,
+            ai_repo=ai_repo,
+            cls_repo=cls_repo,
+            nis2_repo=nis2_repo,
+            policy_repo=policy_repo,
+            action_repo=action_repo,
+            evidence_repo=evidence_repo,
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        if "already has AI systems" in msg:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=msg,
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg,
+        ) from exc
 
 
 @app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)

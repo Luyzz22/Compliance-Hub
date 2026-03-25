@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { AdvisorPortfolioExportToolbar, AdvisorPortfolioTable } from "@/components/advisor/AdvisorPortfolioTable";
+import { DemoTenantSetupPanel } from "@/components/demo/DemoTenantSetupPanel";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   ADVISOR_ID_FROM_ENV,
@@ -157,6 +158,10 @@ export default function AdvisorPortfolioPage() {
           )}
         </div>
       </section>
+
+      {advisorId ? (
+        <DemoTenantSetupPanel advisorId={advisorId} defaultTenantId="" />
+      ) : null}
 
       <AdvisorPortfolioTable rows={processed} advisorId={advisorId} />
     </div>

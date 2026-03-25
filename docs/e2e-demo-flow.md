@@ -32,6 +32,16 @@ Für **Angebotsunterlagen, Kickoff-Workshops, Status-Reviews oder kurze Vorstand
 2. **API:** `GET /api/v1/advisors/{advisor_id}/tenants/{tenant_id}/report?format=json|markdown` mit denselben Headern wie das Portfolio (`x-advisor-id`, `x-api-key`). Nur wenn der Mandant in **`advisor_tenants`** dem Berater zugeordnet ist.
 3. **Markdown:** `Content-Type: text/markdown; charset=utf-8`, Dateiname z. B. `tenant-report-{tenant_id}.md` – als Basis für PDF, Slides oder Executive Summaries weiterverarbeiten.
 
+## Demo-Tenant-Templates & One-Click-Setup
+
+**Nur für interne Demos und Berater-Piloten** – nicht für produktive Mandanten. Das Seeding ist an **`COMPLIANCEHUB_DEMO_SEED_TENANT_IDS`** gebunden (Komma-getrennte erlaubte `tenant_id`-Werte) und erfordert einen separaten API-Key **`COMPLIANCEHUB_DEMO_SEED_API_KEYS`**.
+
+1. **Leeren Demo-Mandanten** anlegen bzw. eine noch leere `tenant_id` wählen, die in der Allowlist steht.
+2. **Backend:** `GET /api/v1/demo/tenant-templates` (mit `x-api-key` aus `COMPLIANCEHUB_DEMO_SEED_API_KEYS`) listet Szenarien: z. B. KRITIS-Energie, Industrie-Mittelstand, WP-Kanzlei.
+3. **Backend:** `POST /api/v1/demo/tenants/seed` mit JSON `{ "template_key": "…", "tenant_id": "…", "advisor_id": "…" optional }` – legt KI-Systeme, Klassifikationen, NIS2-KPIs, Policies, Actions und Demo-Evidenzen an (nur wenn der Mandant noch **kein** KI-Register hat).
+4. **Frontend:** Unter **`/settings`** und **`/advisor`** der Bereich **Demo-Tenants** – Button **Demo-Daten einspielen** ruft die Next.js-Routen **`/api/demo/tenant-templates`** und **`/api/demo/seed`** auf; serverseitig **`COMPLIANCEHUB_DEMO_SEED_API_KEY`** (ein Key aus der Backend-Allowlist) und **`COMPLIANCEHUB_API_BASE_URL`** setzen.
+5. **Nach dem Seed:** Meldung mit Kennzahlen; **Compliance-Übersicht öffnen** setzt **`ch_workspace_tenant`** und springt zu **`/tenant/compliance-overview`**. Von dort **Guided Setup**, **`/board/*`**, **`/tenant/*`** und ggf. **`/advisor`** mit Portfolio/Steckbrief.
+
 ## 1) KI-System anlegen
 
 1. Öffnen: **`/tenant/ai-systems`**.
@@ -63,4 +73,4 @@ Für **Angebotsunterlagen, Kickoff-Workshops, Status-Reviews oder kurze Vorstand
 
 ---
 
-**API-Referenz (kurz):** `GET /api/v1/tenants/{tenant_id}/setup-status` → `GET /api/v1/advisors/{advisor_id}/tenants/portfolio` (optional Export) → `POST /api/v1/ai-systems` oder `POST /api/v1/ai-systems/import` → `POST .../classify` → `POST .../nis2-kritis-kpis` → `POST /api/v1/ai-governance/actions` → `POST /api/v1/evidence/uploads` → `GET .../compliance/overview`, `GET .../readiness/eu-ai-act`, `GET .../board-kpis`, `GET .../alerts/board`, KPI-/Alert-Export.
+**API-Referenz (kurz):** `GET /api/v1/demo/tenant-templates` → `POST /api/v1/demo/tenants/seed` (nur Demo-Allowlist) → `GET /api/v1/tenants/{tenant_id}/setup-status` → `GET /api/v1/advisors/{advisor_id}/tenants/portfolio` (optional Export) → `POST /api/v1/ai-systems` oder `POST /api/v1/ai-systems/import` → `POST .../classify` → `POST .../nis2-kritis-kpis` → `POST /api/v1/ai-governance/actions` → `POST /api/v1/evidence/uploads` → `GET .../compliance/overview`, `GET .../readiness/eu-ai-act`, `GET .../board-kpis`, `GET .../alerts/board`, KPI-/Alert-Export.

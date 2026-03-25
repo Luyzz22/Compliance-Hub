@@ -118,6 +118,63 @@ def get_auth_context(
     return AuthContext(tenant_id=tenant_id, api_key=x_api_key or "")
 
 
+def demo_seed_api_keys() -> frozenset[str]:
+    """API-Keys, die POST /api/v1/demo/tenants/seed und Template-Liste nutzen dürfen."""
+    raw = os.getenv("COMPLIANCEHUB_DEMO_SEED_API_KEYS", "").strip()
+    if not raw:
+        return frozenset()
+    return frozenset(part.strip() for part in raw.split(",") if part.strip())
+
+
+def demo_seed_tenant_allowlist() -> frozenset[str] | None:
+    """Wenn gesetzt, dürfen nur diese tenant_ids geseedet werden (Komma-getrennt)."""
+    raw = os.getenv("COMPLIANCEHUB_DEMO_SEED_TENANT_IDS", "").strip()
+    if not raw:
+        return None
+    ids = {part.strip() for part in raw.split(",") if part.strip()}
+    return frozenset(ids) if ids else None
+
+
+def require_demo_seed_api_key(
+    x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
+) -> str:
+    """
+    Schützt Demo-Seeding: eigener Key-Pool, unabhängig vom normalen Mandanten-API-Key.
+    """
+    keys = demo_seed_api_keys()
+    if not keys:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Demo seeding is disabled (no COMPLIANCEHUB_DEMO_SEED_API_KEYS)",
+        )
+    if x_api_key is None or not str(x_api_key).strip():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing API key",
+        )
+    key = str(x_api_key).strip()
+    if key not in keys:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid demo seed API key",
+        )
+    return key
+
+
+def ensure_demo_tenant_seed_allowed(tenant_id: str) -> None:
+    allowed = demo_seed_tenant_allowlist()
+    if allowed is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo tenant allowlist not configured (set COMPLIANCEHUB_DEMO_SEED_TENANT_IDS)",
+        )
+    if tenant_id not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant is not in COMPLIANCEHUB_DEMO_SEED_TENANT_IDS",
+        )
+
+
 def delete_evidence_allowed_for_api_key(api_key: str) -> bool:
     """Nur API-Keys in COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS dürfen Evidence löschen."""
     raw = os.getenv("COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS", "")
