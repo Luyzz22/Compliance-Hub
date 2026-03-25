@@ -96,3 +96,8 @@ export function featureCrossRegulationDashboard(): boolean {
 export function featureCrossRegulationLlmAssist(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_CROSS_REGULATION_LLM_ASSIST, true);
 }
+
+/** AI Compliance Board-Report (Backend COMPLIANCEHUB_FEATURE_AI_COMPLIANCE_BOARD_REPORT). */
+export function featureAiComplianceBoardReport(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_COMPLIANCE_BOARD_REPORT, true);
+}

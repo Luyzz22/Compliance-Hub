@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     ForeignKey,
@@ -621,3 +622,26 @@ class LLMCallMetadataDB(Base):
         nullable=False,
         index=True,
     )
+
+
+class AiComplianceBoardReportDB(Base):
+    """KI-generierter AI-Compliance-Board-Report (Coverage, Gaps, komprimierte Empfehlungen)."""
+
+    __tablename__ = "ai_compliance_board_reports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+        index=True,
+    )
+    period_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    audience_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    rendered_markdown: Mapped[str] = mapped_column(Text, nullable=False)
+    rendered_html: Mapped[str | None] = mapped_column(Text, nullable=True)

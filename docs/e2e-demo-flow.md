@@ -10,6 +10,8 @@ Für **Rollen/RACI**, **Phasenplan** (Readiness → Operational → Excellence) 
 
 **`/tenant/cross-regulation-dashboard`**: Pflichten mehrerer Regelwerke (EU AI Act, ISO 42001/27001/27701, NIS2, DSGVO) vs. tenant-**Controls** und **Coverage** („Map once, comply many“). Flags: `COMPLIANCEHUB_FEATURE_CROSS_REGULATION_DASHBOARD` / `NEXT_PUBLIC_FEATURE_CROSS_REGULATION_DASHBOARD`. Details: **`docs/cross-regulation-dashboard.md`**.
 
+**`/board/ai-compliance-report`**: KI-generierter **AI-Compliance-Board-Report** (Markdown) aus Coverage, Top-Gaps und optional Gap-Assist; Persistenz in `ai_compliance_board_reports`. Flags: `COMPLIANCEHUB_FEATURE_AI_COMPLIANCE_BOARD_REPORT` / `NEXT_PUBLIC_FEATURE_AI_COMPLIANCE_BOARD_REPORT`.
+
 ## Guided Setup für neue Tenants
 
 Für **CISO/ISB** und **AI-Governance-Leads** liefert der Workspace unter **`/tenant/compliance-overview`** den **Setup-Assistenten EU AI Act & NIS2**: eine Checkliste mit Fortschrittsbalken („X von 7 Schritten“). Der Status wird **nicht manuell abgehakt**, sondern aus Mandantendaten berechnet (`GET /api/v1/tenants/{tenant_id}/setup-status`).

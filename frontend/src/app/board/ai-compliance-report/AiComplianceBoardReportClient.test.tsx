@@ -1,0 +1,87 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  fetchList: vi.fn(),
+  fetchDetail: vi.fn(),
+  createReport: vi.fn(),
+}));
+
+vi.mock("@/lib/api", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api")>("@/lib/api");
+  return {
+    ...actual,
+    fetchAiComplianceBoardReports: mocks.fetchList,
+    fetchAiComplianceBoardReportDetail: mocks.fetchDetail,
+    createAiComplianceBoardReport: mocks.createReport,
+  };
+});
+
+import { AiComplianceBoardReportClient } from "./AiComplianceBoardReportClient";
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+describe("AiComplianceBoardReportClient", () => {
+  it("lädt Historie und zeigt letzten Report", async () => {
+    mocks.fetchList.mockResolvedValue([
+      {
+        id: "rep-1",
+        title: "Test Report",
+        audience_type: "board",
+        created_at: "2026-01-15T12:00:00.000Z",
+      },
+    ]);
+    mocks.fetchDetail.mockResolvedValue({
+      id: "rep-1",
+      tenant_id: "t1",
+      title: "Test Report",
+      audience_type: "board",
+      created_at: "2026-01-15T12:00:00.000Z",
+      rendered_markdown: "## Executive Overview\n\nHallo.",
+      raw_payload: {},
+    });
+
+    render(<AiComplianceBoardReportClient tenantId="t1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("board-report-history")).toBeTruthy();
+    });
+    expect(screen.getAllByText("Test Report").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("ruft beim Generieren den API-Endpoint auf", async () => {
+    mocks.fetchList.mockResolvedValue([]);
+    mocks.createReport.mockResolvedValue({
+      report_id: "new-1",
+      title: "Neu",
+      rendered_markdown: "# x",
+      coverage_snapshot: [],
+      created_at: "2026-01-15T12:00:00.000Z",
+      audience_type: "board",
+    });
+    mocks.fetchDetail.mockResolvedValue({
+      id: "new-1",
+      tenant_id: "t1",
+      title: "Neu",
+      audience_type: "board",
+      created_at: "2026-01-15T12:00:00.000Z",
+      rendered_markdown: "# x",
+      raw_payload: {},
+    });
+
+    render(<AiComplianceBoardReportClient tenantId="t1" />);
+
+    fireEvent.click(screen.getByTestId("board-report-open-wizard"));
+    fireEvent.click(screen.getByTestId("board-report-generate"));
+
+    await waitFor(() => {
+      expect(mocks.createReport).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ audience_type: "board", language: "de" }),
+      );
+    });
+  });
+});

@@ -5,6 +5,7 @@ import {
   featureAiActDocs,
   featureAiGovernancePlaybook,
   featureCrossRegulationDashboard,
+  featureAiComplianceBoardReport,
   featureCrossRegulationLlmAssist,
   featureApiKeysUi,
   featureDemoSeeding,
@@ -78,6 +79,7 @@ describe("feature flags from env", () => {
     expect(featureAiGovernancePlaybook()).toBe(true);
     expect(featureCrossRegulationDashboard()).toBe(true);
     expect(featureCrossRegulationLlmAssist()).toBe(true);
+    expect(featureAiComplianceBoardReport()).toBe(true);
   });
 
   it("parses common false/true tokens", () => {

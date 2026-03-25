@@ -35,6 +35,7 @@ def _default_provider_by_task() -> dict[LLMTaskType, LLMProvider]:
         LLMTaskType.EXPLAIN_KPI_ALERT: LLMProvider.CLAUDE,
         LLMTaskType.ACTION_DRAFT_GENERATION: LLMProvider.CLAUDE,
         LLMTaskType.CROSS_REGULATION_GAP_ASSIST: LLMProvider.CLAUDE,
+        LLMTaskType.AI_COMPLIANCE_BOARD_REPORT: LLMProvider.CLAUDE,
     }
 
 

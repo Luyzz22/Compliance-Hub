@@ -33,6 +33,13 @@ from app.ai_act_doc_models import (
     AIActDocSectionKey,
     AIActDocUpsertRequest,
 )
+from app.ai_compliance_board_report_models import (
+    AdvisorBoardReportsPortfolioResponse,
+    AiComplianceBoardReportCreateBody,
+    AiComplianceBoardReportCreateResponse,
+    AiComplianceBoardReportDetailResponse,
+    AiComplianceBoardReportListItem,
+)
 from app.ai_governance_action_models import (
     AIGovernanceActionCreate,
     AIGovernanceActionDraftRequest,
@@ -165,6 +172,10 @@ from app.security import (
 )
 from app.services import llm_client as llm_client_mod
 from app.services import usage_event_logger as usage_event_logger
+from app.services.advisor_board_reports import (
+    get_board_report_detail_for_advisor,
+    list_advisor_portfolio_board_reports,
+)
 from app.services.advisor_portfolio import (
     advisor_portfolio_to_csv,
     advisor_portfolio_to_json_bytes,
@@ -178,6 +189,11 @@ from app.services.ai_act_docs_ai_assist import generate_ai_act_doc_draft
 from app.services.ai_act_docs_export import render_ai_act_documentation_markdown
 from app.services.ai_action_drafts import generate_action_drafts
 from app.services.ai_board_alerts import compute_board_alerts
+from app.services.ai_compliance_board_report import (
+    create_ai_compliance_board_report,
+    get_ai_compliance_board_report_detail,
+    list_ai_compliance_board_reports,
+)
 from app.services.ai_explain import explain_kpi_or_alert
 from app.services.ai_governance_incidents import (
     compute_ai_incident_overview,
@@ -2627,6 +2643,64 @@ def get_advisor_tenant_usage_metrics(
 
 
 @app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/board-reports",
+    response_model=AdvisorBoardReportsPortfolioResponse,
+    tags=["advisors"],
+)
+def get_advisor_portfolio_board_reports_endpoint(
+    _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
+    _ff_br: Annotated[
+        None,
+        Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report)),
+    ],
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+    limit_per_tenant: Annotated[int, Query(ge=1, le=100)] = 30,
+) -> AdvisorBoardReportsPortfolioResponse:
+    """KI-Board-Reports aller verknüpften Mandanten (flache Liste, neueste zuerst)."""
+    return list_advisor_portfolio_board_reports(
+        session,
+        advisor_id,
+        advisor_repo,
+        limit_per_tenant=limit_per_tenant,
+    )
+
+
+@app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/board/ai-compliance-reports/{report_id}",
+    response_model=AiComplianceBoardReportDetailResponse,
+    tags=["advisors"],
+)
+def get_advisor_accessible_board_report_detail(
+    _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
+    _ff_br: Annotated[
+        None,
+        Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report)),
+    ],
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    tenant_id: str,
+    report_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+) -> AiComplianceBoardReportDetailResponse:
+    """Report-Detail nur bei advisor_tenants-Zuordnung (ohne Mandanten-API-Key-Wechsel)."""
+    detail = get_board_report_detail_for_advisor(
+        session,
+        advisor_id,
+        tenant_id,
+        report_id,
+        advisor_repo,
+    )
+    if detail is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found or tenant not linked to advisor",
+        )
+    return detail
+
+
+@app.get(
     "/api/v1/demo/tenant-templates",
     response_model=list[DemoTenantTemplate],
     tags=["demo"],
@@ -3085,3 +3159,88 @@ def cross_regulation_llm_gap_assistant(
         },
     )
     return out
+
+
+@app.post(
+    "/api/v1/tenants/{tenant_id}/board/ai-compliance-report",
+    response_model=AiComplianceBoardReportCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def post_ai_compliance_board_report(
+    tenant_id: str,
+    body: AiComplianceBoardReportCreateBody,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report))],
+) -> AiComplianceBoardReportCreateResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    try:
+        out = create_ai_compliance_board_report(
+            session,
+            tenant_id,
+            body,
+            created_by=None,
+        )
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMProviderHTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    audit_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=None,
+        entity_type="ai_compliance_board_report",
+        entity_id=out.report_id,
+        action="generated",
+        metadata={
+            "audience_type": body.audience_type,
+            "report_id": out.report_id,
+        },
+    )
+    return out
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/board/ai-compliance-reports",
+    response_model=list[AiComplianceBoardReportListItem],
+)
+def get_ai_compliance_board_reports_list(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report))],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[AiComplianceBoardReportListItem]:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    return list_ai_compliance_board_reports(session, tenant_id, limit=limit)
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/board/ai-compliance-reports/{report_id}",
+    response_model=AiComplianceBoardReportDetailResponse,
+)
+def get_ai_compliance_board_report_by_id(
+    tenant_id: str,
+    report_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report))],
+) -> AiComplianceBoardReportDetailResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    detail = get_ai_compliance_board_report_detail(session, tenant_id, report_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    return detail

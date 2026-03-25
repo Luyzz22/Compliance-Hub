@@ -34,4 +34,5 @@ _TASK_FLAG: dict[LLMTaskType, FeatureFlag] = {
     LLMTaskType.EXPLAIN_KPI_ALERT: FeatureFlag.llm_explain,
     LLMTaskType.ACTION_DRAFT_GENERATION: FeatureFlag.llm_action_drafts,
     LLMTaskType.CROSS_REGULATION_GAP_ASSIST: FeatureFlag.cross_regulation_llm_assist,
+    LLMTaskType.AI_COMPLIANCE_BOARD_REPORT: FeatureFlag.ai_compliance_board_report,
 }
