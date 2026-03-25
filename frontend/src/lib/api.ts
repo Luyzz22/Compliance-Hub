@@ -1013,3 +1013,17 @@ export async function fetchAdvisorPortfolioExportBlob(
   }
   return res.blob();
 }
+
+/** Same-origin Proxy: `/api/advisor/tenant-report` (serverseitig API-Key, optional COMPLIANCEHUB_ADVISOR_ID). */
+export function getAdvisorTenantReportUrl(
+  tenantId: string,
+  format: "json" | "markdown",
+  advisorId: string = ADVISOR_ID_FROM_ENV,
+): string {
+  const params = new URLSearchParams({
+    tenantId,
+    format,
+    advisorId,
+  });
+  return `/api/advisor/tenant-report?${params.toString()}`;
+}

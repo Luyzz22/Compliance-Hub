@@ -158,7 +158,7 @@ export default function AdvisorPortfolioPage() {
         </div>
       </section>
 
-      <AdvisorPortfolioTable rows={processed} />
+      <AdvisorPortfolioTable rows={processed} advisorId={advisorId} />
     </div>
   );
 }

@@ -24,6 +24,14 @@ Für **Steuerberatung / WP / GRC-Beratung** mit mehreren Mandanten:
 3. **Frontend:** `NEXT_PUBLIC_ADVISOR_ID` auf dieselbe `advisor_id` setzen; optional **`NEXT_PUBLIC_SHOW_ADVISOR_NAV=1`**, damit der Menüpunkt **Advisor** sichtbar ist. Route **`/advisor`**: Vergleich Readiness, NIS2-Mittelwert, Setup, High-Risk, offene Actions. **Tenant öffnen** setzt das Cookie **`ch_workspace_tenant`** und lädt **`/tenant/compliance-overview`** für diesen Mandanten.
 4. **Export:** `GET /api/v1/advisors/{advisor_id}/tenants/portfolio-export?format=json|csv` (Dateiname z. B. `advisor-portfolio-YYYY-MM-DD`).
 
+### Mandanten-Steckbrief (Advisor-Report)
+
+Für **Angebotsunterlagen, Kickoff-Workshops, Status-Reviews oder kurze Vorstandstexte** liefert Compliance Hub pro Mandant einen **Mandanten-Steckbrief** (Readiness, NIS2-/KRITIS-KPIs, Governance-Actions, Guided-Setup):
+
+1. **UI:** Auf **`/advisor`** in der Tabelle pro Zeile **Steckbrief (MD)** bzw. **JSON** – Download über die Next.js-Proxy-Route **`/api/advisor/tenant-report`** (übergibt `tenantId`, `format`, `advisorId`; serverseitig `COMPLIANCEHUB_API_KEY` und optional `COMPLIANCEHUB_ADVISOR_ID`).
+2. **API:** `GET /api/v1/advisors/{advisor_id}/tenants/{tenant_id}/report?format=json|markdown` mit denselben Headern wie das Portfolio (`x-advisor-id`, `x-api-key`). Nur wenn der Mandant in **`advisor_tenants`** dem Berater zugeordnet ist.
+3. **Markdown:** `Content-Type: text/markdown; charset=utf-8`, Dateiname z. B. `tenant-report-{tenant_id}.md` – als Basis für PDF, Slides oder Executive Summaries weiterverarbeiten.
+
 ## 1) KI-System anlegen
 
 1. Öffnen: **`/tenant/ai-systems`**.

@@ -28,14 +28,28 @@ const sampleRows: AdvisorPortfolioTenantEntry[] = [
 
 describe("AdvisorPortfolioTable", () => {
   it("renders tenant name and readiness", () => {
-    render(<AdvisorPortfolioTable rows={sampleRows} />);
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     expect(screen.getByText("Demo Mandant A")).toBeTruthy();
     expect(screen.getByText("72%")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Tenant öffnen/i })).toBeTruthy();
   });
 
+  it("shows Mandanten-Steckbrief download links when advisorId is set", () => {
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    const mdLinks = screen.getAllByRole("link", { name: /Steckbrief \(MD\)/i });
+    expect(mdLinks.length).toBeGreaterThanOrEqual(1);
+    const mdHref = mdLinks[0].getAttribute("href") ?? "";
+    expect(mdHref).toContain("/api/advisor/tenant-report");
+    expect(mdHref).toContain("tenantId=t-demo-1");
+    expect(mdHref).toContain("format=markdown");
+    expect(mdHref).toContain("advisorId=advisor-demo%40example.com");
+
+    const jsonLinks = screen.getAllByRole("link", { name: /^JSON$/i });
+    expect(jsonLinks[0].getAttribute("href") ?? "").toContain("format=json");
+  });
+
   it("shows empty state without rows", () => {
-    render(<AdvisorPortfolioTable rows={[]} />);
+    render(<AdvisorPortfolioTable rows={[]} advisorId="x" />);
     expect(screen.getByText(/Keine Mandanten in diesem Portfolio/)).toBeTruthy();
   });
 });

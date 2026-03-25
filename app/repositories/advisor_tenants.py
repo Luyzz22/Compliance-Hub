@@ -29,6 +29,22 @@ class AdvisorTenantRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
+    def get_link(self, advisor_id: str, tenant_id: str) -> AdvisorTenantLink | None:
+        stmt = select(AdvisorTenantDB).where(
+            AdvisorTenantDB.advisor_id == advisor_id,
+            AdvisorTenantDB.tenant_id == tenant_id,
+        )
+        row = self._session.execute(stmt).scalar_one_or_none()
+        if row is None:
+            return None
+        return AdvisorTenantLink(
+            advisor_id=row.advisor_id,
+            tenant_id=row.tenant_id,
+            tenant_display_name=row.tenant_display_name,
+            industry=row.industry,
+            country=row.country,
+        )
+
     def list_for_advisor(self, advisor_id: str) -> list[AdvisorTenantLink]:
         stmt = (
             select(AdvisorTenantDB)

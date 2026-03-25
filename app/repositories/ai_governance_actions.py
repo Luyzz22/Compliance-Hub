@@ -74,6 +74,22 @@ class AIGovernanceActionRepository:
         )
         return int(self._session.execute(stmt).scalar_one() or 0)
 
+    def count_overdue_open_or_in_progress(self, tenant_id: str) -> int:
+        now = datetime.now(UTC)
+        stmt = (
+            select(func.count())
+            .select_from(AIGovernanceActionDB)
+            .where(
+                AIGovernanceActionDB.tenant_id == tenant_id,
+                AIGovernanceActionDB.status.in_(
+                    (GovernanceActionStatus.open.value, GovernanceActionStatus.in_progress.value),
+                ),
+                AIGovernanceActionDB.due_date.is_not(None),
+                AIGovernanceActionDB.due_date < now,
+            )
+        )
+        return int(self._session.execute(stmt).scalar_one() or 0)
+
     def list_for_tenant(
         self,
         tenant_id: str,
