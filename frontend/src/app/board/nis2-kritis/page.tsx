@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 
+import { KpiExplainButton } from "@/components/ai/KpiExplainButton";
 import {
   fetchBoardKpis,
   fetchNis2KritisKpiDrilldown,
@@ -175,6 +176,16 @@ export default async function BoardNis2KritisPage() {
           <p className="mt-1 text-xs text-slate-500">
             {boardKpis != null ? "Board-KPI (Runbooks)" : "Ø aus Histogramm"}
           </p>
+          <div className="mt-2">
+            <KpiExplainButton
+              label="Erklären"
+              request={{
+                kpi_key: "nis2_incident_readiness_drilldown",
+                current_value: incidentPct,
+                value_is_percent: true,
+              }}
+            />
+          </div>
         </div>
         <div className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Supplier-Risk-Coverage</p>
@@ -184,6 +195,16 @@ export default async function BoardNis2KritisPage() {
           <p className="mt-1 text-xs text-slate-500">
             {boardKpis != null ? "Board-KPI (Register)" : "Ø aus Histogramm"}
           </p>
+          <div className="mt-2">
+            <KpiExplainButton
+              label="Erklären"
+              request={{
+                kpi_key: "nis2_supplier_risk_drilldown",
+                current_value: supplierPct,
+                value_is_percent: true,
+              }}
+            />
+          </div>
         </div>
         <div className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>OT/IT (Ø aus Verteilung)</p>
@@ -191,6 +212,16 @@ export default async function BoardNis2KritisPage() {
             {otMean != null ? `${otMean} %` : "–"}
           </p>
           <p className="mt-1 text-xs text-slate-500">Histogramm-Mittel</p>
+          <div className="mt-2">
+            <KpiExplainButton
+              label="Erklären"
+              request={{
+                kpi_key: "nis2_ot_it_segregation_drilldown",
+                current_value: otMean,
+                value_is_percent: true,
+              }}
+            />
+          </div>
         </div>
         <div className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Volle NIS2-KPI-Abdeckung</p>
@@ -210,9 +241,17 @@ export default async function BoardNis2KritisPage() {
               aria-label={KPI_LABEL[block.kpi_type]}
               className={CH_CARD}
             >
-              <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+              <h2 className="flex flex-wrap items-center gap-2 text-base font-semibold text-slate-900">
                 <span aria-hidden>🛡️</span>
                 {KPI_LABEL[block.kpi_type]}
+                <KpiExplainButton
+                  label="Was bedeutet das?"
+                  request={{
+                    kpi_key: `nis2_kritis_histogram:${block.kpi_type}`,
+                    current_value: histogramApproxMean(block),
+                    value_is_percent: true,
+                  }}
+                />
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Verteilung über vier Bereiche (0–25 … 75–100&nbsp;%).

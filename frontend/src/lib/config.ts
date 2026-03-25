@@ -51,3 +51,15 @@ export function featureApiKeysUi(): boolean {
 export function featureLlmEnabled(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_ENABLED, false);
 }
+
+export function featureLlmKpiSuggestions(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_KPI_SUGGESTIONS, false);
+}
+
+export function featureLlmExplain(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_EXPLAIN, false);
+}
+
+export function featureLlmActionDrafts(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_LLM_ACTION_DRAFTS, false);
+}

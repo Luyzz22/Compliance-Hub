@@ -30,4 +30,7 @@ _TASK_FLAG: dict[LLMTaskType, FeatureFlag] = {
     LLMTaskType.STRUCTURED_OUTPUT: FeatureFlag.llm_report_assistant,
     LLMTaskType.CLASSIFICATION_TAGGING: FeatureFlag.llm_classification_tagging,
     LLMTaskType.CHAT_ASSISTANT: FeatureFlag.llm_chat_assistant,
+    LLMTaskType.KPI_SUGGESTION_ASSIST: FeatureFlag.llm_kpi_suggestions,
+    LLMTaskType.EXPLAIN_KPI_ALERT: FeatureFlag.llm_explain,
+    LLMTaskType.ACTION_DRAFT_GENERATION: FeatureFlag.llm_action_drafts,
 }

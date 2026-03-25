@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import os
 from enum import StrEnum
-from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, status
-
-if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session
 
 
 class FeatureFlag(StrEnum):
@@ -24,6 +21,9 @@ class FeatureFlag(StrEnum):
     llm_report_assistant = "llm_report_assistant"
     llm_classification_tagging = "llm_classification_tagging"
     llm_chat_assistant = "llm_chat_assistant"
+    llm_kpi_suggestions = "llm_kpi_suggestions"
+    llm_explain = "llm_explain"
+    llm_action_drafts = "llm_action_drafts"
 
 
 _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
@@ -38,11 +38,17 @@ _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
     FeatureFlag.llm_report_assistant: "COMPLIANCEHUB_FEATURE_LLM_REPORT_ASSISTANT",
     FeatureFlag.llm_classification_tagging: "COMPLIANCEHUB_FEATURE_LLM_CLASSIFICATION_TAGGING",
     FeatureFlag.llm_chat_assistant: "COMPLIANCEHUB_FEATURE_LLM_CHAT_ASSISTANT",
+    FeatureFlag.llm_kpi_suggestions: "COMPLIANCEHUB_FEATURE_LLM_KPI_SUGGESTIONS",
+    FeatureFlag.llm_explain: "COMPLIANCEHUB_FEATURE_LLM_EXPLAIN",
+    FeatureFlag.llm_action_drafts: "COMPLIANCEHUB_FEATURE_LLM_ACTION_DRAFTS",
 }
 
 # LLM master switch defaults off until keys and policies are configured.
 _FLAG_DEFAULTS: dict[FeatureFlag, bool] = {
     FeatureFlag.llm_enabled: False,
+    FeatureFlag.llm_kpi_suggestions: False,
+    FeatureFlag.llm_explain: False,
+    FeatureFlag.llm_action_drafts: False,
 }
 
 
@@ -92,3 +98,22 @@ def create_feature_guard(flag: FeatureFlag):
             )
 
     return _guard
+
+
+def require_tenant_llm_features(
+    tenant_id: str,
+    session: Session,
+    *flags: FeatureFlag,
+) -> None:
+    """403 wenn LLM-Master oder ein angefordertes Teil-Feature für den Mandanten aus ist."""
+    if not is_feature_enabled(FeatureFlag.llm_enabled, tenant_id, session=session):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="LLM features are disabled for this tenant (COMPLIANCEHUB_FEATURE_LLM_ENABLED).",
+        )
+    for flag in flags:
+        if not is_feature_enabled(flag, tenant_id, session=session):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Feature '{flag.value}' is disabled for this tenant.",
+            )

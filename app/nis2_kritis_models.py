@@ -93,3 +93,37 @@ class Nis2KritisKpiDrilldown(BaseModel):
     generated_at: datetime
     top_n: int = Field(ge=1, le=50)
     by_kpi_type: list[Nis2KritisKpiTypeDrilldown]
+
+
+class Nis2KritisKpiSuggestionRequest(BaseModel):
+    """Freitext-Kontext für KI-Vorschläge (keine automatische Persistenz)."""
+
+    ai_system_id: str = Field(..., min_length=1)
+    free_text: str = Field(
+        ...,
+        min_length=10,
+        max_length=32000,
+        description="Aggregierte Beschreibung: Controls, Runbooks, Prozesse, Doku.",
+    )
+
+
+class Nis2KritisKpiSuggestionBody(BaseModel):
+    """Nur Request-Body; ai_system_id kommt aus der URL."""
+
+    free_text: str = Field(
+        ...,
+        min_length=10,
+        max_length=32000,
+    )
+
+
+class Nis2KritisKpiSuggestion(BaseModel):
+    kpi_type: Nis2KritisKpiType
+    suggested_value_percent: int = Field(ge=0, le=100)
+    confidence: float = Field(ge=0.0, le=1.0)
+    rationale: str = Field(..., max_length=4000)
+
+
+class Nis2KritisKpiSuggestionResponse(BaseModel):
+    ai_system_id: str
+    suggestions: list[Nis2KritisKpiSuggestion]

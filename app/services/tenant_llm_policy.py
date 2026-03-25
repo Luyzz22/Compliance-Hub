@@ -31,6 +31,9 @@ def _default_provider_by_task() -> dict[LLMTaskType, LLMProvider]:
         LLMTaskType.CHAT_ASSISTANT: LLMProvider.OPENAI,
         LLMTaskType.EMBEDDING_RETRIEVAL: LLMProvider.LLAMA,
         LLMTaskType.ON_PREM_SENSITIVE: LLMProvider.LLAMA,
+        LLMTaskType.KPI_SUGGESTION_ASSIST: LLMProvider.GEMINI,
+        LLMTaskType.EXPLAIN_KPI_ALERT: LLMProvider.CLAUDE,
+        LLMTaskType.ACTION_DRAFT_GENERATION: LLMProvider.CLAUDE,
     }
 
 

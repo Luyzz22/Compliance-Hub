@@ -29,6 +29,9 @@ _PILOT_DEFAULT_FLAGS: dict[str, bool] = {
     FeatureFlag.llm_report_assistant.value: False,
     FeatureFlag.llm_classification_tagging.value: False,
     FeatureFlag.llm_chat_assistant.value: False,
+    FeatureFlag.llm_kpi_suggestions.value: False,
+    FeatureFlag.llm_explain.value: False,
+    FeatureFlag.llm_action_drafts.value: False,
 }
 
 _INITIAL_KEY_NAME = "Initial Pilot Key"
