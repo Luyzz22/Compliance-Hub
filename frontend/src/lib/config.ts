@@ -106,3 +106,8 @@ export function featureAiComplianceBoardReport(): boolean {
 export function featureAiKpiKri(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_KPI_KRI, true);
 }
+
+/** Geführtes AI-Governance-Setup (Enterprise/Berater), Backend COMPLIANCEHUB_FEATURE_AI_GOVERNANCE_SETUP_WIZARD. */
+export function featureAiGovernanceSetupWizard(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_GOVERNANCE_SETUP_WIZARD, true);
+}

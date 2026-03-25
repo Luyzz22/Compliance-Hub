@@ -36,6 +36,20 @@ class TenantDB(Base):
     )
 
 
+class TenantAIGovernanceSetupDB(Base):
+    """Persistenter Stand des AI-Governance-Setup-Wizards (Mandant)."""
+
+    __tablename__ = "tenant_ai_governance_setup"
+
+    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+
 class TenantApiKeyDB(Base):
     """API-Schlüssel pro Mandant (Hash-only, Klartext nur bei Erstellung)."""
 

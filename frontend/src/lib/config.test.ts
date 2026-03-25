@@ -8,6 +8,7 @@ import {
   featureAiComplianceBoardReport,
   featureCrossRegulationLlmAssist,
   featureAiKpiKri,
+  featureAiGovernanceSetupWizard,
   featureApiKeysUi,
   featureDemoSeeding,
   featureEvidencePreviewBadge,
@@ -36,6 +37,7 @@ const envKeys = [
   "NEXT_PUBLIC_FEATURE_CROSS_REGULATION_LLM_ASSIST",
   "NEXT_PUBLIC_FEATURE_AI_COMPLIANCE_BOARD_REPORT",
   "NEXT_PUBLIC_FEATURE_AI_KPI_KRI",
+  "NEXT_PUBLIC_FEATURE_AI_GOVERNANCE_SETUP_WIZARD",
   "NEXT_PUBLIC_FEATURE_LLM_ENABLED",
   "NEXT_PUBLIC_FEATURE_LLM_KPI_SUGGESTIONS",
   "NEXT_PUBLIC_FEATURE_LLM_EXPLAIN",
@@ -84,6 +86,7 @@ describe("feature flags from env", () => {
     expect(featureCrossRegulationLlmAssist()).toBe(true);
     expect(featureAiComplianceBoardReport()).toBe(true);
     expect(featureAiKpiKri()).toBe(true);
+    expect(featureAiGovernanceSetupWizard()).toBe(true);
   });
 
   it("parses common false/true tokens", () => {

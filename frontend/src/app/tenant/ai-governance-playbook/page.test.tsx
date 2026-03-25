@@ -10,6 +10,7 @@ vi.mock("@/lib/config", async () => {
   return {
     ...actual,
     featureAiGovernancePlaybook: () => true,
+    featureAiGovernanceSetupWizard: () => true,
     featureCrossRegulationDashboard: () => true,
   };
 });
@@ -45,5 +46,10 @@ describe("AiGovernancePlaybookPage", () => {
     expect(
       screen.getByRole("link", { name: /Compliance-Übersicht \/ Setup/i }).getAttribute("href"),
     ).toBe("/tenant/compliance-overview");
+
+    expect(screen.getByTestId("playbook-setup-wizard-cta")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: /Jetzt geführtes Setup starten/i }).getAttribute("href"),
+    ).toBe("/tenant/ai-governance-setup");
   });
 });

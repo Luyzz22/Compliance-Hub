@@ -14,8 +14,13 @@ import {
   fetchCrossRegulationSummary,
   fetchRegulatoryControls,
   fetchRegulatoryRequirements,
+  fetchTenantAiGovernanceSetup,
 } from "@/lib/api";
-import { featureCrossRegulationDashboard, featureCrossRegulationLlmAssist } from "@/lib/config";
+import {
+  featureAiGovernanceSetupWizard,
+  featureCrossRegulationDashboard,
+  featureCrossRegulationLlmAssist,
+} from "@/lib/config";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
 export default async function CrossRegulationDashboardPage() {
@@ -38,6 +43,18 @@ export default async function CrossRegulationDashboardPage() {
     ]);
   } catch (e) {
     loadError = e instanceof Error ? e.message : "API-Fehler";
+  }
+
+  let preferredFrameworkKeys: string[] | undefined;
+  if (featureAiGovernanceSetupWizard() && !loadError && summary) {
+    try {
+      const ags = await fetchTenantAiGovernanceSetup(tenantId);
+      if (ags.active_frameworks?.length) {
+        preferredFrameworkKeys = ags.active_frameworks;
+      }
+    } catch {
+      preferredFrameworkKeys = undefined;
+    }
   }
 
   return (
@@ -79,6 +96,7 @@ export default async function CrossRegulationDashboardPage() {
           requirements={requirements}
           controls={controls}
           llmAssistEnabled={featureCrossRegulationLlmAssist()}
+          preferredFrameworkKeys={preferredFrameworkKeys}
         />
       ) : null}
     </div>

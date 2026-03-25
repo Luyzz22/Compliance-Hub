@@ -166,6 +166,7 @@ from app.repositories.evidence_files import EvidenceFileRepository
 from app.repositories.incidents import IncidentRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
+from app.repositories.tenant_ai_governance_setup import TenantAIGovernanceSetupRepository
 from app.repositories.tenant_api_keys import TenantApiKeyRepository
 from app.repositories.violations import ViolationRepository
 from app.security import (
@@ -273,6 +274,11 @@ from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signa
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
 from app.services.setup_status import compute_tenant_setup_status
+from app.services.tenant_ai_governance_setup import (
+    apply_setup_patch,
+    build_setup_response,
+    normalize_payload,
+)
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
     compute_tenant_compliance_overview,
@@ -284,6 +290,10 @@ from app.setup_models import TenantSetupStatus
 from app.supplier_risk_models import (
     AISupplierRiskBySystemEntry,
     AISupplierRiskOverview,
+)
+from app.tenant_ai_governance_setup_models import (
+    TenantAIGovernanceSetupPatch,
+    TenantAIGovernanceSetupResponse,
 )
 from app.usage_metrics_models import TenantUsageMetricsResponse
 
@@ -485,6 +495,12 @@ def get_tenant_api_key_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> TenantApiKeyRepository:
     return TenantApiKeyRepository(session)
+
+
+def get_tenant_ai_governance_setup_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> TenantAIGovernanceSetupRepository:
+    return TenantAIGovernanceSetupRepository(session)
 
 
 def _ensure_tenant_path_matches_auth(tenant_id: str, auth: AuthContext) -> None:
@@ -2267,6 +2283,59 @@ def get_tenant_setup_status(
             dedupe_same_type_hours=24,
         )
     return status_obj
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/ai-governance-setup",
+    response_model=TenantAIGovernanceSetupResponse,
+    tags=["tenants"],
+)
+def get_tenant_ai_governance_setup(
+    tenant_id: str,
+    _ff_wizard: Annotated[
+        None,
+        Depends(create_feature_guard(FeatureFlag.ai_governance_setup_wizard)),
+    ],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    setup_repo: Annotated[
+        TenantAIGovernanceSetupRepository,
+        Depends(get_tenant_ai_governance_setup_repository),
+    ],
+) -> TenantAIGovernanceSetupResponse:
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    raw = setup_repo.get_payload(tenant_id)
+    payload = normalize_payload(raw)
+    return build_setup_response(session, tenant_id, payload)
+
+
+@app.put(
+    "/api/v1/tenants/{tenant_id}/ai-governance-setup",
+    response_model=TenantAIGovernanceSetupResponse,
+    tags=["tenants"],
+)
+def put_tenant_ai_governance_setup(
+    tenant_id: str,
+    body: TenantAIGovernanceSetupPatch,
+    _ff_wizard: Annotated[
+        None,
+        Depends(create_feature_guard(FeatureFlag.ai_governance_setup_wizard)),
+    ],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    setup_repo: Annotated[
+        TenantAIGovernanceSetupRepository,
+        Depends(get_tenant_ai_governance_setup_repository),
+    ],
+) -> TenantAIGovernanceSetupResponse:
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    raw = setup_repo.get_payload(tenant_id)
+    current = normalize_payload(raw)
+    merged = apply_setup_patch(current, body)
+    setup_repo.upsert_payload(tenant_id, merged)
+    return build_setup_response(session, tenant_id, merged)
 
 
 @app.get(

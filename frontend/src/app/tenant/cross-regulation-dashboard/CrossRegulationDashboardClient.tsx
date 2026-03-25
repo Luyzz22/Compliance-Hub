@@ -51,6 +51,8 @@ export interface CrossRegulationDashboardClientProps {
   requirements: RegulatoryRequirementRowDto[];
   controls: RegulatoryControlRowDto[];
   llmAssistEnabled?: boolean;
+  /** Aus AI-Governance-Setup: Standard-Filter auf diese Framework-Keys. */
+  preferredFrameworkKeys?: string[];
 }
 
 export function CrossRegulationDashboardClient({
@@ -59,7 +61,22 @@ export function CrossRegulationDashboardClient({
   requirements,
   controls,
   llmAssistEnabled = false,
+  preferredFrameworkKeys,
 }: CrossRegulationDashboardClientProps) {
+  const summaryForUi = useMemo(() => {
+    if (!preferredFrameworkKeys?.length) return summary;
+    const pref = new Set(preferredFrameworkKeys);
+    const sub = summary.filter((s) => pref.has(s.framework_key));
+    return sub.length ? sub : summary;
+  }, [summary, preferredFrameworkKeys]);
+
+  const requirementsForUi = useMemo(() => {
+    if (!preferredFrameworkKeys?.length) return requirements;
+    const pref = new Set(preferredFrameworkKeys);
+    const sub = requirements.filter((r) => pref.has(r.framework_key));
+    return sub.length ? sub : requirements;
+  }, [requirements, preferredFrameworkKeys]);
+
   const [frameworkFilter, setFrameworkFilter] = useState<FrameworkFilter>("all");
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -69,14 +86,14 @@ export function CrossRegulationDashboardClient({
   const [detailBusy, setDetailBusy] = useState(false);
 
   const filteredRequirements = useMemo(() => {
-    return requirements.filter((r) => {
+    return requirementsForUi.filter((r) => {
       if (frameworkFilter !== "all" && r.framework_key !== frameworkFilter) return false;
       if (coverageFilter !== "all" && r.coverage_status !== coverageFilter) return false;
       if (typeFilter !== "all" && r.requirement_type !== typeFilter) return false;
       if (criticalityFilter !== "all" && r.criticality !== criticalityFilter) return false;
       return true;
     });
-  }, [requirements, frameworkFilter, coverageFilter, typeFilter, criticalityFilter]);
+  }, [requirementsForUi, frameworkFilter, coverageFilter, typeFilter, criticalityFilter]);
 
   const openDrilldown = async (requirementId: number) => {
     setDetailBusy(true);
@@ -102,8 +119,14 @@ export function CrossRegulationDashboardClient({
           Coverage aus tenant-spezifischen Controls und Verknüpfungen zu globalem
           Anforderungskatalog (Map once, comply many).
         </p>
+        {preferredFrameworkKeys?.length ? (
+          <p className="mt-2 text-xs text-slate-500">
+            Voreinstellung aus AI-Governance-Setup: Fokus auf aktivierte Frameworks (anpassbar über
+            Filter).
+          </p>
+        ) : null}
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {summary.map((f) => (
+          {summaryForUi.map((f) => (
             <article key={f.framework_key} className={CH_CARD}>
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 {f.framework_key}
@@ -149,7 +172,7 @@ export function CrossRegulationDashboardClient({
       </section>
 
       {llmAssistEnabled ? (
-        <CrossRegulationLlmGapPanel tenantId={tenantId} requirements={requirements} />
+        <CrossRegulationLlmGapPanel tenantId={tenantId} requirements={requirementsForUi} />
       ) : null}
 
       <section aria-label="Anforderungen und Controls" data-testid="cross-reg-requirements-table">
@@ -184,7 +207,7 @@ export function CrossRegulationDashboardClient({
               data-testid="filter-framework"
             >
               <option value="all">Alle</option>
-              {summary.map((f) => (
+              {summaryForUi.map((f) => (
                 <option key={f.framework_key} value={f.framework_key}>
                   {f.name}
                 </option>
