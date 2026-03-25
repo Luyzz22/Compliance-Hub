@@ -19,6 +19,7 @@ import {
 } from "@/lib/boardLayout";
 import {
   featureAiGovernancePlaybook,
+  featureCrossRegulationDashboard,
   featureGuidedSetup,
   featurePilotRunbook,
 } from "@/lib/config";
@@ -200,6 +201,21 @@ export default async function TenantComplianceOverviewPage() {
             Blueprints
           </Link>
         </article>
+        {featureCrossRegulationDashboard() ? (
+          <article className={CH_CARD}>
+            <p className={CH_SECTION_LABEL}>Cross-Regulation</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Regelwerksgraph: Pflichten (EU AI Act, ISO 42001/27001, NIS2, DSGVO) und tenant-Controls –
+              Coverage und Lücken auf einen Blick.
+            </p>
+            <Link
+              href="/tenant/cross-regulation-dashboard"
+              className={`${CH_BTN_PRIMARY} mt-4 inline-flex text-xs`}
+            >
+              Cross-Regulation Overview
+            </Link>
+          </article>
+        ) : null}
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Audit-Log</p>
           <p className="mt-2 text-sm text-slate-600">

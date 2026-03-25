@@ -212,6 +212,11 @@ export const PLAYBOOK_PHASES: PlaybookPhase[] = [
     ],
     tasks: [
       {
+        label: "Cross-Regulation Overview",
+        href: "/tenant/cross-regulation-dashboard",
+        hint: "Coverage über EU AI Act, ISO 42001/27001, NIS2, DSGVO",
+      },
+      {
         label: "What-if-Simulation (Board-KPI-Impact)",
         href: "/board/kpis",
         hint: "Auf der KPI-Seite: What-if-Simulator (wenn aktiviert)",

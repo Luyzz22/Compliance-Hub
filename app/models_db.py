@@ -424,6 +424,182 @@ class AIActDocDB(Base):
     updated_by: Mapped[str] = mapped_column(String(320), nullable=False)
 
 
+class ComplianceFrameworkDB(Base):
+    """Regelwerks-Stammdaten (mandantenübergreifend)."""
+
+    __tablename__ = "compliance_frameworks"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ComplianceRequirementDB(Base):
+    """Norm-/Gesetzes-Pflichten je Framework (globaler Katalog)."""
+
+    __tablename__ = "compliance_requirements"
+    __table_args__ = (
+        UniqueConstraint("framework_id", "code", name="uq_compliance_requirement_framework_code"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    framework_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("compliance_frameworks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    code: Mapped[str] = mapped_column(String(128), nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requirement_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    criticality: Mapped[str] = mapped_column(String(16), nullable=False, default="medium")
+
+
+class ComplianceRequirementRelationDB(Base):
+    """Crosswalk: inhaltliche Zuordnung zwischen Pflichten verschiedener Frameworks."""
+
+    __tablename__ = "compliance_requirement_relations"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_requirement_id",
+            "target_requirement_id",
+            name="uq_compliance_req_relation_pair",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    source_requirement_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("compliance_requirements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_requirement_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("compliance_requirements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    note: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+
+class ComplianceControlDB(Base):
+    """Mandantenspezifische Controls (Map once, comply many)."""
+
+    __tablename__ = "compliance_controls"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    control_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    owner_role: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class ComplianceRequirementControlLinkDB(Base):
+    """Verknüpfung Pflicht ↔ Control inkl. Deckungsgrad."""
+
+    __tablename__ = "compliance_requirement_control_links"
+    __table_args__ = (
+        UniqueConstraint(
+            "requirement_id",
+            "control_id",
+            name="uq_compliance_req_control_link",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    requirement_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("compliance_requirements.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    control_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("compliance_controls.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    coverage_level: Mapped[str] = mapped_column(String(16), nullable=False)
+
+
+class ComplianceControlAISystemDB(Base):
+    """Optional: Control wirkt auf konkrete KI-Systeme."""
+
+    __tablename__ = "compliance_control_ai_systems"
+    __table_args__ = (
+        UniqueConstraint("control_id", "ai_system_id", name="uq_compliance_control_ai_system"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    control_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("compliance_controls.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+
+class ComplianceControlPolicyDB(Base):
+    __tablename__ = "compliance_control_policies"
+    __table_args__ = (
+        UniqueConstraint("control_id", "policy_id", name="uq_compliance_control_policy"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    control_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("compliance_controls.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    policy_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("policies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+
+class ComplianceControlActionDB(Base):
+    __tablename__ = "compliance_control_actions"
+    __table_args__ = (
+        UniqueConstraint("control_id", "action_id", name="uq_compliance_control_action"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    control_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("compliance_controls.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    action_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ai_governance_actions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+
 class LLMCallMetadataDB(Base):
     """Metadaten je LLM-Aufruf (ohne Prompt/Response-Inhalt, DSGVO-minimierend)."""
 

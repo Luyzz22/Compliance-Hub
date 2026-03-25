@@ -86,3 +86,8 @@ export function featureWhatIfSimulator(): boolean {
 export function featureAiGovernancePlaybook(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_GOVERNANCE_PLAYBOOK, true);
 }
+
+/** Cross-Regulation-Dashboard / Regelwerksgraph (Backend COMPLIANCEHUB_FEATURE_CROSS_REGULATION_DASHBOARD). */
+export function featureCrossRegulationDashboard(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_CROSS_REGULATION_DASHBOARD, true);
+}

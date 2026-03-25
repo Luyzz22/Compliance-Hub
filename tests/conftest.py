@@ -4,11 +4,13 @@ import os
 from collections.abc import Iterator
 
 import pytest
+from sqlalchemy.orm import Session
 
 from app.db import engine, get_session
 from app.main import app
 from app.models_db import Base
 from app.security import get_settings
+from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded
 
 # Alle API-Keys, die Tests in _headers() verwenden – get_settings().api_keys wird
 # einmal pro Session gecacht; damit alle Tests grün bleiben, hier Superset setzen.
@@ -30,6 +32,8 @@ def setup_test_db() -> None:
     get_settings.cache_clear()
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    with Session(engine) as s:
+        ensure_cross_regulation_catalog_seeded(s)
 
 
 @pytest.fixture(autouse=True)
