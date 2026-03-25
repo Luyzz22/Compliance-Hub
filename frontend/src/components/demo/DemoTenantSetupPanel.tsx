@@ -79,7 +79,7 @@ export function DemoTenantSetupPanel({
       setResult(res);
     } catch (e) {
       const base = e instanceof Error ? e.message : "Demo-Seed fehlgeschlagen.";
-      setError(
+      setSeedError(
         `${base} Bitte Eingaben prüfen und erneut auf «Demo-Daten einspielen» klicken; bei anhaltendem Fehler Server-Logs prüfen.`,
       );
     } finally {
