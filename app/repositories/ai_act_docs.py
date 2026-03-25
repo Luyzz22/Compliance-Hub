@@ -97,9 +97,7 @@ class AIActDocRepository:
                 content_markdown=content_markdown,
                 version=1,
                 content_source=(
-                    content_source.value
-                    if content_source
-                    else AIActDocContentSource.manual.value
+                    content_source.value if content_source else AIActDocContentSource.manual.value
                 ),
                 created_at=ts,
                 created_by=actor,

@@ -84,11 +84,7 @@ def _mean_by_nis2_type(
 ) -> dict[Nis2KritisKpiType, float | None]:
     out: dict[Nis2KritisKpiType, float | None] = {}
     for kt in Nis2KritisKpiType:
-        vals = [
-            kpi_map[(sid, kt.value)]
-            for sid in tenant_system_ids
-            if (sid, kt.value) in kpi_map
-        ]
+        vals = [kpi_map[(sid, kt.value)] for sid in tenant_system_ids if (sid, kt.value) in kpi_map]
         out[kt] = sum(vals) / len(vals) if vals else None
     return out
 
