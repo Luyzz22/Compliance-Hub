@@ -7,7 +7,6 @@ import uuid
 from fastapi.testclient import TestClient
 
 from app.main import app
-from tests.conftest import _headers
 
 client = TestClient(app)
 
