@@ -20,7 +20,8 @@ from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
 
 
 def _eu_art9_id(session: Session) -> int:
-    fw = session.scalars(select(ComplianceFrameworkDB).where(ComplianceFrameworkDB.key == "eu_ai_act")).one()
+    stmt_fw = select(ComplianceFrameworkDB).where(ComplianceFrameworkDB.key == "eu_ai_act")
+    fw = session.scalars(stmt_fw).one()
     req = session.scalars(
         select(ComplianceRequirementDB).where(
             ComplianceRequirementDB.framework_id == fw.id,
