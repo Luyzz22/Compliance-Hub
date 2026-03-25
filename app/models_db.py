@@ -226,6 +226,45 @@ class AIGovernanceActionDB(Base):
     )
 
 
+class EvidenceFileTable(Base):
+    """Persistente Evidenz-Dateien (mandantenisoliert, Storage-Key ohne PII im Pfad)."""
+
+    __tablename__ = "evidence_files"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str | None] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    audit_record_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    action_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("ai_governance_actions.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    filename_original: Mapped[str] = mapped_column(String(512), nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
+    content_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_by: Mapped[str] = mapped_column(String(320), nullable=False)
+    norm_framework: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    norm_reference: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+
 class AuditLogTable(Base):
     __tablename__ = "audit_logs"
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { EvidenceAttachmentsSection } from "@/components/evidence/EvidenceAttachmentsSection";
 import {
   createBoardReportAuditRecord,
   fetchNormEvidenceDefaults,
@@ -482,6 +483,14 @@ export function BoardReportAuditSection() {
                       </button>
                     </div>
                   </div>
+                </div>
+                <div className="mt-3 border-t border-slate-200 pt-3">
+                  <EvidenceAttachmentsSection
+                    compact
+                    title="Anhänge / Datei-Belege"
+                    description="Ergänzend zu Norm-Nachweisen: PDF/DOCX/XLSX/Bilder als Prüfungsdokumentation (mandantenisoliert)."
+                    auditRecordId={r.id}
+                  />
                 </div>
               </li>
             ))}

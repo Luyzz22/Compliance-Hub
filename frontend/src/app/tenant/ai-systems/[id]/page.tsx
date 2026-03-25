@@ -1,6 +1,7 @@
 import Link from "next/link";
 import React from "react";
 
+import { EvidenceAttachmentsSection } from "@/components/evidence/EvidenceAttachmentsSection";
 import {
   fetchEuAiActReadiness,
   fetchIncidentsBySystem,
@@ -143,19 +144,12 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         <h2 className="text-base font-semibold text-slate-900">
           Evidenz & Dokumente
         </h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Hier werden später PDF- und Office-Dokumente als Nachweise zum KI-System
-          hinterlegt (Anbindung an sicheren Objekt-Speicher).
-        </p>
         <div className="mt-4">
-          <button
-            type="button"
-            disabled
-            className={`${CH_BTN_SECONDARY} cursor-not-allowed opacity-60`}
-            title="Funktion in Vorbereitung"
-          >
-            Dokument(e) hinzufügen (demnächst)
-          </button>
+          <EvidenceAttachmentsSection
+            title="Nachweise zu diesem KI-System"
+            description="Upload von DPIA, Runbooks, Policies, Verträgen und weiteren Prüfungsnachweisen (EU AI Act, NIS2, ISO 42001). Dateien sind mandantenisoliert; technische Ablage erfolgt ohne sensible Namen im Speicherpfad."
+            aiSystemId={id}
+          />
         </div>
       </section>
 
