@@ -3,6 +3,7 @@ import React from "react";
 
 import { EvidenceAttachmentsSection } from "@/components/evidence/EvidenceAttachmentsSection";
 import { AiActDocumentationClient } from "@/components/tenant/AiActDocumentationClient";
+import { AiSystemKpiPanel } from "@/components/tenant/AiSystemKpiPanel";
 import { AiSystemSectionNav } from "@/components/tenant/AiSystemSectionNav";
 import { Nis2KpiAiAssistClient } from "@/components/tenant/Nis2KpiAiAssistClient";
 import {
@@ -16,7 +17,7 @@ import {
   fetchClassification,
   type AISystem,
 } from "@/lib/api";
-import { featureCrossRegulationDashboard } from "@/lib/config";
+import { featureAiKpiKri, featureCrossRegulationDashboard } from "@/lib/config";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
@@ -202,7 +203,29 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         )}
       </section>
 
-      <section className={CH_CARD} aria-label="NIS2 und KRITIS KPIs">
+      {featureAiKpiKri() ? (
+        <section
+          id="sec-ai-kpis"
+          className={`${CH_CARD} scroll-mt-32`}
+          aria-label="AI KPIs und KRIs"
+        >
+          <h2 className="text-base font-semibold text-slate-900">AI KPIs &amp; KRIs</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Systembezogene Messgrößen für Post-Market-Monitoring (EU AI Act) und Performance
+            Evaluation (ISO 42001). Werte pro Periode erfassen; Trends und Ampeln werden aus den
+            letzten Perioden abgeleitet.
+          </p>
+          <div className="mt-4">
+            <AiSystemKpiPanel tenantId={workspaceTenantId} systemId={id} />
+          </div>
+        </section>
+      ) : null}
+
+      <section
+        id="sec-nis2"
+        className={`${CH_CARD} scroll-mt-32`}
+        aria-label="NIS2 und KRITIS KPIs"
+      >
         <h2 className="text-base font-semibold text-slate-900">NIS2 / KRITIS KPIs</h2>
         {nis2.kpis.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">Keine KPI-Zeilen für dieses System.</p>

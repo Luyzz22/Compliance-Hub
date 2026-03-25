@@ -101,3 +101,8 @@ export function featureCrossRegulationLlmAssist(): boolean {
 export function featureAiComplianceBoardReport(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_COMPLIANCE_BOARD_REPORT, true);
 }
+
+/** AI-KPI/KRI je KI-System und Portfolio-Summary (Backend COMPLIANCEHUB_FEATURE_AI_KPI_KRI). */
+export function featureAiKpiKri(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_KPI_KRI, true);
+}

@@ -1737,3 +1737,121 @@ export async function fetchAiComplianceBoardReportDetail(
     tenantId,
   );
 }
+
+// ─── AI-KPI / KRI (High-Risk-Monitoring, EU AI Act / ISO 42001) ───
+
+export interface AiKpiDefinitionDto {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  category: string;
+  unit: string;
+  recommended_direction: "up" | "down";
+  framework_tags: string[];
+}
+
+export interface AiSystemKpiValueDto {
+  id: string;
+  period_start: string;
+  period_end: string;
+  value: number;
+  source: string;
+  comment?: string | null;
+}
+
+export interface AiSystemKpiSeriesDto {
+  definition: AiKpiDefinitionDto;
+  periods: AiSystemKpiValueDto[];
+  trend: "up" | "down" | "flat";
+  latest_status: "ok" | "red";
+}
+
+export interface AiSystemKpisListResponseDto {
+  ai_system_id: string;
+  series: AiSystemKpiSeriesDto[];
+}
+
+export interface AiKpiPerKpiAggregateDto {
+  kpi_key: string;
+  name: string;
+  unit: string;
+  category: string;
+  avg_latest: number | null;
+  min_latest: number | null;
+  max_latest: number | null;
+  trend: "up" | "down" | "flat";
+  systems_with_data: number;
+}
+
+export interface AiSystemCriticalKpiDto {
+  kpi_key: string;
+  name: string;
+  value: number;
+  unit: string;
+}
+
+export interface AiSystemCriticalRowDto {
+  ai_system_id: string;
+  ai_system_name: string;
+  risk_level: string;
+  critical_kpis: AiSystemCriticalKpiDto[];
+}
+
+export interface AiKpiSummaryResponseDto {
+  per_kpi: AiKpiPerKpiAggregateDto[];
+  per_system_critical: AiSystemCriticalRowDto[];
+  high_risk_system_count: number;
+}
+
+export async function fetchTenantAiSystemKpis(
+  tenantId: string,
+  systemId: string,
+): Promise<AiSystemKpisListResponseDto> {
+  const tid = encodeURIComponent(tenantId);
+  const sid = encodeURIComponent(systemId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/ai-systems/${sid}/kpis`, tenantId);
+}
+
+export async function postTenantAiSystemKpi(
+  tenantId: string,
+  systemId: string,
+  body: {
+    kpi_definition_id: string;
+    period_start: string;
+    period_end: string;
+    value: number;
+    source?: "manual" | "api" | "import";
+    comment?: string | null;
+  },
+): Promise<unknown> {
+  const tid = encodeURIComponent(tenantId);
+  const sid = encodeURIComponent(systemId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/ai-systems/${sid}/kpis`, tenantId, {
+    method: "POST",
+    body: JSON.stringify({
+      kpi_definition_id: body.kpi_definition_id,
+      period_start: body.period_start,
+      period_end: body.period_end,
+      value: body.value,
+      source: body.source ?? "manual",
+      comment: body.comment ?? null,
+    }),
+  });
+}
+
+export async function fetchTenantAiKpiSummary(
+  tenantId: string,
+  params?: { framework_key?: string; criticality?: string },
+): Promise<AiKpiSummaryResponseDto> {
+  const tid = encodeURIComponent(tenantId);
+  const q = new URLSearchParams();
+  if (params?.framework_key) q.set("framework_key", params.framework_key);
+  if (params?.criticality) q.set("criticality", params.criticality);
+  const qs = q.toString();
+  const path =
+    qs.length > 0
+      ? `/api/v1/tenants/${tid}/ai-kpis/summary?${qs}`
+      : `/api/v1/tenants/${tid}/ai-kpis/summary`;
+  return tenantApiFetch(path, tenantId);
+}

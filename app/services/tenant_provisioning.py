@@ -27,6 +27,7 @@ _PILOT_DEFAULT_FLAGS: dict[str, bool] = {
     FeatureFlag.cross_regulation_dashboard.value: True,
     FeatureFlag.cross_regulation_llm_assist.value: True,
     FeatureFlag.ai_compliance_board_report.value: True,
+    FeatureFlag.ai_kpi_kri.value: True,
     FeatureFlag.api_keys_ui.value: True,
     FeatureFlag.llm_enabled.value: False,
     FeatureFlag.llm_legal_reasoning.value: False,

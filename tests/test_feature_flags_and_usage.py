@@ -40,6 +40,7 @@ def test_feature_flag_defaults_true() -> None:
     assert is_feature_enabled(FeatureFlag.cross_regulation_dashboard) is True
     assert is_feature_enabled(FeatureFlag.cross_regulation_llm_assist) is True
     assert is_feature_enabled(FeatureFlag.ai_compliance_board_report) is True
+    assert is_feature_enabled(FeatureFlag.ai_kpi_kri) is True
 
 
 def test_feature_flag_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -65,6 +66,11 @@ def test_cross_regulation_llm_assist_flag_disabled_via_env(monkeypatch: pytest.M
 def test_ai_compliance_board_report_flag_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_AI_COMPLIANCE_BOARD_REPORT", "false")
     assert is_feature_enabled(FeatureFlag.ai_compliance_board_report) is False
+
+
+def test_ai_kpi_kri_flag_disabled_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_AI_KPI_KRI", "false")
+    assert is_feature_enabled(FeatureFlag.ai_kpi_kri) is False
 
 
 def test_advisor_portfolio_forbidden_when_feature_off(
