@@ -7,7 +7,8 @@
 **Verwandte Spezifikationen:**
 
 - [`governance-telemetry.md`](./governance-telemetry.md) – Event-Modell, keine PII.  
-- [`governance-activity-index.md`](./governance-activity-index.md) – GAI-Formel, Gewichte, Datenmodell-Skizze.
+- [`governance-activity-index.md`](./governance-activity-index.md) – GAI-Formel, Gewichte, Datenmodell-Skizze.  
+- [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md) – SAP AI Core Events, OAMI, Persistenz, BTP-Integrationsmuster.
 
 ---
 
@@ -91,7 +92,9 @@ Kontextfelder immer getrennt ausgeben:
 
 ## 4. SAP BTP / SAP AI Core – relevante Signale (Roadmap)
 
-Keine Implementierung in diesem Dokument; nur **Kategorien** und **Einordnung** in die Reife-Linse.
+**Detail-Spezifikation:** [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md) (kanonisches Event-Schema, Tabellen `ai_runtime_events` / `ai_runtime_incident_summaries`, OAMI-Formel, Ingest-APIs).
+
+Hier nur **Kategorien** und **Einordnung** in die Reife-Linse.
 
 ### 4.1 Drei Signalgruppen (Beispiele)
 
@@ -109,7 +112,7 @@ Keine Implementierung in diesem Dokument; nur **Kategorien** und **Einordnung** 
 | Typische Nutzung | CISO/GRC arbeitet in Playbook &amp; Dashboards | Automatisierte Streams aus AI Core / BTP |
 | Kann GAI „ersetzen“? | Nein | Ergänzt; optional: **Governance-Reaktion** auf OAMI (z. B. `workspace_feature_used` nach Incident-Review) als *Brücke* in späterer Spec |
 
-**Empfehlung:** **OAMI** als **separater Index** 0–100 mit eigenen Gewichten (z. B. Datenabdeckung + Incident-Reife + KPI-Stabilität), dokumentiert in Folge-Dokument `governance-operational-ai-index.md` sobald Anbindung feststeht.
+**Empfehlung:** **OAMI** als **separater Index** 0–100 mit eigenen Gewichten – ausgearbeitet in [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md).
 
 ---
 
@@ -217,7 +220,7 @@ Wortlaut immer **konservativ** (keine Rechtsberatung), Verweis auf kontinuierlic
 | Readiness Score + Level | **Live** (Feature-Flag beachten). |
 | GAI | **Spec + geplante Implementierung** (siehe `governance-activity-index.md`). |
 | `GET .../governance-maturity` | **Entwurf** – in diesem Dokument. |
-| OAMI / SAP AI Core | **Placeholder** – Signale und Index-Formel in separater Spec. |
+| OAMI / SAP AI Core | **Spezifikation** in [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md); Implementierung Roadmap. |
 | Readiness numerischer Modifier durch GAI | **Optional Phase 2** – Standard: nur Explain + UI-Zweispaltigkeit. |
 
 ---
@@ -227,7 +230,7 @@ Wortlaut immer **konservativ** (keine Rechtsberatung), Verweis auf kontinuierlic
 1. Implementierung `compute_governance_activity_index` + ggf. `tenant_governance_activity_index`.  
 2. Endpoint `governance-maturity` mit `oami.status = not_configured`.  
 3. Board Card + Advisor-Spalten + narrative Tag-Map (i18n).  
-4. Nach SAP-Design-Review: `governance-operational-ai-index.md` + Event-Normalisierung + OAMI-Felder in derselben API.
+4. SAP AI Core Ingest + OAMI gemäß [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md); `governance-maturity`-API um echte `operational_ai_monitoring`-Werte erweitern.
 
 ---
 

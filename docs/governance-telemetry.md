@@ -282,6 +282,7 @@ Optional JOIN/Anreicherung in DWH: `ai_system_id` gegen Register-Tabelle filtern
 | View-Hook / Shell | `frontend/src/hooks/useWorkspaceMode.ts`, `TenantWorkspaceShell` |
 | Governance Activity Index (Nutzungs-Indikator) | [`docs/governance-activity-index.md`](./governance-activity-index.md) |
 | Governance Maturity Lens (Readiness + GAI + Roadmap OAMI) | [`docs/governance-maturity-lens.md`](./governance-maturity-lens.md) |
+| Operational AI Monitoring (SAP AI Core, OAMI) | [`docs/governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md) |
 
 ---
 
