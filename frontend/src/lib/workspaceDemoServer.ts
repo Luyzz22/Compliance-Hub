@@ -17,6 +17,7 @@ export type TenantWorkspaceMeta = {
   display_name: string;
   is_demo: boolean;
   demo_playground: boolean;
+  mutation_blocked: boolean;
   demo_mode_feature_enabled: boolean;
 };
 

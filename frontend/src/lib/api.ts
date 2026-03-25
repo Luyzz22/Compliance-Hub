@@ -38,11 +38,18 @@ export interface TenantWorkspaceMetaDto {
   display_name: string;
   is_demo: boolean;
   demo_playground: boolean;
+  mutation_blocked: boolean;
   demo_mode_feature_enabled: boolean;
 }
 
 export async function fetchTenantWorkspaceMeta(tenantId: string): Promise<TenantWorkspaceMetaDto> {
   return tenantApiFetch("/api/v1/workspace/tenant-meta", tenantId) as Promise<TenantWorkspaceMetaDto>;
+}
+
+/** Demo-Telemetrie (GET, kein Schreibkonflikt mit read-only Demo-Mandanten). */
+export async function logDemoFeatureUsed(tenantId: string, featureKey: string): Promise<void> {
+  const k = encodeURIComponent(featureKey);
+  await tenantApiFetch(`/api/v1/workspace/demo-feature-used?feature_key=${k}`, tenantId);
 }
 
 async function apiFetch(path: string, init?: RequestInit) {

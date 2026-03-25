@@ -16,6 +16,18 @@ vi.mock("@/lib/config", async () => {
   };
 });
 
+vi.mock("@/hooks/useWorkspaceTenantMeta", () => ({
+  useWorkspaceTenantMeta: () => ({
+    meta: null,
+    loading: false,
+    error: null,
+    mutationBlocked: false,
+    isDemoTenant: false,
+    isPlaygroundTenant: false,
+    refetch: vi.fn(),
+  }),
+}));
+
 describe("AiGovernanceSetupWizardClient", () => {
   const initial: TenantAiGovernanceSetupDto = {
     tenant_id: "wizard-tenant-1",

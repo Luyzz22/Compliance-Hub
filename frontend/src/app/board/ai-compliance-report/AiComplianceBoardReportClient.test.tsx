@@ -6,6 +6,16 @@ const mocks = vi.hoisted(() => ({
   fetchDetail: vi.fn(),
   createReport: vi.fn(),
   fetchReadiness: vi.fn(),
+  logDemoFeatureUsed: vi.fn().mockResolvedValue(undefined),
+  useWorkspaceTenantMeta: vi.fn(() => ({
+    meta: null,
+    loading: false,
+    error: null,
+    mutationBlocked: false,
+    isDemoTenant: false,
+    isPlaygroundTenant: false,
+    refetch: vi.fn(),
+  })),
 }));
 
 vi.mock("@/lib/api", async () => {
@@ -16,8 +26,13 @@ vi.mock("@/lib/api", async () => {
     fetchAiComplianceBoardReportDetail: mocks.fetchDetail,
     createAiComplianceBoardReport: mocks.createReport,
     fetchTenantReadinessScore: mocks.fetchReadiness,
+    logDemoFeatureUsed: mocks.logDemoFeatureUsed,
   };
 });
+
+vi.mock("@/hooks/useWorkspaceTenantMeta", () => ({
+  useWorkspaceTenantMeta: (tenantId: string) => mocks.useWorkspaceTenantMeta(tenantId),
+}));
 
 vi.mock("@/lib/config", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/config")>();
@@ -34,6 +49,15 @@ import { AiComplianceBoardReportClient } from "./AiComplianceBoardReportClient";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocks.useWorkspaceTenantMeta.mockImplementation(() => ({
+    meta: null,
+    loading: false,
+    error: null,
+    mutationBlocked: false,
+    isDemoTenant: false,
+    isPlaygroundTenant: false,
+    refetch: vi.fn(),
+  }));
 });
 
 describe("AiComplianceBoardReportClient", () => {
@@ -108,6 +132,31 @@ describe("AiComplianceBoardReportClient", () => {
         screen.getByRole("heading", { name: "AI Performance & Risk KPIs" }),
       ).toBeTruthy();
     });
+  });
+
+  it("zeigt Demo-read-only-Hinweis und deaktiviert den Report-CTA bei mutationBlocked", async () => {
+    mocks.useWorkspaceTenantMeta.mockReturnValue({
+      meta: null,
+      loading: false,
+      error: null,
+      mutationBlocked: true,
+      isDemoTenant: true,
+      isPlaygroundTenant: false,
+      refetch: vi.fn(),
+    });
+    mocks.fetchReadiness.mockResolvedValue(readinessPayload);
+    mocks.fetchList.mockResolvedValue([]);
+
+    render(<AiComplianceBoardReportClient tenantId="t1" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toBeTruthy();
+    });
+    expect(screen.getByRole("status").textContent).toContain("read-only");
+
+    const cta = screen.getByTestId("board-report-open-wizard") as HTMLButtonElement;
+    expect(cta.disabled).toBe(true);
+    expect(cta.textContent).toContain("Demo-Report");
   });
 
   it("ruft beim Generieren den API-Endpoint auf", async () => {

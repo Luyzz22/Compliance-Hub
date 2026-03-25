@@ -10,6 +10,7 @@ import {
   fetchTenantAiGovernanceSetup,
   fetchTenantAiSystemKpis,
   fetchTenantAISystems,
+  logDemoFeatureUsed,
   postCrossRegulationLlmGapAssistant,
   postTenantAiSystemKpi,
   putTenantAiGovernanceSetup,
@@ -18,6 +19,7 @@ import {
   type CrossRegLlmGapSuggestionDto,
   type TenantAiGovernanceSetupDto,
 } from "@/lib/api";
+import { useWorkspaceTenantMeta } from "@/hooks/useWorkspaceTenantMeta";
 import {
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
@@ -141,6 +143,8 @@ export function AiGovernanceSetupWizardClient({
   tenantId,
   initialSetup,
 }: AiGovernanceSetupWizardClientProps) {
+  const { mutationBlocked, isDemoTenant } = useWorkspaceTenantMeta(tenantId);
+
   const [setup, setSetup] = useState<TenantAiGovernanceSetupDto>(
     () => initialSetup ?? emptySetup(tenantId),
   );
@@ -184,6 +188,11 @@ export function AiGovernanceSetupWizardClient({
   const [lastReportId, setLastReportId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isDemoTenant) return;
+    void logDemoFeatureUsed(tenantId, "ai_governance_setup_wizard").catch(() => {});
+  }, [isDemoTenant, tenantId]);
+
+  useEffect(() => {
     if (initialSetup) return;
     let cancelled = false;
     void (async () => {
@@ -207,6 +216,10 @@ export function AiGovernanceSetupWizardClient({
 
   const persist = useCallback(
     async (body: Parameters<typeof putTenantAiGovernanceSetup>[1]) => {
+      if (mutationBlocked) {
+        setErr("Im Demo-Mandanten sind keine Speicherungen möglich (read-only).");
+        return;
+      }
       setBusy(true);
       setErr(null);
       try {
@@ -220,7 +233,7 @@ export function AiGovernanceSetupWizardClient({
         setBusy(false);
       }
     },
-    [tenantId],
+    [tenantId, mutationBlocked],
   );
 
   const toggleScope = (id: string) => {
@@ -248,7 +261,7 @@ export function AiGovernanceSetupWizardClient({
 
   const goNext = async () => {
     const sn = step + 1;
-    if (sn <= 6) {
+    if (sn <= 6 && !mutationBlocked) {
       await persist({ mark_steps_complete: [sn] });
     }
     setStep((s) => Math.min(6, s + 1));
@@ -256,7 +269,7 @@ export function AiGovernanceSetupWizardClient({
 
   const goSkip = async () => {
     const sn = step + 1;
-    if (sn <= 6) {
+    if (sn <= 6 && !mutationBlocked) {
       await persist({ mark_steps_complete: [sn] });
     }
     setStep((s) => Math.min(6, s + 1));
@@ -285,6 +298,10 @@ export function AiGovernanceSetupWizardClient({
   };
 
   const addSystemToRegister = async () => {
+    if (mutationBlocked) {
+      setErr("Im Demo-Mandanten können keine neuen KI-Systeme angelegt werden.");
+      return;
+    }
     if (!draftName.trim()) {
       setErr("System-Name ist erforderlich.");
       return;
@@ -394,6 +411,10 @@ export function AiGovernanceSetupWizardClient({
   }, [step, tenantId, setup.active_frameworks]);
 
   const saveKpis = async () => {
+    if (mutationBlocked) {
+      setErr("Im Demo-Mandanten können keine KPI-Werte gespeichert werden.");
+      return;
+    }
     if (!featureAiKpiKri()) {
       await persist({ mark_steps_complete: [4] });
       setStep(4);
@@ -433,6 +454,10 @@ export function AiGovernanceSetupWizardClient({
   };
 
   const runGapAssist = async () => {
+    if (mutationBlocked) {
+      setErr("KI-Gap-Assist ist im Demo-Mandanten (read-only) deaktiviert.");
+      return;
+    }
     if (!featureCrossRegulationLlmAssist()) return;
     setGapBusy(true);
     setErr(null);
@@ -451,6 +476,10 @@ export function AiGovernanceSetupWizardClient({
   };
 
   const generateBoardReport = async () => {
+    if (mutationBlocked) {
+      setErr("Board-Report-Generierung ist im Demo-Mandanten (read-only) deaktiviert.");
+      return;
+    }
     if (!featureAiComplianceBoardReport()) return;
     setBusy(true);
     setErr(null);
@@ -484,6 +513,17 @@ export function AiGovernanceSetupWizardClient({
         <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-cyan-800">
           Mandanten-Workspace
         </p>
+        {mutationBlocked ? (
+          <div
+            className="mt-3 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-950"
+            role="status"
+            data-testid="wizard-demo-readonly-banner"
+          >
+            <strong className="font-semibold">Demo (read-only):</strong> Sie können den Ablauf
+            durchklicken; Speichern, neue Systeme, KPI-Posts, KI-Gap-Assist und neue Board-Reports
+            sind deaktiviert.
+          </div>
+        ) : null}
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
           AI Governance Setup
         </h1>

@@ -20,6 +20,8 @@ import {
 } from "@/lib/boardLayout";
 import { BoardReadinessCard } from "@/components/board/BoardReadinessCard";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { useWorkspaceTenantMeta } from "@/hooks/useWorkspaceTenantMeta";
+import { logDemoFeatureUsed } from "@/lib/api";
 
 const ALL_FRAMEWORKS: { key: string; label: string }[] = [
   { key: "eu_ai_act", label: "EU AI Act" },
@@ -53,6 +55,7 @@ const mdComponents = {
 };
 
 export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }) {
+  const { mutationBlocked, isDemoTenant } = useWorkspaceTenantMeta(tenantId);
   const [history, setHistory] = useState<AiComplianceBoardReportListItemDto[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AiComplianceBoardReportDetailDto | null>(null);
@@ -82,6 +85,11 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
   useEffect(() => {
     void refreshHistory();
   }, [refreshHistory]);
+
+  useEffect(() => {
+    if (!isDemoTenant) return;
+    void logDemoFeatureUsed(tenantId, "board_ai_compliance_report").catch(() => {});
+  }, [isDemoTenant, tenantId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -118,6 +126,10 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
   };
 
   const runGenerate = async () => {
+    if (mutationBlocked) {
+      setGenErr("Im Demo-Mandanten (read-only) kann kein neuer Report erzeugt werden.");
+      return;
+    }
     setGenBusy(true);
     setGenErr(null);
     try {
@@ -179,6 +191,16 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
         </div>
       ) : null}
 
+      {mutationBlocked ? (
+        <div
+          className="mb-6 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-950"
+          role="status"
+        >
+          <strong className="font-semibold">Demo (read-only):</strong> Vorhandene Reports ansehen und
+          exportieren. Neue KI-Generierung ist deaktiviert.
+        </div>
+      ) : null}
+
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
         <article className={CH_CARD} data-testid="board-report-latest-card">
           <p className={CH_SECTION_LABEL}>Letzter Report</p>
@@ -209,11 +231,17 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
           </p>
           <button
             type="button"
-            className={`${CH_BTN_PRIMARY} mt-4 text-sm`}
+            className={`${CH_BTN_PRIMARY} mt-4 text-sm disabled:cursor-not-allowed disabled:opacity-50`}
             onClick={() => setWizardOpen(true)}
             data-testid="board-report-open-wizard"
+            disabled={mutationBlocked}
+            title={
+              mutationBlocked
+                ? "Demo-Mandant: keine neue Report-Generierung"
+                : "Assistent zur Report-Erstellung öffnen"
+            }
           >
-            Neuen Report erzeugen (KI)
+            {mutationBlocked ? "Demo-Report ansehen (unten)" : "Neuen Report erzeugen (KI)"}
           </button>
         </article>
       </div>

@@ -8,7 +8,7 @@ from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.demo_tenant_write_guard import ensure_tenant_writes_allowed_if_not_demo
+from app.demo_tenant_guard import ensure_tenant_writes_allowed_if_not_demo
 from app.repositories.tenant_api_keys import TenantApiKeyRepository
 from app.security import AuthContext, get_settings
 

@@ -54,8 +54,10 @@ Der Seed enthält u. a. KI-Systeme (Hochrisiko/NIS2), NIS2-KPIs, AI-KPI-Zeitreih
 
 ## Schreibschutz
 
-- **`is_demo=true`** und **`demo_playground=false`**: schreibende HTTP-Methoden für diesen Mandanten werden mit **403** abgewiesen (über Auth-Dependencies).
-- **`demo_playground=true`**: Schreiben bleibt möglich (Sandbox-Variante, z. B. für spätere Aufräum-Jobs).
+- **`is_demo=true`** und **`demo_playground=false`**: schreibende HTTP-Methoden für diesen Mandanten werden mit **403** abgewiesen (über Auth-Dependencies und zusätzlich an ausgewählten Endpunkten ohne Tenant-Auth, z. B. Dokument-Intake, Berater-Snapshot-Report).
+- Antwort-**detail** (JSON): stabiler Code `demo_tenant_readonly` und englische `message` (für API-Clients); UI-Hinweise bleiben deutsch.
+- **`COMPLIANCEHUB_DEMO_BLOCK_ALL_MUTATIONS=true`**: blockiert Schreiben auch für **`demo_playground=true`** (strenger Pilot).
+- **`demo_playground=true`**: Schreiben bleibt möglich, solange die strenge ENV-Variable nicht gesetzt ist (Sandbox-Variante).
 
 ## Demo-Guide (Storyline)
 
@@ -81,12 +83,25 @@ Kontextzeile: **„Demo-Hinweis · Schritt X von 7“** erscheint auf den passen
 `GET /api/v1/workspace/tenant-meta` (mit `x-api-key`, `x-tenant-id`):
 
 - `is_demo`, `demo_playground`
+- **`mutation_blocked`**: entspricht der Server-Policy (Schreibschutz); das Frontend nutzt das für deaktivierte CTAs und Demo-Labels.
 - `demo_mode_feature_enabled` (Spiegel von `COMPLIANCEHUB_FEATURE_DEMO_MODE`)
+
+Bei **`is_demo=true`** wird (sofern `COMPLIANCEHUB_USAGE_TRACKING` nicht deaktiviert ist) höchstens einmal pro 24h ein Nutzungsereignis **`demo_session_started`** ohne Payload geschrieben (Dedupe).
+
+### Demo-Feature-Telemetrie (ohne PII)
+
+`GET /api/v1/workspace/demo-feature-used?feature_key=<snake_case>` (nur für registrierte Mandanten mit **`is_demo=true`**): schreibt **`demo_feature_used`** mit `{"feature_key": "..."}`. **GET** vermeidet Konflikte mit dem globalen Schreibschutz für Demo-Mandanten.
 
 ## Berater & Sales
 
 - Mandanten mit Demo-Seed zeigen **realistische Lücken** (Cross-Reg, NIS2, Board-Report) ohne echte Kundendaten.
 - Berater können im **Advisor-Workspace** Portfolio und Snapshots zeigen; Demo-Mandanten sind in der Regel **read-only**, um Abweichungen während der Präsentation zu vermeiden.
+
+## Vermischung Demo / Produktion vermeiden
+
+- Demo-Mandanten nur über **allowlistete** Seed-Keys oder das CLI anlegen; Produktions-API-Keys nicht für Demo-Seeds verwenden.
+- **`COMPLIANCEHUB_DEMO_SEED_TENANT_IDS`**: nur bekannte Demo-IDs zulassen; nach Piloten Tenant-IDs rotieren oder DB-Drop in nicht-produktiven Umgebungen.
+- **`mutation_blocked`** und Banner in der Shell so konfigurieren, dass Präsentatoren sofort erkennen, ob Schreibzugriff möglich ist.
 
 ## Datenbank-Spalten `tenants`
 
