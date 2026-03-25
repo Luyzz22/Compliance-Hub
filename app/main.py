@@ -8,8 +8,20 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated, Any, Literal
+from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -64,7 +76,7 @@ from app.compliance_gap_models import (
 from app.config.nis2_kritis_board_alert_thresholds import NIS2_KRITIS_OT_IT_ALERT_THRESHOLD_PCT
 from app.db import engine, get_session
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
-from app.evidence_upload_models import EvidenceUploadMetadata, EvidenceUploadRegisterRequest
+from app.evidence_models import EvidenceFile, EvidenceFileListResponse
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.models import (
     ComplianceAction,
@@ -87,11 +99,17 @@ from app.repositories.audit import AuditRepository
 from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
+from app.repositories.evidence_files import EvidenceFileRepository
 from app.repositories.incidents import IncidentRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
-from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
+from app.security import (
+    AuthContext,
+    delete_evidence_allowed_for_api_key,
+    get_api_key_and_tenant,
+    get_auth_context,
+)
 from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_governance_incidents import (
     compute_ai_incident_overview,
@@ -125,7 +143,19 @@ from app.services.compliance_dashboard import (
 )
 from app.services.compliance_engine import build_audit_hash, derive_actions
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
-from app.services.evidence_uploads import evidence_upload_service
+from app.services.evidence_service import (
+    delete_evidence as delete_evidence_file,
+)
+from app.services.evidence_service import (
+    download_evidence,
+)
+from app.services.evidence_service import (
+    list_evidence as list_evidence_files,
+)
+from app.services.evidence_service import (
+    upload_evidence as upload_evidence_file,
+)
+from app.services.evidence_storage import get_evidence_storage
 from app.services.high_risk_scenarios import list_high_risk_scenarios
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
@@ -262,6 +292,35 @@ def get_ai_governance_action_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> AIGovernanceActionRepository:
     return AIGovernanceActionRepository(session)
+
+
+def get_evidence_file_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> EvidenceFileRepository:
+    return EvidenceFileRepository(session)
+
+
+def require_evidence_delete_capability(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AuthContext:
+    if not delete_evidence_allowed_for_api_key(auth_context.api_key):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Evidence delete not permitted for this API key",
+        )
+    return auth_context
+
+
+def _evidence_form_opt(value: str | None) -> str | None:
+    if value is None or not str(value).strip():
+        return None
+    return str(value).strip()
+
+
+def _evidence_content_disposition(filename: str) -> str:
+    ascii_fallback = filename.encode("ascii", "replace").decode("ascii").replace('"', "")
+    enc = quote(filename, safe="")
+    return f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{enc}"
 
 
 def _model_to_json(model: BaseModel) -> str:
@@ -408,15 +467,95 @@ async def import_ai_systems(
 
 @app.post(
     "/api/v1/evidence/uploads",
-    response_model=EvidenceUploadMetadata,
+    response_model=EvidenceFile,
     status_code=status.HTTP_201_CREATED,
 )
-def register_evidence_upload_placeholder(
-    body: EvidenceUploadRegisterRequest,
+async def upload_evidence_api(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-) -> EvidenceUploadMetadata:
-    # TODO: Datei-Stream in S3/Blob-Storage ablegen; Metadaten in PostgreSQL persistieren.
-    return evidence_upload_service.register(auth_context.tenant_id, body)
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    file: UploadFile = File(...),
+    ai_system_id: Annotated[str | None, Form()] = None,
+    audit_record_id: Annotated[str | None, Form()] = None,
+    action_id: Annotated[str | None, Form()] = None,
+    norm_framework: Annotated[str | None, Form()] = None,
+    norm_reference: Annotated[str | None, Form()] = None,
+    x_uploaded_by: Annotated[str | None, Header(alias="x-uploaded-by")] = None,
+) -> EvidenceFile:
+    storage = get_evidence_storage()
+    uploaded_by = (x_uploaded_by or "").strip()[:320] or "api_client"
+    return await upload_evidence_file(
+        tenant_id=auth_context.tenant_id,
+        uploaded_by=uploaded_by,
+        file=file,
+        ai_system_id=_evidence_form_opt(ai_system_id),
+        audit_record_id=_evidence_form_opt(audit_record_id),
+        action_id=_evidence_form_opt(action_id),
+        norm_framework=_evidence_form_opt(norm_framework),
+        norm_reference=_evidence_form_opt(norm_reference),
+        evidence_repo=evidence_repo,
+        storage=storage,
+        ai_repo=ai_repo,
+        action_repo=action_repo,
+    )
+
+
+@app.get("/api/v1/evidence", response_model=EvidenceFileListResponse)
+def list_evidence_api(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+    ai_system_id: Annotated[str | None, Query()] = None,
+    audit_record_id: Annotated[str | None, Query()] = None,
+    action_id: Annotated[str | None, Query()] = None,
+) -> EvidenceFileListResponse:
+    items = list_evidence_files(
+        auth_context.tenant_id,
+        ai_system_id=_evidence_form_opt(ai_system_id),
+        audit_record_id=_evidence_form_opt(audit_record_id),
+        action_id=_evidence_form_opt(action_id),
+        evidence_repo=evidence_repo,
+    )
+    return EvidenceFileListResponse(items=items)
+
+
+@app.get("/api/v1/evidence/{evidence_id}/download")
+def download_evidence_api(
+    evidence_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+) -> Response:
+    storage = get_evidence_storage()
+    blob, content_type, filename = download_evidence(
+        auth_context.tenant_id,
+        evidence_id,
+        evidence_repo=evidence_repo,
+        storage=storage,
+    )
+    return Response(
+        content=blob,
+        media_type=content_type,
+        headers={"Content-Disposition": _evidence_content_disposition(filename)},
+    )
+
+
+@app.delete("/api/v1/evidence/{evidence_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_evidence_api(
+    evidence_id: str,
+    auth_context: Annotated[AuthContext, Depends(require_evidence_delete_capability)],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+) -> Response:
+    storage = get_evidence_storage()
+    delete_evidence_file(
+        auth_context.tenant_id,
+        evidence_id,
+        evidence_repo=evidence_repo,
+        storage=storage,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.patch("/api/v1/ai-systems/{aisystem_id}", response_model=AISystem)

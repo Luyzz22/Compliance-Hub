@@ -60,3 +60,12 @@ def get_auth_context(
 ) -> AuthContext:
     tenant_id = get_api_key_and_tenant(x_api_key=x_api_key, x_tenant_id=x_tenant_id)
     return AuthContext(tenant_id=tenant_id, api_key=x_api_key or "")
+
+
+def delete_evidence_allowed_for_api_key(api_key: str) -> bool:
+    """Nur API-Keys in COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS dürfen Evidence löschen."""
+    raw = os.getenv("COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS", "")
+    allowed = [k.strip() for k in raw.split(",") if k.strip()]
+    if not allowed:
+        return False
+    return api_key in allowed

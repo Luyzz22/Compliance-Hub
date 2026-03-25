@@ -106,6 +106,144 @@ export async function importAiSystemsFile(file: File): Promise<AIImportResult> {
   return res.json() as Promise<AIImportResult>;
 }
 
+export interface EvidenceFile {
+  id: string;
+  tenant_id: string;
+  ai_system_id?: string | null;
+  audit_record_id?: string | null;
+  action_id?: string | null;
+  filename_original: string;
+  content_type: string;
+  size_bytes: number;
+  uploaded_by: string;
+  norm_framework?: string | null;
+  norm_reference?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EvidenceListFilter =
+  | { ai_system_id: string }
+  | { audit_record_id: string }
+  | { action_id: string };
+
+export async function fetchEvidenceList(
+  filter: EvidenceListFilter
+): Promise<EvidenceFile[]> {
+  const params = new URLSearchParams();
+  if ("ai_system_id" in filter) {
+    params.set("ai_system_id", filter.ai_system_id);
+  }
+  if ("audit_record_id" in filter) {
+    params.set("audit_record_id", filter.audit_record_id);
+  }
+  if ("action_id" in filter) {
+    params.set("action_id", filter.action_id);
+  }
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/evidence?${params.toString()}`,
+    {
+      headers: {
+        "x-api-key": API_KEY,
+        "x-tenant-id": TENANT_ID,
+      },
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Evidence list failed: ${res.status}`);
+  }
+  const body = (await res.json()) as { items: EvidenceFile[] };
+  return body.items;
+}
+
+export async function uploadEvidenceFile(
+  file: File,
+  options: {
+    ai_system_id?: string;
+    audit_record_id?: string;
+    action_id?: string;
+    norm_framework?: string;
+    norm_reference?: string;
+    uploadedBy?: string;
+  }
+): Promise<EvidenceFile> {
+  const fd = new FormData();
+  fd.append("file", file);
+  if (options.ai_system_id) {
+    fd.append("ai_system_id", options.ai_system_id);
+  }
+  if (options.audit_record_id) {
+    fd.append("audit_record_id", options.audit_record_id);
+  }
+  if (options.action_id) {
+    fd.append("action_id", options.action_id);
+  }
+  if (options.norm_framework) {
+    fd.append("norm_framework", options.norm_framework);
+  }
+  if (options.norm_reference) {
+    fd.append("norm_reference", options.norm_reference);
+  }
+  const headers: Record<string, string> = {
+    "x-api-key": API_KEY,
+    "x-tenant-id": TENANT_ID,
+  };
+  if (options.uploadedBy?.trim()) {
+    headers["x-uploaded-by"] = options.uploadedBy.trim();
+  }
+  const res = await fetch(`${API_BASE_URL}/api/v1/evidence/uploads`, {
+    method: "POST",
+    headers,
+    body: fd,
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Evidence upload failed (${res.status}): ${text || res.statusText}`);
+  }
+  return res.json() as Promise<EvidenceFile>;
+}
+
+export async function downloadEvidenceBlob(evidenceId: string): Promise<Blob> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/evidence/${encodeURIComponent(evidenceId)}/download`,
+    {
+      headers: {
+        "x-api-key": API_KEY,
+        "x-tenant-id": TENANT_ID,
+      },
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Evidence download failed: ${res.status}`);
+  }
+  return res.blob();
+}
+
+export async function deleteEvidenceFile(evidenceId: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/evidence/${encodeURIComponent(evidenceId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        "x-api-key": API_KEY,
+        "x-tenant-id": TENANT_ID,
+      },
+      cache: "no-store",
+    }
+  );
+  if (res.status === 403) {
+    throw new Error(
+      "Löschen ist für diesen API-Key nicht freigeschaltet (COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS)."
+    );
+  }
+  if (!res.ok) {
+    throw new Error(`Evidence delete failed: ${res.status}`);
+  }
+}
+
 // Violations eines Tenants
 export async function fetchTenantViolations(): Promise<Violation[]> {
   return apiFetch("/api/v1/violations");

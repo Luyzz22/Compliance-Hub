@@ -18,6 +18,7 @@ _TEST_API_KEYS = "board-kpi-key,test-key,test-api-key,tenant-overview-key,test-k
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_db() -> None:
     os.environ["COMPLIANCEHUB_API_KEYS"] = _TEST_API_KEYS
+    os.environ["COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS"] = _TEST_API_KEYS
     get_settings.cache_clear()
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
@@ -27,6 +28,7 @@ def setup_test_db() -> None:
 def _restore_api_keys_superset() -> None:
     """Nach Tests, die COMPLIANCEHUB_API_KEYS verkleinern, wieder vollständige Key-Liste."""
     os.environ["COMPLIANCEHUB_API_KEYS"] = _TEST_API_KEYS
+    os.environ["COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS"] = _TEST_API_KEYS
     get_settings.cache_clear()
 
 
