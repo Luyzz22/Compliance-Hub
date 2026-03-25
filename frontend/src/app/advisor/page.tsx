@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AdvisorPortfolioExportToolbar, AdvisorPortfolioTable } from "@/components/advisor/AdvisorPortfolioTable";
 import { DemoTenantSetupPanel } from "@/components/demo/DemoTenantSetupPanel";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { AdvisorTenantUsagePicker } from "@/components/usage/TenantUsageSummary";
 import {
   ADVISOR_ID_FROM_ENV,
   fetchAdvisorPortfolio,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/api";
 import { portfolioHealth } from "@/lib/advisorPortfolioHealth";
 import { CH_CARD, CH_SECTION_LABEL, CH_SHELL } from "@/lib/boardLayout";
+import { featureDemoSeeding } from "@/lib/config";
 
 type SortKey = "readiness" | "nis2_mean" | "setup" | "high_risk";
 
@@ -27,6 +29,7 @@ export default function AdvisorPortfolioPage() {
   const [sortKey, setSortKey] = useState<SortKey>("readiness");
   const [sortAsc, setSortAsc] = useState(false);
   const [onlyCriticalFilter, setOnlyCriticalFilter] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     if (!advisorId) {
@@ -41,8 +44,16 @@ export default function AdvisorPortfolioPage() {
       try {
         const data = await fetchAdvisorPortfolio(advisorId);
         if (!cancelled) setRows(data.tenants);
-      } catch {
-        if (!cancelled) setError("Portfolio konnte nicht geladen werden (API / Header prüfen).");
+      } catch (e) {
+        if (!cancelled) {
+          const hint =
+            e instanceof Error && e.message
+              ? ` (${e.message})`
+              : "";
+          setError(
+            `Das Mandanten-Portfolio konnte nicht geladen werden.${hint} Bitte Netzwerk, API-Key und Header x-advisor-id prüfen und erneut versuchen.`,
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -50,7 +61,7 @@ export default function AdvisorPortfolioPage() {
     return () => {
       cancelled = true;
     };
-  }, [advisorId]);
+  }, [advisorId, loadAttempt]);
 
   const processed = useMemo(() => {
     let list = [...rows];
@@ -110,7 +121,16 @@ export default function AdvisorPortfolioPage() {
 
       {error ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-          {error}
+          <p>{error}</p>
+          {advisorId ? (
+            <button
+              type="button"
+              className="mt-3 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-900 hover:bg-rose-100"
+              onClick={() => setLoadAttempt((n) => n + 1)}
+            >
+              Erneut laden
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -159,8 +179,15 @@ export default function AdvisorPortfolioPage() {
         </div>
       </section>
 
-      {advisorId ? (
+      {advisorId && featureDemoSeeding() ? (
         <DemoTenantSetupPanel advisorId={advisorId} defaultTenantId="" />
+      ) : null}
+
+      {advisorId ? (
+        <AdvisorTenantUsagePicker
+          advisorId={advisorId}
+          tenantIds={[...new Set(processed.map((t) => t.tenant_id))]}
+        />
       ) : null}
 
       <AdvisorPortfolioTable rows={processed} advisorId={advisorId} />

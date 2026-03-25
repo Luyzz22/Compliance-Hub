@@ -1,3 +1,5 @@
+import { featureAdvisorWorkspace } from "./config";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.COMPLIANCEHUB_API_BASE_URL ||
@@ -952,6 +954,7 @@ export const ADVISOR_ID_FROM_ENV =
   process.env.NEXT_PUBLIC_ADVISOR_ID?.trim() || "";
 
 export function isAdvisorNavEnabled(): boolean {
+  if (!featureAdvisorWorkspace()) return false;
   if (process.env.NEXT_PUBLIC_SHOW_ADVISOR_NAV === "1") return true;
   return ADVISOR_ID_FROM_ENV.length > 0;
 }
@@ -1077,4 +1080,38 @@ export async function postDemoTenantSeed(payload: {
     throw new Error(err.error || `Demo seed failed: ${res.status}`);
   }
   return res.json() as Promise<DemoSeedResponseDto>;
+}
+
+// ─── Tenant-Nutzungsmetriken (Pilot / Telemetrie) ─────────────────────────────
+
+export interface TenantUsageMetrics {
+  tenant_id: string;
+  last_active_at: string | null;
+  board_views_last_30d: number;
+  advisor_views_last_30d: number;
+  evidence_uploads_last_30d: number;
+  actions_created_last_30d: number;
+}
+
+export async function fetchTenantUsageMetrics(
+  tenantId: string = TENANT_ID,
+): Promise<TenantUsageMetrics> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(`/api/v1/tenants/${tid}/usage-metrics`, tenantId);
+}
+
+/** Same-origin Proxy: nutzt serverseitigen API-Key und Advisor-Header. */
+export async function fetchAdvisorTenantUsageMetrics(
+  advisorId: string,
+  tenantId: string,
+): Promise<TenantUsageMetrics> {
+  const params = new URLSearchParams({ advisorId, tenantId });
+  const res = await fetch(`/api/advisor/tenant-usage-metrics?${params.toString()}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Usage metrics failed: ${res.status}`);
+  }
+  return res.json() as Promise<TenantUsageMetrics>;
 }

@@ -81,6 +81,7 @@ from app.demo_models import DemoSeedRequest, DemoSeedResponse
 from app.demo_templates import DemoTenantTemplate, list_demo_tenant_templates
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
+from app.feature_flags import FeatureFlag, create_feature_guard
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.models import (
     ComplianceAction,
@@ -118,6 +119,7 @@ from app.security import (
     require_advisor_api_access,
     require_demo_seed_api_key,
 )
+from app.services import usage_event_logger as usage_event_logger
 from app.services.advisor_portfolio import (
     advisor_portfolio_to_csv,
     advisor_portfolio_to_json_bytes,
@@ -181,11 +183,13 @@ from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
     compute_tenant_compliance_overview,
 )
+from app.services.tenant_usage_metrics import compute_tenant_usage_metrics
 from app.setup_models import TenantSetupStatus
 from app.supplier_risk_models import (
     AISupplierRiskBySystemEntry,
     AISupplierRiskOverview,
 )
+from app.usage_metrics_models import TenantUsageMetricsResponse
 
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
@@ -496,7 +500,9 @@ async def import_ai_systems(
     status_code=status.HTTP_201_CREATED,
 )
 async def upload_evidence_api(
+    _ff_evidence: Annotated[None, Depends(create_feature_guard(FeatureFlag.evidence_uploads))],
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
     evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     action_repo: Annotated[
@@ -513,7 +519,7 @@ async def upload_evidence_api(
 ) -> EvidenceFile:
     storage = get_evidence_storage()
     uploaded_by = (x_uploaded_by or "").strip()[:320] or "api_client"
-    return await upload_evidence_file(
+    created = await upload_evidence_file(
         tenant_id=auth_context.tenant_id,
         uploaded_by=uploaded_by,
         file=file,
@@ -527,6 +533,13 @@ async def upload_evidence_api(
         ai_repo=ai_repo,
         action_repo=action_repo,
     )
+    usage_event_logger.log_usage_event(
+        session,
+        auth_context.tenant_id,
+        usage_event_logger.EVIDENCE_UPLOADED,
+        {"evidence_id": created.id},
+    )
+    return created
 
 
 @app.get("/api/v1/evidence", response_model=EvidenceFileListResponse)
@@ -838,16 +851,24 @@ def get_aisystem_compliance_report(
 @app.get("/api/v1/ai-governance/board-kpis", response_model=AIBoardKpiSummary)
 def get_ai_governance_board_kpis(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
     ai_repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
     nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
 ) -> AIBoardKpiSummary:
-    return compute_ai_board_kpis(
+    out = compute_ai_board_kpis(
         tenant_id=auth_context.tenant_id,
         ai_system_repository=ai_repository,
         violation_repository=violation_repository,
         nis2_kritis_kpi_repository=nis2_repo,
     )
+    usage_event_logger.log_usage_event(
+        session,
+        auth_context.tenant_id,
+        usage_event_logger.BOARD_VIEW_OPENED,
+        {"surface": "board_kpis"},
+    )
+    return out
 
 
 @app.get(
@@ -905,6 +926,7 @@ def get_eu_ai_act_readiness(
 def create_ai_governance_action(
     body: AIGovernanceActionCreate,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
     action_repo: Annotated[
         AIGovernanceActionRepository,
         Depends(get_ai_governance_action_repository),
@@ -918,7 +940,14 @@ def create_ai_governance_action(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="AISystem not found",
             )
-    return action_repo.create(tenant_id, body)
+    created = action_repo.create(tenant_id, body)
+    usage_event_logger.log_usage_event(
+        session,
+        tenant_id,
+        usage_event_logger.GOVERNANCE_ACTION_CREATED,
+        {"action_id": created.id},
+    )
+    return created
 
 
 @app.get(
@@ -1728,13 +1757,38 @@ def get_ai_governance_kpis(
 )
 def get_tenant_setup_status(
     tenant_id: str,
+    _ff_setup: Annotated[None, Depends(create_feature_guard(FeatureFlag.guided_setup))],
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
 ) -> TenantSetupStatus:
     """Aggregierter Guided-Setup-Status aus Mandantendaten (ohne eigene Setup-Tabelle)."""
     if tenant_id != auth_context.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
-    return compute_tenant_setup_status(session, tenant_id)
+    status_obj = compute_tenant_setup_status(session, tenant_id)
+    if status_obj.total_steps > 0 and status_obj.completed_steps >= status_obj.total_steps:
+        usage_event_logger.log_usage_event(
+            session,
+            tenant_id,
+            usage_event_logger.GUIDED_SETUP_COMPLETED,
+            {"completed_steps": status_obj.completed_steps},
+            dedupe_same_type_hours=24,
+        )
+    return status_obj
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/usage-metrics",
+    response_model=TenantUsageMetricsResponse,
+    tags=["tenants"],
+)
+def get_tenant_usage_metrics_endpoint(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> TenantUsageMetricsResponse:
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    return compute_tenant_usage_metrics(session, tenant_id)
 
 
 @app.get(
@@ -1743,6 +1797,7 @@ def get_tenant_setup_status(
     tags=["advisors"],
 )
 def get_advisor_portfolio(
+    _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
     advisor_id: Annotated[str, Depends(require_advisor_api_access)],
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
@@ -1759,7 +1814,7 @@ def get_advisor_portfolio(
     ],
 ) -> AdvisorPortfolioResponse:
     """Berater-Portfolio: Kern-KPIs je zugeordnetem Mandant (keine Cross-Tenant-SQL)."""
-    return build_advisor_portfolio(
+    out = build_advisor_portfolio(
         session,
         advisor_id,
         advisor_repo,
@@ -1772,6 +1827,14 @@ def get_advisor_portfolio(
         audit_repo,
         action_repo,
     )
+    for t in out.tenants:
+        usage_event_logger.log_usage_event(
+            session,
+            t.tenant_id,
+            usage_event_logger.ADVISOR_PORTFOLIO_VIEWED,
+            {"advisor_id": advisor_id},
+        )
+    return out
 
 
 @app.get(
@@ -1779,6 +1842,7 @@ def get_advisor_portfolio(
     tags=["advisors"],
 )
 def export_advisor_portfolio(
+    _ff_adve: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
     advisor_id: Annotated[str, Depends(require_advisor_api_access)],
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
@@ -1809,6 +1873,13 @@ def export_advisor_portfolio(
         audit_repo,
         action_repo,
     )
+    for t in portfolio.tenants:
+        usage_event_logger.log_usage_event(
+            session,
+            t.tenant_id,
+            usage_event_logger.ADVISOR_PORTFOLIO_VIEWED,
+            {"advisor_id": advisor_id, "export": True},
+        )
     day = portfolio.generated_at_utc.strftime("%Y-%m-%d")
     if export_format == "csv":
         body = advisor_portfolio_to_csv(portfolio)
@@ -1833,6 +1904,7 @@ def export_advisor_portfolio(
     response_model=None,
 )
 def get_advisor_tenant_report(
+    _ff_adv_rep: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
     advisor_id: Annotated[str, Depends(require_advisor_api_access)],
     tenant_id: str,
     session: Annotated[Session, Depends(get_session)],
@@ -1869,12 +1941,44 @@ def get_advisor_tenant_report(
     if export_format == "markdown":
         md = render_tenant_report_markdown(report)
         fname = f"tenant-report-{tenant_id}.md"
+        usage_event_logger.log_usage_event(
+            session,
+            tenant_id,
+            usage_event_logger.ADVISOR_TENANT_REPORT_VIEWED,
+            {"advisor_id": advisor_id, "format": "markdown"},
+        )
         return Response(
             content=md.encode("utf-8"),
             media_type="text/markdown; charset=utf-8",
             headers={"Content-Disposition": _evidence_content_disposition(fname)},
         )
+    usage_event_logger.log_usage_event(
+        session,
+        tenant_id,
+        usage_event_logger.ADVISOR_TENANT_REPORT_VIEWED,
+        {"advisor_id": advisor_id, "format": "json"},
+    )
     return report
+
+
+@app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/usage-metrics",
+    response_model=TenantUsageMetricsResponse,
+    tags=["advisors"],
+)
+def get_advisor_tenant_usage_metrics(
+    _ff_um: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    tenant_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+) -> TenantUsageMetricsResponse:
+    if advisor_repo.get_link(advisor_id, tenant_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not linked to this advisor",
+        )
+    return compute_tenant_usage_metrics(session, tenant_id)
 
 
 @app.get(
@@ -1883,6 +1987,7 @@ def get_advisor_tenant_report(
     tags=["demo"],
 )
 def list_demo_tenant_template_definitions(
+    _ff_demo: Annotated[None, Depends(create_feature_guard(FeatureFlag.demo_seeding))],
     _api_key: Annotated[str, Depends(require_demo_seed_api_key)],
 ) -> list[DemoTenantTemplate]:
     """Demo/Pilot: verfügbare Mandanten-Templates (geschützter API-Key)."""
@@ -1896,6 +2001,7 @@ def list_demo_tenant_template_definitions(
 )
 def post_demo_tenant_seed(
     body: DemoSeedRequest,
+    _ff_demos: Annotated[None, Depends(create_feature_guard(FeatureFlag.demo_seeding))],
     session: Annotated[Session, Depends(get_session)],
     _api_key: Annotated[str, Depends(require_demo_seed_api_key)],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
@@ -1914,7 +2020,7 @@ def post_demo_tenant_seed(
     """
     ensure_demo_tenant_seed_allowed(body.tenant_id)
     try:
-        return seed_demo_tenant(
+        result = seed_demo_tenant(
             session,
             body.template_key,
             body.tenant_id,
@@ -1926,6 +2032,16 @@ def post_demo_tenant_seed(
             action_repo=action_repo,
             evidence_repo=evidence_repo,
         )
+        usage_event_logger.log_usage_event(
+            session,
+            body.tenant_id,
+            usage_event_logger.TENANT_SEEDED,
+            {
+                "template_key": body.template_key,
+                "advisor_linked": result.advisor_linked,
+            },
+        )
+        return result
     except ValueError as exc:
         msg = str(exc)
         if "already has AI systems" in msg:

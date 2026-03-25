@@ -28,24 +28,27 @@ export function DemoTenantSetupPanel({
   const [linkAdvisor, setLinkAdvisor] = useState(!!advisorId?.trim());
   const [loadingList, setLoadingList] = useState(true);
   const [seeding, setSeeding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [seedError, setSeedError] = useState<string | null>(null);
   const [result, setResult] = useState<DemoSeedResponseDto | null>(null);
+  const [templateLoadAttempt, setTemplateLoadAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoadingList(true);
-      setError(null);
+      setListError(null);
       try {
         const list = await fetchDemoTenantTemplates();
         if (!cancelled) {
           setTemplates(list);
           if (list.length > 0) setTemplateKey(list[0].key);
         }
-      } catch {
+      } catch (e) {
         if (!cancelled) {
-          setError(
-            "Templates nicht ladbar. Server-Env COMPLIANCEHUB_DEMO_SEED_API_KEY und Allowlist prüfen.",
+          const detail = e instanceof Error && e.message ? ` ${e.message}` : "";
+          setListError(
+            `Szenario-Templates konnten nicht geladen werden.${detail} Bitte COMPLIANCEHUB_DEMO_SEED_API_KEY, Feature-Flag demo_seeding und Netzwerk prüfen, dann erneut versuchen.`,
           );
         }
       } finally {
@@ -55,14 +58,14 @@ export function DemoTenantSetupPanel({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [templateLoadAttempt]);
 
   const runSeed = useCallback(async () => {
-    setError(null);
+    setSeedError(null);
     setResult(null);
     const tid = tenantId.trim();
     if (!tid || !templateKey) {
-      setError("Bitte Template und Mandanten-ID angeben.");
+      setSeedError("Bitte Template und Mandanten-ID angeben.");
       return;
     }
     setSeeding(true);
@@ -75,7 +78,10 @@ export function DemoTenantSetupPanel({
       });
       setResult(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Demo-Seed fehlgeschlagen.");
+      const base = e instanceof Error ? e.message : "Demo-Seed fehlgeschlagen.";
+      setSeedError(
+        `${base} Bitte Eingaben prüfen und erneut auf «Demo-Daten einspielen» klicken; bei anhaltendem Fehler Server-Logs prüfen.`,
+      );
     } finally {
       setSeeding(false);
     }
@@ -91,9 +97,24 @@ export function DemoTenantSetupPanel({
         nutzen.
       </p>
 
-      {error ? (
+      {listError ? (
+        <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+          <p>{listError}</p>
+          {loadingList ? null : (
+            <button
+              type="button"
+              className="mt-2 text-xs font-semibold text-rose-800 underline"
+              onClick={() => setTemplateLoadAttempt((n) => n + 1)}
+            >
+              Template-Liste erneut laden
+            </button>
+          )}
+        </div>
+      ) : null}
+
+      {seedError ? (
         <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
-          {error}
+          {seedError}
         </p>
       ) : null}
 
