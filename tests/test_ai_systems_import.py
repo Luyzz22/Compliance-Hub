@@ -67,9 +67,10 @@ def test_import_csv_partial_errors_continue() -> None:
     assert data["failed_count"] == 1
     assert len(data["errors"]) == 1
     assert data["errors"][0]["row_number"] == 3
-    assert "risk_level" in data["errors"][0]["message"].lower() or "Ungültig" in data["errors"][0][
-        "message"
-    ]
+    assert (
+        "risk_level" in data["errors"][0]["message"].lower()
+        or "Ungültig" in data["errors"][0]["message"]
+    )
 
     with TestClient(app) as client:
         listed = client.get(
