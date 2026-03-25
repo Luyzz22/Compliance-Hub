@@ -2,6 +2,10 @@
 
 Dieser Ablauf spiegelt den **automatisierten Backend-Pfad** in `tests/test_e2e_high_risk_governance_flow.py` wider. Voraussetzung: Frontend gegen laufende API (`NEXT_PUBLIC_API_BASE_URL`), gültiger `x-api-key` / Mandanten-Kontext wie in der Entwicklungsumgebung.
 
+## AI Governance Playbook
+
+Für **Rollen/RACI**, **Phasenplan** (Readiness → Operational → Excellence) und einen **kompakten Pilot-Ablauf** (4–6 Wochen) mit Deep-Links in Register, Board und Advisor: **`/tenant/ai-governance-playbook`** (schaltbar über `COMPLIANCEHUB_FEATURE_AI_GOVERNANCE_PLAYBOOK` / `NEXT_PUBLIC_FEATURE_AI_GOVERNANCE_PLAYBOOK`). Kurzbeschreibung und Flag-Details: **`docs/ai-governance-playbook.md`**.
+
 ## Guided Setup für neue Tenants
 
 Für **CISO/ISB** und **AI-Governance-Leads** liefert der Workspace unter **`/tenant/compliance-overview`** den **Setup-Assistenten EU AI Act & NIS2**: eine Checkliste mit Fortschrittsbalken („X von 7 Schritten“). Der Status wird **nicht manuell abgehakt**, sondern aus Mandantendaten berechnet (`GET /api/v1/tenants/{tenant_id}/setup-status`).

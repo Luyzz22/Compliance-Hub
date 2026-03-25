@@ -17,7 +17,11 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
-import { featureGuidedSetup, featurePilotRunbook } from "@/lib/config";
+import {
+  featureAiGovernancePlaybook,
+  featureGuidedSetup,
+  featurePilotRunbook,
+} from "@/lib/config";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -102,6 +106,22 @@ export default async function TenantComplianceOverviewPage() {
           </>
         }
       />
+
+      {featureAiGovernancePlaybook() ? (
+        <section className={CH_CARD} aria-label="AI Governance Playbook">
+          <p className={CH_SECTION_LABEL}>AI Governance Playbook</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Rollen, RACI, Phasenplan Readiness bis Excellence und Pilot-Ablauf – zentral für CISO und
+            AI-Governance-Lead.
+          </p>
+          <Link
+            href="/tenant/ai-governance-playbook"
+            className={`${CH_BTN_PRIMARY} mt-4 inline-flex text-xs`}
+          >
+            Zum Playbook
+          </Link>
+        </section>
+      ) : null}
 
       {featureGuidedSetup() ? (
         <GuidedSetupWizard initialStatus={setupStatus} loadFailed={setupLoadFailed} />

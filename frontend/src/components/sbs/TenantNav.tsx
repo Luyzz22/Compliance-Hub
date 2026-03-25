@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 
-import { featurePilotRunbook } from "@/lib/config";
+import { featureAiGovernancePlaybook, featurePilotRunbook } from "@/lib/config";
 
 const baseItems = [
   { href: "/tenant/compliance-overview", label: "Mandant & Übersicht" },
@@ -17,6 +17,9 @@ const baseItems = [
 
 const items = [
   ...baseItems.slice(0, 1),
+  ...(featureAiGovernancePlaybook()
+    ? [{ href: "/tenant/ai-governance-playbook" as const, label: "AI Governance Playbook" }]
+    : []),
   ...(featurePilotRunbook()
     ? [{ href: "/tenant/pilot-runbook" as const, label: "Pilot-Runbook" }]
     : []),

@@ -81,3 +81,8 @@ export function featureAiActDocs(): boolean {
 export function featureWhatIfSimulator(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_WHAT_IF_SIMULATOR, true);
 }
+
+/** AI-Governance-Playbook im Tenant-Workspace (Backend COMPLIANCEHUB_FEATURE_AI_GOVERNANCE_PLAYBOOK). */
+export function featureAiGovernancePlaybook(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_GOVERNANCE_PLAYBOOK, true);
+}

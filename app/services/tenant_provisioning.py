@@ -23,6 +23,7 @@ _PILOT_DEFAULT_FLAGS: dict[str, bool] = {
     FeatureFlag.evidence_uploads.value: True,
     FeatureFlag.guided_setup.value: True,
     FeatureFlag.pilot_runbook.value: True,
+    FeatureFlag.ai_governance_playbook.value: True,
     FeatureFlag.api_keys_ui.value: True,
     FeatureFlag.llm_enabled.value: False,
     FeatureFlag.llm_legal_reasoning.value: False,
