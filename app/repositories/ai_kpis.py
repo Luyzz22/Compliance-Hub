@@ -21,6 +21,10 @@ class AiKpiRepository:
     def get_definition(self, definition_id: str) -> AiKpiDefinitionDB | None:
         return self._session.get(AiKpiDefinitionDB, definition_id)
 
+    def get_definition_by_key(self, key: str) -> AiKpiDefinitionDB | None:
+        stmt = select(AiKpiDefinitionDB).where(AiKpiDefinitionDB.key == key)
+        return self._session.execute(stmt).scalar_one_or_none()
+
     def list_values_for_system(
         self,
         tenant_id: str,
@@ -48,6 +52,7 @@ class AiKpiRepository:
         source: str,
         comment: str | None,
         new_id: str,
+        commit: bool = True,
     ) -> AiSystemKpiValueDB:
         stmt = select(AiSystemKpiValueDB).where(
             AiSystemKpiValueDB.tenant_id == tenant_id,
@@ -74,8 +79,9 @@ class AiKpiRepository:
             row.value = value
             row.source = source
             row.comment = comment
-        self._session.commit()
-        self._session.refresh(row)
+        if commit:
+            self._session.commit()
+            self._session.refresh(row)
         return row
 
     def list_high_risk_system_ids(

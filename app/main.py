@@ -156,6 +156,12 @@ from app.nis2_kritis_models import (
     Nis2KritisKpiSuggestionResponse,
     Nis2KritisKpiUpsertRequest,
 )
+from app.operational_monitoring_models import (
+    RuntimeEventsBatchIn,
+    RuntimeEventsIngestResult,
+    SystemMonitoringIndexOut,
+    TenantOperationalMonitoringIndexOut,
+)
 from app.policy_models import Violation
 from app.policy_service import evaluate_policies_for_ai_system
 from app.provisioning_models import (
@@ -291,8 +297,13 @@ from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
+from app.services.operational_monitoring_index import (
+    compute_system_monitoring_index,
+    compute_tenant_operational_monitoring_index,
+)
 from app.services.readiness_score_explain import explain_readiness_score
 from app.services.readiness_score_service import compute_readiness_score
+from app.services.runtime_events_ingest import ingest_runtime_events
 from app.services.setup_status import compute_tenant_setup_status
 from app.services.tenant_ai_governance_setup import (
     apply_setup_patch,
@@ -699,6 +710,56 @@ async def import_ai_systems(
         audit_event_repo=audit_event_repo,
         policy_repo=policy_repo,
         violation_repo=violation_repo,
+    )
+
+
+@app.post(
+    "/api/v1/ai-systems/{ai_system_id}/runtime-events",
+    response_model=RuntimeEventsIngestResult,
+    tags=["ai-systems"],
+)
+def post_ai_system_runtime_events(
+    ai_system_id: str,
+    body: RuntimeEventsBatchIn,
+    request: Request,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> RuntimeEventsIngestResult:
+    """Batch-Ingest kanonisierter Laufzeit-Events (SAP AI Core u. a.), mandantenisoliert."""
+    tenant_id = auth_context.tenant_id
+    raise_if_demo_tenant_readonly(session, tenant_id, request=request)
+    if ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI system not found")
+    return ingest_runtime_events(
+        session,
+        tenant_id=tenant_id,
+        ai_system_id=ai_system_id,
+        events=body.events,
+    )
+
+
+@app.get(
+    "/api/v1/ai-systems/{ai_system_id}/monitoring-index",
+    response_model=SystemMonitoringIndexOut,
+    tags=["ai-systems"],
+)
+def get_ai_system_monitoring_index(
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    window_days: Annotated[int, Query(ge=1, le=366)] = 90,
+) -> SystemMonitoringIndexOut:
+    """System-Level OAMI (0–100) mit erklärbaren Teilscores im Fenster window_days."""
+    tenant_id = auth_context.tenant_id
+    if ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI system not found")
+    return compute_system_monitoring_index(
+        session,
+        tenant_id,
+        ai_system_id,
+        window_days=window_days,
     )
 
 
@@ -3623,6 +3684,58 @@ def post_tenant_ai_system_kpi(
         ) from exc
 
 
+@app.post(
+    "/api/v1/tenants/{tenant_id}/ai-systems/{ai_system_id}/runtime-events",
+    response_model=RuntimeEventsIngestResult,
+    tags=["ai-systems"],
+)
+def post_tenant_ai_system_runtime_events(
+    tenant_id: str,
+    ai_system_id: str,
+    body: RuntimeEventsBatchIn,
+    request: Request,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> RuntimeEventsIngestResult:
+    """Alias zu POST /api/v1/ai-systems/{id}/runtime-events (expliziter Mandant im Pfad)."""
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    raise_if_demo_tenant_readonly(session, tenant_id, request=request)
+    if ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI system not found")
+    return ingest_runtime_events(
+        session,
+        tenant_id=tenant_id,
+        ai_system_id=ai_system_id,
+        events=body.events,
+    )
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/ai-systems/{ai_system_id}/monitoring-index",
+    response_model=SystemMonitoringIndexOut,
+    tags=["ai-systems"],
+)
+def get_tenant_ai_system_monitoring_index(
+    tenant_id: str,
+    ai_system_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    window_days: Annotated[int, Query(ge=1, le=366)] = 90,
+) -> SystemMonitoringIndexOut:
+    """Alias zu GET /api/v1/ai-systems/{id}/monitoring-index (expliziter Mandant im Pfad)."""
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    if ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI system not found")
+    return compute_system_monitoring_index(
+        session,
+        tenant_id,
+        ai_system_id,
+        window_days=window_days,
+    )
+
+
 @app.get(
     "/api/v1/tenants/{tenant_id}/ai-kpis/summary",
     response_model=AiKpiSummaryResponse,
@@ -3666,6 +3779,28 @@ def get_tenant_readiness_score(
     if tenant_id != auth_context.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
     return compute_readiness_score(session, tenant_id)
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/operational-monitoring-index",
+    response_model=TenantOperationalMonitoringIndexOut,
+    tags=["tenants"],
+)
+def get_tenant_operational_monitoring_index(
+    tenant_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    window_days: Annotated[int, Query(ge=1, le=366)] = 90,
+) -> TenantOperationalMonitoringIndexOut:
+    """Tenant-Level OAMI: risikogewichteter Mittelwert über Systeme mit Laufzeitdaten im Fenster."""
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    return compute_tenant_operational_monitoring_index(
+        session,
+        tenant_id,
+        window_days=window_days,
+        persist_snapshot=False,
+    )
 
 
 @app.post(
