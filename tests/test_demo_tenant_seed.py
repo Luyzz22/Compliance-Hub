@@ -94,7 +94,9 @@ def test_post_demo_seed_creates_expected_entities() -> None:
         headers={"x-api-key": "board-kpi-key", "x-tenant-id": T1},
     )
     assert meta.status_code == 200, meta.text
-    assert meta.json()["is_demo"] is True
+    mj = meta.json()
+    assert mj["is_demo"] is True
+    assert mj["mutation_blocked"] is True
 
 
 def test_post_demo_seed_idempotent_conflict() -> None:

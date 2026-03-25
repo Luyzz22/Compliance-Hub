@@ -1,5 +1,6 @@
 import React from "react";
 
+import { DemoWorkspaceBadge } from "@/components/demo/DemoWorkspaceBadge";
 import { TenantNav } from "@/components/sbs/TenantNav";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
@@ -17,9 +18,12 @@ export default async function TenantLayout({
           <div className="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-slate-400">
             Compliance Hub
           </div>
-          <div className="mt-1 text-sm text-slate-700">
-            Mandant{" "}
-            <span className="font-semibold text-slate-900">{workspaceTenantId}</span>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-700">
+            <span>
+              Mandant{" "}
+              <span className="font-semibold text-slate-900">{workspaceTenantId}</span>
+            </span>
+            <DemoWorkspaceBadge tenantId={workspaceTenantId} />
           </div>
           <p className="mt-2 text-xs leading-relaxed text-slate-500">
             Workspace für Register, Policies, Evidenzen und operative Umsetzung.

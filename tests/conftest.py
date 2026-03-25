@@ -18,7 +18,8 @@ _TEST_API_KEYS = (
     "board-kpi-key,test-key,test-api-key,tenant-overview-key,test-key-1,test-key-2,demo-seed-key"
 )
 _DEMO_SEED_TENANTS = (
-    "demo-seed-tenant-1,demo-seed-tenant-2,demo-isolation-a,demo-isolation-b,demo-direct-only"
+    "demo-seed-tenant-1,demo-seed-tenant-2,demo-isolation-a,demo-isolation-b,demo-direct-only,"
+    "demo-domain-kpi-tenant,demo-domain-br-tenant"
 )
 
 

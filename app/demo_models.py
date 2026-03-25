@@ -37,6 +37,10 @@ class TenantWorkspaceMetaResponse(BaseModel):
     display_name: str
     is_demo: bool
     demo_playground: bool
+    mutation_blocked: bool = Field(
+        default=False,
+        description="True, wenn die API mutierende Requests (403 demo_tenant_readonly) ablehnt.",
+    )
     demo_mode_feature_enabled: bool = Field(
         default=False,
         description="COMPLIANCEHUB_FEATURE_DEMO_MODE – spiegelt Server-ENV für UI-Kohärenz.",

@@ -59,7 +59,10 @@ def test_demo_tenant_blocks_post_ai_system() -> None:
 
     r = client.post("/api/v1/ai-systems", headers=h, json=_ai_payload(uuid.uuid4().hex[:8]))
     assert r.status_code == 403
-    assert "read-only" in r.json()["detail"].lower()
+    d = r.json()["detail"]
+    detail_lc = d.lower() if isinstance(d, str) else str(d.get("message", "")).lower()
+    code_ok = isinstance(d, dict) and d.get("code") == "demo_tenant_readonly"
+    assert "read-only" in detail_lc or code_ok
 
 
 def test_demo_playground_allows_post_ai_system() -> None:

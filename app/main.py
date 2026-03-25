@@ -122,6 +122,7 @@ from app.cross_regulation_models import (
 from app.db import engine, get_session
 from app.demo_models import DemoSeedRequest, DemoSeedResponse, TenantWorkspaceMetaResponse
 from app.demo_templates import DemoTenantTemplate, get_demo_template, list_demo_tenant_templates
+from app.demo_tenant_guard import raise_if_demo_tenant_readonly, tenant_mutation_blocked_meta
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
 from app.explain_models import ExplainRequest, ExplainResponse
@@ -583,7 +584,11 @@ def health_root() -> dict[str, str]:
 
 
 @app.post("/api/v1/documents/intake", response_model=DocumentIntakeResponse)
-def intake(payload: DocumentIntakeRequest) -> DocumentIntakeResponse:
+def intake(
+    payload: DocumentIntakeRequest,
+    session: Annotated[Session, Depends(get_session)],
+) -> DocumentIntakeResponse:
+    raise_if_demo_tenant_readonly(session, payload.tenant_id)
     domain_payload = DocumentIngestRequest(
         tenant_id=payload.tenant_id,
         document_id=payload.document_id,
@@ -2695,6 +2700,7 @@ def post_advisor_client_governance_snapshot_report(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tenant not linked to this advisor",
         )
+    raise_if_demo_tenant_readonly(session, tenant_id)
     try:
         return generate_advisor_governance_snapshot_markdown(session, tenant_id, snap)
     except PermissionError as exc:
@@ -2982,13 +2988,46 @@ def get_workspace_tenant_meta(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tenant not registered",
         )
+    tid = auth_context.tenant_id
+    mut_blocked = tenant_mutation_blocked_meta(session, tid)
+    if row.is_demo:
+        usage_event_logger.log_usage_event(
+            session,
+            tid,
+            usage_event_logger.DEMO_SESSION_STARTED,
+            {},
+            dedupe_same_type_hours=24,
+        )
     return TenantWorkspaceMetaResponse(
         tenant_id=row.id,
         display_name=row.display_name,
         is_demo=bool(row.is_demo),
         demo_playground=bool(row.demo_playground),
+        mutation_blocked=mut_blocked,
         demo_mode_feature_enabled=is_feature_enabled(FeatureFlag.demo_mode),
     )
+
+
+@app.get("/api/v1/workspace/demo-feature-used", tags=["workspace"])
+def log_demo_feature_used(
+    feature_key: Annotated[str, Query(min_length=1, max_length=64, pattern=r"^[a-z0-9_]+$")],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, bool]:
+    """Telemetrie für Demo-Story (keine PII, nur feature_key). GET vermeidet Read-only-Konflikt."""
+    row = TenantRegistryRepository(session).get_by_id(auth_context.tenant_id)
+    if row is None or not row.is_demo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Demo telemetry only for registered demo tenants",
+        )
+    usage_event_logger.log_usage_event(
+        session,
+        auth_context.tenant_id,
+        usage_event_logger.DEMO_FEATURE_USED,
+        {"feature_key": feature_key},
+    )
+    return {"ok": True}
 
 
 @app.get("/api/v1/violations", response_model=list[Violation])
