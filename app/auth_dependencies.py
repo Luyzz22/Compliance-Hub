@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.db import get_session
+from app.demo_tenant_write_guard import ensure_tenant_writes_allowed_if_not_demo
 from app.repositories.tenant_api_keys import TenantApiKeyRepository
 from app.security import AuthContext, get_settings
 
@@ -50,20 +51,24 @@ def resolve_tenant_id_for_api_key(
 
 
 def get_api_key_and_tenant(
+    request: Request,
     session: Annotated[Session, Depends(get_session)],
     x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
     x_tenant_id: Annotated[str | None, Header(alias="x-tenant-id")] = None,
 ) -> str:
     tid, _ = resolve_tenant_id_for_api_key(session, x_api_key, x_tenant_id)
+    ensure_tenant_writes_allowed_if_not_demo(request, session, tid)
     return tid
 
 
 def get_auth_context(
+    request: Request,
     session: Annotated[Session, Depends(get_session)],
     x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
     x_tenant_id: Annotated[str | None, Header(alias="x-tenant-id")] = None,
 ) -> AuthContext:
     tid, key = resolve_tenant_id_for_api_key(session, x_api_key, x_tenant_id)
+    ensure_tenant_writes_allowed_if_not_demo(request, session, tid)
     return AuthContext(tenant_id=tid, api_key=key)
 
 

@@ -25,3 +25,19 @@ class DemoSeedResponse(BaseModel):
     policy_rows_count: int
     classifications_count: int
     advisor_linked: bool
+    board_reports_count: int = 0
+    ai_kpi_value_rows_count: int = 0
+    cross_reg_control_rows_count: int = 0
+
+
+class TenantWorkspaceMetaResponse(BaseModel):
+    """Öffentliche Mandanten-Stammdaten für Workspace-UI (keine Secrets)."""
+
+    tenant_id: str
+    display_name: str
+    is_demo: bool
+    demo_playground: bool
+    demo_mode_feature_enabled: bool = Field(
+        default=False,
+        description="COMPLIANCEHUB_FEATURE_DEMO_MODE – spiegelt Server-ENV für UI-Kohärenz.",
+    )

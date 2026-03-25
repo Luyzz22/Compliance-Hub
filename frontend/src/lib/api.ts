@@ -33,6 +33,18 @@ async function tenantApiFetch(path: string, tenantId: string, init?: RequestInit
   return res.json();
 }
 
+export interface TenantWorkspaceMetaDto {
+  tenant_id: string;
+  display_name: string;
+  is_demo: boolean;
+  demo_playground: boolean;
+  demo_mode_feature_enabled: boolean;
+}
+
+export async function fetchTenantWorkspaceMeta(tenantId: string): Promise<TenantWorkspaceMetaDto> {
+  return tenantApiFetch("/api/v1/workspace/tenant-meta", tenantId) as Promise<TenantWorkspaceMetaDto>;
+}
+
 async function apiFetch(path: string, init?: RequestInit) {
   const url = `${API_BASE_URL}${path}`;
   const res = await fetch(url, {

@@ -34,6 +34,11 @@ export function featureDemoSeeding(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_DEMO_SEEDING, true);
 }
 
+/** Demo-/Playground-UI: Banner, Demo-Guide, Hinweise (Backend COMPLIANCEHUB_FEATURE_DEMO_MODE). */
+export function featureDemoMode(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_DEMO_MODE, false);
+}
+
 export function featureEvidenceUploads(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_EVIDENCE_UPLOADS, true);
 }

@@ -85,6 +85,16 @@ def test_post_demo_seed_creates_expected_entities() -> None:
     assert body["policy_rows_count"] >= 1
     assert body["classifications_count"] == 4
     assert body["advisor_linked"] is False
+    assert int(body.get("board_reports_count", 0)) >= 2
+    assert int(body.get("ai_kpi_value_rows_count", 0)) >= 4
+    assert int(body.get("cross_reg_control_rows_count", 0)) >= 1
+
+    meta = client.get(
+        "/api/v1/workspace/tenant-meta",
+        headers={"x-api-key": "board-kpi-key", "x-tenant-id": T1},
+    )
+    assert meta.status_code == 200, meta.text
+    assert meta.json()["is_demo"] is True
 
 
 def test_post_demo_seed_idempotent_conflict() -> None:
@@ -126,6 +136,17 @@ def test_demo_seed_with_advisor_link() -> None:
         assert link.tenant_id == T2
     finally:
         s.close()
+
+
+def test_workspace_tenant_meta_not_registered() -> None:
+    r = client.get(
+        "/api/v1/workspace/tenant-meta",
+        headers={
+            "x-api-key": "board-kpi-key",
+            "x-tenant-id": "unregistered-tenant-meta-xyz",
+        },
+    )
+    assert r.status_code == 404
 
 
 def test_seed_demo_tenant_does_not_touch_other_tenant() -> None:

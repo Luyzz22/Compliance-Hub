@@ -120,8 +120,8 @@ from app.cross_regulation_models import (
     RequirementControlsDetailResponse,
 )
 from app.db import engine, get_session
-from app.demo_models import DemoSeedRequest, DemoSeedResponse
-from app.demo_templates import DemoTenantTemplate, list_demo_tenant_templates
+from app.demo_models import DemoSeedRequest, DemoSeedResponse, TenantWorkspaceMetaResponse
+from app.demo_templates import DemoTenantTemplate, get_demo_template, list_demo_tenant_templates
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
 from app.explain_models import ExplainRequest, ExplainResponse
@@ -173,6 +173,7 @@ from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.tenant_ai_governance_setup import TenantAIGovernanceSetupRepository
 from app.repositories.tenant_api_keys import TenantApiKeyRepository
+from app.repositories.tenant_registry import TenantRegistryRepository
 from app.repositories.violations import ViolationRepository
 from app.security import (
     AuthContext,
@@ -2910,6 +2911,19 @@ def post_demo_tenant_seed(
     Nur für tenant_id in COMPLIANCEHUB_DEMO_SEED_TENANT_IDS und mit Demo-Seed-API-Key.
     """
     ensure_demo_tenant_seed_allowed(body.tenant_id)
+    reg = TenantRegistryRepository(session)
+    if reg.get_by_id(body.tenant_id) is None:
+        tmpl = get_demo_template(body.template_key)
+        reg.create(
+            tenant_id=body.tenant_id,
+            display_name=(tmpl.name if tmpl else body.tenant_id)[:255],
+            industry=(tmpl.industry if tmpl else "Demo")[:128],
+            country=(tmpl.country if tmpl else "DE")[:64],
+            nis2_scope="in_scope",
+            ai_act_scope="in_scope",
+            is_demo=True,
+            demo_playground=False,
+        )
     try:
         result = seed_demo_tenant(
             session,
@@ -2954,6 +2968,26 @@ def get_tenant_compliance_overview(
     return compute_tenant_compliance_overview(
         tenant_id=auth_context.tenant_id,
         session=session,
+    )
+
+
+@app.get("/api/v1/workspace/tenant-meta", response_model=TenantWorkspaceMetaResponse)
+def get_workspace_tenant_meta(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> TenantWorkspaceMetaResponse:
+    row = TenantRegistryRepository(session).get_by_id(auth_context.tenant_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not registered",
+        )
+    return TenantWorkspaceMetaResponse(
+        tenant_id=row.id,
+        display_name=row.display_name,
+        is_demo=bool(row.is_demo),
+        demo_playground=bool(row.demo_playground),
+        demo_mode_feature_enabled=is_feature_enabled(FeatureFlag.demo_mode),
     )
 
 
