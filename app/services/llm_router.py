@@ -66,6 +66,7 @@ def _static_fallback_chain(task_type: LLMTaskType) -> list[LLMProvider]:
         LLMTaskType.ACTION_DRAFT_GENERATION,
         LLMTaskType.CROSS_REGULATION_GAP_ASSIST,
         LLMTaskType.AI_COMPLIANCE_BOARD_REPORT,
+        LLMTaskType.ADVISOR_GOVERNANCE_SNAPSHOT,
     ):
         return [LLMProvider.CLAUDE, LLMProvider.OPENAI, LLMProvider.GEMINI, LLMProvider.LLAMA]
     return list(LLMProvider)

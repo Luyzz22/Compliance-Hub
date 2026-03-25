@@ -3,11 +3,13 @@ from __future__ import annotations
 import csv
 import io
 import json
+import logging
 from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
 from app.advisor_portfolio_models import AdvisorPortfolioResponse, AdvisorPortfolioTenantEntry
+from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository
 from app.repositories.ai_systems import AISystemRepository
@@ -17,9 +19,12 @@ from app.repositories.compliance_gap import ComplianceGapRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
+from app.services.advisor_client_governance_snapshot import build_governance_brief_for_tenant
 from app.services.ai_governance_kpis import compute_ai_governance_kpis
 from app.services.compliance_dashboard import compute_ai_compliance_overview
 from app.services.setup_status import compute_tenant_setup_status
+
+logger = logging.getLogger(__name__)
 
 
 def build_advisor_portfolio(
@@ -61,6 +66,14 @@ def build_advisor_portfolio(
         total_s = max(setup.total_steps, 1)
         setup_ratio = round(setup.completed_steps / total_s, 4)
 
+        brief = None
+        if is_feature_enabled(FeatureFlag.advisor_client_snapshot):
+            try:
+                brief = build_governance_brief_for_tenant(session, tid)
+            except Exception:
+                logger.exception("advisor_portfolio_governance_brief_failed tenant=%s", tid)
+                brief = None
+
         tenants_out.append(
             AdvisorPortfolioTenantEntry(
                 tenant_id=tid,
@@ -78,6 +91,7 @@ def build_advisor_portfolio(
                 setup_completed_steps=setup.completed_steps,
                 setup_total_steps=setup.total_steps,
                 setup_progress_ratio=setup_ratio,
+                governance_brief=brief,
             ),
         )
 

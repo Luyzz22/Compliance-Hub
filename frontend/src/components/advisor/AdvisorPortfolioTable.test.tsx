@@ -1,18 +1,30 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AdvisorPortfolioTenantEntry } from "@/lib/api";
 
 import { AdvisorPortfolioTable } from "./AdvisorPortfolioTable";
+
+const advisorSnapshotFlag = vi.hoisted(() => ({ on: true }));
 
 vi.mock("@/lib/workspaceTenantClient", () => ({
   openWorkspaceTenantAndGoComplianceOverview: vi.fn(),
   openWorkspaceTenantAndGo: vi.fn(),
 }));
 
-vi.mock("@/lib/config", () => ({
-  featurePilotRunbook: () => true,
-}));
+vi.mock("@/lib/config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/config")>();
+  return {
+    ...actual,
+    featurePilotRunbook: () => true,
+    featureAdvisorClientSnapshot: () => advisorSnapshotFlag.on,
+  };
+});
+
+afterEach(() => {
+  advisorSnapshotFlag.on = true;
+  cleanup();
+});
 
 const sampleRows: AdvisorPortfolioTenantEntry[] = [
   {
@@ -28,11 +40,20 @@ const sampleRows: AdvisorPortfolioTenantEntry[] = [
     setup_completed_steps: 4,
     setup_total_steps: 7,
     setup_progress_ratio: 4 / 7,
+    governance_brief: {
+      wizard_progress_count: 4,
+      wizard_steps_total: 6,
+      active_framework_keys: ["eu_ai_act", "iso_42001", "nis2"],
+      cross_reg_mean_coverage_percent: 62,
+      regulatory_gap_count: 5,
+      nis2_critical_ai_count: 1,
+    },
   },
 ];
 
 describe("AdvisorPortfolioTable", () => {
   it("renders tenant name and readiness", () => {
+    advisorSnapshotFlag.on = true;
     render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     expect(screen.getByText("Demo Mandant A")).toBeTruthy();
     expect(screen.getByText("72%")).toBeTruthy();
@@ -40,6 +61,7 @@ describe("AdvisorPortfolioTable", () => {
   });
 
   it("shows Mandanten-Steckbrief download links when advisorId is set", () => {
+    advisorSnapshotFlag.on = true;
     render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     const mdLinks = screen.getAllByRole("link", { name: /Steckbrief \(MD\)/i });
     expect(mdLinks.length).toBeGreaterThanOrEqual(1);
@@ -56,5 +78,23 @@ describe("AdvisorPortfolioTable", () => {
   it("shows empty state without rows", () => {
     render(<AdvisorPortfolioTable rows={[]} advisorId="x" />);
     expect(screen.getByText(/Keine Mandanten in diesem Portfolio/)).toBeTruthy();
+  });
+
+  it("renders governance snapshot link and framework badges when brief is present", () => {
+    advisorSnapshotFlag.on = true;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    const snap = screen.getByTestId("advisor-snapshot-link-t-demo-1");
+    expect(snap.getAttribute("href")).toBe("/advisor/clients/t-demo-1/governance-snapshot");
+    expect(screen.getByText("eu_ai_act")).toBeTruthy();
+    expect(screen.getByText("4/6")).toBeTruthy();
+    expect(screen.getByText("62%")).toBeTruthy();
+    expect(screen.getByText(/NIS2-krit\.: 1/)).toBeTruthy();
+  });
+
+  it("hides snapshot columns when featureAdvisorClientSnapshot is off", () => {
+    advisorSnapshotFlag.on = false;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    expect(screen.queryByTestId("advisor-snapshot-link-t-demo-1")).toBeNull();
+    expect(screen.queryByText("Snapshot anzeigen")).toBeNull();
   });
 });

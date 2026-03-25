@@ -20,6 +20,11 @@ export function featureAdvisorWorkspace(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_ADVISOR_WORKSPACE, true);
 }
 
+/** Mandanten-Governance-Snapshot im Berater-Portfolio (Backend COMPLIANCEHUB_FEATURE_ADVISOR_CLIENT_SNAPSHOT). */
+export function featureAdvisorClientSnapshot(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_ADVISOR_CLIENT_SNAPSHOT, true);
+}
+
 export function featureDemoSeeding(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_DEMO_SEEDING, true);
 }

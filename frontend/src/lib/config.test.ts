@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  featureAdvisorClientSnapshot,
   featureAdvisorWorkspace,
   featureAiActDocs,
   featureAiGovernancePlaybook,
@@ -24,6 +25,7 @@ import {
 
 const envKeys = [
   "NEXT_PUBLIC_FEATURE_ADVISOR_WORKSPACE",
+  "NEXT_PUBLIC_FEATURE_ADVISOR_CLIENT_SNAPSHOT",
   "NEXT_PUBLIC_FEATURE_DEMO_SEEDING",
   "NEXT_PUBLIC_FEATURE_EVIDENCE_UPLOADS",
   "NEXT_PUBLIC_FEATURE_GUIDED_SETUP",
@@ -69,6 +71,7 @@ describe("feature flags from env", () => {
       delete process.env[k];
     }
     expect(featureAdvisorWorkspace()).toBe(true);
+    expect(featureAdvisorClientSnapshot()).toBe(true);
     expect(featureDemoSeeding()).toBe(true);
     expect(featureEvidenceUploads()).toBe(true);
     expect(featureGuidedSetup()).toBe(true);

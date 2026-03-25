@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
+
 import { getAdvisorTenantReportUrl, type AdvisorPortfolioTenantEntry } from "@/lib/api";
 import { portfolioHealth, type PortfolioHealth } from "@/lib/advisorPortfolioHealth";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD } from "@/lib/boardLayout";
-import { featurePilotRunbook } from "@/lib/config";
+import * as chConfig from "@/lib/config";
 import {
   openWorkspaceTenantAndGo,
   openWorkspaceTenantAndGoComplianceOverview,
@@ -25,6 +27,19 @@ function badgeLabel(h: PortfolioHealth): string {
   return "On Track";
 }
 
+function crossRegCoverageIndicator(meanPercent: number | null | undefined): {
+  label: string;
+  dotClass: string;
+} {
+  if (meanPercent == null || Number.isNaN(meanPercent)) {
+    return { label: "–", dotClass: "bg-slate-300" };
+  }
+  const p = Math.round(meanPercent);
+  if (p >= 70) return { label: `${p}%`, dotClass: "bg-emerald-500" };
+  if (p >= 40) return { label: `${p}%`, dotClass: "bg-amber-500" };
+  return { label: `${p}%`, dotClass: "bg-rose-500" };
+}
+
 export interface AdvisorPortfolioTableProps {
   rows: AdvisorPortfolioTenantEntry[];
   /** Für Steckbrief-Links (Proxy); leer = keine Download-CTAs. */
@@ -32,6 +47,8 @@ export interface AdvisorPortfolioTableProps {
 }
 
 export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTableProps) {
+  const snapUi = chConfig.featureAdvisorClientSnapshot();
+
   if (rows.length === 0) {
     return (
       <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600">
@@ -48,12 +65,20 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
             <tr>
               <th>Mandant</th>
               <th>Branche / Land</th>
+              {snapUi ? (
+                <>
+                  <th>Frameworks</th>
+                  <th>AI-Gov Wizard</th>
+                  <th>Cross-Reg Ø</th>
+                </>
+              ) : null}
               <th>EU AI Act Readiness</th>
               <th>NIS2 Ø / Coverage</th>
               <th>High-Risk</th>
               <th>Setup</th>
               <th>Offene Actions</th>
               <th>Status</th>
+              {snapUi ? <th>Snapshot</th> : null}
               <th>Mandanten-Steckbrief</th>
               <th />
             </tr>
@@ -66,6 +91,11 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                   ? `${Math.round(t.nis2_kritis_kpi_mean_percent)}%`
                   : "–";
               const cov = `${Math.round(t.nis2_kritis_systems_full_coverage_ratio * 100)}%`;
+              const brief = t.governance_brief;
+              const covInd = crossRegCoverageIndicator(brief?.cross_reg_mean_coverage_percent);
+              const fwKeys = brief?.active_framework_keys ?? [];
+              const fwShow = fwKeys.slice(0, 3);
+              const fwMore = fwKeys.length > 3 ? fwKeys.length - 3 : 0;
               return (
                 <tr key={t.tenant_id}>
                   <td>
@@ -79,6 +109,44 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                   <td className="text-sm text-[var(--sbs-text-secondary)]">
                     {[t.industry, t.country].filter(Boolean).join(" · ") || "–"}
                   </td>
+                  {snapUi ? (
+                    <>
+                      <td className="align-top text-xs">
+                        {fwKeys.length ? (
+                          <div className="flex max-w-[10rem] flex-wrap gap-1">
+                            {fwShow.map((k) => (
+                              <span
+                                key={k}
+                                className="rounded bg-cyan-50 px-1.5 py-0.5 font-semibold text-cyan-900"
+                              >
+                                {k}
+                              </span>
+                            ))}
+                            {fwMore > 0 ? (
+                              <span className="text-[var(--sbs-text-muted)]">+{fwMore}</span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-[var(--sbs-text-muted)]">–</span>
+                        )}
+                      </td>
+                      <td className="tabular-nums text-sm text-[var(--sbs-text-secondary)]">
+                        {brief
+                          ? `${brief.wizard_progress_count}/${brief.wizard_steps_total}`
+                          : "–"}
+                      </td>
+                      <td className="text-sm">
+                        <span className="inline-flex items-center gap-1.5 tabular-nums">
+                          <span
+                            className={`inline-block h-2 w-2 shrink-0 rounded-full ${covInd.dotClass}`}
+                            title="Mittlere Framework-Coverage (Cross-Regulation)"
+                            aria-hidden
+                          />
+                          {covInd.label}
+                        </span>
+                      </td>
+                    </>
+                  ) : null}
                   <td className="tabular-nums text-sm">
                     {Math.round(t.eu_ai_act_readiness * 100)}%
                   </td>
@@ -87,7 +155,14 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                     <span className="mx-1 text-slate-300">|</span>
                     {cov}
                   </td>
-                  <td className="tabular-nums text-sm">{t.high_risk_systems_count}</td>
+                  <td className="text-sm tabular-nums">
+                    <div>{t.high_risk_systems_count}</div>
+                    {snapUi && brief != null ? (
+                      <div className="text-xs font-normal text-[var(--sbs-text-muted)]">
+                        NIS2-krit.: {brief.nis2_critical_ai_count}
+                      </div>
+                    ) : null}
+                  </td>
                   <td className="text-sm tabular-nums">
                     {t.setup_completed_steps}/{t.setup_total_steps}
                   </td>
@@ -99,6 +174,17 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                       {badgeLabel(h)}
                     </span>
                   </td>
+                  {snapUi ? (
+                    <td className="align-top">
+                      <Link
+                        href={`/advisor/clients/${encodeURIComponent(t.tenant_id)}/governance-snapshot`}
+                        className={`${CH_BTN_SECONDARY} inline-block text-xs no-underline`}
+                        data-testid={`advisor-snapshot-link-${t.tenant_id}`}
+                      >
+                        Snapshot anzeigen
+                      </Link>
+                    </td>
+                  ) : null}
                   <td className="text-right align-top">
                     {advisorId ? (
                       <div className="flex flex-col items-end gap-1">
@@ -130,7 +216,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                       >
                         Tenant öffnen
                       </button>
-                      {featurePilotRunbook() ? (
+                      {chConfig.featurePilotRunbook() ? (
                         <button
                           type="button"
                           className="text-xs font-medium text-cyan-800 underline decoration-cyan-300 underline-offset-2 hover:text-cyan-950"

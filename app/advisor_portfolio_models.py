@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.advisor_client_snapshot_models import AdvisorTenantGovernanceBrief
+
 
 class AdvisorPortfolioTenantEntry(BaseModel):
     """Eine Zeile im Berater-Portfolio (Meta-Ebene pro Mandant)."""
@@ -24,6 +26,10 @@ class AdvisorPortfolioTenantEntry(BaseModel):
     setup_completed_steps: int = Field(ge=0)
     setup_total_steps: int = Field(ge=1)
     setup_progress_ratio: float = Field(ge=0.0, le=1.0)
+    governance_brief: AdvisorTenantGovernanceBrief | None = Field(
+        default=None,
+        description="Optional: Mandanten-Governance-Kurzinfo (ADVISOR_CLIENT_SNAPSHOT).",
+    )
 
 
 class AdvisorPortfolioResponse(BaseModel):
