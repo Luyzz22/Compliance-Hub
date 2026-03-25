@@ -139,6 +139,26 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         </dl>
       </section>
 
+      <section className={CH_CARD} aria-label="Evidenz und Dokumente">
+        <h2 className="text-base font-semibold text-slate-900">
+          Evidenz & Dokumente
+        </h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Hier werden später PDF- und Office-Dokumente als Nachweise zum KI-System
+          hinterlegt (Anbindung an sicheren Objekt-Speicher).
+        </p>
+        <div className="mt-4">
+          <button
+            type="button"
+            disabled
+            className={`${CH_BTN_SECONDARY} cursor-not-allowed opacity-60`}
+            title="Funktion in Vorbereitung"
+          >
+            Dokument(e) hinzufügen (demnächst)
+          </button>
+        </div>
+      </section>
+
       <section className={CH_CARD} aria-label="Klassifikation EU AI Act">
         <h2 className="text-base font-semibold text-slate-900">Klassifikation</h2>
         {classification ? (
