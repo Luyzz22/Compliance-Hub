@@ -7,7 +7,12 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from app.ai_system_models import AIActCategory, AISystemCriticality, AISystemRiskLevel, DataSensitivity
+from app.ai_system_models import (
+    AIActCategory,
+    AISystemCriticality,
+    AISystemRiskLevel,
+    DataSensitivity,
+)
 from app.main import app
 
 
