@@ -58,8 +58,12 @@ Backend (`COMPLIANCEHUB_FEATURE_*`, Standard siehe `app/feature_flags.py`):
 - `COMPLIANCEHUB_FEATURE_LLM_REPORT_ASSISTANT` (u. a. strukturierte Outputs / Advisor-Summary)
 - `COMPLIANCEHUB_FEATURE_LLM_CLASSIFICATION_TAGGING`
 - `COMPLIANCEHUB_FEATURE_LLM_CHAT_ASSISTANT`
+- `COMPLIANCEHUB_FEATURE_AI_ACT_DOCS` – EU-AI-Act-Dokumentations-UI/API (ohne LLM-Pflicht)
+- `COMPLIANCEHUB_FEATURE_WHAT_IF_SIMULATOR` – Board-What-if (reine Rechenlogik, kein LLM)
 
-Frontend-Hinweis: `NEXT_PUBLIC_FEATURE_LLM_ENABLED` (Standard aus).
+**KI-Entwürfe für AI-Act-Sektionen** (`POST .../ai-act-docs/.../draft`): zusätzlich `LLM_LEGAL_REASONING` + `LLM_REPORT_ASSISTANT` (zweistufig: Analyse, dann JSON/Markdown).
+
+Frontend-Hinweis: `NEXT_PUBLIC_FEATURE_LLM_ENABLED` (Standard aus), `NEXT_PUBLIC_FEATURE_AI_ACT_DOCS`, `NEXT_PUBLIC_FEATURE_WHAT_IF_SIMULATOR`, optional `NEXT_PUBLIC_FEATURE_LLM_LEGAL_REASONING` / `NEXT_PUBLIC_FEATURE_LLM_REPORT_ASSISTANT` für Draft-Buttons.
 
 ## API
 

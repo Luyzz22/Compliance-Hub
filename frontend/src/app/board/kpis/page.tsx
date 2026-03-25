@@ -27,6 +27,8 @@ import {
 
 import { KpiExplainButton } from "@/components/ai/KpiExplainButton";
 
+import { BoardWhatIfSimulatorClient } from "@/components/board/BoardWhatIfSimulatorClient";
+
 import { BoardKpiAdvisorExport } from "./BoardKpiAdvisorExport";
 import { BoardReportAuditSection } from "./BoardReportAuditSection";
 import { BoardReportExportForm } from "./BoardReportExportForm";
@@ -240,6 +242,8 @@ export default async function BoardKpisPage() {
       />
 
       <BoardToWorkspaceCtas />
+
+      <BoardWhatIfSimulatorClient />
 
       <section
         aria-label="Executive KPIs"

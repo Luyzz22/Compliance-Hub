@@ -926,6 +926,173 @@ export async function postAiGovernanceActionDrafts(
   });
 }
 
+// ─── EU AI Act – Dokumentationsbausteine ─────────────────────────────────────
+
+export type AIActDocSectionKey =
+  | "RISK_MANAGEMENT"
+  | "DATA_GOVERNANCE"
+  | "MONITORING_LOGGING"
+  | "HUMAN_OVERSIGHT"
+  | "TECHNICAL_ROBUSTNESS";
+
+export interface AIActDocPayload {
+  id: string;
+  tenant_id: string;
+  ai_system_id: string;
+  section_key: AIActDocSectionKey;
+  title: string;
+  content_markdown: string;
+  version: number;
+  content_source?: "manual" | "ai_generated" | null;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}
+
+export interface AIActDocListItemPayload {
+  section_key: AIActDocSectionKey;
+  default_title: string;
+  doc: AIActDocPayload | null;
+  status: string;
+}
+
+export interface AIActDocListResponsePayload {
+  ai_system_id: string;
+  items: AIActDocListItemPayload[];
+}
+
+export async function fetchAiActDocList(
+  aiSystemId: string
+): Promise<AIActDocListResponsePayload> {
+  return apiFetch(`/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs`);
+}
+
+export async function postAiActDocDraft(
+  aiSystemId: string,
+  sectionKey: AIActDocSectionKey
+): Promise<AIActDocPayload> {
+  return apiFetch(
+    `/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs/${sectionKey}/draft`,
+    { method: "POST" }
+  );
+}
+
+export async function persistAiActDocSection(
+  aiSystemId: string,
+  sectionKey: AIActDocSectionKey,
+  body: {
+    title: string;
+    content_markdown: string;
+    content_source?: "manual" | "ai_generated" | null;
+  }
+): Promise<AIActDocPayload> {
+  return apiFetch(
+    `/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs/${sectionKey}`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+export async function downloadAiActDocumentationMarkdown(
+  aiSystemId: string
+): Promise<void> {
+  const url = `${API_BASE_URL}/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs/export?format=markdown`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "x-api-key": API_KEY,
+      "x-tenant-id": TENANT_ID,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Export fehlgeschlagen (${res.status})`);
+  }
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `ai-act-documentation-${aiSystemId}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+export type WhatIfBoardKpiType =
+  | "INCIDENT_RESPONSE_MATURITY"
+  | "SUPPLIER_RISK_COVERAGE"
+  | "OT_IT_SEGREGATION"
+  | "EU_AI_ACT_CONTROL_FULFILLMENT";
+
+export interface WhatIfKpiAdjustmentInput {
+  ai_system_id: string;
+  kpi_type: WhatIfBoardKpiType;
+  target_value_percent: number;
+}
+
+export interface WhatIfScenarioInputPayload {
+  kpi_adjustments: WhatIfKpiAdjustmentInput[];
+}
+
+export interface BoardKpiSummaryPayload {
+  tenant_id: string;
+  ai_systems_total: number;
+  active_ai_systems: number;
+  high_risk_systems: number;
+  open_policy_violations: number;
+  board_maturity_score: number;
+  compliance_coverage_score: number;
+  risk_governance_score: number;
+  operational_resilience_score: number;
+  responsible_ai_score: number;
+  high_risk_systems_without_dpia: number;
+  critical_systems_without_owner: number;
+  nis2_control_gaps: number;
+  nis2_incident_readiness_ratio: number;
+  nis2_supplier_risk_coverage_ratio: number;
+  iso42001_governance_score: number;
+  score_change_vs_last_quarter: number;
+  incidents_last_quarter: number;
+  complaints_last_quarter: number;
+  nis2_kritis_kpi_mean_percent: number | null;
+  nis2_kritis_systems_full_coverage_ratio: number;
+}
+
+export interface AIComplianceOverviewPayload {
+  tenant_id: string;
+  overall_readiness: number;
+  high_risk_systems_with_full_controls: number;
+  high_risk_systems_with_critical_gaps: number;
+  top_critical_requirements: { article: string; name: string; affected_systems_count: number }[];
+  deadline: string;
+  days_remaining: number;
+  nis2_kritis_kpi_mean_percent: number | null;
+  nis2_kritis_systems_full_coverage_ratio: number;
+}
+
+export interface WhatIfScenarioResultPayload {
+  original_readiness: number;
+  simulated_readiness: number;
+  original_board_kpis: BoardKpiSummaryPayload;
+  simulated_board_kpis: BoardKpiSummaryPayload;
+  original_compliance_overview: AIComplianceOverviewPayload;
+  simulated_compliance_overview: AIComplianceOverviewPayload;
+  original_alerts_count: number;
+  simulated_alerts_count: number;
+  alert_signatures_resolved: string[];
+  alert_signatures_new: string[];
+}
+
+export async function postWhatIfBoardImpact(
+  body: WhatIfScenarioInputPayload
+): Promise<WhatIfScenarioResultPayload> {
+  return apiFetch("/api/v1/ai-governance/what-if/board-impact", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export interface Nis2KritisKpiHistogramBucket {
   range_min_inclusive: number;
   range_max_exclusive: number;

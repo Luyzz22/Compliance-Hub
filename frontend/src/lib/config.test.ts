@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   featureAdvisorWorkspace,
+  featureAiActDocs,
   featureApiKeysUi,
   featureDemoSeeding,
   featureEvidencePreviewBadge,
@@ -12,6 +13,7 @@ import {
   featureLlmExplain,
   featureLlmKpiSuggestions,
   featurePilotRunbook,
+  featureWhatIfSimulator,
 } from "./config";
 
 const envKeys = [
@@ -22,6 +24,8 @@ const envKeys = [
   "NEXT_PUBLIC_FEATURE_EVIDENCE_PREVIEW_BADGE",
   "NEXT_PUBLIC_FEATURE_PILOT_RUNBOOK",
   "NEXT_PUBLIC_FEATURE_API_KEYS_UI",
+  "NEXT_PUBLIC_FEATURE_AI_ACT_DOCS",
+  "NEXT_PUBLIC_FEATURE_WHAT_IF_SIMULATOR",
   "NEXT_PUBLIC_FEATURE_LLM_ENABLED",
   "NEXT_PUBLIC_FEATURE_LLM_KPI_SUGGESTIONS",
   "NEXT_PUBLIC_FEATURE_LLM_EXPLAIN",
@@ -63,6 +67,8 @@ describe("feature flags from env", () => {
     expect(featureLlmKpiSuggestions()).toBe(false);
     expect(featureLlmExplain()).toBe(false);
     expect(featureLlmActionDrafts()).toBe(false);
+    expect(featureAiActDocs()).toBe(true);
+    expect(featureWhatIfSimulator()).toBe(true);
   });
 
   it("parses common false/true tokens", () => {

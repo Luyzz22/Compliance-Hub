@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi.testclient import TestClient
 
 from app.main import app
-from tests.conftest import _headers
 
 client = TestClient(app)
 
 
 def test_board_alerts_happy_path():
     """KPI-Kombinationen liefern erwartete Alerts (critical/warning bei niedrigen Ratios)."""
+    tid = f"alerts-happy-{uuid.uuid4().hex[:10]}"
+    h = {"x-api-key": "board-kpi-key", "x-tenant-id": tid}
+    sys_id = f"alerts-sys-{uuid.uuid4().hex[:8]}"
     # System ohne Runbooks/Supplier-Register → niedrige NIS2-Ratios, niedriger ISO-Score
     payload = {
-        "id": "alerts-sys-1",
+        "id": sys_id,
         "name": "System für Alerts-Test",
         "description": "Test",
         "business_unit": "Ops",
@@ -28,12 +32,12 @@ def test_board_alerts_happy_path():
         "has_supplier_risk_register": False,
         "has_backup_runbook": False,
     }
-    create = client.post("/api/v1/ai-systems", json=payload, headers=_headers())
+    create = client.post("/api/v1/ai-systems", json=payload, headers=h)
     assert create.status_code == 200
 
     response = client.get(
         "/api/v1/ai-governance/alerts/board",
-        headers=_headers(),
+        headers=h,
     )
     assert response.status_code == 200
     data = response.json()
@@ -42,7 +46,7 @@ def test_board_alerts_happy_path():
     severities = {a["severity"] for a in data}
     for item in data:
         assert "id" in item
-        assert item["tenant_id"] == "board-kpi-tenant"
+        assert item["tenant_id"] == tid
         assert item["kpi_key"]
         assert item["severity"] in ("info", "warning", "critical")
         assert item["message"]
