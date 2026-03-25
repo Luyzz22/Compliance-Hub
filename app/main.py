@@ -816,9 +816,7 @@ def post_nis2_kritis_kpi_suggestions(
             detail="AISystem not found",
         )
     kpis = nis2_repo.list_for_ai_system(tenant_id, ai_system_id)
-    existing = [
-        {"kpi_type": k.kpi_type.value, "value_percent": k.value_percent} for k in kpis
-    ]
+    existing = [{"kpi_type": k.kpi_type.value, "value_percent": k.value_percent} for k in kpis]
     req = Nis2KritisKpiSuggestionRequest(ai_system_id=ai_system_id, free_text=body.free_text)
     try:
         out = generate_nis2_kpi_suggestions(
