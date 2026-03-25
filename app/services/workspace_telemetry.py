@@ -25,21 +25,23 @@ logger = logging.getLogger(__name__)
 ActorTypeTelemetry = Literal["tenant", "advisor", "system", "unknown"]
 
 # Nur explizit erlaubte Kontext-Schlüssel (Referenz-IDs / Enums, keine Personen-/Freitextfelder)
-_EXTRA_ALLOWED_KEYS = frozenset({
-    "action_id",
-    "ai_system_id",
-    "audit_record_id",
-    "classification_id",
-    "control_id",
-    "evidence_id",
-    "export_job_id",
-    "framework_key",
-    "job_id",
-    "report_id",
-    "requirement_id",
-    "surface",
-    "template_key",
-})
+_EXTRA_ALLOWED_KEYS = frozenset(
+    {
+        "action_id",
+        "ai_system_id",
+        "audit_record_id",
+        "classification_id",
+        "control_id",
+        "evidence_id",
+        "export_job_id",
+        "framework_key",
+        "job_id",
+        "report_id",
+        "requirement_id",
+        "surface",
+        "template_key",
+    }
+)
 
 # Erlaubte Zeichen in String-Werten: technische IDs und Keys, kein Freitext
 _EXTRA_STR_VALUE_PATTERN = re.compile(r"^[a-zA-Z0-9_.:/\-]{1,128}$")
