@@ -12,13 +12,20 @@ from app.security import get_settings
 
 # Alle API-Keys, die Tests in _headers() verwenden – get_settings().api_keys wird
 # einmal pro Session gecacht; damit alle Tests grün bleiben, hier Superset setzen.
-_TEST_API_KEYS = "board-kpi-key,test-key,test-api-key,tenant-overview-key,test-key-1,test-key-2"
+_TEST_API_KEYS = (
+    "board-kpi-key,test-key,test-api-key,tenant-overview-key,test-key-1,test-key-2,demo-seed-key"
+)
+_DEMO_SEED_TENANTS = (
+    "demo-seed-tenant-1,demo-seed-tenant-2,demo-isolation-a,demo-isolation-b,demo-direct-only"
+)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_db() -> None:
     os.environ["COMPLIANCEHUB_API_KEYS"] = _TEST_API_KEYS
     os.environ["COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS"] = _TEST_API_KEYS
+    os.environ["COMPLIANCEHUB_DEMO_SEED_API_KEYS"] = "demo-seed-key"
+    os.environ["COMPLIANCEHUB_DEMO_SEED_TENANT_IDS"] = _DEMO_SEED_TENANTS
     get_settings.cache_clear()
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
@@ -29,6 +36,8 @@ def _restore_api_keys_superset() -> None:
     """Nach Tests, die COMPLIANCEHUB_API_KEYS verkleinern, wieder vollständige Key-Liste."""
     os.environ["COMPLIANCEHUB_API_KEYS"] = _TEST_API_KEYS
     os.environ["COMPLIANCEHUB_EVIDENCE_DELETE_API_KEYS"] = _TEST_API_KEYS
+    os.environ["COMPLIANCEHUB_DEMO_SEED_API_KEYS"] = "demo-seed-key"
+    os.environ["COMPLIANCEHUB_DEMO_SEED_TENANT_IDS"] = _DEMO_SEED_TENANTS
     get_settings.cache_clear()
 
 

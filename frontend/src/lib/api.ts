@@ -1027,3 +1027,54 @@ export function getAdvisorTenantReportUrl(
   });
   return `/api/advisor/tenant-report?${params.toString()}`;
 }
+
+// ─── Demo-Tenant-Seeding (nur Pilot/Demo; Proxy nutzt COMPLIANCEHUB_DEMO_SEED_API_KEY) ─
+
+export interface DemoTenantTemplateDto {
+  key: string;
+  name: string;
+  description: string;
+  industry: string;
+  segment: string;
+  country: string;
+  nis2_scope: boolean;
+  ai_act_high_risk_focus: boolean;
+}
+
+export interface DemoSeedResponseDto {
+  template_key: string;
+  tenant_id: string;
+  ai_systems_count: number;
+  governance_actions_count: number;
+  evidence_files_count: number;
+  nis2_kpi_rows_count: number;
+  policy_rows_count: number;
+  classifications_count: number;
+  advisor_linked: boolean;
+}
+
+export async function fetchDemoTenantTemplates(): Promise<DemoTenantTemplateDto[]> {
+  const res = await fetch("/api/demo/tenant-templates", { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Demo templates failed: ${res.status}`);
+  }
+  return res.json() as Promise<DemoTenantTemplateDto[]>;
+}
+
+export async function postDemoTenantSeed(payload: {
+  template_key: string;
+  tenant_id: string;
+  advisor_id?: string | null;
+}): Promise<DemoSeedResponseDto> {
+  const res = await fetch("/api/demo/seed", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error || `Demo seed failed: ${res.status}`);
+  }
+  return res.json() as Promise<DemoSeedResponseDto>;
+}

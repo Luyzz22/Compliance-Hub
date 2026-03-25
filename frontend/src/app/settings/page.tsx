@@ -1,6 +1,7 @@
 import Link from "next/link";
 import React from "react";
 
+import { DemoTenantSetupPanel } from "@/components/demo/DemoTenantSetupPanel";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   CH_BTN_SECONDARY,
@@ -55,6 +56,10 @@ export default function SettingsPage() {
             SSO (Azure AD, SAP IAS) und rollenbasierte Workspace-Zugriffe – Platzhalter für
             Enterprise-Onboarding.
           </p>
+        </article>
+
+        <article className={`${CH_CARD} md:col-span-2`}>
+          <DemoTenantSetupPanel defaultTenantId={TENANT_ID} />
         </article>
 
         <article className={CH_CARD}>
