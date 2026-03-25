@@ -8,6 +8,7 @@ import {
   type Nis2KritisKpiType,
   type Nis2KritisKpiTypeDrilldown,
 } from "@/lib/api";
+import { BoardToWorkspaceCtas } from "@/components/sbs/BoardToWorkspaceCtas";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   BOARD_PAGE_ROOT_CLASS,
@@ -159,6 +160,8 @@ export default async function BoardNis2KritisPage() {
           </>
         }
       />
+
+      <BoardToWorkspaceCtas />
 
       <section
         aria-label="NIS2-KPI-Übersicht"

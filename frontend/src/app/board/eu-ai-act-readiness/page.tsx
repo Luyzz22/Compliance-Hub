@@ -7,6 +7,7 @@ import {
   type EUAIActReadinessOverview,
   type ReadinessRequirementTraffic,
 } from "@/lib/api";
+import { BoardToWorkspaceCtas } from "@/components/sbs/BoardToWorkspaceCtas";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   BOARD_PAGE_ROOT_CLASS,
@@ -140,6 +141,8 @@ export default async function EuAiActReadinessPage() {
           </>
         }
       />
+
+      <BoardToWorkspaceCtas />
 
       <section className={CH_CARD} aria-label="Readiness-Übersicht">
         <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">

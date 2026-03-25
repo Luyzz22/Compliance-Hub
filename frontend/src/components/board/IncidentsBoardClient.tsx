@@ -52,10 +52,11 @@ export function IncidentsBoardClient({ overview, bySystem }: Props) {
   const [windowDays, setWindowDays] = useState<string>("365");
   const [systemQuery, setSystemQuery] = useState("");
   const [severityFocus, setSeverityFocus] = useState<string>("all");
+  const [asOfMs, setAsOfMs] = useState(() => Date.now());
 
   const filteredRows = useMemo(() => {
     const q = systemQuery.trim().toLowerCase();
-    const now = Date.now();
+    const now = asOfMs;
     const maxAge =
       windowDays === "all"
         ? null
@@ -74,7 +75,7 @@ export function IncidentsBoardClient({ overview, bySystem }: Props) {
         return row.incident_count > 0;
       })
       .sort((a, b) => b.incident_count - a.incident_count);
-  }, [bySystem, systemQuery, windowDays]);
+  }, [asOfMs, bySystem, systemQuery, windowDays]);
 
   return (
     <div className="min-w-0 space-y-8">
@@ -97,7 +98,10 @@ export function IncidentsBoardClient({ overview, bySystem }: Props) {
               id="inc-window"
               className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm"
               value={windowDays}
-              onChange={(e) => setWindowDays(e.target.value)}
+              onChange={(e) => {
+                setWindowDays(e.target.value);
+                setAsOfMs(Date.now());
+              }}
             >
               <option value="30">Letzte 30 Tage</option>
               <option value="90">Letzte 90 Tage</option>

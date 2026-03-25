@@ -2,6 +2,7 @@ import Link from "next/link";
 import React from "react";
 
 import { AiSystemsImportPanel } from "@/components/tenant/AiSystemsImportPanel";
+import { AiSystemsRegistryTableClient } from "@/components/tenant/AiSystemsRegistryTableClient";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { fetchTenantAISystems } from "@/lib/api";
 import {
@@ -20,10 +21,6 @@ type AISystem = {
   status: string;
   owneremail?: string;
 };
-
-function classNames(...values: (string | false | null | undefined)[]) {
-  return values.filter(Boolean).join(" ");
-}
 
 type PageProps = {
   searchParams?: Promise<{ ids?: string }> | { ids?: string };
@@ -115,82 +112,11 @@ export default async function TenantAISystemsPage({ searchParams }: PageProps) {
             </span>
           </div>
         </div>
-        <div className="sbs-table-wrap">
-          <table className="sbs-table">
-            <thead>
-              <tr>
-                <th className="px-5 py-2 font-medium">Name</th>
-                <th className="px-3 py-2 font-medium">Business Unit</th>
-                <th className="px-3 py-2 font-medium">Risk Level</th>
-                <th className="px-3 py-2 font-medium">AI Act</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">Owner</th>
-                <th className="px-3 py-2 font-medium">Detail</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => (
-                <tr key={s.id}>
-                  <td>
-                    <div className="font-semibold text-[var(--sbs-text-primary)]">
-                      {s.name}
-                    </div>
-                    <div className="text-xs text-[var(--sbs-text-muted)]">
-                      {s.id}
-                    </div>
-                  </td>
-                  <td className="text-[var(--sbs-text-secondary)]">
-                    {s.businessunit}
-                  </td>
-                  <td>
-                    <span
-                      className={classNames(
-                        "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
-                        s.risklevel === "high" &&
-                          "border border-rose-200 bg-rose-50 text-rose-800",
-                        s.risklevel === "limited" &&
-                          "border border-amber-200 bg-amber-50 text-amber-900",
-                        s.risklevel === "low" &&
-                          "border border-emerald-200 bg-emerald-50 text-emerald-900",
-                      )}
-                    >
-                      {s.risklevel}
-                    </span>
-                  </td>
-                  <td className="text-xs text-[var(--sbs-text-secondary)]">
-                    {s.aiactcategory}
-                  </td>
-                  <td className="text-xs">
-                    <span className="inline-flex rounded-full border border-[var(--sbs-border)] bg-slate-50 px-2 py-0.5 text-[var(--sbs-text-secondary)]">
-                      {s.status}
-                    </span>
-                  </td>
-                  <td className="text-xs text-[var(--sbs-text-secondary)]">
-                    {s.owneremail ?? "—"}
-                  </td>
-                  <td>
-                    <Link
-                      href={`/tenant/ai-systems/${encodeURIComponent(s.id)}`}
-                      className={CH_PAGE_NAV_LINK + " text-xs no-underline hover:underline"}
-                    >
-                      Detail
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="py-8 text-center text-sm text-[var(--sbs-text-secondary)]"
-                  >
-                    Noch keine AI‑Systeme erfasst.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <AiSystemsRegistryTableClient
+          systems={filtered}
+          idFilterActive={idSet.size > 0}
+          totalBeforeClientFilter={systems.length}
+        />
       </section>
     </div>
   );

@@ -18,12 +18,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" className="scroll-smooth scroll-pt-20">
+    <html lang="de" className="scroll-smooth scroll-pt-[7.5rem]">
       <body className="sbs-body flex min-h-screen flex-col bg-slate-50 antialiased">
         <SbsHeader />
         <main
           id="app-main"
-          className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 py-8 pb-16 md:px-6 md:py-10"
+          className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 pb-16 pt-8 md:px-6 md:pb-20 md:pt-10"
         >
           {children}
         </main>

@@ -1,5 +1,72 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import React from "react";
 
-export default function SettingsAliasPage() {
-  redirect("/tenant/compliance-overview");
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import {
+  CH_BTN_SECONDARY,
+  CH_CARD,
+  CH_SECTION_LABEL,
+  CH_SHELL,
+} from "@/lib/boardLayout";
+
+const TENANT_ID =
+  process.env.NEXT_PUBLIC_TENANT_ID ||
+  process.env.COMPLIANCEHUB_TENANT_ID ||
+  "tenant-overview-001";
+
+export default function SettingsPage() {
+  return (
+    <div className={CH_SHELL}>
+      <EnterprisePageHeader
+        title="Einstellungen"
+        description="Mandanten-Stammdaten, API-Zugriff und Integrations-Platzhalter – ohne Änderung an Backend-Verträgen."
+      />
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Mandant</p>
+          <p className="mt-2 font-mono text-sm font-semibold text-slate-900">{TENANT_ID}</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Anzeigename, Rechtsform und Kontakte werden produktiv über die Admin-API gepflegt.
+          </p>
+          <Link
+            href="/tenant/compliance-overview"
+            className={`${CH_BTN_SECONDARY} mt-4 inline-flex text-xs`}
+          >
+            Zur Compliance-Übersicht
+          </Link>
+        </article>
+
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>API-Keys</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Setzen Sie <code className="rounded bg-slate-100 px-1">COMPLIANCEHUB_API_KEY</code>{" "}
+            serverseitig; im Browser nur{" "}
+            <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_*</code> für Demo-Umgebungen.
+          </p>
+          <p className="mt-3 text-xs text-slate-500">
+            Rotieren und scoped Keys folgen über das geplante Admin-Portal.
+          </p>
+        </article>
+
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Benutzer & Rollen</p>
+          <p className="mt-2 text-sm text-slate-600">
+            SSO (Azure AD, SAP IAS) und rollenbasierte Workspace-Zugriffe – Platzhalter für
+            Enterprise-Onboarding.
+          </p>
+        </article>
+
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Integrationen</p>
+          <p className="mt-2 text-sm text-slate-600">
+            DATEV-Export, SAP BTP / S4HANA-Anbindung und DMS-Konnektoren als Roadmap-Module.
+          </p>
+          <p className="mt-3 text-xs text-slate-500">
+            Keine produktiven Credentials in dieser Oberfläche hinterlegen.
+          </p>
+        </article>
+      </section>
+    </div>
+  );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
@@ -13,6 +14,7 @@ import {
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
   CH_CARD,
+  CH_PAGE_NAV_LINK,
   CH_SHELL,
 } from "@/lib/boardLayout";
 
@@ -393,6 +395,16 @@ export default function EUAIActPage() {
                 <div className="text-[0.65rem] text-amber-800/90">bis 02.08.2026</div>
               </div>
             ) : null
+          }
+          below={
+            <>
+              <Link href="/board/eu-ai-act-readiness" className={CH_PAGE_NAV_LINK}>
+                Board: EU AI Act Readiness
+              </Link>
+              <Link href="/tenant/ai-systems" className={CH_PAGE_NAV_LINK}>
+                KI-System-Register
+              </Link>
+            </>
           }
         />
 

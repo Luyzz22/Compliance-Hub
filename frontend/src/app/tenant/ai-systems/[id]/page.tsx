@@ -2,6 +2,7 @@ import Link from "next/link";
 import React from "react";
 
 import { EvidenceAttachmentsSection } from "@/components/evidence/EvidenceAttachmentsSection";
+import { AiSystemSectionNav } from "@/components/tenant/AiSystemSectionNav";
 import {
   fetchEuAiActReadiness,
   fetchIncidentsBySystem,
@@ -108,7 +109,13 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         }
       />
 
-      <section className={CH_CARD} aria-label="Stammdaten">
+      <AiSystemSectionNav />
+
+      <section
+        id="sec-stammdaten"
+        className={`${CH_CARD} scroll-mt-32`}
+        aria-label="Stammdaten"
+      >
         <h2 className="text-base font-semibold text-slate-900">Stammdaten</h2>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
           <div>
@@ -140,7 +147,11 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         </dl>
       </section>
 
-      <section className={CH_CARD} aria-label="Evidenz und Dokumente">
+      <section
+        id="sec-evidenz"
+        className={`${CH_CARD} scroll-mt-32`}
+        aria-label="Evidenz und Dokumente"
+      >
         <h2 className="text-base font-semibold text-slate-900">
           Evidenz & Dokumente
         </h2>
@@ -153,7 +164,11 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         </div>
       </section>
 
-      <section className={CH_CARD} aria-label="Klassifikation EU AI Act">
+      <section
+        id="sec-klassifikation"
+        className={`${CH_CARD} scroll-mt-32`}
+        aria-label="Klassifikation EU AI Act"
+      >
         <h2 className="text-base font-semibold text-slate-900">Klassifikation</h2>
         {classification ? (
           <dl className="mt-4 space-y-2 text-sm text-slate-700">
@@ -199,7 +214,7 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         )}
       </section>
 
-      <section className={CH_CARD} aria-label="Incidents">
+      <section id="sec-incidents" className={`${CH_CARD} scroll-mt-32`} aria-label="Incidents">
         <h2 className="text-base font-semibold text-slate-900">Incidents (Aggregat)</h2>
         {incidentRow ? (
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -231,7 +246,11 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         </p>
       </section>
 
-      <section className={CH_CARD} aria-label="Compliance-Status">
+      <section
+        id="sec-compliance"
+        className={`${CH_CARD} scroll-mt-32`}
+        aria-label="Compliance-Status"
+      >
         <h2 className="text-base font-semibold text-slate-900">EU AI Act Compliance (Überblick)</h2>
         <p className="mt-1 text-xs text-slate-500">
           {compliance.length} Anforderungen geladen · {complianceDone} erfüllt ·{" "}
@@ -256,7 +275,11 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         ) : null}
       </section>
 
-      <section className={CH_CARD} aria-label="Policy Violations">
+      <section
+        id="sec-violations"
+        className={`${CH_CARD} scroll-mt-32`}
+        aria-label="Policy Violations"
+      >
         <h2 className="text-base font-semibold text-slate-900">Violations</h2>
         {violations.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">Keine offenen Violations für dieses System.</p>
@@ -277,7 +300,11 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         )}
       </section>
 
-      <section className={CH_CARD} aria-label="Governance-Maßnahmen">
+      <section
+        id="sec-massnahmen"
+        className={`${CH_CARD} scroll-mt-32`}
+        aria-label="Governance-Maßnahmen"
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-slate-900">Offene Maßnahmen</h2>
           <Link href="/board/eu-ai-act-readiness#governance-actions" className={CH_BTN_SECONDARY}>

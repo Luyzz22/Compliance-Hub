@@ -77,6 +77,66 @@ export default async function TenantComplianceOverviewPage() {
       />
 
       <section
+        aria-label="Workspace-Home"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      >
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>KI-Systeme</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Register, Risiko und Verknüpfung zu Incidents, NIS2-KPIs und Nachweisen.
+          </p>
+          <Link href="/tenant/ai-systems" className={`${CH_BTN_PRIMARY} mt-4 inline-flex text-xs`}>
+            Zum Register
+          </Link>
+        </article>
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>EU AI Act</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Klassifikation, Anforderungen und operative Lückenschließung im Mandanten.
+          </p>
+          <Link href="/tenant/eu-ai-act" className={`${CH_BTN_SECONDARY} mt-4 inline-flex text-xs`}>
+            Zum Cockpit
+          </Link>
+        </article>
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>NIS2 / KRITIS</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Board-Drilldown zu Incident- und Supplier-Readiness für den Vorstand.
+          </p>
+          <Link href="/board/nis2-kritis" className={`${CH_BTN_SECONDARY} mt-4 inline-flex text-xs`}>
+            Zum Board
+          </Link>
+        </article>
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Policies</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Framework-Mappings und operative Policy-Engine für den Workspace.
+          </p>
+          <Link href="/tenant/policies" className={`${CH_BTN_SECONDARY} mt-4 inline-flex text-xs`}>
+            Policies öffnen
+          </Link>
+        </article>
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Blueprints</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Vorlagen und Playbooks für EU AI Act, NIS2 und ISO 42001.
+          </p>
+          <Link href="/tenant/blueprints" className={`${CH_BTN_SECONDARY} mt-4 inline-flex text-xs`}>
+            Blueprints
+          </Link>
+        </article>
+        <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Audit-Log</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Unveränderliche Ereignisspur für Revision und Regulatorik.
+          </p>
+          <Link href="/tenant/audit-log" className={`${CH_BTN_SECONDARY} mt-4 inline-flex text-xs`}>
+            Audit-Log
+          </Link>
+        </article>
+      </section>
+
+      <section
         aria-label="Mandant und technische Anbindung"
         className="grid gap-4 lg:grid-cols-3"
       >
