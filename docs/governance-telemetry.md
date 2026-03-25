@@ -280,6 +280,7 @@ Optional JOIN/Anreicherung in DWH: `ai_system_id` gegen Register-Tabelle filtern
 | Next.js Proxy | `frontend/src/app/api/workspace/feature-used/route.ts` |
 | Client-Helper | `frontend/src/lib/workspaceTelemetry.ts` |
 | View-Hook / Shell | `frontend/src/hooks/useWorkspaceMode.ts`, `TenantWorkspaceShell` |
+| Governance Activity Index (Nutzungs-Indikator) | [`docs/governance-activity-index.md`](./governance-activity-index.md) |
 
 ---
 
