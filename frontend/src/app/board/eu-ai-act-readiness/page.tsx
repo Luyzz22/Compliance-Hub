@@ -6,14 +6,14 @@ import {
   type EUAIActReadinessOverview,
   type ReadinessRequirementTraffic,
 } from "@/lib/api";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   BOARD_PAGE_ROOT_CLASS,
-  CH_CARD,
-  CH_PAGE_SUB,
-  CH_PAGE_TITLE,
-  CH_SECTION_LABEL,
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
+  CH_CARD,
+  CH_PAGE_NAV_LINK,
+  CH_SECTION_LABEL,
 } from "@/lib/boardLayout";
 
 function aiSystemsFilterHref(systemIds: string[]): string {
@@ -90,24 +90,22 @@ export default async function EuAiActReadinessPage() {
   if (!data) {
     return (
       <div className={BOARD_PAGE_ROOT_CLASS}>
-        <header className="mb-8">
-          <h1 className={CH_PAGE_TITLE}>EU AI Act Readiness</h1>
-          <p className={CH_PAGE_SUB}>High-Risk-Systeme bis 02.08.2026</p>
-        </header>
+        <EnterprisePageHeader
+          eyebrow="Board"
+          title="EU AI Act Readiness"
+          description="High-Risk-Systeme und Pflichtcontrols bis 02.08.2026."
+          below={
+            <Link href="/board/kpis" className={CH_PAGE_NAV_LINK}>
+              Zurück zu Board KPIs
+            </Link>
+          }
+        />
         <div
           role="status"
           className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
         >
           Readiness-Daten konnten nicht geladen werden.
         </div>
-        <p className="mt-4">
-          <Link
-            href="/board/kpis"
-            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
-          >
-            ← Zurück zu Board-KPIs
-          </Link>
-        </p>
       </div>
     );
   }
@@ -118,25 +116,31 @@ export default async function EuAiActReadinessPage() {
 
   return (
     <div className={BOARD_PAGE_ROOT_CLASS}>
-      <header className="mb-8">
-        <h1 className={CH_PAGE_TITLE}>EU AI Act Readiness</h1>
-        <p className={CH_PAGE_SUB}>
-          High-Risk-Systeme bis{" "}
-          <time dateTime="2026-08-02">02.08.2026</time>
-          {" · "}
-          noch {data.days_remaining} Tage · Gesamt {readinessPct}%
-        </p>
-        <p className="mt-3">
-          <Link
-            href="/board/kpis"
-            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
-          >
-            ← Zurück zu Board-KPIs
-          </Link>
-        </p>
-      </header>
+      <EnterprisePageHeader
+        eyebrow="Board"
+        title="EU AI Act Readiness"
+        description={
+          <>
+            High-Risk-Systeme bis <time dateTime="2026-08-02">02.08.2026</time> · noch{" "}
+            {data.days_remaining} Tage · Gesamt-Readiness {readinessPct}%.
+          </>
+        }
+        below={
+          <>
+            <Link href="/board/kpis" className={CH_PAGE_NAV_LINK}>
+              Board KPIs
+            </Link>
+            <Link href="/board/nis2-kritis" className={CH_PAGE_NAV_LINK}>
+              NIS2 / KRITIS
+            </Link>
+            <Link href="/tenant/eu-ai-act" className={CH_PAGE_NAV_LINK}>
+              Tenant-Cockpit
+            </Link>
+          </>
+        }
+      />
 
-      <section className={`${CH_CARD} mb-8`} aria-label="Readiness-Übersicht">
+      <section className={CH_CARD} aria-label="Readiness-Übersicht">
         <div className="grid gap-8 lg:grid-cols-[auto_1fr] lg:items-center">
           <div className="text-center lg:text-left">
             <ReadinessRing percent={readinessPct} />

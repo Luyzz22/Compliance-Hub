@@ -7,11 +7,11 @@ import {
   type AISupplierRiskBySystem,
   type AISupplierRiskOverview,
 } from "@/lib/api";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   BOARD_PAGE_ROOT_CLASS,
   CH_CARD,
-  CH_PAGE_SUB,
-  CH_PAGE_TITLE,
+  CH_PAGE_NAV_LINK,
   CH_SECTION_LABEL,
 } from "@/lib/boardLayout";
 
@@ -45,12 +45,16 @@ export default async function BoardSuppliersPage() {
   if (!overview) {
     return (
       <div className={BOARD_PAGE_ROOT_CLASS}>
-        <header className="mb-8">
-          <h1 className={CH_PAGE_TITLE}>Supplier-Risiko</h1>
-          <p className={CH_PAGE_SUB}>
-            NIS2 Art. 21/24 Supply-Chain-Security · KRITIS-Bezug
-          </p>
-        </header>
+        <EnterprisePageHeader
+          eyebrow="Board"
+          title="Supplier-Risiko"
+          description="NIS2 Art. 21/24 Supply-Chain-Security · Lieferketten · KRITIS-Bezug"
+          below={
+            <Link href="/board/kpis" className={CH_PAGE_NAV_LINK}>
+              Zurück zu Board KPIs
+            </Link>
+          }
+        />
         <div
           role="status"
           className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
@@ -58,14 +62,6 @@ export default async function BoardSuppliersPage() {
           Supplier-Risiko-KPIs konnten nicht geladen werden. Bitte versuchen Sie
           es später erneut oder wenden Sie sich an das AI-Governance-Team.
         </div>
-        <p className="mt-4">
-          <Link
-            href="/board/kpis"
-            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
-          >
-            ← Zurück zu Board-KPIs
-          </Link>
-        </p>
       </div>
     );
   }
@@ -80,26 +76,28 @@ export default async function BoardSuppliersPage() {
 
   return (
     <div className={BOARD_PAGE_ROOT_CLASS}>
-      <header className="mb-8">
-        <h1 className={CH_PAGE_TITLE}>Supplier-Risiko</h1>
-        <p className={CH_PAGE_SUB}>
-          NIS2 Art. 21/24 Supply-Chain-Security · Lieferanten-Risikoregister ·
-          KRITIS-Bezug · Standort Deutschland
-        </p>
-        <p className="mt-3">
-          <Link
-            href="/board/kpis"
-            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
-            aria-label="Zurück zu Board-KPIs"
-          >
-            ← Zurück zu Board-KPIs
-          </Link>
-        </p>
-      </header>
+      <EnterprisePageHeader
+        eyebrow="Board"
+        title="Supplier-Risiko"
+        description="NIS2 Art. 21/24 Supply-Chain-Security · Lieferanten-Risikoregister · KRITIS-Bezug · Standort Deutschland"
+        below={
+          <>
+            <Link href="/board/kpis" className={CH_PAGE_NAV_LINK}>
+              Board KPIs
+            </Link>
+            <Link href="/board/nis2-kritis" className={CH_PAGE_NAV_LINK}>
+              NIS2 / KRITIS
+            </Link>
+            <Link href="/board/incidents" className={CH_PAGE_NAV_LINK}>
+              Incidents
+            </Link>
+          </>
+        }
+      />
 
       <section
         aria-label="Supplier-Risiko-KPIs"
-        className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
         <div className={`${CH_CARD} flex min-w-0 flex-col`}>
           <p className={CH_SECTION_LABEL}>Mit Lieferanten-Register</p>

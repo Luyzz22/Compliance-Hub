@@ -11,13 +11,13 @@ import {
   fetchClassification,
   type AISystem,
 } from "@/lib/api";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
   CH_CARD,
-  CH_PAGE_SUB,
-  CH_PAGE_TITLE,
-  CH_SECTION_LABEL,
+  CH_PAGE_NAV_LINK,
+  CH_SHELL,
 } from "@/lib/boardLayout";
 
 const KPI_LABEL: Record<string, string> = {
@@ -43,11 +43,12 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
 
   if (!system) {
     return (
-      <div className="min-w-0">
-        <header className="mb-8">
-          <h1 className={CH_PAGE_TITLE}>KI-System</h1>
-          <p className={CH_PAGE_SUB}>Das System wurde nicht gefunden.</p>
-        </header>
+      <div className={CH_SHELL}>
+        <EnterprisePageHeader
+          eyebrow="Tenant"
+          title="KI-System"
+          description="Dieses System ist im Register nicht vorhanden oder der Zugriff wurde verweigert."
+        />
         <Link href="/tenant/ai-systems" className={CH_BTN_SECONDARY}>
           Zurück zum Register
         </Link>
@@ -79,22 +80,32 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
   const complianceOpen = compliance.filter((c) => c.status === "not_started").length;
 
   return (
-    <div className="min-w-0 space-y-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className={CH_SECTION_LABEL}>KI-System</p>
-          <h1 className={`${CH_PAGE_TITLE} mt-1`}>{system.name}</h1>
-          <p className={CH_PAGE_SUB}>{pickBu(system)} · ID {system.id}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/tenant/ai-systems" className={CH_BTN_SECONDARY}>
-            Register
-          </Link>
-          <Link href="/tenant/eu-ai-act" className={CH_BTN_PRIMARY}>
-            EU AI Act Cockpit
-          </Link>
-        </div>
-      </header>
+    <div className={CH_SHELL}>
+      <EnterprisePageHeader
+        eyebrow="Tenant · KI-System"
+        title={system.name}
+        description={`${pickBu(system)} · technische ID ${system.id}`}
+        actions={
+          <>
+            <Link href="/tenant/ai-systems" className={CH_BTN_SECONDARY}>
+              Register
+            </Link>
+            <Link href="/tenant/eu-ai-act" className={CH_BTN_PRIMARY}>
+              EU AI Act
+            </Link>
+          </>
+        }
+        below={
+          <>
+            <Link href="/board/incidents" className={CH_PAGE_NAV_LINK}>
+              Board: Incidents
+            </Link>
+            <Link href="/board/nis2-kritis" className={CH_PAGE_NAV_LINK}>
+              NIS2-Drilldown
+            </Link>
+          </>
+        }
+      />
 
       <section className={CH_CARD} aria-label="Stammdaten">
         <h2 className="text-base font-semibold text-slate-900">Stammdaten</h2>

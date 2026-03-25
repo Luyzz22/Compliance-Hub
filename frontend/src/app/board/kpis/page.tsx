@@ -12,15 +12,15 @@ import {
   type AIKpiAlert,
   type BoardKpiSummary,
 } from "@/lib/api";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   BOARD_PAGE_ROOT_CLASS,
-  CH_CARD,
-  CH_CARD_MUTED,
-  CH_PAGE_SUB,
-  CH_PAGE_TITLE,
-  CH_SECTION_LABEL,
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
+  CH_CARD,
+  CH_CARD_MUTED,
+  CH_PAGE_NAV_LINK,
+  CH_SECTION_LABEL,
   chKpiStatusFromRatio,
 } from "@/lib/boardLayout";
 
@@ -196,13 +196,11 @@ export default async function BoardKpisPage() {
   if (!kpis) {
     return (
       <div className={BOARD_PAGE_ROOT_CLASS}>
-        <header className="mb-8">
-          <h1 className={CH_PAGE_TITLE}>Board KPIs</h1>
-          <p className={CH_PAGE_SUB}>
-            Executive Overview Ihrer AI-Governance – Reifegrad, NIS2 und
-            High-Risk-Register.
-          </p>
-        </header>
+        <EnterprisePageHeader
+          eyebrow="Board"
+          title="Board KPIs"
+          description="Executive Overview Ihrer AI-Governance – Reifegrad, NIS2 und High-Risk-Register."
+        />
         <div
           role="status"
           className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
@@ -219,30 +217,24 @@ export default async function BoardKpisPage() {
 
   return (
     <div className={BOARD_PAGE_ROOT_CLASS}>
-      <header className="mb-8">
-        <h1 className={CH_PAGE_TITLE}>Board KPIs</h1>
-        <p className={CH_PAGE_SUB}>
-          Executive Overview Ihrer AI-Governance – ISO 42001, NIS2-Readiness und
-          Lieferanten-Risiko (Standort Deutschland).
-        </p>
-        <nav
-          className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium"
-          aria-label="Board-Unterseiten"
-        >
-          <Link
-            href="/board/nis2-kritis"
-            className="rounded-lg text-cyan-700 underline decoration-cyan-700/30 underline-offset-4 hover:text-cyan-900"
-          >
-            NIS2 / KRITIS KPI-Drilldown
-          </Link>
-          <Link
-            href="/board/eu-ai-act-readiness"
-            className="rounded-lg text-cyan-700 underline decoration-cyan-700/30 underline-offset-4 hover:text-cyan-900"
-          >
-            EU AI Act Readiness
-          </Link>
-        </nav>
-      </header>
+      <EnterprisePageHeader
+        eyebrow="Board"
+        title="Board KPIs"
+        description="Executive Overview Ihrer AI-Governance – ISO 42001, NIS2-Readiness und Lieferanten-Risiko (Standort Deutschland)."
+        below={
+          <>
+            <Link href="/board/nis2-kritis" className={CH_PAGE_NAV_LINK}>
+              NIS2 / KRITIS KPI-Drilldown
+            </Link>
+            <Link href="/board/eu-ai-act-readiness" className={CH_PAGE_NAV_LINK}>
+              EU AI Act Readiness
+            </Link>
+            <Link href="/board/suppliers" className={CH_PAGE_NAV_LINK}>
+              Supplier-Risiko
+            </Link>
+          </>
+        }
+      />
 
       <section
         aria-label="Executive KPIs"

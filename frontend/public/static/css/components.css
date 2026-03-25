@@ -100,19 +100,19 @@
   background: rgba(0, 102, 179, 0.04);
 }
 
-/* Tenant-Bereich: Sidebar dunkel (Nexus-ähnlich) */
+/* Tenant-Bereich: helle Shell (Enterprise SaaS, Fiori-inspiriert) */
 .sbs-tenant-shell {
   display: flex;
-  min-height: calc(100vh - var(--sbs-header-h));
+  min-height: calc(100vh - 4rem);
   font-family: var(--sbs-font);
 }
 
 .sbs-tenant-sidebar {
   width: 16rem;
   flex-shrink: 0;
-  background: linear-gradient(180deg, #0c1929 0%, #0a1524 100%);
-  border-right: 1px solid rgba(148, 163, 184, 0.15);
-  color: #e2e8f0;
+  background: #ffffff;
+  border-right: 1px solid var(--sbs-border);
+  color: var(--sbs-text-primary);
 }
 
 .sbs-tenant-sidebar a {
@@ -122,25 +122,26 @@
   border-radius: 0.5rem;
   padding: 0.4rem 0.5rem;
   font-size: 0.875rem;
-  color: #94a3b8;
+  color: var(--sbs-text-secondary);
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
 }
 
 .sbs-tenant-sidebar a:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #f8fafc;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .sbs-tenant-sidebar a.sbs-nav-active {
-  background: rgba(0, 102, 179, 0.35);
-  color: #fff;
+  background: rgba(6, 182, 212, 0.1);
+  color: #0e7490;
+  font-weight: 600;
 }
 
 .sbs-tenant-main {
   flex: 1;
   padding: 2rem;
-  background: var(--sbs-bg-page);
+  background: #f8fafc;
   color: var(--sbs-text-primary);
 }
 

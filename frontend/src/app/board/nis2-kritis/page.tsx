@@ -8,11 +8,11 @@ import {
   type Nis2KritisKpiType,
   type Nis2KritisKpiTypeDrilldown,
 } from "@/lib/api";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   BOARD_PAGE_ROOT_CLASS,
   CH_CARD,
-  CH_PAGE_SUB,
-  CH_PAGE_TITLE,
+  CH_PAGE_NAV_LINK,
   CH_SECTION_LABEL,
 } from "@/lib/boardLayout";
 
@@ -92,26 +92,22 @@ export default async function BoardNis2KritisPage() {
   if (!drilldown) {
     return (
       <div className={BOARD_PAGE_ROOT_CLASS}>
-        <header className="mb-8">
-          <h1 className={CH_PAGE_TITLE}>NIS2 / KRITIS</h1>
-          <p className={CH_PAGE_SUB}>
-            Incident &amp; Supplier Readiness – Drilldown je KI-System.
-          </p>
-        </header>
+        <EnterprisePageHeader
+          eyebrow="Board"
+          title="NIS2 / KRITIS"
+          description="Incident- und Supplier-Readiness – Drilldown je KI-System."
+          below={
+            <Link href="/board/kpis" className={CH_PAGE_NAV_LINK}>
+              Zurück zu Board KPIs
+            </Link>
+          }
+        />
         <div
           role="status"
           className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
         >
           Drilldown-Daten konnten nicht geladen werden.
         </div>
-        <p className="mt-4">
-          <Link
-            href="/board/kpis"
-            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
-          >
-            ← Zurück zu Board-KPIs
-          </Link>
-        </p>
       </div>
     );
   }
@@ -145,26 +141,28 @@ export default async function BoardNis2KritisPage() {
 
   return (
     <div className={BOARD_PAGE_ROOT_CLASS}>
-      <header className="mb-8">
-        <h1 className={CH_PAGE_TITLE}>NIS2 / KRITIS</h1>
-        <p className={CH_PAGE_SUB}>
-          Incident &amp; Supplier Readiness – Verteilung und schwächste Systeme
-          (Top {drilldown.top_n}). Stand:{" "}
-          {new Date(drilldown.generated_at).toLocaleString("de-DE")}
-        </p>
-        <p className="mt-3">
-          <Link
-            href="/board/kpis"
-            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
-          >
-            ← Zurück zu Board-KPIs
-          </Link>
-        </p>
-      </header>
+      <EnterprisePageHeader
+        eyebrow="Board"
+        title="NIS2 / KRITIS"
+        description={`Incident- und Supplier-Readiness – Verteilung und schwächste Systeme (Top ${drilldown.top_n}). Stand: ${new Date(drilldown.generated_at).toLocaleString("de-DE")}.`}
+        below={
+          <>
+            <Link href="/board/kpis" className={CH_PAGE_NAV_LINK}>
+              Board KPIs
+            </Link>
+            <Link href="/board/incidents" className={CH_PAGE_NAV_LINK}>
+              Incidents
+            </Link>
+            <Link href="/board/suppliers" className={CH_PAGE_NAV_LINK}>
+              Supplier-Risiko
+            </Link>
+          </>
+        }
+      />
 
       <section
         aria-label="NIS2-KPI-Übersicht"
-        className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <div className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Incident-Readiness</p>

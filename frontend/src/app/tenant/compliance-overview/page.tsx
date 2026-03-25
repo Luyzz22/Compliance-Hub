@@ -5,7 +5,14 @@ import {
   fetchTenantAISystems,
   fetchTenantViolations,
 } from "@/lib/api";
-import { CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import {
+  CH_BTN_PRIMARY,
+  CH_BTN_SECONDARY,
+  CH_CARD,
+  CH_SECTION_LABEL,
+  CH_SHELL,
+} from "@/lib/boardLayout";
 
 const TENANT_ID =
   process.env.NEXT_PUBLIC_TENANT_ID ||
@@ -48,34 +55,30 @@ export default async function TenantComplianceOverviewPage() {
   const openViolations = violations.length;
 
   return (
-    <>
-      <header
-        className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div>
-          <h1 className="sbs-h1">Tenant Compliance Overview</h1>
-          <p className="sbs-subtitle">
-            Konsolidierter Überblick über AI‑Systeme, Risiken und Violations für
-            diesen Tenant.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="sbs-badge-live">
-            <span
-              className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-              aria-hidden
-            />
-            Platform Status: OK
-          </span>
-          <button type="button" className="sbs-btn-secondary text-sm">
-            Export Report
-          </button>
-        </div>
-      </header>
+    <div className={CH_SHELL}>
+      <EnterprisePageHeader
+        eyebrow="Tenant"
+        title="Compliance-Übersicht"
+        description="Konsolidierter Überblick über KI-Systeme, Risiken und Policy-Violations für diesen Mandanten – zentral für ISB und Betrieb."
+        actions={
+          <>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+              Status OK
+            </span>
+            <button type="button" className={`${CH_BTN_SECONDARY} text-sm`}>
+              Report exportieren
+            </button>
+            <Link href="/board/kpis" className={`${CH_BTN_PRIMARY} text-sm`}>
+              Zum Board
+            </Link>
+          </>
+        }
+      />
 
       <section
         aria-label="Mandant und technische Anbindung"
-        className="mb-8 grid gap-4 lg:grid-cols-3"
+        className="grid gap-4 lg:grid-cols-3"
       >
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Mandant</p>
@@ -124,32 +127,30 @@ export default async function TenantComplianceOverviewPage() {
         </article>
       </section>
 
-      <section className="mb-8 grid gap-4 md:grid-cols-3">
-        <div className="sbs-kpi-tile">
-          <div className="sbs-kpi-label">AI‑Systeme gesamt</div>
-          <div className="sbs-kpi-value">{totalSystems}</div>
-          <p className="mt-2 text-xs text-[var(--sbs-text-secondary)]">
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>KI-Systeme gesamt</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">{totalSystems}</p>
+          <p className="mt-2 text-xs text-slate-600">
             Registrierte produktive und in Prüfung befindliche Systeme.
           </p>
         </div>
-        <div className="sbs-kpi-tile">
-          <div className="sbs-kpi-label">High‑Risk Systeme</div>
-          <div className="sbs-kpi-value text-amber-600">{highRisk}</div>
-          <p className="mt-2 text-xs text-[var(--sbs-text-secondary)]">
-            Basierend auf AI‑Act Kategorie und Risikoeinstufung.
+        <div className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>High-Risk</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-amber-700">{highRisk}</p>
+          <p className="mt-2 text-xs text-slate-600">
+            Nach AI-Act-Kategorie und Risikoeinstufung.
           </p>
         </div>
-        <div className="sbs-kpi-tile">
-          <div className="sbs-kpi-label">Offene Policy‑Violations</div>
-          <div className="sbs-kpi-value text-rose-600">{openViolations}</div>
-          <p className="mt-2 text-xs text-[var(--sbs-text-secondary)]">
-            Aggregiert über alle AI‑Systeme dieses Tenants.
-          </p>
+        <div className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Offene Violations</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-700">{openViolations}</p>
+          <p className="mt-2 text-xs text-slate-600">Aggregiert über alle Systeme.</p>
         </div>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <section className="sbs-panel lg:col-span-2 overflow-hidden p-0">
+        <section className={`${CH_CARD} lg:col-span-2 overflow-hidden p-0`}>
           <div className="flex items-center justify-between border-b border-[var(--sbs-border)] px-5 py-3">
             <h2 className="text-sm font-bold text-[var(--sbs-text-primary)]">
               AI‑Systeme
@@ -223,7 +224,7 @@ export default async function TenantComplianceOverviewPage() {
           </div>
         </section>
 
-        <section className="sbs-panel overflow-hidden p-0">
+        <section className={`${CH_CARD} overflow-hidden p-0`}>
           <div className="flex items-center justify-between border-b border-[var(--sbs-border)] px-5 py-3">
             <h2 className="text-sm font-bold text-[var(--sbs-text-primary)]">
               Aktuelle Violations
@@ -256,6 +257,6 @@ export default async function TenantComplianceOverviewPage() {
           </div>
         </section>
       </div>
-    </>
+    </div>
   );
 }

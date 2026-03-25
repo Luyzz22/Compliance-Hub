@@ -10,33 +10,22 @@ export default function TenantLayout({
   return (
     <div className="relative ml-[calc(-50vw+50%)] w-screen max-w-[100vw] shrink-0">
       <div className="sbs-tenant-shell">
-      <aside className="sbs-tenant-sidebar">
-        <div
-          style={{
-            padding: "1.25rem",
-            borderBottom: "1px solid rgba(148,163,184,0.15)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "0.65rem",
-              fontWeight: 700,
-              letterSpacing: "0.12em",
-              color: "#94a3b8",
-            }}
-          >
-            COMPLIANCE HUB
+        <aside className="sbs-tenant-sidebar">
+          <div className="border-b border-slate-200 px-5 py-5">
+            <div className="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-slate-400">
+              Compliance Hub
+            </div>
+            <div className="mt-1 text-sm text-slate-700">
+              Mandant{" "}
+              <span className="font-semibold text-slate-900">tenant-overview-001</span>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              Tenant-Cockpit für Register, Policies und Nachweise.
+            </p>
           </div>
-          <div
-            style={{ marginTop: "0.35rem", fontSize: "0.85rem", color: "#e2e8f0" }}
-          >
-            Tenant:{" "}
-            <strong style={{ fontWeight: 600 }}>tenant-overview-001</strong>
-          </div>
-        </div>
-        <TenantNav />
-      </aside>
-      <div className="sbs-tenant-main">{children}</div>
+          <TenantNav />
+        </aside>
+        <div className="sbs-tenant-main min-w-0">{children}</div>
       </div>
     </div>
   );

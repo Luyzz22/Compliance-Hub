@@ -29,40 +29,40 @@ function SettingsIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export function SbsHeader() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-[100] h-[var(--sbs-header-h)] border-b border-white/10 bg-slate-950/85 shadow-sm shadow-black/20 backdrop-blur-xl backdrop-saturate-150">
-      <div className="mx-auto flex h-full min-w-0 max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
+    <header className="sticky top-0 z-50 border-b border-slate-200/90 bg-white/90 shadow-sm backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-white/80">
+      <div className="mx-auto flex h-16 min-w-0 max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
         <Link href="/" className="group flex min-w-0 items-center gap-3 no-underline">
           <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-teal-600 text-xs font-bold text-slate-950 shadow-md shadow-cyan-900/30"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 text-xs font-bold text-white shadow-sm shadow-cyan-900/10"
             aria-hidden
           >
             CH
           </span>
           <span className="min-w-0 leading-tight">
-            <span className="block truncate text-sm font-semibold tracking-tight text-white md:text-base">
+            <span className="block truncate text-sm font-semibold tracking-tight text-slate-900 md:text-base">
               Compliance Hub
             </span>
-            <span className="hidden text-[0.65rem] font-medium text-slate-400 sm:block">
-              GRC · EU AI Act · NIS2 · ISO 42001
+            <span className="hidden text-[0.65rem] font-medium text-slate-500 sm:block">
+              Enterprise GRC · EU AI Act · NIS2 · ISO 42001
             </span>
           </span>
         </Link>
         <nav
-          className="flex flex-wrap items-center justify-end gap-x-1 gap-y-1 md:gap-x-2"
+          className="flex flex-wrap items-center justify-end gap-x-0.5 gap-y-1 md:gap-x-1"
           aria-label="Hauptnavigation"
         >
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-lg px-2 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white md:px-2.5 md:text-[0.8rem]"
+              className="rounded-lg px-2 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 md:px-2.5 md:text-[0.8rem]"
             >
               {item.label}
             </Link>
           ))}
           <Link
             href="/settings"
-            className="ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-slate-300 transition hover:bg-white/10 hover:text-white"
+            className="ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label="Einstellungen und Mandant"
             title="Einstellungen (Mandant)"
           >
