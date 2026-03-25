@@ -33,6 +33,7 @@ class FeatureFlag(StrEnum):
     ai_kpi_kri = "ai_kpi_kri"
     ai_governance_setup_wizard = "ai_governance_setup_wizard"
     advisor_client_snapshot = "advisor_client_snapshot"
+    readiness_score = "readiness_score"
 
 
 _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
@@ -59,6 +60,7 @@ _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
     FeatureFlag.ai_kpi_kri: "COMPLIANCEHUB_FEATURE_AI_KPI_KRI",
     FeatureFlag.ai_governance_setup_wizard: "COMPLIANCEHUB_FEATURE_AI_GOVERNANCE_SETUP_WIZARD",
     FeatureFlag.advisor_client_snapshot: "COMPLIANCEHUB_FEATURE_ADVISOR_CLIENT_SNAPSHOT",
+    FeatureFlag.readiness_score: "COMPLIANCEHUB_FEATURE_READINESS_SCORE",
 }
 
 # LLM master switch defaults off until keys and policies are configured.

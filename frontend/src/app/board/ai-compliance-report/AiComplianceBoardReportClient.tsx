@@ -18,6 +18,7 @@ import {
   CH_SECTION_LABEL,
   BOARD_PAGE_ROOT_CLASS,
 } from "@/lib/boardLayout";
+import { BoardReadinessCard } from "@/components/board/BoardReadinessCard";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 
 const ALL_FRAMEWORKS: { key: string; label: string }[] = [
@@ -167,6 +168,10 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
       <p className="mb-6 text-sm text-slate-500">
         Mandant: <span className="font-mono font-semibold text-slate-800">{tenantId}</span>
       </p>
+
+      <div className="mb-6">
+        <BoardReadinessCard tenantId={tenantId} />
+      </div>
 
       {loadErr ? (
         <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">

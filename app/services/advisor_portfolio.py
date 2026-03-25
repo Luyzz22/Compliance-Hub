@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.advisor_portfolio_models import AdvisorPortfolioResponse, AdvisorPortfolioTenantEntry
 from app.feature_flags import FeatureFlag, is_feature_enabled
+from app.readiness_score_models import ReadinessScoreSummary
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository
 from app.repositories.ai_systems import AISystemRepository
@@ -20,6 +21,7 @@ from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.services.advisor_client_governance_snapshot import build_governance_brief_for_tenant
+from app.services.readiness_score_service import compute_readiness_score
 from app.services.ai_governance_kpis import compute_ai_governance_kpis
 from app.services.compliance_dashboard import compute_ai_compliance_overview
 from app.services.setup_status import compute_tenant_setup_status
@@ -74,6 +76,15 @@ def build_advisor_portfolio(
                 logger.exception("advisor_portfolio_governance_brief_failed tenant=%s", tid)
                 brief = None
 
+        readiness_summary: ReadinessScoreSummary | None = None
+        if is_feature_enabled(FeatureFlag.readiness_score):
+            try:
+                rs = compute_readiness_score(session, tid)
+                readiness_summary = ReadinessScoreSummary(score=rs.score, level=rs.level)
+            except Exception:
+                logger.exception("advisor_portfolio_readiness_failed tenant=%s", tid)
+                readiness_summary = None
+
         tenants_out.append(
             AdvisorPortfolioTenantEntry(
                 tenant_id=tid,
@@ -92,6 +103,7 @@ def build_advisor_portfolio(
                 setup_total_steps=setup.total_steps,
                 setup_progress_ratio=setup_ratio,
                 governance_brief=brief,
+                readiness_summary=readiness_summary,
             ),
         )
 
@@ -117,11 +129,16 @@ def advisor_portfolio_to_csv(portfolio: AdvisorPortfolioResponse) -> str:
         "setup_completed_steps",
         "setup_total_steps",
         "setup_progress_ratio",
+        "readiness_score",
+        "readiness_level",
     ]
     w = csv.DictWriter(buf, fieldnames=fieldnames)
     w.writeheader()
     for t in portfolio.tenants:
         row = t.model_dump()
+        rs = row.get("readiness_summary")
+        row["readiness_score"] = rs["score"] if rs else ""
+        row["readiness_level"] = rs["level"] if rs else ""
         w.writerow({k: row.get(k) for k in fieldnames})
     return buf.getvalue()
 

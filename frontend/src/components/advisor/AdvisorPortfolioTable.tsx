@@ -46,8 +46,15 @@ export interface AdvisorPortfolioTableProps {
   advisorId: string;
 }
 
+function readinessBadgeClasses(score: number): string {
+  if (score < 40) return "bg-rose-100 text-rose-900 ring-1 ring-rose-200";
+  if (score < 70) return "bg-amber-100 text-amber-950 ring-1 ring-amber-200";
+  return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200";
+}
+
 export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTableProps) {
   const snapUi = chConfig.featureAdvisorClientSnapshot();
+  const readinessUi = chConfig.featureReadinessScore();
 
   if (rows.length === 0) {
     return (
@@ -78,6 +85,14 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
               <th>Setup</th>
               <th>Offene Actions</th>
               <th>Status</th>
+              {readinessUi ? (
+                <th
+                  title="Berechnet aus Setup, Framework-Coverage, KPIs, regulatorischen Gaps und Board-Reports."
+                  className="max-w-[6rem]"
+                >
+                  Readiness
+                </th>
+              ) : null}
               {snapUi ? <th>Snapshot</th> : null}
               <th>Mandanten-Steckbrief</th>
               <th />
@@ -174,6 +189,21 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                       {badgeLabel(h)}
                     </span>
                   </td>
+                  {readinessUi ? (
+                    <td className="text-center align-middle">
+                      {t.readiness_summary ? (
+                        <span
+                          className={`inline-flex min-w-[2.25rem] justify-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${readinessBadgeClasses(t.readiness_summary.score)}`}
+                          title={`Level ${t.readiness_summary.level}; aus Setup, Coverage, KPIs, Gaps, Reports.`}
+                          data-testid={`advisor-readiness-badge-${t.tenant_id}`}
+                        >
+                          {t.readiness_summary.score}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-[var(--sbs-text-muted)]">–</span>
+                      )}
+                    </td>
+                  ) : null}
                   {snapUi ? (
                     <td className="align-top">
                       <Link

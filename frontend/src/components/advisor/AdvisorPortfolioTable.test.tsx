@@ -5,7 +5,7 @@ import type { AdvisorPortfolioTenantEntry } from "@/lib/api";
 
 import { AdvisorPortfolioTable } from "./AdvisorPortfolioTable";
 
-const advisorSnapshotFlag = vi.hoisted(() => ({ on: true }));
+const portfolioFeatureFlags = vi.hoisted(() => ({ snapshot: true, readiness: true }));
 
 vi.mock("@/lib/workspaceTenantClient", () => ({
   openWorkspaceTenantAndGoComplianceOverview: vi.fn(),
@@ -17,12 +17,14 @@ vi.mock("@/lib/config", async (importOriginal) => {
   return {
     ...actual,
     featurePilotRunbook: () => true,
-    featureAdvisorClientSnapshot: () => advisorSnapshotFlag.on,
+    featureAdvisorClientSnapshot: () => portfolioFeatureFlags.snapshot,
+    featureReadinessScore: () => portfolioFeatureFlags.readiness,
   };
 });
 
 afterEach(() => {
-  advisorSnapshotFlag.on = true;
+  portfolioFeatureFlags.snapshot = true;
+  portfolioFeatureFlags.readiness = true;
   cleanup();
 });
 
@@ -48,12 +50,14 @@ const sampleRows: AdvisorPortfolioTenantEntry[] = [
       regulatory_gap_count: 5,
       nis2_critical_ai_count: 1,
     },
+    readiness_summary: { score: 58, level: "managed" },
   },
 ];
 
 describe("AdvisorPortfolioTable", () => {
   it("renders tenant name and readiness", () => {
-    advisorSnapshotFlag.on = true;
+    portfolioFeatureFlags.snapshot = true;
+    portfolioFeatureFlags.readiness = true;
     render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     expect(screen.getByText("Demo Mandant A")).toBeTruthy();
     expect(screen.getByText("72%")).toBeTruthy();
@@ -61,7 +65,8 @@ describe("AdvisorPortfolioTable", () => {
   });
 
   it("shows Mandanten-Steckbrief download links when advisorId is set", () => {
-    advisorSnapshotFlag.on = true;
+    portfolioFeatureFlags.snapshot = true;
+    portfolioFeatureFlags.readiness = true;
     render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     const mdLinks = screen.getAllByRole("link", { name: /Steckbrief \(MD\)/i });
     expect(mdLinks.length).toBeGreaterThanOrEqual(1);
@@ -81,7 +86,8 @@ describe("AdvisorPortfolioTable", () => {
   });
 
   it("renders governance snapshot link and framework badges when brief is present", () => {
-    advisorSnapshotFlag.on = true;
+    portfolioFeatureFlags.snapshot = true;
+    portfolioFeatureFlags.readiness = true;
     render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     const snap = screen.getByTestId("advisor-snapshot-link-t-demo-1");
     expect(snap.getAttribute("href")).toBe("/advisor/clients/t-demo-1/governance-snapshot");
@@ -89,12 +95,21 @@ describe("AdvisorPortfolioTable", () => {
     expect(screen.getByText("4/6")).toBeTruthy();
     expect(screen.getByText("62%")).toBeTruthy();
     expect(screen.getByText(/NIS2-krit\.: 1/)).toBeTruthy();
+    expect(screen.getByTestId("advisor-readiness-badge-t-demo-1").textContent).toContain("58");
   });
 
   it("hides snapshot columns when featureAdvisorClientSnapshot is off", () => {
-    advisorSnapshotFlag.on = false;
+    portfolioFeatureFlags.snapshot = false;
     render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     expect(screen.queryByTestId("advisor-snapshot-link-t-demo-1")).toBeNull();
     expect(screen.queryByText("Snapshot anzeigen")).toBeNull();
+  });
+
+  it("hides readiness column when featureReadinessScore is off", () => {
+    portfolioFeatureFlags.readiness = false;
+    portfolioFeatureFlags.snapshot = true;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    expect(screen.queryByTestId("advisor-readiness-badge-t-demo-1")).toBeNull();
+    expect(screen.queryByText("Readiness")).toBeNull();
   });
 });

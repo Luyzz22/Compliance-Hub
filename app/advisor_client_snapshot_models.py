@@ -6,6 +6,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.readiness_score_models import ReadinessScoreResponse
+
 
 class ClientInfoSnapshot(BaseModel):
     tenant_id: str
@@ -104,6 +106,10 @@ class AdvisorClientGovernanceSnapshotResponse(BaseModel):
     cross_reg_summary: list[CrossRegFrameworkSnapshot] = Field(default_factory=list)
     gap_assist: GapAssistSnapshot
     reports_summary: ReportsSummarySnapshot
+    readiness: ReadinessScoreResponse | None = Field(
+        default=None,
+        description="Optional: AI & Compliance Readiness (FEATURE_READINESS_SCORE).",
+    )
 
 
 class AdvisorGovernanceSnapshotMarkdownResponse(BaseModel):

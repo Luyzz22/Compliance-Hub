@@ -85,6 +85,7 @@ vi.mock("@/lib/config", async (importOriginal) => {
   return {
     ...actual,
     featureAiComplianceBoardReport: () => false,
+    featureReadinessScore: () => false,
   };
 });
 
