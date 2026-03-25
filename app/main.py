@@ -192,6 +192,7 @@ from app.security import (
 )
 from app.services import llm_client as llm_client_mod
 from app.services import usage_event_logger as usage_event_logger
+from app.services import workspace_telemetry
 from app.services.advisor_board_reports import (
     get_board_report_detail_for_advisor,
     list_advisor_portfolio_board_reports,
@@ -2987,6 +2988,7 @@ def get_tenant_compliance_overview(
 
 @app.get("/api/v1/workspace/tenant-meta", response_model=TenantWorkspaceMetaResponse)
 def get_workspace_tenant_meta(
+    request: Request,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
 ) -> TenantWorkspaceMetaResponse:
@@ -3004,11 +3006,11 @@ def get_workspace_tenant_meta(
         mutation_blocked=mut_blocked,
     )
     if row.is_demo:
-        usage_event_logger.log_usage_event(
+        workspace_telemetry.log_workspace_session_started(
             session,
             tid,
-            usage_event_logger.DEMO_SESSION_STARTED,
-            {"workspace_mode": workspace_mode_for_telemetry(session, tid)},
+            workspace_mode=workspace_mode_for_telemetry(session, tid),
+            request_path=request.url.path,
             dedupe_same_type_hours=24,
         )
     return TenantWorkspaceMetaResponse(
@@ -3024,27 +3026,27 @@ def get_workspace_tenant_meta(
     )
 
 
+@app.get("/api/v1/workspace/feature-used", tags=["workspace"])
 @app.get("/api/v1/workspace/demo-feature-used", tags=["workspace"])
-def log_demo_feature_used(
+def log_workspace_feature_used(
+    request: Request,
     feature_key: Annotated[str, Query(min_length=1, max_length=64, pattern=r"^[a-z0-9_]+$")],
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
 ) -> dict[str, bool]:
-    """Telemetrie für Demo-Story (keine PII, nur feature_key). GET vermeidet Read-only-Konflikt."""
+    """workspace_feature_used (keine PII). GET; nur is_demo-Mandanten (read-only-kompatibel)."""
     row = TenantRegistryRepository(session).get_by_id(auth_context.tenant_id)
     if row is None or not row.is_demo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Demo telemetry only for registered demo tenants",
         )
-    usage_event_logger.log_usage_event(
+    workspace_telemetry.log_workspace_feature_used(
         session,
         auth_context.tenant_id,
-        usage_event_logger.DEMO_FEATURE_USED,
-        {
-            "feature_key": feature_key,
-            "workspace_mode": workspace_mode_for_telemetry(session, auth_context.tenant_id),
-        },
+        workspace_mode=workspace_mode_for_telemetry(session, auth_context.tenant_id),
+        feature_name=feature_key,
+        request_path=request.url.path,
     )
     return {"ok": True}
 

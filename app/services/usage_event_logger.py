@@ -27,9 +27,17 @@ LLM_KPI_SUGGESTION_REQUESTED = "llm_kpi_suggestion_requested"
 LLM_EXPLAIN_REQUESTED = "llm_explain_requested"
 LLM_ACTION_DRAFT_REQUESTED = "llm_action_draft_requested"
 LLM_AI_ACT_DOC_DRAFT_REQUESTED = "llm_ai_act_doc_draft_requested"
-DEMO_SESSION_STARTED = "demo_session_started"
-DEMO_FEATURE_USED = "demo_feature_used"
-DEMO_MUTATION_BLOCKED = "demo_mutation_blocked"
+# Kanonische Workspace-Telemetrie (SIEM / ISO-Nachweis)
+WORKSPACE_SESSION_STARTED = "workspace_session_started"
+WORKSPACE_FEATURE_USED = "workspace_feature_used"
+WORKSPACE_MUTATION_BLOCKED = "workspace_mutation_blocked"
+# Reserviert, noch ohne Emission im Kern
+WORKSPACE_INCIDENT_FLAGGED = "workspace_incident_flagged"
+
+# Abwärtskompatibel: gleiche Strings wie WORKSPACE_* (historische Imports/Tests)
+DEMO_SESSION_STARTED = WORKSPACE_SESSION_STARTED
+DEMO_FEATURE_USED = WORKSPACE_FEATURE_USED
+DEMO_MUTATION_BLOCKED = WORKSPACE_MUTATION_BLOCKED
 
 
 def _parse_tracking_enabled() -> bool:

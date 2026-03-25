@@ -1,4 +1,4 @@
-"""Telemetrie demo_mutation_blocked bei 403 durch Demo-Schreibschutz."""
+"""Telemetrie workspace_mutation_blocked bei 403 durch Demo-Schreibschutz."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def _ai_payload(suffix: str) -> dict:
     }
 
 
-def test_post_ai_system_emits_demo_mutation_blocked() -> None:
+def test_post_ai_system_emits_workspace_mutation_blocked() -> None:
     tid = f"demo-mut-tel-{uuid.uuid4().hex[:10]}"
     s = SessionLocal()
     try:
@@ -89,7 +89,9 @@ def test_post_ai_system_emits_demo_mutation_blocked() -> None:
         assert len(rows) == n0_count + 1
         payload = json.loads(rows[-1])
         assert payload["workspace_mode"] == "demo"
-        assert payload["http_method"] == "POST"
+        assert payload["method"] == "POST"
+        assert payload["result"] == "forbidden_demo_readonly"
+        assert payload.get("actor_type") == "tenant"
         assert "/api/v1/ai-systems" in payload["route"]
     finally:
         s2.close()
