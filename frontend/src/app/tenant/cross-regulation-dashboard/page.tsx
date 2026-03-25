@@ -15,7 +15,7 @@ import {
   fetchRegulatoryControls,
   fetchRegulatoryRequirements,
 } from "@/lib/api";
-import { featureCrossRegulationDashboard } from "@/lib/config";
+import { featureCrossRegulationDashboard, featureCrossRegulationLlmAssist } from "@/lib/config";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
 export default async function CrossRegulationDashboardPage() {
@@ -78,6 +78,7 @@ export default async function CrossRegulationDashboardPage() {
           summary={summary.frameworks}
           requirements={requirements}
           controls={controls}
+          llmAssistEnabled={featureCrossRegulationLlmAssist()}
         />
       ) : null}
     </div>

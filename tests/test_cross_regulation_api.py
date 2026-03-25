@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import uuid
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import engine
+from app.llm_models import LLMProvider, LLMResponse
 from app.main import app
 from app.models_db import (
     ComplianceControlDB,
@@ -112,3 +115,64 @@ def test_cross_regulation_tenant_path_mismatch(monkeypatch: pytest.MonkeyPatch) 
     h = _headers()
     r = client.get("/api/v1/tenants/other-tenant/compliance/cross-regulation/summary", headers=h)
     assert r.status_code == 403
+
+
+def test_llm_gap_assistant_forbidden_when_assist_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_CROSS_REGULATION_DASHBOARD", "true")
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_CROSS_REGULATION_LLM_ASSIST", "false")
+    h = _headers()
+    tid = h["x-tenant-id"]
+    r = client.post(
+        f"/api/v1/tenants/{tid}/compliance/cross-regulation/llm-gap-assistant",
+        headers=h,
+        json={},
+    )
+    assert r.status_code == 403
+
+
+def test_llm_gap_assistant_mocked_llm_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_CROSS_REGULATION_DASHBOARD", "true")
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_CROSS_REGULATION_LLM_ASSIST", "true")
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_ENABLED", "true")
+
+    tid = f"cr-llm-{uuid.uuid4().hex[:10]}"
+    h = {"x-api-key": "board-kpi-key", "x-tenant-id": tid}
+
+    llm_json = {
+        "suggestions": [
+            {
+                "requirement_ids": [1],
+                "frameworks": ["eu_ai_act"],
+                "recommendation_type": "new_control",
+                "suggested_control_name": "Test-Control",
+                "suggested_control_description": "Beschreibung",
+                "rationale": "EU AI Act Art. 9 und NIS2 erfordern dokumentiertes Risikomanagement.",
+                "priority": "hoch",
+                "suggested_owner_role": "CISO",
+                "suggested_actions": ["Risikoanalyse starten"],
+            }
+        ]
+    }
+
+    def _fake_route_and_call(self, task_type, prompt, tenant_id, **kwargs):
+        return LLMResponse(
+            text=json.dumps(llm_json, ensure_ascii=False),
+            provider=LLMProvider.CLAUDE,
+            model_id="test-model",
+        )
+
+    with patch(
+        "app.services.cross_regulation_llm_gap_assistant.LLMRouter.route_and_call",
+        _fake_route_and_call,
+    ):
+        r = client.post(
+            f"/api/v1/tenants/{tid}/compliance/cross-regulation/llm-gap-assistant",
+            headers=h,
+            json={"max_suggestions": 5},
+        )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["tenant_id"] == tid
+    assert body["gap_count_used"] > 0
+    assert len(body["suggestions"]) == 1
+    assert body["suggestions"][0]["suggested_control_name"] == "Test-Control"

@@ -61,7 +61,11 @@ def _static_fallback_chain(task_type: LLMTaskType) -> list[LLMProvider]:
         return [LLMProvider.LLAMA]
     if task_type == LLMTaskType.KPI_SUGGESTION_ASSIST:
         return [LLMProvider.GEMINI, LLMProvider.OPENAI, LLMProvider.CLAUDE, LLMProvider.LLAMA]
-    if task_type in (LLMTaskType.EXPLAIN_KPI_ALERT, LLMTaskType.ACTION_DRAFT_GENERATION):
+    if task_type in (
+        LLMTaskType.EXPLAIN_KPI_ALERT,
+        LLMTaskType.ACTION_DRAFT_GENERATION,
+        LLMTaskType.CROSS_REGULATION_GAP_ASSIST,
+    ):
         return [LLMProvider.CLAUDE, LLMProvider.OPENAI, LLMProvider.GEMINI, LLMProvider.LLAMA]
     return list(LLMProvider)
 

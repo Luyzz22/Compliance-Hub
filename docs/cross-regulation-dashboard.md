@@ -36,6 +36,22 @@ Alle Pfade verlangen **`x-tenant-id`** / API-Key; **`tenant_id` im Pfad** muss m
 - `GET /api/v1/tenants/{tenant_id}/compliance/regulatory-requirements/{id}/controls`
 - `GET /api/v1/tenants/{tenant_id}/ai-systems/{ai_system_id}/regulatory-context`
 
+### KI-gestützte Gap-Analyse (LLM-Assist)
+
+Schalter: **`COMPLIANCEHUB_FEATURE_CROSS_REGULATION_LLM_ASSIST`** (Frontend: **`NEXT_PUBLIC_FEATURE_CROSS_REGULATION_LLM_ASSIST`**). Zusätzlich muss der **LLM-Master** für den Mandanten aktiv sein (**`COMPLIANCEHUB_FEATURE_LLM_ENABLED`**, optional mandantenbezogene Overrides), sonst liefert der Router **403** bzw. **503**.
+
+- `POST /api/v1/tenants/{tenant_id}/compliance/cross-regulation/llm-gap-assistant`  
+  Body (optional): `focus_frameworks` (Liste von Framework-Keys), `max_suggestions` (1–10, Standard 8).  
+  Antwort: strukturierte **`suggestions`** (Control-Name/Beschreibung, Priorität, Rollenhinweis, betroffene Requirement-IDs, Frameworks, kurze Begründung, Aktionsstichpunkte).
+
+**Was der Assistent tut:** Er wertet die vom Backend bereitgestellte **Gap-Struktur** aus (Coverage je Framework, Liste offener/teilweise/geplanter Pflichten inkl. verknüpfter Control-Metadaten, Status, KI-System-/Policy-/Action-**IDs**). Es werden **keine** personenbezogenen Daten und **keine** Freitext-Dokumentinhalte an das Modell übergeben.
+
+**Normenfokus (Prompt-Design):** EU AI Act, ISO 42001, ISO 27001/27701, NIS2/KRITIS-Dachgesetz, DSGVO – Ausgabe knapp und board-tauglich. Routing im Backend: **Claude zuerst**, Fallback wie bei anderen Legal-/Governance-Tasks (siehe `docs/llm-routing.md`).
+
+**Audit:** Pro erfolgreichem Lauf wird ein **Audit-Event** geschrieben (Zeitpunkt, Mandant, Anzahl Vorschläge, optional Fokus-Frameworks). **Kein** Prompt- und Response-Volltext in den Metadaten.
+
+**Disclaimer:** Die Vorschläge sind **fachliche Hilfestellung**, **keine Rechtsberatung**.
+
 ## Beispiel-Flow
 
 1. **Control anlegen** (aktuell über DB/Tooling): z. B. „AI-Risikomanagement-Prozess“ für `tenant_id` T.

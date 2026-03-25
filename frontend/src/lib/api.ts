@@ -1561,3 +1561,39 @@ export async function fetchAiSystemRegulatoryContext(
   const sid = encodeURIComponent(aiSystemId);
   return tenantApiFetch(`/api/v1/tenants/${tid}/ai-systems/${sid}/regulatory-context`, tenantId);
 }
+
+export interface CrossRegLlmGapSuggestionDto {
+  requirement_ids: number[];
+  frameworks: string[];
+  recommendation_type: string;
+  suggested_control_name: string;
+  suggested_control_description: string;
+  rationale: string;
+  priority: string;
+  suggested_owner_role: string;
+  suggested_actions: string[];
+}
+
+export interface CrossRegLlmGapAssistantResponseDto {
+  tenant_id: string;
+  suggestions: CrossRegLlmGapSuggestionDto[];
+  gap_count_used: number;
+}
+
+export async function postCrossRegulationLlmGapAssistant(
+  tenantId: string,
+  body: { focus_frameworks?: string[] | null; max_suggestions?: number },
+): Promise<CrossRegLlmGapAssistantResponseDto> {
+  const tid = encodeURIComponent(tenantId);
+  return tenantApiFetch(
+    `/api/v1/tenants/${tid}/compliance/cross-regulation/llm-gap-assistant`,
+    tenantId,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        focus_frameworks: body.focus_frameworks ?? null,
+        max_suggestions: body.max_suggestions ?? 8,
+      }),
+    },
+  );
+}
