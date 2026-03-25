@@ -19,6 +19,11 @@ class FeatureFlag(StrEnum):
     evidence_uploads = "evidence_uploads"
     guided_setup = "guided_setup"
     pilot_runbook = "pilot_runbook"
+    llm_enabled = "llm_enabled"
+    llm_legal_reasoning = "llm_legal_reasoning"
+    llm_report_assistant = "llm_report_assistant"
+    llm_classification_tagging = "llm_classification_tagging"
+    llm_chat_assistant = "llm_chat_assistant"
 
 
 _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
@@ -28,6 +33,16 @@ _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
     FeatureFlag.evidence_uploads: "COMPLIANCEHUB_FEATURE_EVIDENCE_UPLOADS",
     FeatureFlag.guided_setup: "COMPLIANCEHUB_FEATURE_GUIDED_SETUP",
     FeatureFlag.pilot_runbook: "COMPLIANCEHUB_FEATURE_PILOT_RUNBOOK",
+    FeatureFlag.llm_enabled: "COMPLIANCEHUB_FEATURE_LLM_ENABLED",
+    FeatureFlag.llm_legal_reasoning: "COMPLIANCEHUB_FEATURE_LLM_LEGAL_REASONING",
+    FeatureFlag.llm_report_assistant: "COMPLIANCEHUB_FEATURE_LLM_REPORT_ASSISTANT",
+    FeatureFlag.llm_classification_tagging: "COMPLIANCEHUB_FEATURE_LLM_CLASSIFICATION_TAGGING",
+    FeatureFlag.llm_chat_assistant: "COMPLIANCEHUB_FEATURE_LLM_CHAT_ASSISTANT",
+}
+
+# LLM master switch defaults off until keys and policies are configured.
+_FLAG_DEFAULTS: dict[FeatureFlag, bool] = {
+    FeatureFlag.llm_enabled: False,
 }
 
 
@@ -58,8 +73,8 @@ def is_feature_enabled(
             return override
 
     env_key = _FLAG_ENV_KEYS[flag]
-    # Standard: an, damit bestehende Umgebungen und Tests ohne neue ENV-Variablen funktionieren.
-    return _parse_env_bool(env_key, default=True)
+    default = _FLAG_DEFAULTS.get(flag, True)
+    return _parse_env_bool(env_key, default=default)
 
 
 def create_feature_guard(flag: FeatureFlag):

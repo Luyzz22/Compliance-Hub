@@ -84,6 +84,7 @@ from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
 from app.feature_flags import FeatureFlag, create_feature_guard
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
+from app.llm_models import LLMTaskType
 from app.models import (
     ComplianceAction,
     DocumentIngestRequest,
@@ -127,12 +128,14 @@ from app.security import (
     require_advisor_api_access,
     require_demo_seed_api_key,
 )
+from app.services import llm_client as llm_client_mod
 from app.services import usage_event_logger as usage_event_logger
 from app.services.advisor_portfolio import (
     advisor_portfolio_to_csv,
     advisor_portfolio_to_json_bytes,
     build_advisor_portfolio,
 )
+from app.services.advisor_report_llm_enrichment import maybe_enrich_advisor_report_with_llm_summary
 from app.services.advisor_tenant_report import build_advisor_tenant_report
 from app.services.advisor_tenant_report_markdown import render_tenant_report_markdown
 from app.services.ai_board_alerts import compute_board_alerts
@@ -183,6 +186,7 @@ from app.services.evidence_service import (
 )
 from app.services.evidence_storage import get_evidence_storage
 from app.services.high_risk_scenarios import list_high_risk_scenarios
+from app.services.llm_router import LLMRouter
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
@@ -202,6 +206,19 @@ from app.usage_metrics_models import TenantUsageMetricsResponse
 
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
+
+
+class LLMInvokeRequest(BaseModel):
+    task_type: LLMTaskType
+    prompt: str = Field(..., min_length=1, max_length=48000)
+
+
+class LLMInvokeResponse(BaseModel):
+    text: str
+    provider: str
+    model_id: str
+    input_tokens_est: int = Field(default=0, ge=0)
+    output_tokens_est: int = Field(default=0, ge=0)
 
 
 @asynccontextmanager
@@ -1814,6 +1831,45 @@ def get_tenant_usage_metrics_endpoint(
     return compute_tenant_usage_metrics(session, tenant_id)
 
 
+@app.post(
+    "/api/v1/llm/invoke",
+    response_model=LLMInvokeResponse,
+    tags=["llm"],
+)
+def post_llm_invoke(
+    _ff_llm: Annotated[None, Depends(create_feature_guard(FeatureFlag.llm_enabled))],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    body: LLMInvokeRequest,
+) -> LLMInvokeResponse:
+    """Mandanten-gebundener LLM-Aufruf über den Router (Task-Flags + Policy)."""
+    router = LLMRouter(session=session)
+    try:
+        resp = router.route_and_call(body.task_type, body.prompt, auth_context.tenant_id)
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMProviderHTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    return LLMInvokeResponse(
+        text=resp.text,
+        provider=resp.provider.value,
+        model_id=resp.model_id,
+        input_tokens_est=resp.input_tokens_est,
+        output_tokens_est=resp.output_tokens_est,
+    )
+
+
 def _api_key_row_to_read(row: TenantApiKeyDB) -> TenantApiKeyRead:
     created = row.created_at_utc
     created_s = created.isoformat() if hasattr(created, "isoformat") else str(created)
@@ -2102,6 +2158,7 @@ def get_advisor_tenant_report(
         violation_repo=violation_repo,
         action_repo=action_repo,
     )
+    report = maybe_enrich_advisor_report_with_llm_summary(session, tenant_id, report)
     if export_format == "markdown":
         md = render_tenant_report_markdown(report)
         fname = f"tenant-report-{tenant_id}.md"

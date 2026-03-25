@@ -38,11 +38,18 @@ def render_tenant_report_markdown(report: AdvisorTenantReport) -> str:
         "Daten aus Register, Readiness und KPIs.*"
     )
 
+    narrative_block = ""
+    if report.executive_summary_narrative:
+        narrative_block = (
+            "\n## Executive Summary (sprachliche Kurzfassung)\n\n"
+            f"{report.executive_summary_narrative.strip()}\n"
+        )
+
     return f"""# Compliance Hub Mandanten-Steckbrief – {report.tenant_name}
 
 **Mandanten-ID:** `{report.tenant_id}`  
 **Stand (UTC):** {report.generated_at_utc.isoformat()}
-
+{narrative_block}
 ## Profil
 
 - Branche / Region: {loc}

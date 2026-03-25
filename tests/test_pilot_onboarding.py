@@ -37,6 +37,8 @@ def test_provision_tenant_sets_defaults_and_initial_key() -> None:
     assert flags["evidence_uploads"] is True
     assert flags.get("pilot_runbook") is True
     assert flags.get("api_keys_ui") is True
+    assert flags.get("llm_enabled") is False
+    assert flags.get("llm_legal_reasoning") is False
     ikey = body["initial_api_key"]
     assert ikey["name"] == "Initial Pilot Key"
     assert len(ikey["plain_key"]) > 20

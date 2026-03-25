@@ -366,3 +366,41 @@ class UsageEventTable(Base):
         nullable=False,
         index=True,
     )
+
+
+class TenantLLMPolicyOverrideDB(Base):
+    """JSON-Override für Mandanten-LLM-Richtlinien (merged mit Standard-Policy)."""
+
+    __tablename__ = "tenant_llm_policy_overrides"
+
+    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    policy_json: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class LLMCallMetadataDB(Base):
+    """Metadaten je LLM-Aufruf (ohne Prompt/Response-Inhalt, DSGVO-minimierend)."""
+
+    __tablename__ = "llm_call_metadata"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    task_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_length: Mapped[int] = mapped_column(Integer, nullable=False)
+    response_length: Mapped[int] = mapped_column(Integer, nullable=False)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    estimated_input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    estimated_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+        index=True,
+    )
