@@ -68,9 +68,7 @@ def provision_tenant(session: Session, body: ProvisionTenantRequest) -> Provisio
         )
         advisor_linked = True
 
-    effective = {
-        f.value: is_feature_enabled(f, tenant_id, session=session) for f in FeatureFlag
-    }
+    effective = {f.value: is_feature_enabled(f, tenant_id, session=session) for f in FeatureFlag}
 
     return ProvisionTenantResponse(
         tenant_id=tenant_id,

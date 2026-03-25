@@ -56,9 +56,7 @@ class TenantFeatureFlagOverrideDB(Base):
     """Mandanten-spezifische Feature-Flag-Overrides (Pilot-Defaults vs. ENV-Fallback)."""
 
     __tablename__ = "tenant_feature_flag_overrides"
-    __table_args__ = (
-        UniqueConstraint("tenant_id", "flag_key", name="uq_tenant_feature_flag"),
-    )
+    __table_args__ = (UniqueConstraint("tenant_id", "flag_key", name="uq_tenant_feature_flag"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
