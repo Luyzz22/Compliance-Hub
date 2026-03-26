@@ -12,7 +12,9 @@ from app.governance_maturity_contract import (
     READINESS_API_LEVELS,
     READINESS_LEVEL_DE,
     contract_full_mapping_snapshot,
+    contract_full_oami_mapping_snapshot,
     contract_mapping_for_tests,
+    derive_oami_level_from_index,
     derive_readiness_level_from_score,
     normalize_index_level,
     normalize_readiness_level,
@@ -22,6 +24,9 @@ from app.governance_maturity_contract import (
 
 _MAPPING_SNAPSHOT_PATH = (
     Path(__file__).resolve().parent / "fixtures" / "governance_maturity_mapping_snapshot.json"
+)
+_OAMI_MAPPING_SNAPSHOT_PATH = (
+    Path(__file__).resolve().parent / "fixtures" / "governance_maturity_oami_mapping_snapshot.json"
 )
 
 
@@ -85,6 +90,43 @@ def test_derive_readiness_level_from_score_bands() -> None:
     assert derive_readiness_level_from_score(69) == "managed"
     assert derive_readiness_level_from_score(70) == "embedded"
     assert derive_readiness_level_from_score(100) == "embedded"
+
+
+def test_derive_oami_level_from_index_bands() -> None:
+    assert derive_oami_level_from_index(0) == "low"
+    assert derive_oami_level_from_index(39) == "low"
+    assert derive_oami_level_from_index(40) == "medium"
+    assert derive_oami_level_from_index(69) == "medium"
+    assert derive_oami_level_from_index(70) == "high"
+    assert derive_oami_level_from_index(100) == "high"
+
+
+def test_oami_bands_in_full_snapshot_match_derive() -> None:
+    snap = contract_full_oami_mapping_snapshot()
+    bands = snap["oami_index_bands"]
+    assert isinstance(bands, list) and len(bands) == 3
+    for b in bands:
+        lo = int(b["index_min"])
+        hi_ex = int(b["index_max_exclusive"])
+        for idx in range(lo, min(hi_ex, 101)):
+            assert derive_oami_level_from_index(idx) == b["level"]
+
+
+def test_derive_oami_matches_operational_monitoring_service_bands() -> None:
+    from app.services.operational_monitoring_index import _level_from_index
+
+    for idx in range(0, 101):
+        assert derive_oami_level_from_index(idx) == _level_from_index(idx)
+
+
+def test_governance_maturity_oami_mapping_snapshot_file_matches_contract() -> None:
+    """
+    Intentional gate: if OAMI bands or labels change, update
+    tests/fixtures/governance_maturity_oami_mapping_snapshot.json in the same PR.
+    """
+    from_file = json.loads(_OAMI_MAPPING_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+    live = contract_full_oami_mapping_snapshot()
+    assert from_file == live
 
 
 def test_governance_maturity_mapping_snapshot_file_matches_contract() -> None:
