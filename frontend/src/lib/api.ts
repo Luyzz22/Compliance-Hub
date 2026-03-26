@@ -1374,6 +1374,32 @@ export interface ReadinessScoreSummaryDto {
   level: "basic" | "managed" | "embedded";
 }
 
+/** Strukturierte KI-Erklärung; Level = API-Enums (UI-Labels via governanceMaturityDeCopy). */
+export interface ReadinessExplanationStructuredDto {
+  score: number;
+  level: "basic" | "managed" | "embedded";
+  short_reason: string;
+  drivers_positive: string[];
+  drivers_negative: string[];
+  regulatory_focus: string;
+}
+
+export interface OperationalMonitoringExplanationStructuredDto {
+  index: number | null;
+  level: "low" | "medium" | "high" | null;
+  recent_incidents_summary: string;
+  monitoring_gaps: string[];
+  improvement_suggestions: string[];
+}
+
+export interface ReadinessScoreExplainResponseDto {
+  explanation: string;
+  provider: string;
+  model_id: string;
+  readiness_explanation?: ReadinessExplanationStructuredDto | null;
+  operational_monitoring_explanation?: OperationalMonitoringExplanationStructuredDto | null;
+}
+
 export interface AdvisorTenantGovernanceBriefDto {
   wizard_progress_count: number;
   wizard_steps_total: number;
@@ -2125,7 +2151,7 @@ export async function fetchTenantReadinessScore(tenantId: string): Promise<Readi
 
 export async function postTenantReadinessScoreExplain(
   tenantId: string,
-): Promise<{ explanation: string; provider: string; model_id: string }> {
+): Promise<ReadinessScoreExplainResponseDto> {
   const tid = encodeURIComponent(tenantId);
   return tenantApiFetch(`/api/v1/tenants/${tid}/readiness-score/explain`, tenantId, {
     method: "POST",

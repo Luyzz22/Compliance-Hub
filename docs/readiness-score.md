@@ -25,7 +25,7 @@ Der **Readiness Score** (0–100) fasst Mandantensignale aus dem bestehenden Com
 ## API
 
 - Mandant: `GET /api/v1/tenants/{tenant_id}/readiness-score` (Tenant-Header muss passen)  
-- Optional KI-Erklärung: `POST /api/v1/tenants/{tenant_id}/readiness-score/explain` (benötigt `COMPLIANCEHUB_FEATURE_LLM_ENABLED` und `COMPLIANCEHUB_FEATURE_LLM_EXPLAIN`)  
+- Optional KI-Erklärung: `POST /api/v1/tenants/{tenant_id}/readiness-score/explain` (benötigt `COMPLIANCEHUB_FEATURE_LLM_ENABLED` und `COMPLIANCEHUB_FEATURE_LLM_EXPLAIN`). Antwort: Fließtext `explanation` plus optional `readiness_explanation` / `operational_monitoring_explanation` (JSON-Enums wie Score-API; UI-Labels im Frontend aus `governanceMaturityDeCopy`). Vertrag: `docs/governance-maturity-copy-contract.md`.  
 - Berater-Proxy: `GET /api/v1/advisors/{advisor_id}/tenants/{tenant_id}/readiness-score` (nur verknüpfte Mandanten)  
 
 Feature-Flag: `COMPLIANCEHUB_FEATURE_READINESS_SCORE` / `NEXT_PUBLIC_FEATURE_READINESS_SCORE`.
