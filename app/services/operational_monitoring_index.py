@@ -51,11 +51,21 @@ def _coverage_component(distinct_days: int, window_days: int) -> float:
     return min(1.0, float(distinct_days) / float(max(1, d_sat)))
 
 
-def _incident_component(incident_count: int, incident_high: int) -> float:
-    """Ohne Ticket-Workflow: weniger Incidents und weniger high/critical = besser."""
+def _incident_component(
+    incident_count: int,
+    incident_high: int,
+    *,
+    safety_violation_incidents: int = 0,
+) -> float:
+    """Ohne Ticket-Workflow: weniger Incidents und weniger high/critical = besser.
+
+    Zusätzlich: ``safety_violation``-Subtype (stärker gewichtet, Board/OAMI-relevant).
+    """
     penalty = min(
         1.0,
-        incident_high * 0.22 + max(0, incident_count - incident_high) * 0.07,
+        incident_high * 0.22
+        + max(0, incident_count - incident_high) * 0.07
+        + safety_violation_incidents * 0.12,
     )
     return max(0.0, 1.0 - penalty)
 
@@ -80,10 +90,19 @@ def _components_from_agg(
     incident_high = int(agg.get("incident_high") or 0)
     breach_count = int(agg.get("breach_count") or 0)
     incident_count = int(agg.get("incident_count") or 0)
+    raw_sub = agg.get("incident_count_by_subtype")
+    incident_by_subtype: dict[str, int] = (
+        dict(raw_sub) if isinstance(raw_sub, dict) else {}
+    )
+    safety_sv = int(incident_by_subtype.get("safety_violation", 0))
 
     f = _freshness_component(last_dt, now)
     c = _coverage_component(distinct_days, window_days)
-    i = _incident_component(incident_count, incident_high)
+    i = _incident_component(
+        incident_count,
+        incident_high,
+        safety_violation_incidents=safety_sv,
+    )
     s = _stability_component(breach_count, window_days)
 
     if not has_data:
@@ -123,6 +142,9 @@ def compute_system_monitoring_index(
     last_at = agg.get("last_occurred_at")
     last_dt = last_at if isinstance(last_at, datetime) else None
 
+    raw_sub = agg.get("incident_count_by_subtype")
+    inc_sub: dict[str, int] = dict(raw_sub) if isinstance(raw_sub, dict) else {}
+
     base = SystemMonitoringIndexOut(
         ai_system_id=ai_system_id,
         tenant_id=tenant_id,
@@ -133,6 +155,7 @@ def compute_system_monitoring_index(
         last_event_at=last_dt,
         incident_count=int(agg.get("incident_count") or 0),
         high_severity_incident_count=int(agg.get("incident_high") or 0),
+        incident_count_by_subtype=inc_sub,
         metric_threshold_breach_count=int(agg.get("breach_count") or 0),
         distinct_active_days=int(agg.get("distinct_days") or 0),
         components=comp,

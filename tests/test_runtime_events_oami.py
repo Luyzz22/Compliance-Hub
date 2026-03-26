@@ -338,6 +338,52 @@ def test_runtime_events_idempotency_per_source(client: TestClient) -> None:
     assert r2.json()["inserted"] == 1
 
 
+def test_runtime_events_ingest_subtype_persisted_and_oami_breakdown(client: TestClient) -> None:
+    tid = f"oami-st-{uuid.uuid4().hex[:10]}"
+    h = _headers(tid)
+    sid = "oami-sys-sub"
+    _create_system(client, tid, sid)
+    now = datetime.now(UTC)
+    batch = {
+        "events": [
+            {
+                "source_event_id": "ev-inc-safety",
+                "source": "sap_ai_core",
+                "event_type": "incident",
+                "severity": "medium",
+                "event_subtype": "safety_violation",
+                "occurred_at": now.isoformat(),
+                "extra": {},
+            },
+            {
+                "source_event_id": "ev-inc-avail",
+                "source": "sap_ai_core",
+                "event_type": "incident",
+                "severity": "low",
+                "event_subtype": "availability_incident",
+                "occurred_at": now.isoformat(),
+                "extra": {},
+            },
+        ],
+    }
+    r1 = client.post(f"/api/v1/ai-systems/{sid}/runtime-events", json=batch, headers=h)
+    assert r1.status_code == 200, r1.text
+    assert r1.json()["inserted"] == 2
+
+    with SessionLocal() as s:
+        q1 = select(AiRuntimeEventTable).where(
+            AiRuntimeEventTable.source_event_id == "ev-inc-safety",
+        )
+        row1 = s.execute(q1).scalar_one()
+        assert row1.event_subtype == "safety_violation"
+
+    r_idx = client.get(f"/api/v1/ai-systems/{sid}/monitoring-index", headers=h)
+    assert r_idx.status_code == 200
+    by_sub = r_idx.json().get("incident_count_by_subtype") or {}
+    assert by_sub.get("safety_violation") == 1
+    assert by_sub.get("availability_incident") == 1
+
+
 def test_demo_tenant_blocks_runtime_event_api_ingest(client: TestClient) -> None:
     from app.models_db import TenantDB
 
