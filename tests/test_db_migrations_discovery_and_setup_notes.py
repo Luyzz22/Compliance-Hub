@@ -30,6 +30,7 @@ def test_discovery_skips_underscore_prefixed_modules() -> None:
     assert "m20260326_add_tenants_kritis_sector" in loaded
     assert "m20260327_add_tenant_ai_governance_setup_notes" in loaded
     assert "m20260328_ai_runtime_events_tenant_system_time_idx" in loaded
+    assert "m20260329_add_ai_runtime_events_event_subtype" in loaded
 
 
 def test_migration_ids_are_sorted() -> None:

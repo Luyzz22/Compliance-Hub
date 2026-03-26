@@ -36,6 +36,7 @@ def test_ai_runtime_events_time_index_applied_and_idempotent(tmp_path) -> None:
 
     first = run_all_db_migrations(engine)
     assert MID in first.applied_ddl
+    assert "20260329_add_ai_runtime_events_event_subtype" in first.applied_ddl
     assert index_exists(engine, "ai_runtime_events", INDEX_NAME)
 
     idxs = inspect(engine).get_indexes("ai_runtime_events")
@@ -45,6 +46,7 @@ def test_ai_runtime_events_time_index_applied_and_idempotent(tmp_path) -> None:
     second = run_all_db_migrations(engine)
     assert second.applied_ddl == []
     assert MID in second.skipped_ledger
+    assert "20260329_add_ai_runtime_events_event_subtype" in second.skipped_ledger
     assert index_exists(engine, "ai_runtime_events", INDEX_NAME)
 
     engine.dispose()
