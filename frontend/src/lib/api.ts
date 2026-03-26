@@ -27,6 +27,12 @@ async function tenantApiFetch(path: string, tenantId: string, init?: RequestInit
   });
 
   if (!res.ok) {
+    if (res.status === 403) {
+      throw new Error(
+        "Zugriff verweigert (HTTP 403). Häufig bei Demomandanten: schreibende Aktionen sind " +
+          "deaktiviert (read-only). Lesende Aufrufe und vorgefüllte Reports bleiben nutzbar.",
+      );
+    }
     throw new Error(`API ${path} failed with ${res.status}`);
   }
 
@@ -1492,6 +1498,15 @@ export interface AdvisorClientGovernanceSnapshotDto {
     last_report_title: string | null;
   };
   readiness?: ReadinessScoreResponseDto | null;
+  /** OAMI (90 Tage), synthetisch in Demo – Post-Market / NIS2-Gespräch ohne PII. */
+  operational_ai_monitoring?: {
+    index_90d: number | null;
+    level: string | null;
+    has_runtime_data: boolean;
+    systems_scored: number;
+    narrative_de: string;
+    drivers_de: string[];
+  } | null;
 }
 
 export async function fetchAdvisorClientGovernanceSnapshot(
@@ -1509,6 +1524,11 @@ export async function fetchAdvisorClientGovernanceSnapshot(
     cache: "no-store",
   });
   if (!res.ok) {
+    if (res.status === 403) {
+      throw new Error(
+        "Governance-Snapshot nicht verfügbar (HTTP 403). Prüfen Sie API-Key, Advisor-Zuordnung oder Demo-Schreibrechte.",
+      );
+    }
     throw new Error(`Governance snapshot failed: ${res.status}`);
   }
   return res.json() as Promise<AdvisorClientGovernanceSnapshotDto>;

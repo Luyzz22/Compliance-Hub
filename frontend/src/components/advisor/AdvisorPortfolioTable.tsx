@@ -79,7 +79,12 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                   <th>Cross-Reg Ø</th>
                 </>
               ) : null}
-              <th>EU AI Act Readiness</th>
+              <th
+                title="Heuristischer Register-/Klassifikationsüberblick – nicht identisch mit dem strukturellen AI & Compliance Readiness Score (fünf Dimensionen)."
+                className="max-w-[7rem]"
+              >
+                EU AI Act Readiness
+              </th>
               <th>NIS2 Ø / Coverage</th>
               <th>High-Risk</th>
               <th>Setup</th>
@@ -87,7 +92,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
               <th>Status</th>
               {readinessUi ? (
                 <th
-                  title="Berechnet aus Setup, Framework-Coverage, KPIs, regulatorischen Gaps und Board-Reports."
+                  title="AI & Compliance Readiness (0–100): Setup, EU-AI-Act-/ISO-Coverage, KPI-Register, regulatorische Gaps, Board-Reporting. Ergänzt GAI (Nutzung) und OAMI (Laufzeit) im Snapshot."
                   className="max-w-[6rem]"
                 >
                   Readiness

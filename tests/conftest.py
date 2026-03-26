@@ -19,7 +19,7 @@ _TEST_API_KEYS = (
 )
 _DEMO_SEED_TENANTS = (
     "demo-seed-tenant-1,demo-seed-tenant-2,demo-isolation-a,demo-isolation-b,demo-direct-only,"
-    "demo-domain-kpi-tenant,demo-domain-br-tenant"
+    "demo-domain-kpi-tenant,demo-domain-br-tenant,demo-smoke-e2e"
 )
 
 

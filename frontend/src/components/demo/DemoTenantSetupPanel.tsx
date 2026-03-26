@@ -129,8 +129,11 @@ export function DemoTenantSetupPanel({
             <li>{result.policy_rows_count} Policy-Zeilen</li>
           </ul>
           <p className="mt-2 text-xs text-emerald-800">
-            Alerts und Readiness sind aktiv. Öffnen Sie den Mandanten im Workspace für die
-            Compliance-Übersicht.
+            Alerts und Readiness sind aktiv. Governance-Telemetrie (GAI) und Laufzeit-Demo (OAMI)
+            werden mitgeseedet. Öffnen Sie den Mandanten im Workspace für die Compliance-Übersicht.
+            Internes 10–15-Minuten-Skript:{" "}
+            <code className="rounded bg-white/80 px-1">docs/demo-board-ready-walkthrough.md</code> im
+            Repository.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button

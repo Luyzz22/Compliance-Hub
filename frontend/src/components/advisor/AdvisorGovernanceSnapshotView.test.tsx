@@ -56,6 +56,14 @@ const { fetchSnap, postMd } = vi.hoisted(() => {
       last_report_audience: null,
       last_report_title: null,
     },
+    operational_ai_monitoring: {
+      index_90d: 58,
+      level: "medium",
+      has_runtime_data: true,
+      systems_scored: 2,
+      narrative_de: "Operatives Monitoring: mittlere Reife (Demo).",
+      drivers_de: ["Letzte Laufzeitereignisse", "KPI-Trends"],
+    },
   };
   const fetchSnap = vi.fn().mockResolvedValue(minimalSnapshot);
   const postMd = vi.fn().mockResolvedValue({
@@ -98,6 +106,8 @@ describe("AdvisorGovernanceSnapshotView", () => {
     });
     expect(await screen.findByText("Mandant X")).toBeTruthy();
     expect(screen.getByTestId("snap-client-info")).toBeTruthy();
+    expect(screen.getByTestId("snap-oami")).toBeTruthy();
+    expect(screen.getByText(/Operatives Monitoring: mittlere Reife/i)).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("snap-gen-md"));
     await waitFor(() => {

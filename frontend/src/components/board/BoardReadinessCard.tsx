@@ -24,12 +24,23 @@ function levelLabelDe(level: string): string {
   return level;
 }
 
-function DimBar({ testId, label, value }: { testId: string; label: string; value: number }) {
+function DimBar({
+  testId,
+  label,
+  value,
+  hint,
+}: {
+  testId: string;
+  label: string;
+  value: number;
+  /** Kurz-Tooltip (Board-tauglich, EU AI Act / ISO / NIS2-Kontext). */
+  hint?: string;
+}) {
   const v = Math.max(0, Math.min(100, value));
   return (
     <div className="mt-2" data-testid={testId}>
       <div className="flex justify-between text-[0.65rem] font-medium text-slate-600">
-        <span>{label}</span>
+        <span title={hint}>{label}</span>
         <span className="tabular-nums text-slate-800">{v}</span>
       </div>
       <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -100,8 +111,10 @@ export function BoardReadinessCard({
       <p className={CH_SECTION_LABEL}>AI &amp; Compliance Readiness</p>
       {isDemoTenant ? (
         <p className="mt-1 text-xs leading-snug text-slate-500">
-          Demo: Score aus synthetischen Mandantendaten. Nutzung (GAI) und Laufzeitüberwachung (OAMI)
-          siehe Governance-Maturity-API bzw. Board-Report.
+          <strong className="font-semibold text-slate-600">Demomandant</strong> – keine echten
+          Betriebsdaten. Score = strukturelle Reife (EU AI Act, ISO 42001/27001, Nachweise). Nutzung
+          der Plattform (GAI) und Laufzeit-Signale (OAMI) ergänzen das Bild im Board-Report bzw. in
+          der Governance-Maturity-Auswertung.
         </p>
       ) : null}
       {busy && !data ? <p className="mt-2 text-sm text-slate-600">Lade Score…</p> : null}
@@ -135,14 +148,38 @@ export function BoardReadinessCard({
           <p className="mt-3 text-sm leading-relaxed text-slate-700">{data.interpretation}</p>
           {d ? (
             <div className="mt-4 max-w-md border-t border-slate-100 pt-3">
-              <DimBar testId="readiness-dim-setup" label="Setup" value={d.setup.score_0_100} />
-              <DimBar testId="readiness-dim-coverage" label="Coverage" value={d.coverage.score_0_100} />
-              <DimBar testId="readiness-dim-kpi" label="KPIs" value={d.kpi.score_0_100} />
-              <DimBar testId="readiness-dim-gaps" label="Gaps" value={d.gaps.score_0_100} />
+              <p className="mb-1 text-[0.65rem] font-medium text-slate-500">
+                Fünf Dimensionen (ohne einzelne KI-Laufzeit – die liefert OAMI separat)
+              </p>
+              <DimBar
+                testId="readiness-dim-setup"
+                label="Setup"
+                value={d.setup.score_0_100}
+                hint="AI-Governance-Wizard, Rollen, Framework-Scopes (u. a. ISO 42001-Anschluss)."
+              />
+              <DimBar
+                testId="readiness-dim-coverage"
+                label="Coverage"
+                value={d.coverage.score_0_100}
+                hint="Abdeckung EU AI Act, NIS2, ISO 27001/42001 im Compliance-Graphen."
+              />
+              <DimBar
+                testId="readiness-dim-kpi"
+                label="KPIs"
+                value={d.kpi.score_0_100}
+                hint="KPI-/KRI-Zeitreihen im KI-Register (Drift, Incidents, …)."
+              />
+              <DimBar
+                testId="readiness-dim-gaps"
+                label="Gaps"
+                value={d.gaps.score_0_100}
+                hint="Regulatorische Lücken – z. B. fehlende Controls zu EU-AI-Act-Pflichten."
+              />
               <DimBar
                 testId="readiness-dim-reporting"
                 label="Reporting"
                 value={d.reporting.score_0_100}
+                hint="Board- und Management-Reports – Transparenz für Aufsichtsrat / GF."
               />
             </div>
           ) : null}
