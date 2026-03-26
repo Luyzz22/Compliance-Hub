@@ -26,6 +26,9 @@ from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.violations import ViolationRepository
 from app.services.advisor_client_governance_snapshot import build_governance_brief_for_tenant
+from app.services.advisor_governance_maturity_brief_llm import (
+    maybe_build_advisor_governance_maturity_brief_result,
+)
 from app.services.ai_governance_kpis import compute_ai_governance_kpis
 from app.services.compliance_dashboard import compute_ai_compliance_overview
 from app.services.governance_maturity_service import build_governance_maturity_response
@@ -93,6 +96,7 @@ def build_advisor_portfolio(
 
         gai_summary: GovernanceActivityPortfolioSummary | None = None
         oami_summary: OperationalMonitoringPortfolioSummary | None = None
+        gm_brief = None
         if is_feature_enabled(FeatureFlag.governance_maturity):
             try:
                 gm = build_governance_maturity_response(session, tid, window_days=90)
@@ -111,6 +115,16 @@ def build_advisor_portfolio(
                 logger.exception("advisor_portfolio_governance_maturity_failed tenant=%s", tid)
                 gai_summary = None
                 oami_summary = None
+            try:
+                br = maybe_build_advisor_governance_maturity_brief_result(session, tid)
+                if br is not None:
+                    gm_brief = br.brief
+            except Exception:
+                logger.exception(
+                    "advisor_portfolio_governance_maturity_brief_failed tenant=%s",
+                    tid,
+                )
+                gm_brief = None
 
         tenants_out.append(
             AdvisorPortfolioTenantEntry(
@@ -133,6 +147,7 @@ def build_advisor_portfolio(
                 readiness_summary=readiness_summary,
                 governance_activity_summary=gai_summary,
                 operational_monitoring_summary=oami_summary,
+                governance_maturity_advisor_brief=gm_brief,
             ),
         )
 
@@ -164,6 +179,9 @@ def advisor_portfolio_to_csv(portfolio: AdvisorPortfolioResponse) -> str:
         "gai_level",
         "oami_index",
         "oami_level",
+        "governance_maturity_overall_level",
+        "governance_maturity_focus_1",
+        "governance_maturity_next_window",
     ]
     w = csv.DictWriter(buf, fieldnames=fieldnames)
     w.writeheader()
@@ -178,6 +196,18 @@ def advisor_portfolio_to_csv(portfolio: AdvisorPortfolioResponse) -> str:
         row["gai_level"] = ga["level"] if ga else ""
         row["oami_index"] = om["index"] if om and om.get("index") is not None else ""
         row["oami_level"] = om["level"] if om and om.get("level") is not None else ""
+        gmb = row.get("governance_maturity_advisor_brief")
+        if gmb:
+            gms = gmb.get("governance_maturity_summary") or {}
+            oa = gms.get("overall_assessment") or {}
+            row["governance_maturity_overall_level"] = oa.get("level", "")
+            areas = gmb.get("recommended_focus_areas") or []
+            row["governance_maturity_focus_1"] = areas[0] if areas else ""
+            row["governance_maturity_next_window"] = gmb.get("suggested_next_steps_window", "")
+        else:
+            row["governance_maturity_overall_level"] = ""
+            row["governance_maturity_focus_1"] = ""
+            row["governance_maturity_next_window"] = ""
         w.writerow({k: row.get(k) for k in fieldnames})
     return buf.getvalue()
 

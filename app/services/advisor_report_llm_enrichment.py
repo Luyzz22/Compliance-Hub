@@ -9,6 +9,9 @@ from typing import TYPE_CHECKING
 from app.advisor_models import AdvisorTenantReport
 from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.llm_models import LLMTaskType
+from app.services.advisor_governance_maturity_brief_llm import (
+    maybe_build_advisor_governance_maturity_brief_result,
+)
 from app.services.llm_router import LLMRouter
 
 if TYPE_CHECKING:
@@ -38,6 +41,18 @@ def _deterministic_facts_payload(report: AdvisorTenantReport) -> dict:
         "setup_total_steps": report.setup_total_steps,
         "setup_open_step_labels": list(report.setup_open_step_labels),
     }
+
+
+def enrich_advisor_tenant_report_with_governance_maturity_brief(
+    session: Session,
+    tenant_id: str,
+    report: AdvisorTenantReport,
+) -> AdvisorTenantReport:
+    """Setzt optional `governance_maturity_advisor_brief` (Feature governance_maturity)."""
+    res = maybe_build_advisor_governance_maturity_brief_result(session, tenant_id)
+    if res is None:
+        return report
+    return report.model_copy(update={"governance_maturity_advisor_brief": res.brief})
 
 
 def maybe_enrich_advisor_report_with_llm_summary(

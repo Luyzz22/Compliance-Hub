@@ -31,6 +31,12 @@ from app.repositories.ai_compliance_board_reports import AiComplianceBoardReport
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.tenant_ai_governance_setup import TenantAIGovernanceSetupRepository
 from app.repositories.tenant_registry import TenantRegistryRepository
+from app.services.advisor_governance_maturity_brief_llm import (
+    maybe_build_advisor_governance_maturity_brief_result,
+)
+from app.services.advisor_governance_maturity_brief_markdown import (
+    render_advisor_governance_maturity_brief_markdown_section,
+)
 from app.services.ai_kpi_service import build_ai_kpi_summary
 from app.services.cross_regulation import build_cross_regulation_summary
 from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
@@ -263,6 +269,18 @@ def build_client_governance_snapshot(
     except Exception:
         logger.exception("snapshot_oami_failed tenant=%s", client_tenant_id)
 
+    gm_advisor_brief = None
+    if is_feature_enabled(FeatureFlag.governance_maturity):
+        try:
+            br = maybe_build_advisor_governance_maturity_brief_result(session, client_tenant_id)
+            if br is not None:
+                gm_advisor_brief = br.brief
+        except Exception:
+            logger.exception(
+                "snapshot_governance_maturity_advisor_brief_failed tenant=%s",
+                client_tenant_id,
+            )
+
     return AdvisorClientGovernanceSnapshotResponse(
         advisor_id=advisor_id,
         client_tenant_id=client_tenant_id,
@@ -285,6 +303,7 @@ def build_client_governance_snapshot(
         reports_summary=reports,
         readiness=readiness,
         operational_ai_monitoring=oami_snap,
+        governance_maturity_advisor_brief=gm_advisor_brief,
     )
 
 
@@ -312,8 +331,17 @@ def generate_advisor_governance_snapshot_markdown(
         prompt,
         client_tenant_id,
     )
+    md_body = (resp.text or "").strip()
+    prefix = ""
+    if snapshot.governance_maturity_advisor_brief is not None:
+        prefix = (
+            render_advisor_governance_maturity_brief_markdown_section(
+                snapshot.governance_maturity_advisor_brief,
+            )
+            + "\n\n---\n\n"
+        )
     return AdvisorGovernanceSnapshotMarkdownResponse(
-        markdown=(resp.text or "").strip(),
+        markdown=(prefix + md_body).strip(),
         provider=str(resp.provider.value),
         model_id=resp.model_id,
     )

@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.advisor_client_snapshot_models import AdvisorTenantGovernanceBrief
+from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturityBrief
 from app.readiness_score_models import ReadinessScoreSummary
 
 GaiOamiLevel = Literal["low", "medium", "high"]
@@ -59,6 +60,10 @@ class AdvisorPortfolioTenantEntry(BaseModel):
     operational_monitoring_summary: OperationalMonitoringPortfolioSummary | None = Field(
         default=None,
         description="Optional: OAMI (FEATURE_GOVERNANCE_MATURITY).",
+    )
+    governance_maturity_advisor_brief: AdvisorGovernanceMaturityBrief | None = Field(
+        default=None,
+        description="Optional: Berater-Brief (FEATURE_GOVERNANCE_MATURITY).",
     )
 
 

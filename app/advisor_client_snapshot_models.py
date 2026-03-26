@@ -6,6 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturityBrief
 from app.readiness_score_models import ReadinessScoreResponse
 
 
@@ -124,6 +125,10 @@ class AdvisorClientGovernanceSnapshotResponse(BaseModel):
     operational_ai_monitoring: OperationalAiMonitoringSnapshot | None = Field(
         default=None,
         description="Optional: OAMI / Laufzeit-Signale (KI-Register + Runtime-Events).",
+    )
+    governance_maturity_advisor_brief: AdvisorGovernanceMaturityBrief | None = Field(
+        default=None,
+        description="Optional: Berater-Kurzbrief (FEATURE_GOVERNANCE_MATURITY).",
     )
 
 
