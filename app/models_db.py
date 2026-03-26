@@ -47,6 +47,7 @@ class TenantAIGovernanceSetupDB(Base):
 
     tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    setup_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,

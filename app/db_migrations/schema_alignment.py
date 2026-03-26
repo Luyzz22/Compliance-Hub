@@ -1,4 +1,8 @@
-"""Compare live DB schema to SQLAlchemy ORM metadata (guardrail for missing migrations)."""
+"""Compare live DB schema to SQLAlchemy ORM metadata (guardrail for missing migrations).
+
+CI: ``tests/test_db_schema_alignment.py`` calls ``list_orm_columns_missing_in_db`` after
+``create_all`` + ``run_all_db_migrations`` (see ``tests/conftest.py``).
+"""
 
 from __future__ import annotations
 

@@ -13,6 +13,7 @@ def iter_migration_modules() -> list[ModuleType]:
     """Return migration modules sorted by ``MIGRATION_ID`` (``YYYYMMDD_`` sorts in time order)."""
     loaded: list[ModuleType] = []
     for _finder, name, ispkg in pkgutil.iter_modules(migrations_pkg.__path__):
+        # Leading underscore: templates / scratch (e.g. ``_template_example``).
         if ispkg or name.startswith("_"):
             continue
         mod = importlib.import_module(f"app.db_migrations.migrations.{name}")
