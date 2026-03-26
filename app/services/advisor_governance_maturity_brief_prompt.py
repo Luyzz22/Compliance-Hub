@@ -68,7 +68,5 @@ def build_advisor_governance_maturity_brief_prompt(
         "recommended_focus_areas: konkrete, umsetzbare Kurzhinweise (keine Floskeln).\n"
         "client_ready_paragraph_de: nur wenn sinnvoll; neutral, ohne Personen oder Systemnamen, "
         "geeignet zur E-Mail an den Mandanten.\n\n"
-        "JSON-Fakten (Mandanten-Snapshot):\n"
-        + snap_json
-        + board_block
+        "JSON-Fakten (Mandanten-Snapshot):\n" + snap_json + board_block
     )

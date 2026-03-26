@@ -26,7 +26,9 @@ from app.services.advisor_governance_maturity_brief_prompt import (
     build_advisor_governance_maturity_brief_prompt,
 )
 
-_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "advisor_governance_maturity_brief_golden"
+_FIXTURES = (
+    Path(__file__).resolve().parent / "fixtures" / "advisor_governance_maturity_brief_golden"
+)
 
 
 def _snap_basic_low() -> GovernanceMaturityResponse:
