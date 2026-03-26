@@ -29,6 +29,7 @@ class TenantDB(Base):
     industry: Mapped[str] = mapped_column(String(128), nullable=False)
     country: Mapped[str] = mapped_column(String(64), nullable=False, default="DE")
     nis2_scope: Mapped[str] = mapped_column(String(64), nullable=False, default="in_scope")
+    kritis_sector: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ai_act_scope: Mapped[str] = mapped_column(String(64), nullable=False, default="in_scope")
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     demo_playground: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

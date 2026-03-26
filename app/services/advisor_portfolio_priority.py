@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Literal
 
 from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturityBrief
+from app.advisor_portfolio_models import IncidentBurdenLevel, Nis2EntityCategory
 from app.readiness_score_models import ReadinessScoreSummary
 
 AdvisorPriorityBucket = Literal["high", "medium", "low"]
@@ -172,3 +173,147 @@ def advisor_priority_explanation_de(
 def advisor_portfolio_priority_sort_key(bucket: AdvisorPriorityBucket) -> int:
     """Sortierung: niedrigere Zahl = zuerst anzeigen (hohe Priorität oben)."""
     return _PRIORITY_SORT[bucket]
+
+
+def normalize_nis2_entity_category(raw_db_scope: str | None) -> Nis2EntityCategory:
+    """
+    Mappt Mandantenfeld `tenants.nis2_scope` auf drei Berater-Kategorien.
+
+    Explizite Strings (Provisioning/Admin): important_entity, essential_entity, none, …
+    Legacy `in_scope` zählt als wichtige Einrichtung (generische NIS2-Relevanz).
+    """
+    if raw_db_scope is None or not str(raw_db_scope).strip():
+        return "none"
+    s = str(raw_db_scope).strip().lower()
+    if s in ("none", "not_applicable", "na", "out_of_scope", "exempt", "no"):
+        return "none"
+    if s in ("essential_entity", "essential", "kritis_operator", "operator_kritis"):
+        return "essential_entity"
+    if s in (
+        "important_entity",
+        "important",
+        "in_scope",
+        "in-scope",
+        "relevant",
+        "yes",
+    ):
+        return "important_entity"
+    return "important_entity"
+
+
+def compute_incident_burden_level(count_90d: int, high_severity_90d: int) -> IncidentBurdenLevel:
+    """
+    Grobe Laststufe aus Zählern (90 Tage), ohne Inhalte oder Personenbezug.
+
+    high: viele Vorfälle oder wiederholt schwere Einträge.
+    medium: mindestens ein Vorfall im Fenster.
+    low: kein Vorfall.
+    """
+    if count_90d <= 0:
+        return "low"
+    if high_severity_90d >= 2 or count_90d >= 5:
+        return "high"
+    return "medium"
+
+
+def _maturity_stress_for_regulatory(readiness_level: str, oami_level: str | None) -> bool:
+    """True, wenn Readiness oder operatives Monitoring aus NIS2-Sicht nachziehen sollte."""
+    r = _ord_readiness_level(readiness_level)
+    o = _ord_index_level(oami_level) if oami_level is not None else 0
+    weak_r = r is not None and r <= 1
+    weak_o = o < 2
+    return weak_r or weak_o
+
+
+def regulatory_priority_bump_applies(
+    *,
+    nis2_category: Nis2EntityCategory,
+    kritis_sector_key: str | None,
+    recent_incidents_90d: bool,
+    incident_burden: IncidentBurdenLevel,
+    readiness_level: str,
+    oami_level: str | None,
+) -> bool:
+    """
+    Max. eine Stufe anheben, nur bei klarer Kombination (transparente Regeln):
+
+    - Zuerst: Reife-Stress (Readiness nicht „embedded“ oder OAMI nicht „high“).
+    - Dann mindestens eines:
+        - wesentliche Einrichtung (NIS2), oder
+        - KRITIS-Sektor in Stammdaten gepflegt, oder
+        - Vorfälle in 90 Tagen mit mittlerer oder hoher Last.
+    """
+    if not _maturity_stress_for_regulatory(readiness_level, oami_level):
+        return False
+    if nis2_category == "essential_entity":
+        return True
+    if kritis_sector_key:
+        return True
+    if recent_incidents_90d and incident_burden in ("medium", "high"):
+        return True
+    return False
+
+
+def bump_advisor_priority_bucket(bucket: AdvisorPriorityBucket) -> AdvisorPriorityBucket:
+    """Eine Stufe in Richtung „dringlicher“; „high“ bleibt oben."""
+    if bucket == "low":
+        return "medium"
+    if bucket == "medium":
+        return "high"
+    return bucket
+
+
+def regulatory_bump_suffix_de(
+    *,
+    nis2_category: Nis2EntityCategory,
+    kritis_sector_key: str | None,
+    recent_incidents_90d: bool,
+    incident_burden: IncidentBurdenLevel,
+) -> str:
+    """Kurzer Zusatz für Tooltips (ohne Incident-Inhalte)."""
+    parts: list[str] = []
+    if nis2_category == "essential_entity":
+        parts.append("wesentliche Einrichtung (NIS2)")
+    elif nis2_category == "important_entity":
+        parts.append("wichtige Einrichtung (NIS2)")
+    if kritis_sector_key:
+        parts.append("KRITIS-Sektor")
+    if recent_incidents_90d:
+        parts.append(f"Incident-Last 90 Tage: {incident_burden}")
+    core = ", ".join(parts) if parts else "Regulatorisches Signal"
+    return (
+        f" Regulatorischer Aufstock ({core}); bei begrenzter Readiness/Monitoring-Reife "
+        "Priorität eine Stufe erhöht."
+    )[:280]
+
+
+def apply_regulatory_priority_adjustment(
+    base_bucket: AdvisorPriorityBucket,
+    base_explanation_de: str,
+    *,
+    readiness_level: str,
+    oami_level: str | None,
+    nis2_category: Nis2EntityCategory,
+    kritis_sector_key: str | None,
+    recent_incidents_90d: bool,
+    incident_burden: IncidentBurdenLevel,
+) -> tuple[AdvisorPriorityBucket, str]:
+    """Wendet höchstens eine Prioritätsstufe an und hängt einen erklärenden Satz an."""
+    if not regulatory_priority_bump_applies(
+        nis2_category=nis2_category,
+        kritis_sector_key=kritis_sector_key,
+        recent_incidents_90d=recent_incidents_90d,
+        incident_burden=incident_burden,
+        readiness_level=readiness_level,
+        oami_level=oami_level,
+    ):
+        return base_bucket, base_explanation_de
+    new_b = bump_advisor_priority_bucket(base_bucket)
+    suffix = regulatory_bump_suffix_de(
+        nis2_category=nis2_category,
+        kritis_sector_key=kritis_sector_key,
+        recent_incidents_90d=recent_incidents_90d,
+        incident_burden=incident_burden,
+    )
+    merged = f"{base_explanation_de.rstrip()}{suffix}"[:500]
+    return new_b, merged

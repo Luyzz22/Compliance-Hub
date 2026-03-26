@@ -17,6 +17,7 @@ import {
   advisorPrioritySortKey,
   applyAdvisorPortfolioFilters,
   type PortfolioPillarFilter,
+  type PortfolioRegulatoryFilter,
   type PortfolioScenarioFilter,
   type PortfolioSegmentFilter,
 } from "@/lib/advisorPortfolioPriority";
@@ -51,6 +52,7 @@ export default function AdvisorPortfolioPage() {
   const [pillarFilter, setPillarFilter] = useState<PortfolioPillarFilter | null>(null);
   const [scenarioFilter, setScenarioFilter] = useState<PortfolioScenarioFilter | null>(null);
   const [segmentFilter, setSegmentFilter] = useState<PortfolioSegmentFilter | null>(null);
+  const [regulatoryFilter, setRegulatoryFilter] = useState<PortfolioRegulatoryFilter | null>(null);
   const [onlyHighPriority, setOnlyHighPriority] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const showBoardReportsTab =
@@ -94,6 +96,7 @@ export default function AdvisorPortfolioPage() {
       pillar: pillarFilter,
       scenario: scenarioFilter,
       segment: segmentFilter,
+      regulatory: regulatoryFilter,
       priorityBucket: onlyHighPriority ? "high" : null,
     });
     if (onlyCriticalFilter) {
@@ -134,6 +137,7 @@ export default function AdvisorPortfolioPage() {
     pillarFilter,
     scenarioFilter,
     segmentFilter,
+    regulatoryFilter,
     onlyHighPriority,
   ]);
 
@@ -143,6 +147,10 @@ export default function AdvisorPortfolioPage() {
 
   function toggleSegment(s: PortfolioSegmentFilter) {
     setSegmentFilter((cur) => (cur === s ? null : s));
+  }
+
+  function toggleRegulatory(r: PortfolioRegulatoryFilter) {
+    setRegulatoryFilter((cur) => (cur === r ? null : r));
   }
 
   return (
@@ -251,6 +259,33 @@ export default function AdvisorPortfolioPage() {
               >
                 Optimierung
               </button>
+            </div>
+            <div
+              className="mt-2 flex flex-wrap gap-2"
+              role="group"
+              aria-label="NIS2, KRITIS und Incident-Signale"
+            >
+              <span className="self-center text-xs font-semibold text-slate-500">Regulatorik:</span>
+              {(
+                [
+                  ["nis2_relevant", "NIS2-relevant"],
+                  ["kritis_sector", "KRITIS-Sektor"],
+                  ["incidents_90d", "Vorfälle 90 Tage"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                    regulatoryFilter === key
+                      ? "border-violet-400 bg-violet-50 text-violet-950"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                  onClick={() => toggleRegulatory(key)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Säulen-Fokus">
               <span className="self-center text-xs font-semibold text-slate-500">Fokus:</span>

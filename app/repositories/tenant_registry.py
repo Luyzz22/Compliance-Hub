@@ -25,6 +25,7 @@ class TenantRegistryRepository:
         country: str,
         nis2_scope: str,
         ai_act_scope: str,
+        kritis_sector: str | None = None,
         is_demo: bool = False,
         demo_playground: bool = False,
     ) -> TenantDB:
@@ -34,6 +35,7 @@ class TenantRegistryRepository:
             industry=industry,
             country=country,
             nis2_scope=nis2_scope,
+            kritis_sector=kritis_sector,
             ai_act_scope=ai_act_scope,
             is_demo=is_demo,
             demo_playground=demo_playground,

@@ -18,6 +18,24 @@ class IncidentRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
+    def count_created_since_days(self, tenant_id: str, *, days: int = 90) -> int:
+        """Anzahl Incidents seit `days` Tagen (ohne Inhalt/PII, nur Zähler)."""
+        since = datetime.now(UTC) - timedelta(days=days)
+        stmt = select(func.count(IncidentTable.id)).where(
+            IncidentTable.tenant_id == tenant_id,
+            IncidentTable.created_at_utc >= since,
+        )
+        return int(self._session.execute(stmt).scalar_one() or 0)
+
+    def count_high_severity_since_days(self, tenant_id: str, *, days: int = 90) -> int:
+        since = datetime.now(UTC) - timedelta(days=days)
+        stmt = select(func.count(IncidentTable.id)).where(
+            IncidentTable.tenant_id == tenant_id,
+            IncidentTable.created_at_utc >= since,
+            IncidentTable.severity == IncidentSeverity.high.value,
+        )
+        return int(self._session.execute(stmt).scalar_one() or 0)
+
     def list_for_tenant_last_12_months(self, tenant_id: str) -> list[IncidentTable]:
         """Alle Incidents des Tenants der letzten 12 Monate (für Aggregationen)."""
         since = datetime.now(UTC) - timedelta(days=365)

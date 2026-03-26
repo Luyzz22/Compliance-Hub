@@ -12,6 +12,8 @@ from app.readiness_score_models import ReadinessScoreSummary
 GaiOamiLevel = Literal["low", "medium", "high"]
 AdvisorPortfolioPriority = Literal["high", "medium", "low"]
 AdvisorMaturityScenarioHint = Literal["a", "b", "c", "d"]
+Nis2EntityCategory = Literal["none", "important_entity", "essential_entity"]
+IncidentBurdenLevel = Literal["low", "medium", "high"]
 
 
 class GovernanceActivityPortfolioSummary(BaseModel):
@@ -35,6 +37,24 @@ class AdvisorPortfolioTenantEntry(BaseModel):
     tenant_name: str
     industry: str | None = None
     country: str | None = None
+    nis2_entity_category: Nis2EntityCategory = Field(
+        default="none",
+        description=(
+            "Aus Mandantenfeld nis2_scope normalisiert: keine / wichtige / wesentliche Einrichtung."
+        ),
+    )
+    kritis_sector_key: str | None = Field(
+        default=None,
+        description="Optionaler KRITIS-Sektorschlüssel aus Stammdaten (keine weiteren Details).",
+    )
+    recent_incidents_90d: bool = Field(
+        default=False,
+        description="Mind. ein strukturiertes Incident in den letzten 90 Tagen (Ja/Nein).",
+    )
+    incident_burden_level: IncidentBurdenLevel = Field(
+        default="low",
+        description="Incident-Last 90 Tage: low/medium/high (ohne Einzelfallinhalte).",
+    )
     eu_ai_act_readiness: float = Field(ge=0.0, le=1.0)
     nis2_kritis_kpi_mean_percent: float | None = Field(
         default=None,

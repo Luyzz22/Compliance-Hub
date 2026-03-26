@@ -87,6 +87,10 @@ const sampleRows: AdvisorPortfolioTenantEntry[] = [
       "Mittlere Priorität: Readiness etabliert; GAI/OAMI ohne kritische Lücke.",
     maturity_scenario_hint: null,
     primary_focus_tag_de: "Monitoring",
+    nis2_entity_category: "important_entity",
+    kritis_sector_key: "energy",
+    recent_incidents_90d: false,
+    incident_burden_level: "low",
   },
 ];
 
@@ -190,6 +194,15 @@ describe("AdvisorPortfolioTable", () => {
     const oamiCell = screen.getByTestId("advisor-oami-cell-t-demo-1");
     expect(oamiCell.textContent).toContain("55");
     expect(oamiCell.textContent).toContain(getMonitoringCopy("high").levelLabelDe);
+  });
+
+  it("shows NIS2 and KRITIS row badges when regulatory fields are set", () => {
+    portfolioFeatureFlags.governanceMaturity = true;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    const wrap = screen.getByTestId("advisor-regulatory-row-t-demo-1");
+    expect(wrap.textContent).toContain("NIS2");
+    expect(screen.getByTestId("advisor-kritis-badge-t-demo-1").textContent).toContain("KRITIS");
+    expect(screen.queryByTestId("advisor-incident-flag-t-demo-1")).toBeNull();
   });
 
   it("renders advisor priority badge and Schwerpunkt from API fields", () => {

@@ -38,18 +38,19 @@ Link **Snapshot anzeigen** enthält `?highlight=governance-maturity`, damit im G
 - **Standard-Sortierung:** höchste Berater-Priorität zuerst (`advisor_priority_sort_key`), danach **Mandantenname** aufsteigend.
 - **Schnellfilter „Aufbau / Monitoring“:** hohe Priorität oder Szenario A/B.
 - **Schnellfilter „Optimierung“:** niedrige Priorität oder Szenario D.
+- **Regulatorik:** NIS2-relevant · KRITIS-Sektor gepflegt · Vorfälle in 90 Tagen (siehe [advisor-priority-nis2-kritis.md](./advisor-priority-nis2-kritis.md)).
 - **Säulen-Fokus:** Readiness · Governance-Aktivität (GAI) · Monitoring (OAMI) – filtert nach Heuristik/Schwerpunkt und Levels.
 - **Szenario:** Dropdown A–D.
 - **Nur hohe Priorität:** schmale Liste für das nächste Beratungsfenster.
 
 ## Pseudo-Tabelle (Beispiel-Portfolio)
 
-| Mandant | Priorität | Schwerpunkt | GAI | OAMI | Kurzlogik für den Berater |
-|---------|-----------|-------------|-----|------|---------------------------|
-| Alpha GmbH | Hoch · Sz. A | Readiness | Niedrig | Niedrig | Grundlagen zuerst |
-| Beta AG | Hoch · Sz. B | Monitoring | Hoch | Niedrig | Monitoring nachziehen |
-| Gamma SE | Mittel | Nutzung | Mittel | Mittel | Einzelhebel gezielt |
-| Delta KG | Niedrig · Sz. D | Governance | Hoch | Hoch | Pflege / Optimierung |
+| Mandant | Regulatorik | Priorität | Schwerpunkt | GAI | OAMI | Kurzlogik für den Berater |
+|---------|-------------|-----------|-------------|-----|------|---------------------------|
+| Alpha GmbH | NIS2 wesentl. | Hoch · Sz. A | Readiness | Niedrig | Niedrig | Grundlagen zuerst |
+| Beta AG | KRITIS, Vorfälle | Hoch · Sz. B | Monitoring | Hoch | Niedrig | Monitoring + Meldewege |
+| Gamma SE | — | Mittel | Nutzung | Mittel | Mittel | Einzelhebel gezielt |
+| Delta KG | — | Niedrig · Sz. D | Governance | Hoch | Hoch | Pflege / Optimierung |
 
 *(Screenshot: in der Produkt-Doku ergänzen, sobald UI final freigegeben ist.)*
 

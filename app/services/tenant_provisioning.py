@@ -59,6 +59,9 @@ def provision_tenant(session: Session, body: ProvisionTenantRequest) -> Provisio
     flags_repo = TenantFeatureOverrideRepository(session)
     keys_repo = TenantApiKeyRepository(session)
 
+    ks: str | None = None
+    if body.kritis_sector is not None and str(body.kritis_sector).strip():
+        ks = str(body.kritis_sector).strip()[:64]
     reg.create(
         tenant_id=tenant_id,
         display_name=body.tenant_name.strip(),
@@ -66,6 +69,7 @@ def provision_tenant(session: Session, body: ProvisionTenantRequest) -> Provisio
         country=body.country.strip() or "DE",
         nis2_scope=body.nis2_scope.strip() or "in_scope",
         ai_act_scope=body.ai_act_scope.strip() or "in_scope",
+        kritis_sector=ks,
     )
 
     flags_repo.set_many(tenant_id, dict(PILOT_TENANT_FEATURE_DEFAULTS))

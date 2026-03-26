@@ -5,12 +5,14 @@ from __future__ import annotations
 import csv
 import io
 import json
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.db import SessionLocal
 from app.main import app
+from app.models_db import TenantDB
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 
 client = TestClient(app)
@@ -36,6 +38,37 @@ def _adv_headers(advisor_id: str) -> dict[str, str]:
         "x-api-key": API_KEY,
         "x-advisor-id": advisor_id,
     }
+
+
+def _ensure_tenant_registry_row(
+    tenant_id: str,
+    *,
+    nis2_scope: str = "in_scope",
+    kritis_sector: str | None = None,
+) -> None:
+    """Stammdaten für Portfolio-NIS2/KRITIS-Felder (Tests)."""
+    s = SessionLocal()
+    try:
+        row = s.get(TenantDB, tenant_id)
+        if row is None:
+            s.add(
+                TenantDB(
+                    id=tenant_id,
+                    display_name=tenant_id,
+                    industry="Energie",
+                    country="DE",
+                    nis2_scope=nis2_scope,
+                    kritis_sector=kritis_sector,
+                    ai_act_scope="in_scope",
+                    created_at_utc=datetime.now(UTC),
+                ),
+            )
+        else:
+            row.nis2_scope = nis2_scope
+            row.kritis_sector = kritis_sector
+        s.commit()
+    finally:
+        s.close()
 
 
 def _seed_links() -> None:
@@ -145,9 +178,31 @@ def test_advisor_not_in_allowlist_forbidden(monkeypatch: pytest.MonkeyPatch) -> 
     assert r.status_code == 403
 
 
-def test_advisor_portfolio_export_json_and_csv(advisor_allowlist: None) -> None:
+def test_advisor_portfolio_includes_nis2_kritis_incident_fields(advisor_allowlist: None) -> None:
+    _ensure_tenant_registry_row(
+        T1,
+        nis2_scope="essential_entity",
+        kritis_sector="energy",
+    )
     _seed_links()
     _post_min_system(T1, "sx", "low")
+
+    res = client.get(
+        f"/api/v1/advisors/{ADV_A}/tenants/portfolio",
+        headers=_adv_headers(ADV_A),
+    )
+    assert res.status_code == 200, res.text
+    alpha = next(t for t in res.json()["tenants"] if t["tenant_id"] == T1)
+    assert alpha["nis2_entity_category"] == "essential_entity"
+    assert alpha["kritis_sector_key"] == "energy"
+    assert alpha["recent_incidents_90d"] is False
+    assert alpha["incident_burden_level"] == "low"
+
+
+def test_advisor_portfolio_export_json_and_csv(advisor_allowlist: None) -> None:
+    _ensure_tenant_registry_row(T1)
+    _seed_links()
+    _post_min_system(T1, "sys-export-csv", "low")
 
     jr = client.get(
         f"/api/v1/advisors/{ADV_A}/tenants/portfolio-export?format=json",
@@ -166,4 +221,14 @@ def test_advisor_portfolio_export_json_and_csv(advisor_allowlist: None) -> None:
     assert cr.status_code == 200
     rows = list(csv.DictReader(io.StringIO(cr.content.decode("utf-8"))))
     assert len(rows) == 2
-    assert set(rows[0].keys()) >= {"tenant_id", "eu_ai_act_readiness", "setup_progress_ratio"}
+    assert set(rows[0].keys()) >= {
+        "tenant_id",
+        "eu_ai_act_readiness",
+        "setup_progress_ratio",
+        "nis2_entity_category",
+        "kritis_sector_key",
+        "recent_incidents_90d",
+        "incident_burden_level",
+        "advisor_priority",
+        "advisor_priority_explanation_de",
+    }

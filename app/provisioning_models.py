@@ -8,6 +8,11 @@ class ProvisionTenantRequest(BaseModel):
     industry: str = Field(..., min_length=1, max_length=128)
     country: str = Field(default="DE", max_length=64)
     nis2_scope: str = Field(default="in_scope", max_length=64)
+    kritis_sector: str | None = Field(
+        default=None,
+        max_length=64,
+        description="Optional: KRITIS-Sektorschlüssel (z.B. energy, health, transport).",
+    )
     ai_act_scope: str = Field(default="in_scope", max_length=64)
     advisor_id: str | None = Field(default=None, max_length=255)
     enable_demo_seed: bool = False

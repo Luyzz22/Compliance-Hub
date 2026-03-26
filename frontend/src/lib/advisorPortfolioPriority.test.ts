@@ -6,6 +6,7 @@ import {
   applyAdvisorPortfolioFilters,
   advisorPrioritySortKey,
   matchesPillarFocus,
+  matchesRegulatoryFilter,
   matchesSegmentFilter,
   priorityLabelDe,
 } from "./advisorPortfolioPriority";
@@ -79,6 +80,7 @@ describe("advisorPortfolioPriority", () => {
         pillar: null,
         scenario: "a",
         segment: null,
+        regulatory: null,
         priorityBucket: null,
       }).map((x) => x.tenant_id),
     ).toEqual(["a"]);
@@ -87,9 +89,32 @@ describe("advisorPortfolioPriority", () => {
         pillar: null,
         scenario: null,
         segment: null,
+        regulatory: null,
         priorityBucket: "low",
       }).map((x) => x.tenant_id),
     ).toEqual(["b"]);
+  });
+
+  it("matchesRegulatoryFilter and applyAdvisorPortfolioFilters regulatory", () => {
+    const a = row({
+      tenant_id: "x",
+      nis2_entity_category: "important_entity",
+      kritis_sector_key: "energy",
+      recent_incidents_90d: true,
+    });
+    expect(matchesRegulatoryFilter(a, "nis2_relevant")).toBe(true);
+    expect(matchesRegulatoryFilter(a, "kritis_sector")).toBe(true);
+    expect(matchesRegulatoryFilter(a, "incidents_90d")).toBe(true);
+    const noneNis2 = row({ tenant_id: "y", nis2_entity_category: "none" });
+    expect(
+      applyAdvisorPortfolioFilters([a, noneNis2], {
+        pillar: null,
+        scenario: null,
+        segment: null,
+        regulatory: "nis2_relevant",
+        priorityBucket: null,
+      }).map((t) => t.tenant_id),
+    ).toEqual(["x"]);
   });
 
   it("matchesSegmentFilter aufbau_monitoring vs optimierung", () => {
