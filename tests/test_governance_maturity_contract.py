@@ -16,6 +16,7 @@ from app.governance_maturity_contract import (
     contract_mapping_for_tests,
     derive_oami_level_from_index,
     derive_readiness_level_from_score,
+    governance_maturity_board_summary_json_schema_instructions,
     normalize_index_level,
     normalize_readiness_level,
     readiness_explain_json_schema_instructions,
@@ -64,6 +65,14 @@ def test_json_schema_instructions_list_allowed_level_tokens() -> None:
     instr = readiness_explain_json_schema_instructions()
     assert "basic" in instr and "managed" in instr and "embedded" in instr
     assert "operational_monitoring_explanation" in instr
+
+
+def test_board_summary_json_schema_instructions_shape() -> None:
+    instr = governance_maturity_board_summary_json_schema_instructions()
+    assert "governance_maturity_summary" in instr
+    assert "executive_overview_governance_maturity_de" in instr
+    assert "overall_assessment" in instr
+    assert "basic" in instr and "low" in instr
 
 
 def test_contract_mapping_snapshot_stable() -> None:

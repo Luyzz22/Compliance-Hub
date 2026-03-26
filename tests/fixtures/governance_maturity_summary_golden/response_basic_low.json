@@ -1,0 +1,29 @@
+{
+  "governance_maturity_summary": {
+    "readiness": {
+      "score": 99,
+      "level": "embedded",
+      "short_reason": "Strukturell ist der Aufbau noch im frühen Stadium; Register und Nachweise sind lückenhaft."
+    },
+    "activity": {
+      "index": 99,
+      "level": "high",
+      "short_reason": "Die Plattform wird kaum für wiederkehrende Steuerungsrituale genutzt."
+    },
+    "operational_monitoring": {
+      "index": 99,
+      "level": "high",
+      "short_reason": "Laufzeit-Signale sind noch dünn; Incident- und Monitoring-Spuren fehlen weitgehend."
+    },
+    "overall_assessment": {
+      "level": "high",
+      "short_summary": "Die Gesamtlage erfordert eine konzentrierte Aufholagenda in Struktur, Nutzung und Betriebssicht.",
+      "key_risks": [
+        "Strukturelle Lücken bei Nachweisen",
+        "Geringe Steuerungsintensität in der Plattform"
+      ],
+      "key_strengths": []
+    }
+  },
+  "executive_overview_governance_maturity_de": "Aus Sicht von Aufsicht und Vorstand zeigt sich ein Bild, in dem struktureller Aufbau, tatsächliche Nutzung der Steuerungsprozesse und operative Transparenz noch nicht im Gleichgewicht stehen. Die Organisation befindet sich in einer frühen Konsolidierungsphase. Priorität hat die Schließung offener Register- und Nachweislücken bei gleichzeitig klarer Rollensteuerung. Die folgenden Abschnitte vertiefen regulatorische Abdeckung und konkrete Maßnahmen."
+}

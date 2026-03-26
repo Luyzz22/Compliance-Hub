@@ -31,8 +31,8 @@ from app.repositories.tenant_feature_overrides import TenantFeatureOverrideRepos
 from app.repositories.tenant_registry import TenantRegistryRepository  # noqa: E402
 from app.services.ai_kpi_seed import ensure_ai_kpi_definitions_seeded  # noqa: E402
 from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded  # noqa: E402
-from app.services.demo_governance_maturity_seed import (
-    seed_demo_governance_maturity_layer,  # noqa: E402
+from app.services.demo_governance_maturity_seed import (  # noqa: E402
+    seed_demo_governance_maturity_layer,
 )
 from app.services.demo_tenant_seeder import seed_demo_tenant  # noqa: E402
 from app.services.tenant_provisioning import PILOT_TENANT_FEATURE_DEFAULTS  # noqa: E402

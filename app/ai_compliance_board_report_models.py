@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.governance_maturity_summary_models import GovernanceMaturitySummary
+
 
 class FrameworkCoverageSnapshot(BaseModel):
     framework_key: str
@@ -99,6 +101,14 @@ class AiComplianceBoardReportInput(BaseModel):
     kpi_portfolio_aggregates: list[BoardReportKpiPortfolioRowBrief] = Field(
         default_factory=list,
         description="Aggregierte KPIs über High-Risk-Systeme",
+    )
+    governance_maturity_summary: GovernanceMaturitySummary | None = Field(
+        default=None,
+        description="Strukturierte Governance-Reife (Readiness/GAI/OAMI); UI mappt API-Enums.",
+    )
+    governance_maturity_executive_paragraph_de: str | None = Field(
+        default=None,
+        description="Fixer Executive-Overview-Absatz zur Governance-Reife (wörtlich übernehmen).",
     )
 
 
