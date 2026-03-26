@@ -109,8 +109,7 @@ def align_governance_maturity_summary_to_snapshot(
         "Für operatives KI-Monitoring liegen keine ausreichenden Laufzeit-Signale vor."
         if oami.status != "active"
         else (
-            oami.message_de
-            or "Operatives Monitoring ist eingerichtet; Details siehe Kennzahlen."
+            oami.message_de or "Operatives Monitoring ist eingerichtet; Details siehe Kennzahlen."
         )
     )
     if oami.status == "active" and oami.index is not None and oami.level:

@@ -43,6 +43,5 @@ def build_governance_maturity_summary_prompt(
         "Nutze ausschließlich die nachfolgenden JSON-Fakten; erfinde keine Zahlen, Mandanten "
         "oder KI-Systeme. Die Felder score/index/level in den Fakten sind maßgeblich — "
         "deine Kurzbegründungen müssen dazu passen.\n\n"
-        "JSON-Fakten (Mandanten-Snapshot):\n"
-        + facts
+        "JSON-Fakten (Mandanten-Snapshot):\n" + facts
     )

@@ -89,8 +89,7 @@ def test_parse_governance_maturity_summary_alias() -> None:
     b = parse_governance_maturity_board_summary(raw, _snap_basic_low())
     assert a.summary.model_dump() == b.summary.model_dump()
     assert (
-        a.executive_overview_governance_maturity_de
-        == b.executive_overview_governance_maturity_de
+        a.executive_overview_governance_maturity_de == b.executive_overview_governance_maturity_de
     )
 
 
