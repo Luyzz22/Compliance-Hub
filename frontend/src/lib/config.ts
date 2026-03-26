@@ -30,6 +30,11 @@ export function featureReadinessScore(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_READINESS_SCORE, true);
 }
 
+/** Governance Maturity Lens: GAI + OAMI im Portfolio u. a. (Backend COMPLIANCEHUB_FEATURE_GOVERNANCE_MATURITY). */
+export function featureGovernanceMaturity(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_GOVERNANCE_MATURITY, true);
+}
+
 export function featureDemoSeeding(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_DEMO_SEEDING, true);
 }

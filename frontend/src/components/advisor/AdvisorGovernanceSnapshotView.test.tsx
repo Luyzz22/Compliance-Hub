@@ -1,11 +1,30 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AdvisorClientGovernanceSnapshotDto } from "@/lib/api";
+import {
+  GAI_FULL_NAME,
+  GAI_TOOLTIP_C_LEVEL,
+  OAMI_DEMO_SIGNALS_NOTE,
+  OAMI_FULL_NAME,
+  OAMI_SECTION_TITLE,
+  OAMI_TOOLTIP_C_LEVEL,
+  READINESS_PRODUCT_TITLE,
+  READINESS_TAGLINE,
+} from "@/lib/governanceMaturityDeCopy";
 
 import { AdvisorGovernanceSnapshotView } from "./AdvisorGovernanceSnapshotView";
 
-const { fetchSnap, postMd } = vi.hoisted(() => {
+const snapshotViewFlags = vi.hoisted(() => ({ readinessScore: false }));
+
+const { fetchSnap, postMd, fetchAdvisorReadiness } = vi.hoisted(() => {
   const minimalSnapshot: AdvisorClientGovernanceSnapshotDto = {
     advisor_id: "adv@x",
     client_tenant_id: "t-1",
@@ -71,7 +90,20 @@ const { fetchSnap, postMd } = vi.hoisted(() => {
     provider: "anthropic",
     model_id: "claude",
   });
-  return { fetchSnap, postMd };
+  const fetchAdvisorReadiness = vi.fn().mockResolvedValue({
+    tenant_id: "t-1",
+    score: 71,
+    level: "managed",
+    interpretation: "Readiness OK.",
+    dimensions: {
+      setup: { normalized: 0.7, score_0_100: 70 },
+      coverage: { normalized: 0.7, score_0_100: 70 },
+      kpi: { normalized: 0.7, score_0_100: 70 },
+      gaps: { normalized: 0.7, score_0_100: 70 },
+      reporting: { normalized: 0.7, score_0_100: 70 },
+    },
+  });
+  return { fetchSnap, postMd, fetchAdvisorReadiness };
 });
 
 vi.mock("@/lib/api", async (importOriginal) => {
@@ -81,6 +113,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
     ADVISOR_ID_FROM_ENV: "adv@test",
     fetchAdvisorClientGovernanceSnapshot: fetchSnap,
     postAdvisorGovernanceSnapshotMarkdown: postMd,
+    fetchAdvisorTenantReadinessScore: fetchAdvisorReadiness,
   };
 });
 
@@ -93,8 +126,13 @@ vi.mock("@/lib/config", async (importOriginal) => {
   return {
     ...actual,
     featureAiComplianceBoardReport: () => false,
-    featureReadinessScore: () => false,
+    featureReadinessScore: () => snapshotViewFlags.readinessScore,
   };
+});
+
+afterEach(() => {
+  snapshotViewFlags.readinessScore = false;
+  cleanup();
 });
 
 describe("AdvisorGovernanceSnapshotView", () => {
@@ -116,5 +154,33 @@ describe("AdvisorGovernanceSnapshotView", () => {
     });
     expect(await screen.findByTestId("snap-md-preview")).toBeTruthy();
     expect(screen.getByText("Punkt")).toBeTruthy();
+  });
+
+  it("renders Readiness, GAI and OAMI tiles using centralized copy strings", async () => {
+    snapshotViewFlags.readinessScore = true;
+    render(<AdvisorGovernanceSnapshotView clientTenantId="t-1" />);
+
+    await waitFor(() => {
+      expect(fetchAdvisorReadiness).toHaveBeenCalledWith("adv@test", "t-1");
+    });
+
+    const intro = screen.getByTestId("advisor-governance-snapshot-view");
+    expect(intro.textContent).toContain(READINESS_PRODUCT_TITLE);
+    expect(intro.textContent).toContain(READINESS_TAGLINE.slice(0, 40));
+    expect(intro.textContent).toContain(GAI_FULL_NAME);
+    expect(intro.textContent).toContain(GAI_TOOLTIP_C_LEVEL.slice(0, 40));
+    expect(intro.textContent).toContain(OAMI_FULL_NAME);
+
+    const readinessSection = await screen.findByTestId("snap-readiness");
+    expect(within(readinessSection).getByText(READINESS_PRODUCT_TITLE)).toBeTruthy();
+
+    const gaiTile = screen.getByTestId("snap-gai-note");
+    expect(within(gaiTile).getByText(GAI_FULL_NAME)).toBeTruthy();
+    expect(gaiTile.textContent).toContain(GAI_TOOLTIP_C_LEVEL.slice(0, 50));
+
+    const oamiTile = screen.getByTestId("snap-oami");
+    expect(within(oamiTile).getByText(OAMI_SECTION_TITLE)).toBeTruthy();
+    expect(oamiTile.textContent).toContain(OAMI_TOOLTIP_C_LEVEL.slice(0, 50));
+    expect(within(oamiTile).getByText(OAMI_DEMO_SIGNALS_NOTE)).toBeTruthy();
   });
 });

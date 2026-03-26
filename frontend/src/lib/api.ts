@@ -1398,6 +1398,11 @@ export interface AdvisorPortfolioTenantEntry {
   setup_progress_ratio: number;
   governance_brief?: AdvisorTenantGovernanceBriefDto | null;
   readiness_summary?: ReadinessScoreSummaryDto | null;
+  governance_activity_summary?: { index: number; level: string } | null;
+  operational_monitoring_summary?: {
+    index: number | null;
+    level: string | null;
+  } | null;
 }
 
 export interface AdvisorPortfolioResponse {

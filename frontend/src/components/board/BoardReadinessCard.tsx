@@ -11,6 +11,8 @@ import { CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
 import { featureLlmEnabled, featureLlmExplain, featureReadinessScore } from "@/lib/config";
 import {
   DEMO_HINT_READINESS_CARD,
+  getReadinessCopy,
+  parseReadinessLevel,
   READINESS_DIM_COVERAGE,
   READINESS_DIM_COVERAGE_HINT,
   READINESS_DIM_GAPS,
@@ -22,6 +24,7 @@ import {
   READINESS_DIM_SETUP,
   READINESS_DIM_SETUP_HINT,
   READINESS_FIVE_DIMS_CAPTION,
+  READINESS_LEVEL_ROW_LABEL,
   READINESS_PRODUCT_TITLE,
   READINESS_REG_HINT_SHORT,
   READINESS_TAGLINE,
@@ -68,14 +71,20 @@ function DimBar({
 export function BoardReadinessCard({
   tenantId,
   isDemoTenant = false,
+  /** Wenn gesetzt: kein initialer API-Fetch (z. B. Vitest). „Aktualisieren“ ruft weiterhin die API auf. */
+  staticReadiness,
 }: {
   tenantId: string;
   /** Pilot/Seed-Mandant: kurzer Hinweis, dass der Score aus Demo-Daten stammt. */
   isDemoTenant?: boolean;
+  staticReadiness?: ReadinessScoreResponseDto;
 }) {
-  const [data, setData] = useState<ReadinessScoreResponseDto | null>(null);
+  const staticMode = staticReadiness !== undefined;
+  const [data, setData] = useState<ReadinessScoreResponseDto | null>(() =>
+    staticMode ? staticReadiness : null,
+  );
   const [err, setErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState(true);
+  const [busy, setBusy] = useState(() => !staticMode);
   const [explainBusy, setExplainBusy] = useState(false);
   const [explain, setExplain] = useState<string | null>(null);
   const [explainErr, setExplainErr] = useState<string | null>(null);
@@ -95,8 +104,14 @@ export function BoardReadinessCard({
   }, [tenantId]);
 
   useEffect(() => {
+    if (staticMode) {
+      setData(staticReadiness);
+      setBusy(false);
+      setErr(null);
+      return;
+    }
     void load();
-  }, [load]);
+  }, [load, staticMode, staticReadiness]);
 
   if (!featureReadinessScore()) {
     return null;
@@ -117,6 +132,7 @@ export function BoardReadinessCard({
   };
 
   const d = data?.dimensions;
+  const readinessLevelParsed = data ? parseReadinessLevel(data.level) : null;
 
   return (
     <article className={CH_CARD} data-testid="board-readiness-card">
@@ -144,8 +160,16 @@ export function BoardReadinessCard({
                 <span className="text-lg font-semibold text-slate-500">/100</span>
               </p>
               <p className="mt-1 text-sm font-medium text-slate-700">
-                Reifegrad:{" "}
-                <span className="text-slate-900" title={READINESS_REG_HINT_SHORT}>
+                {READINESS_LEVEL_ROW_LABEL}{" "}
+                <span
+                  className="text-slate-900"
+                  title={
+                    readinessLevelParsed
+                      ? getReadinessCopy(readinessLevelParsed).levelWithRegTooltip
+                      : READINESS_REG_HINT_SHORT
+                  }
+                  data-testid="board-readiness-level-label"
+                >
                   {readinessLevelLabelDe(data.level)}
                 </span>
               </p>

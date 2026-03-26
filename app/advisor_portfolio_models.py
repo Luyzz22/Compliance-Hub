@@ -1,11 +1,28 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from app.advisor_client_snapshot_models import AdvisorTenantGovernanceBrief
 from app.readiness_score_models import ReadinessScoreSummary
+
+GaiOamiLevel = Literal["low", "medium", "high"]
+
+
+class GovernanceActivityPortfolioSummary(BaseModel):
+    """Kurzform GAI für Berater-Portfolio (0–100 + Level)."""
+
+    index: int = Field(ge=0, le=100)
+    level: GaiOamiLevel
+
+
+class OperationalMonitoringPortfolioSummary(BaseModel):
+    """Kurzform OAMI für Berater-Portfolio."""
+
+    index: int | None = Field(default=None, ge=0, le=100)
+    level: GaiOamiLevel | None = None
 
 
 class AdvisorPortfolioTenantEntry(BaseModel):
@@ -34,6 +51,14 @@ class AdvisorPortfolioTenantEntry(BaseModel):
     readiness_summary: ReadinessScoreSummary | None = Field(
         default=None,
         description="Optional: Readiness Score (FEATURE_READINESS_SCORE).",
+    )
+    governance_activity_summary: GovernanceActivityPortfolioSummary | None = Field(
+        default=None,
+        description="Optional: GAI (FEATURE_GOVERNANCE_MATURITY).",
+    )
+    operational_monitoring_summary: OperationalMonitoringPortfolioSummary | None = Field(
+        default=None,
+        description="Optional: OAMI (FEATURE_GOVERNANCE_MATURITY).",
     )
 
 

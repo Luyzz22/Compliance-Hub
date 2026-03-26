@@ -7,12 +7,16 @@ import { portfolioHealth, type PortfolioHealth } from "@/lib/advisorPortfolioHea
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD } from "@/lib/boardLayout";
 import * as chConfig from "@/lib/config";
 import {
+  indexLevelLabelDe,
   PORTFOLIO_COL_EU_AI_ACT,
   PORTFOLIO_COL_EU_AI_ACT_TOOLTIP,
+  PORTFOLIO_COL_GAI_SHORT,
+  PORTFOLIO_COL_GAI_TOOLTIP,
+  PORTFOLIO_COL_OAMI_SHORT,
+  PORTFOLIO_COL_OAMI_TOOLTIP,
   PORTFOLIO_COL_READINESS,
   PORTFOLIO_COL_READINESS_TOOLTIP,
-  READINESS_REG_HINT_SHORT,
-  readinessLevelLabelDe,
+  readinessPortfolioBadgeTooltip,
 } from "@/lib/governanceMaturityDeCopy";
 import {
   openWorkspaceTenantAndGo,
@@ -63,6 +67,7 @@ function readinessBadgeClasses(score: number): string {
 export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTableProps) {
   const snapUi = chConfig.featureAdvisorClientSnapshot();
   const readinessUi = chConfig.featureReadinessScore();
+  const governanceMaturityUi = chConfig.featureGovernanceMaturity();
 
   if (rows.length === 0) {
     return (
@@ -99,6 +104,16 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                 <th title={PORTFOLIO_COL_READINESS_TOOLTIP} className="max-w-[6rem]">
                   {PORTFOLIO_COL_READINESS}
                 </th>
+              ) : null}
+              {governanceMaturityUi ? (
+                <>
+                  <th title={PORTFOLIO_COL_GAI_TOOLTIP} className="max-w-[7rem]">
+                    {PORTFOLIO_COL_GAI_SHORT}
+                  </th>
+                  <th title={PORTFOLIO_COL_OAMI_TOOLTIP} className="max-w-[7rem]">
+                    {PORTFOLIO_COL_OAMI_SHORT}
+                  </th>
+                </>
               ) : null}
               {snapUi ? <th>Snapshot</th> : null}
               <th>Mandanten-Steckbrief</th>
@@ -201,7 +216,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                       {t.readiness_summary ? (
                         <span
                           className={`inline-flex min-w-[2.25rem] justify-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${readinessBadgeClasses(t.readiness_summary.score)}`}
-                          title={`Reifegrad ${readinessLevelLabelDe(t.readiness_summary.level)} (0–100). ${READINESS_REG_HINT_SHORT}`}
+                          title={readinessPortfolioBadgeTooltip(t.readiness_summary.level)}
                           data-testid={`advisor-readiness-badge-${t.tenant_id}`}
                         >
                           {t.readiness_summary.score}
@@ -210,6 +225,42 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                         <span className="text-xs text-[var(--sbs-text-muted)]">–</span>
                       )}
                     </td>
+                  ) : null}
+                  {governanceMaturityUi ? (
+                    <>
+                      <td
+                        className="text-center align-middle text-xs tabular-nums text-[var(--sbs-text-secondary)]"
+                        data-testid={`advisor-gai-cell-${t.tenant_id}`}
+                      >
+                        {t.governance_activity_summary ? (
+                          <span title={PORTFOLIO_COL_GAI_TOOLTIP}>
+                            {t.governance_activity_summary.index}
+                            <span className="text-[var(--sbs-text-muted)]">
+                              {" "}
+                              · {indexLevelLabelDe(t.governance_activity_summary.level)}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-[var(--sbs-text-muted)]">–</span>
+                        )}
+                      </td>
+                      <td
+                        className="text-center align-middle text-xs tabular-nums text-[var(--sbs-text-secondary)]"
+                        data-testid={`advisor-oami-cell-${t.tenant_id}`}
+                      >
+                        {t.operational_monitoring_summary?.level != null ? (
+                          <span title={PORTFOLIO_COL_OAMI_TOOLTIP}>
+                            {t.operational_monitoring_summary.index ?? "–"}
+                            <span className="text-[var(--sbs-text-muted)]">
+                              {" "}
+                              · {indexLevelLabelDe(t.operational_monitoring_summary.level)}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-[var(--sbs-text-muted)]">–</span>
+                        )}
+                      </td>
+                    </>
                   ) : null}
                   {snapUi ? (
                     <td className="align-top">
