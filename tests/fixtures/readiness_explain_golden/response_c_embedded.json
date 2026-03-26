@@ -1,0 +1,14 @@
+{
+  "readiness_explanation": {
+    "score": 88,
+    "level": "embedded",
+    "short_reason": "Hohe strukturelle Reife über alle Dimensionen: Setup, Coverage, KPI-Register, Gap-Transparenz und Board-Reporting sind weitgehend etabliert; Optimierungen sind fein.",
+    "drivers_positive": [
+      "Konsistente Dokumentation und Reporting-Historie.",
+      "Geringe kritische regulatorische Gap-Last im aktiven Scope."
+    ],
+    "drivers_negative": ["Feintuning: Trend-Qualität der KPIs und Peer-Benchmarks prüfen."],
+    "regulatory_focus": "EU AI Act Post-Market-Monitoring und NIS2-Incident-Steuerung bleiben im Blick; ISO 42001/27001 kontinuierlich evidenzbasiert halten."
+  },
+  "operational_monitoring_explanation": null
+}
