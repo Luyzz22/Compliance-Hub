@@ -5,12 +5,14 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   fetchTenantReadinessScore,
   postTenantReadinessScoreExplain,
+  type ReadinessScoreExplainResponseDto,
   type ReadinessScoreResponseDto,
 } from "@/lib/api";
 import { CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
 import { featureLlmEnabled, featureLlmExplain, featureReadinessScore } from "@/lib/config";
 import {
   DEMO_HINT_READINESS_CARD,
+  OAMI_FULL_NAME,
   getReadinessCopy,
   parseReadinessLevel,
   READINESS_DIM_COVERAGE,
@@ -86,7 +88,7 @@ export function BoardReadinessCard({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(() => !staticMode);
   const [explainBusy, setExplainBusy] = useState(false);
-  const [explain, setExplain] = useState<string | null>(null);
+  const [explainResult, setExplainResult] = useState<ReadinessScoreExplainResponseDto | null>(null);
   const [explainErr, setExplainErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -120,10 +122,10 @@ export function BoardReadinessCard({
   const runExplain = async () => {
     setExplainBusy(true);
     setExplainErr(null);
-    setExplain(null);
+    setExplainResult(null);
     try {
       const r = await postTenantReadinessScoreExplain(tenantId);
-      setExplain(r.explanation);
+      setExplainResult(r);
     } catch (e) {
       setExplainErr(e instanceof Error ? e.message : "KI-Erklärung fehlgeschlagen");
     } finally {
@@ -258,10 +260,49 @@ export function BoardReadinessCard({
                 {explainBusy ? "KI formuliert…" : "Score per KI erklären (Top-3-Maßnahmen)"}
               </button>
               {explainErr ? <p className="mt-2 text-sm text-rose-800">{explainErr}</p> : null}
-              {explain ? (
-                <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700" data-testid="board-readiness-explain-text">
-                  {explain}
-                </p>
+              {explainResult ? (
+                <div className="mt-3 space-y-2" data-testid="board-readiness-explain-block">
+                  <p
+                    className="whitespace-pre-wrap text-sm text-slate-700"
+                    data-testid="board-readiness-explain-text"
+                  >
+                    {explainResult.explanation}
+                  </p>
+                  {explainResult.readiness_explanation?.regulatory_focus ? (
+                    <p className="text-xs leading-snug text-slate-500">
+                      {explainResult.readiness_explanation.regulatory_focus}
+                    </p>
+                  ) : null}
+                  {explainResult.readiness_explanation &&
+                  explainResult.readiness_explanation.drivers_positive.length > 0 ? (
+                    <div>
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">
+                        Stärken
+                      </p>
+                      <ul className="mt-1 list-inside list-disc text-xs text-slate-600">
+                        {explainResult.readiness_explanation.drivers_positive.map((line, i) => (
+                          <li key={i}>{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {explainResult.operational_monitoring_explanation &&
+                  (explainResult.operational_monitoring_explanation.improvement_suggestions.length > 0 ||
+                    explainResult.operational_monitoring_explanation.monitoring_gaps.length > 0) ? (
+                    <div className="border-t border-slate-100 pt-2">
+                      <p className="text-[0.65rem] font-semibold text-slate-600">{OAMI_FULL_NAME}</p>
+                      <ul className="mt-1 list-inside list-disc text-xs text-slate-600">
+                        {(
+                          explainResult.operational_monitoring_explanation.improvement_suggestions.length
+                            ? explainResult.operational_monitoring_explanation.improvement_suggestions
+                            : explainResult.operational_monitoring_explanation.monitoring_gaps
+                        ).map((line, i) => (
+                          <li key={i}>{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ) : null}

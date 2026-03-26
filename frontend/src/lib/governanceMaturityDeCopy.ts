@@ -6,6 +6,7 @@
  *
  * Inhaltliche Abstimmung mit dem Demo-Script: `docs/demo-board-ready-walkthrough.md`
  * Begriffstabelle: `docs/governance-maturity-copy-de.md`
+ * Backend/API-Enums & LLM-Vertrag: `docs/governance-maturity-copy-contract.md`
  *
  * Level-Typen: `governanceMaturityTypes.ts` — Parser/Helper unten für konsistente Labels.
  */
