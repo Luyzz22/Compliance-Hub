@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS ai_runtime_events (
     extra JSON NOT NULL DEFAULT ('{}'),
     CONSTRAINT fk_ai_runtime_events_ai_system
         FOREIGN KEY (ai_system_id) REFERENCES ai_systems (id) ON DELETE CASCADE,
-    CONSTRAINT uq_ai_runtime_events_idempotent UNIQUE (tenant_id, source_event_id)
+    CONSTRAINT uq_ai_runtime_events_tenant_source_event UNIQUE (tenant_id, source, source_event_id)
 );
 
 CREATE INDEX IF NOT EXISTS ix_ai_runtime_events_tenant_id ON ai_runtime_events (tenant_id);

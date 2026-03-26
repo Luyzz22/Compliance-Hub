@@ -20,12 +20,18 @@ class AiRuntimeEventRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def exists_by_source_event_id(self, tenant_id: str, source_event_id: str) -> bool:
+    def exists_by_tenant_source_event_id(
+        self,
+        tenant_id: str,
+        source: str,
+        source_event_id: str,
+    ) -> bool:
         stmt = (
             select(func.count())
             .select_from(AiRuntimeEventTable)
             .where(
                 AiRuntimeEventTable.tenant_id == tenant_id,
+                AiRuntimeEventTable.source == source,
                 AiRuntimeEventTable.source_event_id == source_event_id,
             )
         )

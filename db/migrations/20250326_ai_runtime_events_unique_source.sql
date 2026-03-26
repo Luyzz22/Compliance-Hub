@@ -1,0 +1,3 @@
+-- Idempotenz: (tenant_id, source, source_event_id) statt nur (tenant_id, source_event_id).
+-- SQLite erlaubt UNIQUE-Änderung nicht in-place: bei bestehenden DBs Tabelle neu aufbauen
+-- oder frische Migration aus 20250325_ai_runtime_events_oami.sql verwenden.

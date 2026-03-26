@@ -16,7 +16,8 @@
 
 - [`governance-maturity-lens.md`](./governance-maturity-lens.md) – OAMI als dritte Säule neben Readiness und GAI.  
 - [`governance-telemetry.md`](./governance-telemetry.md) – Workspace-Telemetrie (getrennt von Laufzeit-KI-Events).  
-- [`governance-activity-index.md`](./governance-activity-index.md) – GAI.
+- [`governance-activity-index.md`](./governance-activity-index.md) – GAI.  
+- [`runtime-events-oami-operations-runbook.md`](./runtime-events-oami-operations-runbook.md) – Betrieb: ENV, Logs, synthetisches Seeding.
 
 ---
 
@@ -28,7 +29,7 @@ Alle eingespielten Laufzeit-Events werden in **eine** kanonische Form normalisie
 
 | Feld | Typ | Pflicht | Beschreibung |
 |------|-----|---------|--------------|
-| `event_id` | string (UUID) | ja | Idempotenz-Schlüssel (von Quelle oder von ComplianceHub generiert). |
+| `source_event_id` | string | ja | Idempotenz-Schlüssel **pro** `source` (von Quelle oder von ComplianceHub generiert). |
 | `tenant_id` | string | ja | ComplianceHub-Mandant (RLS). |
 | `ai_system_id` | string | ja | FK zu `ai_systems.id` (Register); Mapping aus SAP-Deployment/Resource-ID über Konfigurationstabelle. |
 | `source` | string (enum) | ja | Ursprung, z. B. `sap_ai_core`, `sap_btp_event_mesh`, `manual_import`, `other_provider`. |
@@ -85,7 +86,7 @@ Runtime-Events werden **nicht** als neue „Pflichten“ im Graph gespeichert, s
 | `id` | uuid, PK | PK | Intern. |
 | `tenant_id` | text, NOT NULL | ja (composite) | RLS. |
 | `ai_system_id` | text, NOT NULL, FK → `ai_systems.id` | ja | Register. |
-| `event_id` | text, NOT NULL | UNIQUE (tenant_id, event_id) | Idempotenz. |
+| `source_event_id` | text, NOT NULL | UNIQUE (tenant_id, source, source_event_id) | Idempotenz je Quelle (gleiche externe ID bei anderem `source` ist erlaubt). |
 | `source` | text, NOT NULL | | |
 | `event_type` | text, NOT NULL | ja | |
 | `severity` | text | | |
@@ -276,14 +277,50 @@ Kombination mit bestehenden Tags (z. B. `structurally_strong_low_usage`) für **
 
 ---
 
-## 7. Verwandte Code-Pfade (Ist-Zustand)
+## 7. Betrieb, Observability, Demo-Daten & regulatorische Einordnung
+
+### 7.1 Ingest- und Aggregationsfrequenz (Empfehlung)
+
+| Prozess | Typische Frequenz | Hinweis |
+|---------|-------------------|---------|
+| **API-Ingest** (`POST` Batch) | Ereignisgetrieben oder 1–5 Min. Batches | Idempotent über `(tenant_id, source, source_event_id)`; gemischte Batches: gültige Events werden geschrieben, ungültige werden abgelehnt und in der Antwort aufgelistet (Cap auf Ablehnungsdetails). |
+| **Incident-Summaries / KPI aus Events** | On-ingest oder periodischer Job (z. B. 15–60 Min.) | Abgestimmt mit Board-/Advisor-Aktualisierung und Last auf der DB. |
+| **OAMI-Berechnung** | On-read (API) und/oder bei Snapshot-Persistenz nach Ingest | Standard-Fenster **30 / 90 Tage** (`window_days`); Coverage-Sättigung nutzt ein internes Cap (z. B. min(Fenster, 30 Tage)), damit sehr lange Fenster den Score nicht „aufweichen“. |
+
+### 7.2 Logging & Metriken (NIS2 / ISO 42001 – Nachvollziehbarkeit)
+
+Mindestumfang (ohne Payload-Inhalte, DSGVO-minimiert):
+
+| Schlüssel / Kontext | Zweck |
+|---------------------|--------|
+| `runtime_events_ingest` | Strukturiertes Log pro Ingest: `tenant_id`, `inserted`, `skipped_duplicate`, `rejected_invalid`, Dauer; unterstützt **Incident-Response** und Kapazitätsplanung (NIS2: Erkennung/Logging). |
+| `oami_compute` | Berechnung OAMI (System/Tenant): Fenster, Ergebnisindex, ggf. Fehlerpfad – Nachweis **Überwachungsprozesse** (ISO 42001 Monitoring & Measurement). |
+
+**EU AI Act Art. 72 (Post-Market-Monitoring):** Laufzeit-Events und OAMI liefern **technische Evidenz** für Überwachung nach Inverkehrbringen (Vorfälle, Schwellenverletzungen, Änderungen). ComplianceHub **qualifiziert nicht** automatisch Meldepflichten oder „schwere Vorfälle“; Auswertung und rechtliche Einordnung bleiben beim Verantwortlichen.
+
+**ISO/IEC 42001:** OAMI und strukturierte Erklärungen (Treiber, Lücken) unterstützen **Messung, Überwachung und Verbesserung** des AI-Managementsystems; sie ersetzen keine Management-Review-Protokolle.
+
+### 7.3 Demo- und Pilot-Mandanten
+
+- **Synthetische Daten:** Skripte (z. B. unter `scripts/`) sind klar als **synthetic / demo** gekennzeichnet und nutzen stabile `source_event_id`-Werte für **wiederholbares Seeding**.  
+- **Kein produktiver Ingest:** Für Mandanten mit `is_demo` (und konsistent mit Playground-Read-Only) ist **API-Ingest von Laufzeit-Events gesperrt** (HTTP 403); Daten kommen ausschließlich aus kontrolliertem Seeding – **keine** Anbindung externer SAP-Instanzen in Demo.  
+- **Pilot:** Produktive Piloten nutzen echte Ingest-Keys und Mapping; Demo-Trennung verhindert Vermischung von Test- und Echtdaten.
+
+---
+
+## 8. Verwandte Code-Pfade (Ist-Zustand)
 
 | Bereich | Datei / Tabelle |
 |---------|-----------------|
 | AI-Systeme | `app/models_db.py` → `AISystemTable` |
 | KPI-Werte | `AiKpiDefinitionDB`, `ai_system_kpi_values` |
+| Laufzeit-Events & Katalog | `app/runtime_event_catalog.py`, `app/services/runtime_events_ingest.py`, `ai_runtime_events` |
+| OAMI & Erklärungen | `app/services/operational_monitoring_index.py`, `app/services/oami_explanation.py` |
+| Governance Maturity | `app/services/governance_maturity_service.py`, `GET .../governance-maturity` |
+| Board / Advisor | `app/main.py` (Board-Report), `app/services/board_report_markdown.py`, `app/services/advisor_client_governance_snapshot.py` |
+| Demo-Sperre Ingest | `app/services/runtime_events_demo_guard.py` |
 | Workspace-Telemetrie (getrennt) | `app/services/workspace_telemetry.py` |
 
 ---
 
-*Version: 1.0 – Spezifikation für SAP AI Core Post-Market-Signale und OAMI; Implementierung nur nach Security/DPO-Freigabe für konkrete SAP-Payloads.*
+*Version: 1.1 – Spezifikation für SAP AI Core Post-Market-Signale und OAMI; Implementierung nur nach Security/DPO-Freigabe für konkrete SAP-Payloads.*

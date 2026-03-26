@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
@@ -15,6 +16,9 @@ from app.operational_monitoring_models import (
 )
 from app.repositories.ai_runtime_events import AiRuntimeEventRepository
 from app.repositories.ai_systems import AISystemRepository
+from app.services.oami_explanation import explain_system_oami_de, explain_tenant_oami_de
+
+logger = logging.getLogger(__name__)
 
 # Kalibrierung gemäß docs/governance-operational-ai-monitoring.md (Abschn. 3.2)
 _OAMI_WEIGHTS = (0.25, 0.25, 0.35, 0.15)  # freshness, coverage, incident, stability
@@ -40,9 +44,11 @@ def _freshness_component(last_occurred_at: datetime | None, now: datetime) -> fl
 
 
 def _coverage_component(distinct_days: int, window_days: int) -> float:
+    """Sättigung nach überschaubarer Aktivität (nicht erst nach 90/90 Tagen)."""
     if window_days <= 0:
         return 0.0
-    return min(1.0, float(distinct_days) / float(window_days))
+    d_sat = min(window_days, 30)
+    return min(1.0, float(distinct_days) / float(max(1, d_sat)))
 
 
 def _incident_component(incident_count: int, incident_high: int) -> float:
@@ -117,7 +123,7 @@ def compute_system_monitoring_index(
     last_at = agg.get("last_occurred_at")
     last_dt = last_at if isinstance(last_at, datetime) else None
 
-    return SystemMonitoringIndexOut(
+    base = SystemMonitoringIndexOut(
         ai_system_id=ai_system_id,
         tenant_id=tenant_id,
         window_days=window_days,
@@ -130,7 +136,9 @@ def compute_system_monitoring_index(
         metric_threshold_breach_count=int(agg.get("breach_count") or 0),
         distinct_active_days=int(agg.get("distinct_days") or 0),
         components=comp,
+        explanation=None,
     )
+    return base.model_copy(update={"explanation": explain_system_oami_de(base)})
 
 
 def _risk_weight(risk_level: str | None) -> float:
@@ -170,9 +178,17 @@ def compute_tenant_operational_monitoring_index(
             systems_scored=0,
             has_any_runtime_data=False,
             components=None,
+            explanation=None,
         )
+        out = out.model_copy(update={"explanation": explain_tenant_oami_de(out)})
         if persist_snapshot:
             _persist_tenant_snapshot(session, tenant_id, window_days, out, now)
+        logger.info(
+            "oami_compute tenant_id=%s window_days=%s systems_scored=0 index=0 persist=%s",
+            tenant_id,
+            window_days,
+            persist_snapshot,
+        )
         return out
 
     weighted_index = 0.0
@@ -209,9 +225,19 @@ def compute_tenant_operational_monitoring_index(
         systems_scored=len(system_ids),
         has_any_runtime_data=True,
         components=comp_t,
+        explanation=None,
     )
+    out = out.model_copy(update={"explanation": explain_tenant_oami_de(out)})
     if persist_snapshot:
         _persist_tenant_snapshot(session, tenant_id, window_days, out, now)
+    logger.info(
+        "oami_compute tenant_id=%s window_days=%s systems_scored=%s index=%s persist=%s",
+        tenant_id,
+        window_days,
+        len(system_ids),
+        idx,
+        persist_snapshot,
+    )
     return out
 
 

@@ -75,6 +75,18 @@ def render_board_report_markdown(report: AIBoardGovernanceReport) -> str:
         lines.append(f"- **{len(report.alerts)} Alert(s)** (davon {critical} kritisch).")
     else:
         lines.append("- Keine aktuellen Alerts.")
+    om = report.operational_monitoring
+    if om is not None:
+        lines.append("")
+        lines.append(
+            f"- **Operatives KI-Monitoring (OAMI, {om.window_days} Tage):** "
+            f"{om.index_value}/100 ({om.level}), "
+            f"{'Signale vorhanden' if om.has_data else 'keine Laufzeitdaten'} "
+            f"({om.systems_scored} Systeme mit Daten)."
+        )
+        lines.append(f"  - Kurzfassung: {om.summary_de}")
+        for d in om.drivers_de[:5]:
+            lines.append(f"  - Treiber: {d}")
     lines.extend(["", "---", "", "## 2. KPIs", ""])
 
     # KPIs als Tabelle
@@ -178,5 +190,36 @@ def render_board_report_markdown(report: AIBoardGovernanceReport) -> str:
     else:
         lines.append("Keine offenen Alerts.")
         lines.append("")
+
+    lines.extend(
+        [
+            "---",
+            "",
+            "## 7. Ausblick (operatives Monitoring & nächste Schritte)",
+            "",
+        ],
+    )
+    if om is not None:
+        if om.has_data:
+            lines.append(
+                "Die aggregierte Laufzeitlage stützt EU-AI-Act-Post-Market- und "
+                "ISO-42001-Überwachungsnachweise; Priorität: wiederkehrende Signale und "
+                "saubere Eskalation bei Incidents."
+            )
+        else:
+            lines.append(
+                "Ohne sichtbare Laufzeit-Signale sollten Anbindungen (z. B. SAP AI Core/BTP) "
+                "oder definierte manuelle Meldewege priorisiert werden."
+            )
+        if om.drivers_de:
+            lines.append("")
+            lines.append("**Konkrete Hinweise aus dem OAMI:**")
+            for d in om.drivers_de[:6]:
+                lines.append(f"- {d}")
+    else:
+        lines.append(
+            "Operatives Monitoring-Abschnitt nicht verfügbar; technische Auswertung prüfen."
+        )
+    lines.append("")
 
     return "\n".join(lines)

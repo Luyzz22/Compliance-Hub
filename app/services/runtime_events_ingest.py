@@ -2,16 +2,31 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.models_db import AiRuntimeEventTable
-from app.operational_monitoring_models import RuntimeEventIn, RuntimeEventsIngestResult
+from app.operational_monitoring_models import (
+    RuntimeEventIn,
+    RuntimeEventRejection,
+    RuntimeEventsIngestResult,
+)
 from app.repositories.ai_kpis import AiKpiRepository
 from app.repositories.ai_runtime_events import AiRuntimeEventRepository
+from app.runtime_event_catalog import (
+    ValidatedRuntimeFields,
+    rejection_message_en,
+    validate_runtime_event_fields,
+)
 from app.services.runtime_event_sanitize import sanitize_runtime_event_extra
+
+logger = logging.getLogger(__name__)
+
+_RUNTIME_EVENTS_INGEST_LOG = "runtime_events_ingest"
+_OAMI_COMPUTE_LOG = "oami_compute"
 
 
 def _day_bounds_utc(dt: datetime) -> tuple[datetime, datetime]:
@@ -26,14 +41,15 @@ def _maybe_upsert_kpi_from_event(
     *,
     tenant_id: str,
     ai_system_id: str,
+    vf: ValidatedRuntimeFields,
     ev: RuntimeEventIn,
 ) -> bool:
-    if ev.value is None or ev.metric_key is None:
+    if ev.value is None or vf.metric_key is None:
         return False
-    if str(ev.event_type) not in ("metric_snapshot", "metric_threshold_breach"):
+    if vf.event_type not in ("metric_snapshot", "metric_threshold_breach"):
         return False
     repo = AiKpiRepository(session)
-    definition = repo.get_definition_by_key(ev.metric_key.strip())
+    definition = repo.get_definition_by_key(vf.metric_key)
     if definition is None:
         return False
     start, end = _day_bounds_utc(ev.occurred_at)
@@ -61,40 +77,59 @@ def ingest_runtime_events(
     refresh_incident_summary: bool = True,
 ) -> RuntimeEventsIngestResult:
     """
-    Validiert und persistiert Events. Idempotenz über (tenant_id, source_event_id).
+    Validiert und persistiert Events. Idempotenz über (tenant_id, source, source_event_id).
 
-    Optional: KPI-Zeitreihe bei bekanntem metric_key + metric_snapshot/-breach.
+    Ungültige Einträge werden übersprungen; gültige werden bei gemischten Batches trotzdem
+    geschrieben (best effort).
     """
     repo = AiRuntimeEventRepository(session)
     inserted = 0
     skipped = 0
     kpi_updates = 0
+    rejected = 0
+    rejections: list[RuntimeEventRejection] = []
     now = datetime.now(UTC)
     window_start = now - timedelta(days=90)
     window_end = now
-    batch_seen: set[str] = set()
+    batch_seen: set[tuple[str, str]] = set()
 
     try:
-        for ev in events:
+        for idx, ev in enumerate(events):
             sid = ev.source_event_id.strip()
-            if sid in batch_seen:
+            vf, err = validate_runtime_event_fields(ev)
+            if err is not None or vf is None:
+                rejected += 1
+                if len(rejections) < 50:
+                    rejections.append(
+                        RuntimeEventRejection(
+                            index=idx,
+                            source_event_id=sid[:128],
+                            code=err or "validation_error",
+                            message=rejection_message_en(err or "validation_error"),
+                        ),
+                    )
+                continue
+
+            dedupe_key = (vf.source, sid[:128])
+            if dedupe_key in batch_seen:
                 skipped += 1
                 continue
-            if repo.exists_by_source_event_id(tenant_id, sid):
+            if repo.exists_by_tenant_source_event_id(tenant_id, vf.source, sid):
                 skipped += 1
                 continue
-            batch_seen.add(sid)
+            batch_seen.add(dedupe_key)
+
             extra = sanitize_runtime_event_extra(ev.extra if isinstance(ev.extra, dict) else {})
             row = AiRuntimeEventTable(
                 id=str(uuid.uuid4()),
                 tenant_id=tenant_id,
                 ai_system_id=ai_system_id,
-                source=str(ev.source)[:64],
+                source=vf.source,
                 source_event_id=sid[:128],
-                event_type=str(ev.event_type)[:64],
-                severity=(ev.severity[:32] if ev.severity else None),
-                metric_key=(ev.metric_key[:128] if ev.metric_key else None),
-                incident_code=(ev.incident_code[:128] if ev.incident_code else None),
+                event_type=vf.event_type,
+                severity=vf.severity,
+                metric_key=vf.metric_key,
+                incident_code=vf.incident_code,
                 value=ev.value,
                 delta=ev.delta,
                 threshold_breached=ev.threshold_breached,
@@ -112,6 +147,7 @@ def ingest_runtime_events(
                 session,
                 tenant_id=tenant_id,
                 ai_system_id=ai_system_id,
+                vf=vf,
                 ev=ev,
             ):
                 kpi_updates += 1
@@ -128,10 +164,24 @@ def ingest_runtime_events(
                 )
             session.commit()
 
+        logger.info(
+            "%s tenant_id=%s ai_system_id=%s inserted=%d skipped_duplicate=%d "
+            "rejected_invalid=%d kpi_updates=%d",
+            _RUNTIME_EVENTS_INGEST_LOG,
+            tenant_id,
+            ai_system_id,
+            inserted,
+            skipped,
+            rejected,
+            kpi_updates,
+        )
+
         return RuntimeEventsIngestResult(
             inserted=inserted,
             skipped_duplicate=skipped,
             kpi_updates=kpi_updates,
+            rejected_invalid=rejected,
+            rejections=rejections,
         )
     except Exception:
         session.rollback()

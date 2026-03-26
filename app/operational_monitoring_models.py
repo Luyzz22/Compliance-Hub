@@ -47,10 +47,25 @@ class RuntimeEventsBatchIn(BaseModel):
     events: list[RuntimeEventIn] = Field(min_length=1, max_length=500)
 
 
+class RuntimeEventRejection(BaseModel):
+    index: int = Field(ge=0, description="0-basierter Index im Batch")
+    source_event_id: str = Field(max_length=128)
+    code: str = Field(max_length=64)
+    message: str = Field(max_length=512)
+
+
 class RuntimeEventsIngestResult(BaseModel):
     inserted: int
     skipped_duplicate: int
     kpi_updates: int = 0
+    rejected_invalid: int = 0
+    rejections: list[RuntimeEventRejection] = Field(default_factory=list)
+
+
+class OamiExplanationOut(BaseModel):
+    summary_de: str
+    drivers_de: list[str] = Field(default_factory=list, max_length=12)
+    monitoring_gap_de: str | None = None
 
 
 class OamiComponentsOut(BaseModel):
@@ -77,6 +92,7 @@ class SystemMonitoringIndexOut(BaseModel):
     metric_threshold_breach_count: int = 0
     distinct_active_days: int = 0
     components: OamiComponentsOut
+    explanation: OamiExplanationOut | None = None
 
 
 class TenantOperationalMonitoringIndexOut(BaseModel):
@@ -87,3 +103,4 @@ class TenantOperationalMonitoringIndexOut(BaseModel):
     systems_scored: int
     has_any_runtime_data: bool
     components: OamiComponentsOut | None = None
+    explanation: OamiExplanationOut | None = None

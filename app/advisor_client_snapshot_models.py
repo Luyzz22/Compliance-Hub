@@ -94,6 +94,17 @@ class AdvisorTenantGovernanceBrief(BaseModel):
     nis2_critical_ai_count: int = Field(ge=0)
 
 
+class OperationalAiMonitoringSnapshot(BaseModel):
+    """OAMI (90 Tage), ohne PII – für Berater-Snapshot und LLM-Kontext."""
+
+    index_90d: int | None = Field(default=None, ge=0, le=100)
+    level: str | None = Field(default=None, description="low | medium | high")
+    has_runtime_data: bool = False
+    systems_scored: int = Field(ge=0)
+    narrative_de: str = ""
+    drivers_de: list[str] = Field(default_factory=list, max_length=12)
+
+
 class AdvisorClientGovernanceSnapshotResponse(BaseModel):
     advisor_id: str
     client_tenant_id: str
@@ -109,6 +120,10 @@ class AdvisorClientGovernanceSnapshotResponse(BaseModel):
     readiness: ReadinessScoreResponse | None = Field(
         default=None,
         description="Optional: AI & Compliance Readiness (FEATURE_READINESS_SCORE).",
+    )
+    operational_ai_monitoring: OperationalAiMonitoringSnapshot | None = Field(
+        default=None,
+        description="Optional: OAMI / Laufzeit-Signale (KI-Register + Runtime-Events).",
     )
 
 

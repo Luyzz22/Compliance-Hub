@@ -34,6 +34,7 @@ class FeatureFlag(StrEnum):
     ai_governance_setup_wizard = "ai_governance_setup_wizard"
     advisor_client_snapshot = "advisor_client_snapshot"
     readiness_score = "readiness_score"
+    governance_maturity = "governance_maturity"
     demo_mode = "demo_mode"
 
 
@@ -62,6 +63,7 @@ _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
     FeatureFlag.ai_governance_setup_wizard: "COMPLIANCEHUB_FEATURE_AI_GOVERNANCE_SETUP_WIZARD",
     FeatureFlag.advisor_client_snapshot: "COMPLIANCEHUB_FEATURE_ADVISOR_CLIENT_SNAPSHOT",
     FeatureFlag.readiness_score: "COMPLIANCEHUB_FEATURE_READINESS_SCORE",
+    FeatureFlag.governance_maturity: "COMPLIANCEHUB_FEATURE_GOVERNANCE_MATURITY",
     FeatureFlag.demo_mode: "COMPLIANCEHUB_FEATURE_DEMO_MODE",
 }
 
@@ -72,6 +74,7 @@ _FLAG_DEFAULTS: dict[FeatureFlag, bool] = {
     FeatureFlag.llm_explain: False,
     FeatureFlag.llm_action_drafts: False,
     FeatureFlag.demo_mode: False,
+    FeatureFlag.governance_maturity: True,
 }
 
 
