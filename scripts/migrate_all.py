@@ -6,6 +6,7 @@ Uses the same database URL as the API: ``COMPLIANCEHUB_DB_URL`` (see ``app.db``)
 Examples:
 
   python scripts/migrate_all.py
+  python scripts/migrate_all.py -v
   COMPLIANCEHUB_DB_URL=postgresql+psycopg://... python scripts/migrate_all.py
 
 For local SQLite (default), this matches ``./test_compliancehub.db`` unless overridden.
@@ -14,6 +15,7 @@ For local SQLite (default), this matches ``./test_compliancehub.db`` unless over
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -31,17 +33,36 @@ def main() -> int:
         "-q",
         "--quiet",
         action="store_true",
-        help="Only print output when migrations were applied.",
+        help="Only print output when something changed (DDL or ledger).",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable debug logging (migration discovery and deferred steps).",
     )
     args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(levelname)s %(name)s: %(message)s",
+    )
     url = get_database_url()
     engine = create_db_engine(url)
     try:
-        applied = run_all_db_migrations(engine)
+        summary = run_all_db_migrations(engine)
     finally:
         engine.dispose()
-    if applied:
-        print("Applied:", ", ".join(applied))
+
+    if summary.applied_ddl or summary.ledger_backfilled or summary.skipped_ledger:
+        if summary.applied_ddl:
+            print("DDL applied:", ", ".join(summary.applied_ddl))
+        if summary.ledger_backfilled:
+            print(
+                "Ledger backfilled (schema already matched):",
+                ", ".join(summary.ledger_backfilled),
+            )
+        if summary.skipped_ledger:
+            print("Skipped (already in schema_migrations):", ", ".join(summary.skipped_ledger))
     elif not args.quiet:
         print("No pending migrations (database URL:", url, ")")
     return 0
