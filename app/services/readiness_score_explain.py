@@ -34,7 +34,37 @@ def explain_readiness_score(
         msg = "LLM features are disabled for this tenant (COMPLIANCEHUB_FEATURE_LLM_ENABLED)."
         raise PermissionError(msg)
 
-    facts = json.dumps(snapshot.model_dump(mode="json"), ensure_ascii=False)
+    oami_context: dict[str, object] | None = None
+    try:
+        from app.services.oami_explanation import explain_tenant_oami_de
+        from app.services.operational_monitoring_index import (
+            compute_tenant_operational_monitoring_index,
+        )
+
+        oami = compute_tenant_operational_monitoring_index(
+            session,
+            tenant_id,
+            window_days=90,
+            persist_snapshot=False,
+        )
+        expl = explain_tenant_oami_de(oami)
+        oami_context = {
+            "window_days": 90,
+            "operational_monitoring_index": oami.operational_monitoring_index,
+            "level": oami.level,
+            "has_any_runtime_data": oami.has_any_runtime_data,
+            "systems_scored": oami.systems_scored,
+            "summary_de": expl.summary_de,
+            "drivers_de": expl.drivers_de[:6],
+        }
+    except Exception:
+        logger.exception("readiness_explain_oami_context_failed tenant=%s", tenant_id)
+
+    envelope: dict[str, object] = {
+        "readiness": snapshot.model_dump(mode="json"),
+        "operational_ai_monitoring": oami_context,
+    }
+    facts = json.dumps(envelope, ensure_ascii=False)
     prompt = _SYSTEM + "\n\nJSON-Fakten:\n" + facts
 
     router = LLMRouter(session=session)

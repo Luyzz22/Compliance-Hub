@@ -151,6 +151,18 @@ class AIKpiAlertExport(BaseModel):
     alerts: list[AIKpiAlert]
 
 
+class BoardOperationalMonitoringSection(BaseModel):
+    """OAMI-Zusammenfassung für Board (90-Tage-Fenster, mandantenweit)."""
+
+    index_value: int = Field(ge=0, le=100)
+    level: str = Field(description="low | medium | high")
+    window_days: int = Field(default=90, ge=1, le=366)
+    has_data: bool = False
+    systems_scored: int = Field(ge=0)
+    summary_de: str = ""
+    drivers_de: list[str] = Field(default_factory=list, max_length=12)
+
+
 class AIBoardGovernanceReport(BaseModel):
     """Vorstands-/Aufsichtsreport: alle AI-Governance-Kennzahlen gebündelt (PDF/Word-Mapping)."""
 
@@ -162,6 +174,7 @@ class AIBoardGovernanceReport(BaseModel):
     incidents_overview: AIIncidentOverview
     supplier_risk_overview: AISupplierRiskOverview
     alerts: list[AIKpiAlert]
+    operational_monitoring: BoardOperationalMonitoringSection | None = None
 
 
 # Export-Job für PDF-/DMS-Integration (Webhook, SAP BTP, DMS)

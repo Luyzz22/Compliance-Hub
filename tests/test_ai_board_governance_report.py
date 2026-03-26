@@ -53,6 +53,7 @@ def test_board_report_happy_path():
     assert "total_systems_with_suppliers" in data["supplier_risk_overview"]
     assert "alerts" in data
     assert isinstance(data["alerts"], list)
+    assert "operational_monitoring" in data
 
 
 def test_board_report_tenant_isolation():

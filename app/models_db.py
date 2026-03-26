@@ -727,7 +727,12 @@ class AiRuntimeEventTable(Base):
 
     __tablename__ = "ai_runtime_events"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "source_event_id", name="uq_ai_runtime_events_idempotent"),
+        UniqueConstraint(
+            "tenant_id",
+            "source",
+            "source_event_id",
+            name="uq_ai_runtime_events_tenant_source_event",
+        ),
         Index(
             "ix_ai_runtime_events_tenant_system_occurred",
             "tenant_id",

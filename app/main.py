@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -61,6 +62,7 @@ from app.ai_governance_models import (
     AIKpiAlertExport,
     BoardKpiExportJob,
     BoardKpiExportJobCreate,
+    BoardOperationalMonitoringSection,
     BoardReportAuditRecord,
     BoardReportAuditRecordCreate,
     BoardReportAuditRecordWithJobs,
@@ -138,6 +140,7 @@ from app.feature_flags import (
     is_feature_enabled,
     require_tenant_llm_features,
 )
+from app.governance_maturity_models import GovernanceMaturityResponse
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.llm_models import LLMTaskType
 from app.models import (
@@ -291,18 +294,21 @@ from app.services.evidence_service import (
     upload_evidence as upload_evidence_file,
 )
 from app.services.evidence_storage import get_evidence_storage
+from app.services.governance_maturity_service import build_governance_maturity_response
 from app.services.high_risk_scenarios import list_high_risk_scenarios
 from app.services.llm_router import LLMRouter
 from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
+from app.services.oami_explanation import explain_tenant_oami_de
 from app.services.operational_monitoring_index import (
     compute_system_monitoring_index,
     compute_tenant_operational_monitoring_index,
 )
 from app.services.readiness_score_explain import explain_readiness_score
 from app.services.readiness_score_service import compute_readiness_score
+from app.services.runtime_events_demo_guard import ensure_runtime_events_api_ingest_allowed
 from app.services.runtime_events_ingest import ingest_runtime_events
 from app.services.setup_status import compute_tenant_setup_status
 from app.services.tenant_ai_governance_setup import (
@@ -366,6 +372,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentIntakeRequest(BaseModel):
@@ -729,6 +737,7 @@ def post_ai_system_runtime_events(
     """Batch-Ingest kanonisierter Laufzeit-Events (SAP AI Core u. a.), mandantenisoliert."""
     tenant_id = auth_context.tenant_id
     raise_if_demo_tenant_readonly(session, tenant_id, request=request)
+    ensure_runtime_events_api_ingest_allowed(session, tenant_id)
     if ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI system not found")
     return ingest_runtime_events(
@@ -1793,6 +1802,7 @@ def get_board_alerts_export(
 )
 def get_board_governance_report(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
@@ -1802,6 +1812,7 @@ def get_board_governance_report(
 ) -> AIBoardGovernanceReport:
     """Vorstands-/Aufsichtsreport: alle AI-Governance-Kennzahlen gebündelt (nur JSON)."""
     return _build_board_report(
+        session,
         tenant_id=auth_context.tenant_id,
         ai_repo=ai_repo,
         cls_repo=cls_repo,
@@ -1818,6 +1829,7 @@ def get_board_governance_report(
 )
 def get_board_governance_report_markdown(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
@@ -1827,6 +1839,7 @@ def get_board_governance_report_markdown(
 ) -> Response:
     """Board-Report als Markdown (template-fähig, für PDF/Word-Weiterverarbeitung)."""
     report = _build_board_report(
+        session,
         tenant_id=auth_context.tenant_id,
         ai_repo=ai_repo,
         cls_repo=cls_repo,
@@ -1914,6 +1927,7 @@ def get_board_kpi_export_job(
 
 
 def _build_board_report(
+    session: Session,
     tenant_id: str,
     ai_repo: AISystemRepository,
     cls_repo: ClassificationRepository,
@@ -1953,6 +1967,27 @@ def _build_board_report(
         compliance_overview=compliance_overview,
         nis2_kritis_signals=_nis2_kritis_board_alert_signals(tenant_id, nis2_repo),
     )
+    operational_monitoring: BoardOperationalMonitoringSection | None = None
+    try:
+        to = compute_tenant_operational_monitoring_index(
+            session,
+            tenant_id,
+            window_days=90,
+            persist_snapshot=False,
+        )
+        ex = explain_tenant_oami_de(to)
+        operational_monitoring = BoardOperationalMonitoringSection(
+            index_value=to.operational_monitoring_index,
+            level=str(to.level),
+            window_days=90,
+            has_data=to.has_any_runtime_data,
+            systems_scored=to.systems_scored,
+            summary_de=ex.summary_de,
+            drivers_de=list(ex.drivers_de)[:8],
+        )
+    except Exception:
+        logger.exception("board_report_operational_monitoring_failed tenant_id=%s", tenant_id)
+
     return AIBoardGovernanceReport(
         tenant_id=tenant_id,
         generated_at=generated_at,
@@ -1962,6 +1997,7 @@ def _build_board_report(
         incidents_overview=incidents_overview,
         supplier_risk_overview=supplier_risk_overview,
         alerts=alerts,
+        operational_monitoring=operational_monitoring,
     )
 
 
@@ -1972,6 +2008,7 @@ def _build_board_report(
 )
 def create_board_report_export_job(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
@@ -1998,6 +2035,7 @@ def create_board_report_export_job(
         )
     tenant_id = auth_context.tenant_id
     report = _build_board_report(
+        session,
         tenant_id=tenant_id,
         ai_repo=ai_repo,
         cls_repo=cls_repo,
@@ -2038,6 +2076,7 @@ def get_board_report_export_job(
 )
 def create_board_report_audit_record(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
     gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
@@ -2050,6 +2089,7 @@ def create_board_report_audit_record(
     tenant_id = auth_context.tenant_id
     created_by = (auth_context.api_key[:8] + "…") if auth_context.api_key else "api"
     report = _build_board_report(
+        session,
         tenant_id=tenant_id,
         ai_repo=ai_repo,
         cls_repo=cls_repo,
@@ -2817,6 +2857,28 @@ def get_advisor_tenant_readiness_score(
             detail="Tenant not linked to this advisor",
         )
     return compute_readiness_score(session, tenant_id)
+
+
+@app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/governance-maturity",
+    response_model=GovernanceMaturityResponse,
+    tags=["advisors"],
+)
+def get_advisor_tenant_governance_maturity(
+    _ff_gm: Annotated[None, Depends(create_feature_guard(FeatureFlag.governance_maturity))],
+    _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    tenant_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+    window_days: Annotated[int, Query(ge=30, le=90)] = 90,
+) -> GovernanceMaturityResponse:
+    if advisor_repo.get_link(advisor_id, tenant_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not linked to this advisor",
+        )
+    return build_governance_maturity_response(session, tenant_id, window_days=window_days)
 
 
 @app.get(
@@ -3701,6 +3763,7 @@ def post_tenant_ai_system_runtime_events(
     """Alias zu POST /api/v1/ai-systems/{id}/runtime-events (expliziter Mandant im Pfad)."""
     require_path_tenant_matches_auth(tenant_id, auth_context)
     raise_if_demo_tenant_readonly(session, tenant_id, request=request)
+    ensure_runtime_events_api_ingest_allowed(session, tenant_id)
     if ai_repo.get_by_id(tenant_id=tenant_id, aisystem_id=ai_system_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI system not found")
     return ingest_runtime_events(
@@ -3801,6 +3864,24 @@ def get_tenant_operational_monitoring_index(
         window_days=window_days,
         persist_snapshot=False,
     )
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/governance-maturity",
+    response_model=GovernanceMaturityResponse,
+    tags=["tenants"],
+)
+def get_tenant_governance_maturity(
+    tenant_id: str,
+    _ff_gm: Annotated[None, Depends(create_feature_guard(FeatureFlag.governance_maturity))],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    window_days: Annotated[int, Query(ge=30, le=90)] = 90,
+) -> GovernanceMaturityResponse:
+    """Governance Maturity Lens: Readiness, GAI (Telemetrie), OAMI (Laufzeit)."""
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    return build_governance_maturity_response(session, tenant_id, window_days=window_days)
 
 
 @app.post(

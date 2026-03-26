@@ -17,6 +17,7 @@ from app.advisor_client_snapshot_models import (
     FrameworkScopeSnapshot,
     GapAssistSnapshot,
     KpiSummarySnapshot,
+    OperationalAiMonitoringSnapshot,
     ReportsSummarySnapshot,
     SetupStatusSnapshot,
 )
@@ -34,6 +35,8 @@ from app.services.ai_kpi_service import build_ai_kpi_summary
 from app.services.cross_regulation import build_cross_regulation_summary
 from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
 from app.services.llm_router import LLMRouter
+from app.services.oami_explanation import explain_tenant_oami_de
+from app.services.operational_monitoring_index import compute_tenant_operational_monitoring_index
 from app.services.readiness_score_service import compute_readiness_score
 from app.services.setup_status import compute_tenant_setup_status
 from app.services.tenant_ai_governance_setup import build_setup_response, normalize_payload
@@ -240,6 +243,26 @@ def build_client_governance_snapshot(
             logger.exception("snapshot_readiness_failed tenant=%s", client_tenant_id)
             readiness = None
 
+    oami_snap: OperationalAiMonitoringSnapshot | None = None
+    try:
+        oami = compute_tenant_operational_monitoring_index(
+            session,
+            client_tenant_id,
+            window_days=90,
+            persist_snapshot=False,
+        )
+        expl = explain_tenant_oami_de(oami)
+        oami_snap = OperationalAiMonitoringSnapshot(
+            index_90d=oami.operational_monitoring_index if oami.has_any_runtime_data else None,
+            level=str(oami.level) if oami.has_any_runtime_data else None,
+            has_runtime_data=oami.has_any_runtime_data,
+            systems_scored=oami.systems_scored,
+            narrative_de=expl.summary_de,
+            drivers_de=list(expl.drivers_de)[:12],
+        )
+    except Exception:
+        logger.exception("snapshot_oami_failed tenant=%s", client_tenant_id)
+
     return AdvisorClientGovernanceSnapshotResponse(
         advisor_id=advisor_id,
         client_tenant_id=client_tenant_id,
@@ -261,6 +284,7 @@ def build_client_governance_snapshot(
         gap_assist=gap_assist,
         reports_summary=reports,
         readiness=readiness,
+        operational_ai_monitoring=oami_snap,
     )
 
 

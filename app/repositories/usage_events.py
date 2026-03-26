@@ -72,3 +72,26 @@ class UsageEventRepository:
         )
         raw = self._session.execute(stmt).scalar_one_or_none()
         return raw if isinstance(raw, datetime) else None
+
+    def list_payloads_in_window(
+        self,
+        tenant_id: str,
+        *,
+        since: datetime,
+        until: datetime,
+        event_types: list[str] | None = None,
+    ) -> list[tuple[datetime, str, str]]:
+        """(created_at_utc, event_type, payload_json) für GAI / Aggregation."""
+        stmt = select(
+            UsageEventTable.created_at_utc,
+            UsageEventTable.event_type,
+            UsageEventTable.payload_json,
+        ).where(
+            UsageEventTable.tenant_id == tenant_id,
+            UsageEventTable.created_at_utc >= since,
+            UsageEventTable.created_at_utc <= until,
+        )
+        if event_types:
+            stmt = stmt.where(UsageEventTable.event_type.in_(event_types))
+        rows = self._session.execute(stmt).all()
+        return [(r[0], str(r[1]), str(r[2] if r[2] is not None else "{}")) for r in rows]

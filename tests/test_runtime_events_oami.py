@@ -70,7 +70,11 @@ def test_runtime_events_ingest_idempotent_and_oami_apis(client: TestClient) -> N
     }
     r1 = client.post(f"/api/v1/ai-systems/{sid}/runtime-events", json=batch, headers=h)
     assert r1.status_code == 200, r1.text
-    assert r1.json() == {"inserted": 1, "skipped_duplicate": 0, "kpi_updates": 0}
+    j1 = r1.json()
+    assert j1["inserted"] == 1
+    assert j1["skipped_duplicate"] == 0
+    assert j1["kpi_updates"] == 0
+    assert j1.get("rejected_invalid", 0) == 0
 
     r1b = client.post(f"/api/v1/ai-systems/{sid}/runtime-events", json=batch, headers=h)
     assert r1b.status_code == 200
@@ -93,6 +97,8 @@ def test_runtime_events_ingest_idempotent_and_oami_apis(client: TestClient) -> N
     assert 0 <= body["operational_monitoring_index"] <= 100
     assert body["level"] in ("low", "medium", "high")
     assert "freshness" in body["components"]
+    assert body.get("explanation") is not None
+    assert "summary_de" in body["explanation"]
 
     r_t = client.get(f"/api/v1/tenants/{tid}/operational-monitoring-index", headers=h)
     assert r_t.status_code == 200
@@ -257,3 +263,114 @@ def test_incidents_lower_oami(client: TestClient) -> None:
         headers=quiet_h,
     ).json()["operational_monitoring_index"]
     assert noisy < quiet
+
+
+def test_runtime_events_mixed_batch_valid_invalid_duplicate(client: TestClient) -> None:
+    tid = f"oami-{uuid.uuid4().hex[:12]}"
+    h = _headers(tid)
+    sid = "oami-mix-sys"
+    _create_system(client, tid, sid)
+    now = datetime.now(UTC)
+    r = client.post(
+        f"/api/v1/ai-systems/{sid}/runtime-events",
+        headers=h,
+        json={
+            "events": [
+                {
+                    "source_event_id": "good-1",
+                    "source": "sap_ai_core",
+                    "event_type": "heartbeat",
+                    "occurred_at": now.isoformat(),
+                },
+                {
+                    "source_event_id": "bad-type",
+                    "source": "sap_ai_core",
+                    "event_type": "not_a_real_type",
+                    "occurred_at": now.isoformat(),
+                },
+                {
+                    "source_event_id": "good-1",
+                    "source": "sap_ai_core",
+                    "event_type": "heartbeat",
+                    "occurred_at": now.isoformat(),
+                },
+                {
+                    "source_event_id": "good-2",
+                    "source": "sap_ai_core",
+                    "event_type": "heartbeat",
+                    "occurred_at": now.isoformat(),
+                },
+            ],
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["inserted"] == 2
+    assert body["skipped_duplicate"] == 1
+    assert body["rejected_invalid"] == 1
+    assert len(body["rejections"]) >= 1
+
+
+def test_runtime_events_idempotency_per_source(client: TestClient) -> None:
+    tid = f"oami-{uuid.uuid4().hex[:12]}"
+    h = _headers(tid)
+    sid = "oami-dedupe-src"
+    _create_system(client, tid, sid)
+    now = datetime.now(UTC)
+    base = {
+        "source_event_id": "shared-ext-id",
+        "event_type": "heartbeat",
+        "occurred_at": now.isoformat(),
+    }
+    r1 = client.post(
+        f"/api/v1/ai-systems/{sid}/runtime-events",
+        headers=h,
+        json={"events": [{**base, "source": "sap_ai_core"}]},
+    )
+    assert r1.status_code == 200
+    assert r1.json()["inserted"] == 1
+    r2 = client.post(
+        f"/api/v1/ai-systems/{sid}/runtime-events",
+        headers=h,
+        json={"events": [{**base, "source": "manual_import"}]},
+    )
+    assert r2.status_code == 200
+    assert r2.json()["inserted"] == 1
+
+
+def test_demo_tenant_blocks_runtime_event_api_ingest(client: TestClient) -> None:
+    from app.models_db import TenantDB
+
+    tid = f"oami-dpg-{uuid.uuid4().hex[:10]}"
+    with SessionLocal() as s:
+        s.add(
+            TenantDB(
+                id=tid,
+                display_name="Demo PG",
+                industry="IT",
+                country="DE",
+                is_demo=True,
+                demo_playground=True,
+            ),
+        )
+        s.commit()
+    h = _headers(tid)
+    _create_system(client, tid, "sys-demo-pg")
+    r = client.post(
+        "/api/v1/ai-systems/sys-demo-pg/runtime-events",
+        headers=h,
+        json={
+            "events": [
+                {
+                    "source_event_id": "x1",
+                    "source": "sap_ai_core",
+                    "event_type": "heartbeat",
+                    "occurred_at": datetime.now(UTC).isoformat(),
+                },
+            ],
+        },
+    )
+    assert r.status_code == 403
+    det = r.json().get("detail", "")
+    assert isinstance(det, str)
+    assert "runtime" in det.lower()
