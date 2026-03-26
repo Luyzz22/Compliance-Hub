@@ -375,12 +375,30 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                         data-testid={`advisor-oami-cell-${t.tenant_id}`}
                       >
                         {t.operational_monitoring_summary?.level != null ? (
-                          <span title={PORTFOLIO_COL_OAMI_TOOLTIP}>
+                          <span
+                            title={[
+                              PORTFOLIO_COL_OAMI_TOOLTIP,
+                              t.operational_monitoring_summary.oami_operational_hint_de,
+                              (t.operational_monitoring_summary.safety_related_runtime_incidents_90d ??
+                                0) > 0
+                                ? `Sicherheitsrelevante Laufzeit-Incidents (90 Tage): ${t.operational_monitoring_summary.safety_related_runtime_incidents_90d}`
+                                : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                          >
                             {t.operational_monitoring_summary.index ?? "–"}
                             <span className="text-[var(--sbs-text-muted)]">
                               {" "}
                               · {indexLevelLabelDe(t.operational_monitoring_summary.level)}
                             </span>
+                            {(t.operational_monitoring_summary.safety_related_runtime_incidents_90d ??
+                              0) > 0 ? (
+                              <span className="mt-0.5 block text-[0.6rem] leading-tight text-rose-800">
+                                Sicherheit:{" "}
+                                {t.operational_monitoring_summary.safety_related_runtime_incidents_90d}
+                              </span>
+                            ) : null}
                           </span>
                         ) : (
                           <span className="text-[var(--sbs-text-muted)]">–</span>

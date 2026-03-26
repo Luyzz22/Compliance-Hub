@@ -148,7 +148,39 @@ def _coerce_oami_struct(
             max_items=EXPLAIN_LIST_MAX_ITEMS,
             max_len=EXPLAIN_LIST_ITEM_MAX_CHARS,
         ),
+        safety_related_incidents_90d=None,
+        availability_incidents_90d=None,
+        oami_subtype_hint_de=None,
     )
+
+
+def _apply_oami_server_enrichment(
+    o_struct: OperationalMonitoringExplanationStructured | None,
+    enrichment: dict[str, object] | None,
+) -> OperationalMonitoringExplanationStructured | None:
+    if o_struct is None or not enrichment:
+        return o_struct
+    upd: dict[str, object] = {}
+    for key in (
+        "safety_related_incidents_90d",
+        "availability_incidents_90d",
+        "oami_subtype_hint_de",
+    ):
+        if key not in enrichment:
+            continue
+        val = enrichment[key]
+        if key == "oami_subtype_hint_de":
+            if val is not None:
+                upd[key] = str(val).strip()[:400] or None
+        else:
+            if val is None:
+                upd[key] = None
+            else:
+                try:
+                    upd[key] = max(0, int(val))
+                except (TypeError, ValueError):
+                    pass
+    return o_struct.model_copy(update=upd) if upd else o_struct
 
 
 def compose_legacy_explanation_text(
@@ -180,6 +212,7 @@ def parse_and_validate_readiness_explain_response(
     has_oami_context: bool,
     provider: str,
     model_id: str,
+    oami_operational_enrichment: dict[str, object] | None = None,
 ) -> ReadinessScoreExplainResponse:
     """
     Parse LLM JSON, validate enum levels (with snapshot fallback), build API response.
@@ -194,6 +227,7 @@ def parse_and_validate_readiness_explain_response(
         has_oami_context=has_oami_context,
         provider=provider,
         model_id=model_id,
+        oami_operational_enrichment=oami_operational_enrichment,
     )
 
 
@@ -206,6 +240,7 @@ def build_readiness_explain_response_from_llm_text(
     has_oami_context: bool,
     provider: str,
     model_id: str,
+    oami_operational_enrichment: dict[str, object] | None = None,
 ) -> ReadinessScoreExplainResponse:
     data = extract_json_object(llm_text)
     if not data:
@@ -230,6 +265,7 @@ def build_readiness_explain_response_from_llm_text(
             o_struct = o_struct.model_copy(
                 update={"level": normalize_index_level(oami_level)},
             )
+        o_struct = _apply_oami_server_enrichment(o_struct, oami_operational_enrichment)
 
     if r_struct is None:
         logger.info("readiness_explain_missing_readiness_explanation_block; partial fallback")

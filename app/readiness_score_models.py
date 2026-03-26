@@ -76,6 +76,21 @@ class OperationalMonitoringExplanationStructured(BaseModel):
     recent_incidents_summary: str = Field(default="", max_length=2000)
     monitoring_gaps: list[str] = Field(default_factory=list, max_length=5)
     improvement_suggestions: list[str] = Field(default_factory=list, max_length=5)
+    safety_related_incidents_90d: int | None = Field(
+        default=None,
+        ge=0,
+        description="Server-seitig aus Laufzeit-Incidents (Subtype safety_violation), optional.",
+    )
+    availability_incidents_90d: int | None = Field(
+        default=None,
+        ge=0,
+        description="Server-seitig (Subtype availability_incident), optional.",
+    )
+    oami_subtype_hint_de: str | None = Field(
+        default=None,
+        max_length=400,
+        description="Kurzer Board-Hinweis ohne numerische Gewichte (serverseitig).",
+    )
 
 
 class ReadinessScoreExplainResponse(BaseModel):

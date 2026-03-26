@@ -54,6 +54,24 @@ class AdvisorGovernanceMaturityBriefParseResult(BaseModel):
     used_llm_client_paragraph: bool = False
 
 
+ADVISOR_RUNTIME_SAFETY_FOCUS_DE = (
+    "Sicherheitsrelevante AI-Laufzeitvorfälle reduzieren (Monitoring, Eskalation, Retraining)."
+)
+
+
+def merge_recommended_focus_areas_runtime_safety(
+    brief: AdvisorGovernanceMaturityBrief | None,
+    safety_runtime_incidents_90d: int,
+) -> AdvisorGovernanceMaturityBrief | None:
+    if brief is None or safety_runtime_incidents_90d <= 0:
+        return brief
+    areas = list(brief.recommended_focus_areas)
+    if any("Sicherheitsrelevant" in a for a in areas):
+        return brief
+    merged_areas = [ADVISOR_RUNTIME_SAFETY_FOCUS_DE, *areas]
+    return brief.model_copy(update={"recommended_focus_areas": merged_areas})
+
+
 def advisor_brief_focus_marker_de(brief: AdvisorGovernanceMaturityBrief) -> str:
     """Kurzmarke für Portfolio-Zeilen (aus strukturierten Feldern, nicht aus Freitext-Layout)."""
     if brief.recommended_focus_areas:

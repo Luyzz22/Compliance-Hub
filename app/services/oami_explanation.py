@@ -9,6 +9,30 @@ from app.operational_monitoring_models import (
 )
 
 
+def oami_operational_hint_de(
+    *,
+    safety_incidents: int,
+    availability_incidents: int,
+) -> str | None:
+    """Kurztext für Board/Advisor: keine Gewichtszahlen, nur Einordnung."""
+    if safety_incidents >= 2:
+        return (
+            "Mehrere sicherheitsrelevante Laufzeitvorfälle beeinflussen den Index stärker "
+            "als reine Verfügbarkeitssignale."
+        )
+    if safety_incidents == 1:
+        return (
+            "Sicherheitsrelevante Laufzeitvorfälle fließen stärker in den Index ein als "
+            "reine Verfügbarkeitssignale."
+        )
+    if availability_incidents >= 3 and safety_incidents == 0:
+        return (
+            "Die Lage ist vor allem durch Verfügbarkeits-Incidents geprägt (ohne "
+            "Sicherheits-Subtype in den Laufzeitdaten)."
+        )
+    return None
+
+
 def explain_system_oami_de(result: SystemMonitoringIndexOut) -> OamiExplanationOut:
     """Haupttreiber aus Teilscores und Zählern (Tenant-System)."""
     if not result.has_data:
@@ -42,10 +66,28 @@ def explain_system_oami_de(result: SystemMonitoringIndexOut) -> OamiExplanationO
         drivers.append("Wenige aktive Tage – mögliche Lücke in der kontinuierlichen Überwachung.")
 
     sv = int(result.incident_count_by_subtype.get("safety_violation", 0))
-    if sv > 0:
+    av = int(result.incident_count_by_subtype.get("availability_incident", 0))
+    if sv >= 2:
         drivers.append(
-            f'{sv} sicherheitsrelevante Vorfälle (event_subtype "safety_violation") — '
-            "stärkerer Einfluss auf den OAMI-Stabilitätsanteil."
+            f"Mehrere sicherheitsrelevante Incidents ({sv} im Fenster, Subtype "
+            '"safety_violation") — stärkerer Einfluss auf den operativen Monitoring-Index.'
+        )
+    elif sv == 1:
+        drivers.append(
+            'Ein sicherheitsrelevanter Incident (Subtype "safety_violation") mit '
+            "überdurchschnittlichem Gewicht im Index."
+        )
+    drift_n = int(result.metric_breach_count_by_subtype.get("drift_high", 0))
+    if drift_n >= 2:
+        drivers.append(
+            f'{drift_n} Drift-Schwellenverletzungen (Subtype "drift_high") — '
+            "stärker gewichtet als andere Metrikalarme."
+        )
+
+    if sv == 0 and av >= 2 and result.incident_count > 0:
+        drivers.append(
+            f"Schwerpunkt Verfügbarkeit: {av} Incidents mit Subtype "
+            '"availability_incident" bei fehlenden Sicherheits-Subtypes.'
         )
 
     if result.high_severity_incident_count > 0:
@@ -71,6 +113,10 @@ def explain_system_oami_de(result: SystemMonitoringIndexOut) -> OamiExplanationO
 
     if c.metric_stability >= 0.75:
         drivers.append("Metrik-Stabilität aus Sicht der Schwellenwerte günstig.")
+    elif drift_n >= 1 and c.metric_stability < 0.6:
+        drivers.append(
+            "Metrik-Stabilität durch Drift- oder Leistungsalarme belastet (Subtype-Gewichtung)."
+        )
 
     level_de = {"low": "niedrig", "medium": "mittel", "high": "hoch"}[result.level]
     summary_de = (
@@ -113,6 +159,22 @@ def explain_tenant_oami_de(result: TenantOperationalMonitoringIndexOut) -> OamiE
         drivers.append("Teils veraltete Signale – Prüfung der Datenpipelines sinnvoll.")
     if c.metric_stability >= 0.7:
         drivers.append("Metriken überwiegend stabil (wenige Schwellenverletzungen).")
+    ts = result.runtime_incident_by_subtype
+    sv_t = int(ts.get("safety_violation", 0))
+    av_t = int(ts.get("availability_incident", 0))
+    if sv_t >= 2:
+        drivers.append(
+            f"Mandantenweit {sv_t} sicherheitsrelevante Laufzeit-Incidents (90 Tage) — "
+            "Priorität für Post-Market- und Sicherheits-Governance."
+        )
+    elif sv_t == 1:
+        drivers.append(
+            "Mindestens ein sicherheitsrelevanter Laufzeit-Incident im Portfolio-Fenster."
+        )
+    elif av_t >= 3 and sv_t == 0:
+        drivers.append(
+            "Laufzeit-Incidents überwiegend Verfügbarkeit; ohne Sicherheits-Subtype in den Daten."
+        )
 
     level_de = {"low": "niedrig", "medium": "mittel", "high": "hoch"}[result.level]
     summary_de = (

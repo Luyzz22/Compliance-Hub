@@ -1,5 +1,5 @@
 {
-  "contract_version": "2",
+  "contract_version": "3",
   "source": "app.services.operational_monitoring_index._level_from_index",
   "index_api_levels": ["low", "medium", "high"],
   "index_level_de": {

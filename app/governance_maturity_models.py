@@ -43,6 +43,21 @@ class OperationalAiMonitoringBlock(BaseModel):
     window_days: int | None = None
     message_de: str = ""
     drivers_de: list[str] = Field(default_factory=list, max_length=12)
+    safety_related_runtime_incident_count: int = Field(
+        default=0,
+        ge=0,
+        description="Tenant-90-Tage-Fenster: Incidents mit Subtype safety_violation.",
+    )
+    availability_runtime_incident_count: int = Field(
+        default=0,
+        ge=0,
+        description="Tenant-90-Tage: Subtype availability_incident.",
+    )
+    operational_subtype_hint_de: str | None = Field(
+        default=None,
+        max_length=400,
+        description="Kurzer Hinweis ohne numerische Gewichte (Board/Advisor).",
+    )
 
 
 class GovernanceMaturityResponse(BaseModel):

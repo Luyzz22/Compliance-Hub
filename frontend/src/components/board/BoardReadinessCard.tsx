@@ -288,18 +288,42 @@ export function BoardReadinessCard({
                   ) : null}
                   {explainResult.operational_monitoring_explanation &&
                   (explainResult.operational_monitoring_explanation.improvement_suggestions.length > 0 ||
-                    explainResult.operational_monitoring_explanation.monitoring_gaps.length > 0) ? (
+                    explainResult.operational_monitoring_explanation.monitoring_gaps.length > 0 ||
+                    (explainResult.operational_monitoring_explanation.safety_related_incidents_90d ??
+                      0) > 0 ||
+                    explainResult.operational_monitoring_explanation.oami_subtype_hint_de) ? (
                     <div className="border-t border-slate-100 pt-2">
                       <p className="text-[0.65rem] font-semibold text-slate-600">{OAMI_FULL_NAME}</p>
-                      <ul className="mt-1 list-inside list-disc text-xs text-slate-600">
-                        {(
-                          explainResult.operational_monitoring_explanation.improvement_suggestions.length
-                            ? explainResult.operational_monitoring_explanation.improvement_suggestions
-                            : explainResult.operational_monitoring_explanation.monitoring_gaps
-                        ).map((line, i) => (
-                          <li key={i}>{line}</li>
-                        ))}
-                      </ul>
+                      {explainResult.operational_monitoring_explanation.oami_subtype_hint_de ? (
+                        <p
+                          className="mt-1 text-xs leading-snug text-slate-600"
+                          title="Sicherheitsnahe Laufzeit-Subtypen wirken stärker als reine Verfügbarkeit — ohne einzelne Gewichte."
+                        >
+                          {explainResult.operational_monitoring_explanation.oami_subtype_hint_de}
+                        </p>
+                      ) : null}
+                      {(explainResult.operational_monitoring_explanation.safety_related_incidents_90d ??
+                        0) > 0 ? (
+                        <p className="mt-1 text-[0.65rem] text-slate-500">
+                          Davon{" "}
+                          <span className="font-semibold text-slate-700">
+                            {explainResult.operational_monitoring_explanation.safety_related_incidents_90d}
+                          </span>{" "}
+                          sicherheitsrelevant (Laufzeit-Subtype).
+                        </p>
+                      ) : null}
+                      {explainResult.operational_monitoring_explanation.improvement_suggestions.length > 0 ||
+                      explainResult.operational_monitoring_explanation.monitoring_gaps.length > 0 ? (
+                        <ul className="mt-1 list-inside list-disc text-xs text-slate-600">
+                          {(
+                            explainResult.operational_monitoring_explanation.improvement_suggestions.length
+                              ? explainResult.operational_monitoring_explanation.improvement_suggestions
+                              : explainResult.operational_monitoring_explanation.monitoring_gaps
+                          ).map((line, i) => (
+                            <li key={i}>{line}</li>
+                          ))}
+                        </ul>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

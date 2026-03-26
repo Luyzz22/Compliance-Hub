@@ -98,6 +98,9 @@ def build_governance_maturity_response(
                 window_days=window_days,
                 message_de=expl.summary_de,
                 drivers_de=list(expl.drivers_de),
+                safety_related_runtime_incident_count=oami.safety_related_runtime_incident_count,
+                availability_runtime_incident_count=oami.availability_runtime_incident_count,
+                operational_subtype_hint_de=oami.oami_operational_hint_de,
             )
         else:
             oami_block = OperationalAiMonitoringBlock(
@@ -107,6 +110,9 @@ def build_governance_maturity_response(
                 window_days=window_days,
                 message_de=expl.summary_de,
                 drivers_de=list(expl.drivers_de),
+                safety_related_runtime_incident_count=0,
+                availability_runtime_incident_count=0,
+                operational_subtype_hint_de=None,
             )
     except Exception:
         logger.exception("governance_maturity_oami_failed tenant=%s", tenant_id)
