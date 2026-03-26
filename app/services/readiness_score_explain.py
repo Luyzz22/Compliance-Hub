@@ -2,44 +2,21 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.feature_flags import FeatureFlag, is_feature_enabled
-from app.governance_maturity_contract import (
-    readiness_explain_json_schema_instructions,
-    terminology_contract_for_llm_prompt,
-)
 from app.llm_models import LLMTaskType
 from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
 from app.services.llm_router import LLMRouter
-from app.services.readiness_explain_structured import (
-    build_readiness_explain_response_from_llm_text,
-)
+from app.services.readiness_explain_prompt import build_readiness_explain_prompt
+from app.services.readiness_explain_structured import parse_and_validate_readiness_explain_response
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
-
-_SYSTEM_PREFIX = (
-    "Du bist ein Compliance-Assistenzmodell für deutschsprachige Board- und CISO-Audienz "
-    "(DACH). Antworte nur mit gültigem JSON gemäß Schema — kein Markdown, keine Einleitung.\n\n"
-)
-
-
-def _build_system_prompt() -> str:
-    return (
-        _SYSTEM_PREFIX
-        + terminology_contract_for_llm_prompt()
-        + "\n"
-        + readiness_explain_json_schema_instructions()
-        + "\n"
-        "Nutze ausschließlich die nachfolgenden JSON-Fakten; erfinde keine Zahlen, Mandanten "
-        "oder KI-Systeme.\n"
-    )
 
 
 def explain_readiness_score(
@@ -107,8 +84,7 @@ def explain_readiness_score(
         "operational_ai_monitoring": oami_context,
         "governance_activity": gai_context,
     }
-    facts = json.dumps(envelope, ensure_ascii=False)
-    prompt = _build_system_prompt() + "\nJSON-Fakten:\n" + facts
+    prompt = build_readiness_explain_prompt(facts_envelope=envelope)
 
     router = LLMRouter(session=session)
     resp = router.route_and_call(
@@ -117,7 +93,7 @@ def explain_readiness_score(
         tenant_id,
         response_format="json_object",
     )
-    return build_readiness_explain_response_from_llm_text(
+    return parse_and_validate_readiness_explain_response(
         resp.text or "",
         snapshot=snapshot,
         oami_index=oami_index,

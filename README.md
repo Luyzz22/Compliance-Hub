@@ -61,6 +61,7 @@ Open `http://127.0.0.1:8000` for the landing page.
 - `docs/architecture.md`
 - `docs/product-strategy.md`
 - `docs/compliance-mapping.md`
+- Governance-Maturity (API-Enums, LLM-Explain-Schema, DE-Label-Mapping): `docs/governance-maturity-copy-contract.md` — implementiert in `app/governance_maturity_contract.py`
 
 ## Warum auf GitHub evtl. nichts sichtbar ist
 

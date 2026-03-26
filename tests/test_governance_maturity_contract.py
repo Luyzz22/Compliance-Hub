@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from app.governance_maturity_contract import (
+    GOVERNANCE_MATURITY_CONTRACT_VERSION,
     INDEX_API_LEVELS,
     INDEX_LEVEL_DE,
     READINESS_API_LEVELS,
     READINESS_LEVEL_DE,
+    contract_mapping_for_tests,
+    derive_readiness_level_from_score,
     normalize_index_level,
     normalize_readiness_level,
     readiness_explain_json_schema_instructions,
@@ -46,5 +49,31 @@ def test_llm_prompt_contains_fixed_german_stage_names() -> None:
 
 def test_json_schema_instructions_list_allowed_level_tokens() -> None:
     instr = readiness_explain_json_schema_instructions()
-    assert '"basic" | "managed" | "embedded"' in instr or "basic" in instr
+    assert "basic" in instr and "managed" in instr and "embedded" in instr
     assert "operational_monitoring_explanation" in instr
+
+
+def test_contract_mapping_snapshot_stable() -> None:
+    snap = contract_mapping_for_tests()
+    assert snap["contract_version"] == GOVERNANCE_MATURITY_CONTRACT_VERSION
+    assert snap["readiness_api_levels"] == ["basic", "managed", "embedded"]
+    assert snap["index_api_levels"] == ["low", "medium", "high"]
+    assert snap["readiness_level_de"] == {
+        "basic": "Basis",
+        "managed": "Etabliert",
+        "embedded": "Integriert",
+    }
+    assert snap["index_level_de"] == {
+        "low": "Niedrig",
+        "medium": "Mittel",
+        "high": "Hoch",
+    }
+
+
+def test_derive_readiness_level_from_score_bands() -> None:
+    assert derive_readiness_level_from_score(0) == "basic"
+    assert derive_readiness_level_from_score(44) == "basic"
+    assert derive_readiness_level_from_score(45) == "managed"
+    assert derive_readiness_level_from_score(69) == "managed"
+    assert derive_readiness_level_from_score(70) == "embedded"
+    assert derive_readiness_level_from_score(100) == "embedded"

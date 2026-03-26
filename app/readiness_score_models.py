@@ -63,8 +63,8 @@ class ReadinessExplanationStructured(BaseModel):
     score: int = Field(ge=0, le=100)
     level: ReadinessLevel
     short_reason: str = Field(default="", max_length=4000)
-    drivers_positive: list[str] = Field(default_factory=list, max_length=8)
-    drivers_negative: list[str] = Field(default_factory=list, max_length=8)
+    drivers_positive: list[str] = Field(default_factory=list, max_length=5)
+    drivers_negative: list[str] = Field(default_factory=list, max_length=5)
     regulatory_focus: str = Field(default="", max_length=2000)
 
 
@@ -74,8 +74,8 @@ class OperationalMonitoringExplanationStructured(BaseModel):
     index: int | None = Field(default=None, ge=0, le=100)
     level: OamiExplainLevel | None = None
     recent_incidents_summary: str = Field(default="", max_length=2000)
-    monitoring_gaps: list[str] = Field(default_factory=list, max_length=8)
-    improvement_suggestions: list[str] = Field(default_factory=list, max_length=8)
+    monitoring_gaps: list[str] = Field(default_factory=list, max_length=5)
+    improvement_suggestions: list[str] = Field(default_factory=list, max_length=5)
 
 
 class ReadinessScoreExplainResponse(BaseModel):

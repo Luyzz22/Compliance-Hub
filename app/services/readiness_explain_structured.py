@@ -8,6 +8,8 @@ import re
 from typing import Any
 
 from app.governance_maturity_contract import (
+    EXPLAIN_LIST_ITEM_MAX_CHARS,
+    EXPLAIN_LIST_MAX_ITEMS,
     normalize_index_level,
     normalize_readiness_level,
 )
@@ -48,6 +50,11 @@ def extract_json_object(raw: str) -> dict[str, Any] | None:
     return None
 
 
+def parse_readiness_explain_llm_json(raw_llm_output: str) -> dict[str, Any] | None:
+    """Public alias: raw model output → dict or None (see `extract_json_object`)."""
+    return extract_json_object(raw_llm_output)
+
+
 def _clamp_str_list(xs: Any, *, max_items: int, max_len: int) -> list[str]:
     if not isinstance(xs, list):
         return []
@@ -67,7 +74,14 @@ def _coerce_readiness_struct(
     if not isinstance(block, dict):
         return None
     level_raw = block.get("level")
-    level = normalize_readiness_level(level_raw) or snapshot.level
+    normalized = normalize_readiness_level(level_raw)
+    if level_raw is not None and str(level_raw).strip() and normalized is None:
+        logger.warning(
+            "readiness_explain_invalid_readiness_level raw=%r tenant_level=%s",
+            level_raw,
+            snapshot.level,
+        )
+    level = normalized or snapshot.level
     score_raw = block.get("score", snapshot.score)
     try:
         score = int(score_raw)
@@ -78,8 +92,16 @@ def _coerce_readiness_struct(
         score=score,
         level=level,
         short_reason=str(block.get("short_reason") or "")[:4000],
-        drivers_positive=_clamp_str_list(block.get("drivers_positive"), max_items=8, max_len=500),
-        drivers_negative=_clamp_str_list(block.get("drivers_negative"), max_items=8, max_len=500),
+        drivers_positive=_clamp_str_list(
+            block.get("drivers_positive"),
+            max_items=EXPLAIN_LIST_MAX_ITEMS,
+            max_len=EXPLAIN_LIST_ITEM_MAX_CHARS,
+        ),
+        drivers_negative=_clamp_str_list(
+            block.get("drivers_negative"),
+            max_items=EXPLAIN_LIST_MAX_ITEMS,
+            max_len=EXPLAIN_LIST_ITEM_MAX_CHARS,
+        ),
         regulatory_focus=str(block.get("regulatory_focus") or "")[:2000],
     )
 
@@ -105,7 +127,10 @@ def _coerce_oami_struct(
     except (TypeError, ValueError):
         index = default_index
 
-    lvl = normalize_index_level(block.get("level", default_level))
+    lvl_raw = block.get("level", default_level)
+    lvl = normalize_index_level(lvl_raw)
+    if lvl_raw is not None and str(lvl_raw).strip() and lvl is None:
+        logger.warning("readiness_explain_invalid_oami_level raw=%r", lvl_raw)
     if lvl is None and default_level:
         lvl = normalize_index_level(default_level)
 
@@ -113,11 +138,15 @@ def _coerce_oami_struct(
         index=index,
         level=lvl,
         recent_incidents_summary=str(block.get("recent_incidents_summary") or "")[:2000],
-        monitoring_gaps=_clamp_str_list(block.get("monitoring_gaps"), max_items=8, max_len=500),
+        monitoring_gaps=_clamp_str_list(
+            block.get("monitoring_gaps"),
+            max_items=EXPLAIN_LIST_MAX_ITEMS,
+            max_len=EXPLAIN_LIST_ITEM_MAX_CHARS,
+        ),
         improvement_suggestions=_clamp_str_list(
             block.get("improvement_suggestions"),
-            max_items=8,
-            max_len=500,
+            max_items=EXPLAIN_LIST_MAX_ITEMS,
+            max_len=EXPLAIN_LIST_ITEM_MAX_CHARS,
         ),
     )
 
@@ -142,6 +171,32 @@ def compose_legacy_explanation_text(
     return "\n\n".join(parts).strip()
 
 
+def parse_and_validate_readiness_explain_response(
+    raw_llm_output: str,
+    *,
+    snapshot: ReadinessScoreResponse,
+    oami_index: int | None,
+    oami_level: str | None,
+    has_oami_context: bool,
+    provider: str,
+    model_id: str,
+) -> ReadinessScoreExplainResponse:
+    """
+    Parse LLM JSON, validate enum levels (with snapshot fallback), build API response.
+
+    This is the single entry point for response shaping after `route_and_call`.
+    """
+    return build_readiness_explain_response_from_llm_text(
+        raw_llm_output,
+        snapshot=snapshot,
+        oami_index=oami_index,
+        oami_level=oami_level,
+        has_oami_context=has_oami_context,
+        provider=provider,
+        model_id=model_id,
+    )
+
+
 def build_readiness_explain_response_from_llm_text(
     llm_text: str,
     *,
@@ -154,7 +209,7 @@ def build_readiness_explain_response_from_llm_text(
 ) -> ReadinessScoreExplainResponse:
     data = extract_json_object(llm_text)
     if not data:
-        logger.info("readiness_explain_json_parse_failed; using raw text")
+        logger.info("readiness_explain_json_parse_failed; using raw text fallback")
         return ReadinessScoreExplainResponse(
             explanation=(llm_text or "").strip(),
             provider=provider,
@@ -177,6 +232,7 @@ def build_readiness_explain_response_from_llm_text(
             )
 
     if r_struct is None:
+        logger.info("readiness_explain_missing_readiness_explanation_block; partial fallback")
         return ReadinessScoreExplainResponse(
             explanation=(llm_text or "").strip(),
             provider=provider,
@@ -185,7 +241,6 @@ def build_readiness_explain_response_from_llm_text(
             operational_monitoring_explanation=o_struct,
         )
 
-    # Align score/level with server truth if model drifted
     r_aligned = r_struct.model_copy(
         update={"score": snapshot.score, "level": snapshot.level},
     )
