@@ -1438,6 +1438,14 @@ export interface AdvisorPortfolioTenantEntry {
   tenant_name: string;
   industry?: string | null;
   country?: string | null;
+  /** Aus Mandanten-nis2_scope normalisiert (none | important_entity | essential_entity). */
+  nis2_entity_category?: "none" | "important_entity" | "essential_entity";
+  /** KRITIS-Sektorschlüssel aus Stammdaten, falls gepflegt. */
+  kritis_sector_key?: string | null;
+  /** Mind. ein strukturiertes Incident in den letzten 90 Tagen. */
+  recent_incidents_90d?: boolean;
+  /** Aggregierte Last (low | medium | high), ohne Einzelfallinhalte. */
+  incident_burden_level?: "low" | "medium" | "high";
   eu_ai_act_readiness: number;
   nis2_kritis_kpi_mean_percent?: number | null;
   nis2_kritis_systems_full_coverage_ratio: number;

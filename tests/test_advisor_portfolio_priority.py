@@ -6,10 +6,14 @@ import pytest
 
 from app.services.advisor_portfolio_priority import (
     advisor_portfolio_priority_sort_key,
+    apply_regulatory_priority_adjustment,
     compute_advisor_priority_bucket,
+    compute_incident_burden_level,
     derive_primary_focus_tag_de,
     effective_readiness_level,
     infer_maturity_scenario_hint,
+    normalize_nis2_entity_category,
+    regulatory_priority_bump_applies,
 )
 
 
@@ -94,6 +98,65 @@ def test_high_priority_without_scenario_when_managed_and_low_oami() -> None:
 
 def test_sort_key_order() -> None:
     assert advisor_portfolio_priority_sort_key("high") < advisor_portfolio_priority_sort_key("low")
+
+
+def test_normalize_nis2_entity_category_maps_legacy_in_scope() -> None:
+    assert normalize_nis2_entity_category(None) == "none"
+    assert normalize_nis2_entity_category("out_of_scope") == "none"
+    assert normalize_nis2_entity_category("essential_entity") == "essential_entity"
+    assert normalize_nis2_entity_category("in_scope") == "important_entity"
+
+
+def test_compute_incident_burden_level_buckets() -> None:
+    assert compute_incident_burden_level(0, 0) == "low"
+    assert compute_incident_burden_level(1, 0) == "medium"
+    assert compute_incident_burden_level(5, 0) == "high"
+    assert compute_incident_burden_level(2, 2) == "high"
+
+
+def test_regulatory_bump_requires_maturity_stress() -> None:
+    assert regulatory_priority_bump_applies(
+        nis2_category="essential_entity",
+        kritis_sector_key=None,
+        recent_incidents_90d=False,
+        incident_burden="low",
+        readiness_level="managed",
+        oami_level="low",
+    )
+    assert not regulatory_priority_bump_applies(
+        nis2_category="essential_entity",
+        kritis_sector_key=None,
+        recent_incidents_90d=False,
+        incident_burden="low",
+        readiness_level="embedded",
+        oami_level="high",
+    )
+
+
+def test_regulatory_bump_incidents_medium_burden() -> None:
+    assert regulatory_priority_bump_applies(
+        nis2_category="none",
+        kritis_sector_key=None,
+        recent_incidents_90d=True,
+        incident_burden="medium",
+        readiness_level="basic",
+        oami_level="high",
+    )
+
+
+def test_apply_regulatory_priority_adjustment_appends_suffix() -> None:
+    adj, expl = apply_regulatory_priority_adjustment(
+        "low",
+        "Geringe Dringlichkeit.",
+        readiness_level="managed",
+        oami_level="low",
+        nis2_category="essential_entity",
+        kritis_sector_key=None,
+        recent_incidents_90d=False,
+        incident_burden="low",
+    )
+    assert adj == "medium"
+    assert "Regulatorischer Aufstock" in expl
 
 
 def test_primary_focus_from_brief_text() -> None:

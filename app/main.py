@@ -2706,6 +2706,7 @@ def get_advisor_portfolio(
         AIGovernanceActionRepository,
         Depends(get_ai_governance_action_repository),
     ],
+    incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
 ) -> AdvisorPortfolioResponse:
     """Berater-Portfolio: Kern-KPIs je zugeordnetem Mandant (keine Cross-Tenant-SQL)."""
     out = build_advisor_portfolio(
@@ -2720,6 +2721,7 @@ def get_advisor_portfolio(
         violation_repo,
         audit_repo,
         action_repo,
+        incident_repo,
     )
     for t in out.tenants:
         usage_event_logger.log_usage_event(
@@ -2751,6 +2753,7 @@ def export_advisor_portfolio(
         AIGovernanceActionRepository,
         Depends(get_ai_governance_action_repository),
     ],
+    incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
     export_format: Annotated[Literal["json", "csv"], Query(alias="format")] = "json",
 ) -> Response:
     """Portfolio als JSON- oder CSV-Datei (Partnermeeting, interne Steuerung)."""
@@ -2766,6 +2769,7 @@ def export_advisor_portfolio(
         violation_repo,
         audit_repo,
         action_repo,
+        incident_repo,
     )
     for t in portfolio.tenants:
         usage_event_logger.log_usage_event(

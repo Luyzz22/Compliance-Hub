@@ -4,6 +4,8 @@ export type PortfolioPillarFilter = "readiness" | "gai" | "monitoring";
 export type PortfolioScenarioFilter = "a" | "b" | "c" | "d";
 /** Schnellfilter: hohe Priorität / Aufbau+Monitoring vs. Optimierung. */
 export type PortfolioSegmentFilter = "aufbau_monitoring" | "optimierung";
+/** NIS2/KRITIS/Incident-Schnellfilter (UND mit anderen Filtern). */
+export type PortfolioRegulatoryFilter = "nis2_relevant" | "kritis_sector" | "incidents_90d";
 
 export function advisorPrioritySortKey(t: AdvisorPortfolioTenantEntry): number {
   const k = t.advisor_priority_sort_key;
@@ -47,6 +49,20 @@ export function matchesPillarFocus(
   );
 }
 
+export function matchesRegulatoryFilter(
+  t: AdvisorPortfolioTenantEntry,
+  regulatory: PortfolioRegulatoryFilter,
+): boolean {
+  const cat = t.nis2_entity_category ?? "none";
+  if (regulatory === "nis2_relevant") {
+    return cat !== "none";
+  }
+  if (regulatory === "kritis_sector") {
+    return Boolean(t.kritis_sector_key?.trim());
+  }
+  return Boolean(t.recent_incidents_90d);
+}
+
 export function matchesSegmentFilter(
   t: AdvisorPortfolioTenantEntry,
   segment: PortfolioSegmentFilter,
@@ -65,6 +81,7 @@ export function applyAdvisorPortfolioFilters(
     pillar: PortfolioPillarFilter | null;
     scenario: PortfolioScenarioFilter | null;
     segment: PortfolioSegmentFilter | null;
+    regulatory: PortfolioRegulatoryFilter | null;
     priorityBucket: "high" | "medium" | "low" | null;
   },
 ): AdvisorPortfolioTenantEntry[] {
@@ -72,6 +89,7 @@ export function applyAdvisorPortfolioFilters(
     if (filters.pillar && !matchesPillarFocus(t, filters.pillar)) return false;
     if (filters.scenario && t.maturity_scenario_hint !== filters.scenario) return false;
     if (filters.segment && !matchesSegmentFilter(t, filters.segment)) return false;
+    if (filters.regulatory && !matchesRegulatoryFilter(t, filters.regulatory)) return false;
     if (filters.priorityBucket && (t.advisor_priority ?? "medium") !== filters.priorityBucket) {
       return false;
     }

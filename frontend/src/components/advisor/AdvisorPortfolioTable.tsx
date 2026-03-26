@@ -187,6 +187,45 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                     <div className="text-xs font-mono text-[var(--sbs-text-muted)]">
                       {t.tenant_id}
                     </div>
+                    <div
+                      className="mt-1 flex flex-wrap items-center gap-1"
+                      data-testid={`advisor-regulatory-row-${t.tenant_id}`}
+                    >
+                      {t.nis2_entity_category === "essential_entity" ? (
+                        <span
+                          className="rounded bg-violet-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-violet-900 ring-1 ring-violet-200"
+                          title="NIS2: wesentliche Einrichtung"
+                        >
+                          NIS2 wesentl.
+                        </span>
+                      ) : t.nis2_entity_category === "important_entity" ? (
+                        <span
+                          className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.6rem] font-semibold text-slate-800 ring-1 ring-slate-200"
+                          title="NIS2: wichtige Einrichtung oder allgemeine NIS2-Relevanz (Stammdaten)"
+                        >
+                          NIS2
+                        </span>
+                      ) : null}
+                      {t.kritis_sector_key ? (
+                        <span
+                          className="rounded bg-amber-50 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950 ring-1 ring-amber-200"
+                          title={`KRITIS-Sektor: ${t.kritis_sector_key}`}
+                          data-testid={`advisor-kritis-badge-${t.tenant_id}`}
+                        >
+                          KRITIS
+                        </span>
+                      ) : null}
+                      {t.recent_incidents_90d ? (
+                        <span
+                          className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-50 px-1 text-[0.65rem] font-bold text-rose-800 ring-1 ring-rose-200"
+                          title={`Vorfälle in den letzten 90 Tagen; Laststufe: ${t.incident_burden_level ?? "?"}. Keine Einzelfallinhalte.`}
+                          aria-label="Hinweis: Vorfälle in den letzten 90 Tagen"
+                          data-testid={`advisor-incident-flag-${t.tenant_id}`}
+                        >
+                          !
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td
                     className="align-middle text-xs"

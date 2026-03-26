@@ -160,3 +160,4 @@ Aus Sicht der KI-Governance empfehlen wir, operatives Monitoring und die offenen
 ## Siehe auch
 
 - Portfolio-Priorität, Sortierung, Filter und Deep-Link in den Snapshot: [`advisor-portfolio-prioritization.md`](./advisor-portfolio-prioritization.md).
+- NIS2/KRITIS/Incident-Aufstock der Priorität: [`advisor-priority-nis2-kritis.md`](./advisor-priority-nis2-kritis.md).
