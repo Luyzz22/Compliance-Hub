@@ -34,7 +34,7 @@ Die UI und Integrationen sollen **strukturierte Felder** (Enums, Listen) nutzen,
 - **Parse / Align:** `parse_advisor_governance_maturity_brief` → Kern wie beim Board an den Snapshot anbinden; Advisor-Felder aus JSON übernehmen (Listen gekappt wie im Contract).
 - **LLM-Task:** `LLMTaskType.ADVISOR_GOVERNANCE_MATURITY_BRIEF` (Feature-Gate: `governance_maturity` + `llm_enabled`).
 - **Fallback ohne LLM:** `build_fallback_advisor_governance_maturity_brief_parse_result` — heuristische `recommended_focus_areas`.
-- **Einbindung:** Advisor-Portfolio (`governance_maturity_advisor_brief`), Mandanten-Snapshot-API, Markdown-Steckbrief (`render_tenant_report_markdown`), KI-Snapshot-Markdown (Präfix-Abschnitt vor LLM-Fließtext).
+- **Einbindung:** Advisor-Portfolio (`governance_maturity_advisor_brief`), Mandanten-Snapshot-API, Markdown-Steckbrief (`render_tenant_report_markdown`; zusätzlich deterministischer Abschnitt **Risiko- und Incident-Lage (NIS2/KRITIS)** siehe [advisor-priority-nis2-kritis.md](./advisor-priority-nis2-kritis.md)), KI-Snapshot-Markdown (Präfix-Abschnitt vor LLM-Fließtext).
 
 Hinweis: Ist `COMPLIANCEHUB_FEATURE_LLM_ENABLED` aktiv, kann pro Mandant im Portfolio **ein zusätzlicher LLM-Aufruf** für den Brief entstehen (Triaging). Ohne LLM nutzt das System den deterministischen Fallback.
 

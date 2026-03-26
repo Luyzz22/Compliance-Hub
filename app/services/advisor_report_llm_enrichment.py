@@ -40,6 +40,12 @@ def _deterministic_facts_payload(report: AdvisorTenantReport) -> dict:
         "setup_completed_steps": report.setup_completed_steps,
         "setup_total_steps": report.setup_total_steps,
         "setup_open_step_labels": list(report.setup_open_step_labels),
+        "risiko_nis2_entity_category": report.risiko_nis2_entity_category,
+        "risiko_kritis_sector_label_de": report.risiko_kritis_sector_label_de,
+        "risiko_incidents_90d_count": report.risiko_incidents_90d_count,
+        "risiko_incident_burden_level": report.risiko_incident_burden_level,
+        "risiko_open_incidents_count": report.risiko_open_incidents_count,
+        "risiko_regulatory_priority_note_de": report.risiko_regulatory_priority_note_de,
     }
 
 
