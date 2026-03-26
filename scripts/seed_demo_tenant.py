@@ -31,6 +31,9 @@ from app.repositories.tenant_feature_overrides import TenantFeatureOverrideRepos
 from app.repositories.tenant_registry import TenantRegistryRepository  # noqa: E402
 from app.services.ai_kpi_seed import ensure_ai_kpi_definitions_seeded  # noqa: E402
 from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded  # noqa: E402
+from app.services.demo_governance_maturity_seed import (
+    seed_demo_governance_maturity_layer,  # noqa: E402
+)
 from app.services.demo_tenant_seeder import seed_demo_tenant  # noqa: E402
 from app.services.tenant_provisioning import PILOT_TENANT_FEATURE_DEFAULTS  # noqa: E402
 
@@ -81,27 +84,34 @@ def _ensure_tenant_and_seed(session, spec: dict[str, str], *, create_api_key: bo
 
     ai = AISystemRepository(session)
     if ai.list_for_tenant(tid):
-        print(f"skip seed: tenant {tid} already has AI systems")
-        return
+        print(f"skip core seed: tenant {tid} already has AI systems")
+    else:
+        result = seed_demo_tenant(
+            session,
+            spec["template_key"],
+            tid,
+            advisor_id=None,
+            ai_repo=ai,
+            cls_repo=ClassificationRepository(session),
+            nis2_repo=Nis2KritisKpiRepository(session),
+            policy_repo=PolicyRepository(session),
+            action_repo=AIGovernanceActionRepository(session),
+            evidence_repo=EvidenceFileRepository(session),
+        )
+        br = result.board_reports_count
+        kr = result.ai_kpi_value_rows_count
+        xr = result.cross_reg_control_rows_count
+        print(
+            f"seed ok: systems={result.ai_systems_count} board_reports={br} "
+            f"kpi_rows={kr} xref_ctrls={xr}",
+        )
 
-    result = seed_demo_tenant(
-        session,
-        spec["template_key"],
-        tid,
-        advisor_id=None,
-        ai_repo=ai,
-        cls_repo=ClassificationRepository(session),
-        nis2_repo=Nis2KritisKpiRepository(session),
-        policy_repo=PolicyRepository(session),
-        action_repo=AIGovernanceActionRepository(session),
-        evidence_repo=EvidenceFileRepository(session),
-    )
-    br = result.board_reports_count
-    kr = result.ai_kpi_value_rows_count
-    xr = result.cross_reg_control_rows_count
+    layer = seed_demo_governance_maturity_layer(session, tid)
     print(
-        f"seed ok: systems={result.ai_systems_count} board_reports={br} "
-        f"kpi_rows={kr} xref_ctrls={xr}",
+        f"governance maturity layer: telemetry_events={layer.telemetry_events_inserted} "
+        f"runtime_events={layer.runtime_events_inserted} "
+        f"oami_snapshot={layer.oami_snapshot_persisted} "
+        f"skipped_already={layer.skipped_already_seeded}",
     )
 
     if create_api_key:

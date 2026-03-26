@@ -1,6 +1,7 @@
 # Runbook: AI-Runtime-Events, Ingest & OAMI (Betrieb)
 
-Kurzanleitung für Betrieb und Piloten. Detaillierte Fachspezifikation: [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md).
+Kurzanleitung für Betrieb und Piloten. Detaillierte Fachspezifikation: [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md).  
+End-to-End-Demo inkl. GAI + OAMI: [`demo-governance-maturity-flow.md`](./demo-governance-maturity-flow.md).
 
 ## 1. Feature-Flags (ENV)
 
