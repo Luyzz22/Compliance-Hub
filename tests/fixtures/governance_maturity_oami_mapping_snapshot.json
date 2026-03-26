@@ -1,0 +1,30 @@
+{
+  "contract_version": "2",
+  "source": "app.services.operational_monitoring_index._level_from_index",
+  "index_api_levels": ["low", "medium", "high"],
+  "index_level_de": {
+    "low": "Niedrig",
+    "medium": "Mittel",
+    "high": "Hoch"
+  },
+  "oami_index_bands": [
+    {
+      "index_min": 0,
+      "index_max_exclusive": 40,
+      "level": "low",
+      "label_de": "Niedrig"
+    },
+    {
+      "index_min": 40,
+      "index_max_exclusive": 70,
+      "level": "medium",
+      "label_de": "Mittel"
+    },
+    {
+      "index_min": 70,
+      "index_max_exclusive": 101,
+      "level": "high",
+      "label_de": "Hoch"
+    }
+  ]
+}

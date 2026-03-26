@@ -60,7 +60,17 @@ Hilfsfunktion (Tests/Docs): `derive_readiness_level_from_score(score)` im Contra
 
 ### 3.2 GAI / OAMI (0–100 Index)
 
-Es gibt **keinen** zweiten „numerischen Level-Typ“ im Contract: der Index (0–100) und das API-Level (`low`/`medium`/`high`) werden in den **jeweiligen Services** aus der Datenlage abgeleitet. Das Contract-Modul definiert nur **Enums und Labels** sowie Parser `normalize_index_level`.
+Der Index (0–100) und das API-Level (`low` / `medium` / `high`) werden in den **jeweiligen Services** aus der Datenlage abgeleitet. Das Contract-Modul definiert **Enums, Labels**, Parser `normalize_index_level` sowie **Dokumentations-Bänder** für OAMI (Regression).
+
+**OAMI-Index → API-Level** (wie `operational_monitoring_index._level_from_index`; Snapshot: `contract_full_oami_mapping_snapshot()`):
+
+| Index (ganzzahlig 0–100) | Typischer API-Level |
+|--------------------------|---------------------|
+| &lt; 40 | `low` |
+| 40–69 | `medium` |
+| ≥ 70 | `high` |
+
+Hilfsfunktion (Tests/Docs): `derive_oami_level_from_index(index)` — **nicht** zur Überschreibung des serverseitigen OAMI-Levels im Explain-Flow verwenden.
 
 ### 3.3 DE-Labels
 
@@ -142,6 +152,20 @@ Die Dateien sind **canonical fixtures** für `tests/test_readiness_explain_golde
 }
 ```
 
+### 4.4 Golden Samples: OAMI-Block (`operational_monitoring_explanation`)
+
+Unter `tests/fixtures/oami-explain/` liegen **drei** vollständige Beispiele mit **Readiness- und OAMI-Block** (ohne Markdown). Sie spiegeln Niedrig/Mittel/Hoch beim operativen Monitoring und die erlaubten Index-Level-Enums.
+
+| Datei | Szenario (kurz) | OAMI-Index (Beispiel) | `level` (API) | DE-Label (UI) |
+|-------|-----------------|------------------------|---------------|---------------|
+| `response_low.json` | Kaum Daten, ungeklärte Vorfälle | ~28 | `low` | Niedrig |
+| `response_medium.json` | Monitoring sichtbar, einige Incidents | ~55 | `medium` | Mittel |
+| `response_high.json` | Kontinuierliche Beobachtung, wenige Incidents | ~85 | `high` | Hoch |
+
+**Regression der Index-Bänder:** `tests/fixtures/governance_maturity_oami_mapping_snapshot.json` muss `contract_full_oami_mapping_snapshot()` entsprechen (siehe Abschn. 9).
+
+**Tests:** `tests/test_oami_explain_golden_regression.py` (inkl. kombinierter Readiness+OAMI-Strukturtest und Fallback bei ungültigem OAMI-`level`).
+
 ---
 
 ## 5. Regeln für LLM-Output
@@ -158,7 +182,7 @@ Die Dateien sind **canonical fixtures** für `tests/test_readiness_explain_golde
 
 | Baustein | Datei / Funktion |
 |----------|------------------|
-| Enums, Labels, Limits, Version, `contract_full_mapping_snapshot()` | `app/governance_maturity_contract.py` |
+| Enums, Labels, Limits, Version, `contract_full_mapping_snapshot()`, `contract_full_oami_mapping_snapshot()`, `derive_oami_level_from_index` | `app/governance_maturity_contract.py` |
 | Prompt-Zusammenbau (nur Contract + Fakten) | `app/services/readiness_explain_prompt.py` → `build_readiness_explain_prompt` |
 | LLM-Aufruf | `app/services/readiness_score_explain.py` → `explain_readiness_score` |
 | Parse / Validierung / Fallback | `app/services/readiness_explain_structured.py` → `parse_readiness_explain_llm_json`, `parse_and_validate_readiness_explain_response` |
@@ -182,16 +206,17 @@ Die Dateien sind **canonical fixtures** für `tests/test_readiness_explain_golde
 3. **Dieses Dokument** + `docs/governance-maturity-copy-de.md` + ggf. `readiness-score.md` aktualisieren.
 4. **Frontend:** `governanceMaturityTypes.ts`, `governanceMaturityDeCopy.ts`, `api.ts` DTOs.
 5. **Pydantic:** `readiness_score_models.py` (Listenlängen, Literals).
-6. **Tests:** `tests/test_governance_maturity_contract.py`, `tests/test_readiness_explain_structured.py`, `tests/test_readiness_explain_prompt.py`, `tests/test_readiness_explain_golden_regression.py` anpassen.
-7. **Fixtures:** `tests/fixtures/governance_maturity_mapping_snapshot.json` und `tests/fixtures/readiness_explain_golden/*.json` bei Band- oder Golden-Änderungen aktualisieren.
+6. **Tests:** `tests/test_governance_maturity_contract.py`, `tests/test_readiness_explain_structured.py`, `tests/test_readiness_explain_prompt.py`, `tests/test_readiness_explain_golden_regression.py`, `tests/test_oami_explain_golden_regression.py` anpassen.
+7. **Fixtures:** `tests/fixtures/governance_maturity_mapping_snapshot.json`, `tests/fixtures/governance_maturity_oami_mapping_snapshot.json`, `tests/fixtures/readiness_explain_golden/*.json` und `tests/fixtures/oami-explain/*.json` bei Band- oder Golden-Änderungen aktualisieren.
 
 ---
 
 ## 9. Tests (Referenz)
 
-- **Mapping-Datei:** `tests/fixtures/governance_maturity_mapping_snapshot.json` muss exakt `contract_full_mapping_snapshot()` aus `governance_maturity_contract.py` entsprechen (CI bricht bei Drift).
-- **Golden-Regression:** `tests/test_readiness_explain_golden_regression.py` — Parser, Snapshot-Ausrichtung, erlaubte Keys, Whitespace-Toleranz, Prompt-Struktur (Version + Mandantenfakten).
-- **Contract:** `contract_mapping_for_tests()` / Score-Bänder vs. `derive_readiness_level_from_score`.
+- **Mapping-Dateien:** `governance_maturity_mapping_snapshot.json` ≡ `contract_full_mapping_snapshot()`; `governance_maturity_oami_mapping_snapshot.json` ≡ `contract_full_oami_mapping_snapshot()` (CI bricht bei Drift).
+- **Golden-Regression Readiness:** `tests/test_readiness_explain_golden_regression.py` — Parser, Snapshot-Ausrichtung, erlaubte Keys, Whitespace-Toleranz, Prompt-Struktur (Version + Mandantenfakten).
+- **Golden-Regression OAMI:** `tests/test_oami_explain_golden_regression.py` — OAMI-Block, DE-Label-Konsistenz, ungültiges `level` → Server-Fallback, kombinierter Readiness+OAMI-Check.
+- **Contract:** `contract_mapping_for_tests()` / Readiness-Bänder vs. `derive_readiness_level_from_score`; OAMI-Bänder vs. `derive_oami_level_from_index` und Abgleich mit `operational_monitoring_index._level_from_index`.
 - **Prompt:** alle API-Werte und DE-Labels aus den Maps; keine parallele Hardcode-Liste.
 - **Parser:** ungültige `level`-Strings, fehlende Blöcke (`test_readiness_explain_structured.py`).
 

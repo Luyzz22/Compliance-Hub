@@ -5,6 +5,8 @@ Language-agnostic API contract for governance maturity levels (aligned with fron
 - API enums used in JSON (LLM + REST)
 - German labels injected into LLM prompts (mirrors UI copy; canonical UI strings live in TS)
 - Explain-schema version string for prompts and change tracking
+- Readiness- und OAMI-Index-Bänder für Regression (`contract_full_mapping_snapshot`,
+  `contract_full_oami_mapping_snapshot`)
 
 Frontend mirror: frontend/src/lib/governanceMaturityTypes.ts
 German presentation (UI): frontend/src/lib/governanceMaturityDeCopy.ts
@@ -95,6 +97,22 @@ def derive_readiness_level_from_score(score: int) -> ReadinessLevelLiteral:
     return "embedded"
 
 
+def derive_oami_level_from_index(index: int) -> IndexLevelLiteral:
+    """
+    OAMI-Index (0–100) → API-Level; gleiche Bänder wie
+    ``operational_monitoring_index._level_from_index``.
+
+    Kalibrierung: ``docs/governance-operational-ai-monitoring.md``.
+    Für Tests und Mapping-Snapshots; serverseitiges OAMI-Level bleibt im Explain-Flow autoritativ.
+    """
+    s = max(0, min(100, int(index)))
+    if s < 40:
+        return "low"
+    if s < 70:
+        return "medium"
+    return "high"
+
+
 def normalize_readiness_level(raw: object) -> ReadinessLevelLiteral | None:
     if raw is None:
         return None
@@ -153,6 +171,41 @@ def contract_full_mapping_snapshot() -> dict[str, object]:
         },
     ]
     return {**base, "readiness_score_bands": bands}
+
+
+def contract_full_oami_mapping_snapshot() -> dict[str, object]:
+    """
+    OAMI-Index-Bänder → API-Level → DE-Label (Regression).
+
+    Checked against ``tests/fixtures/governance_maturity_oami_mapping_snapshot.json`` — update that
+    file intentionally when bands or labels change.
+    """
+    return {
+        "contract_version": GOVERNANCE_MATURITY_CONTRACT_VERSION,
+        "source": "app.services.operational_monitoring_index._level_from_index",
+        "index_api_levels": list(INDEX_API_LEVELS),
+        "index_level_de": {k: INDEX_LEVEL_DE[k] for k in INDEX_API_LEVELS},
+        "oami_index_bands": [
+            {
+                "index_min": 0,
+                "index_max_exclusive": 40,
+                "level": GovernanceActivityLevelApi.LOW.value,
+                "label_de": INDEX_LEVEL_DE[GovernanceActivityLevelApi.LOW.value],
+            },
+            {
+                "index_min": 40,
+                "index_max_exclusive": 70,
+                "level": GovernanceActivityLevelApi.MEDIUM.value,
+                "label_de": INDEX_LEVEL_DE[GovernanceActivityLevelApi.MEDIUM.value],
+            },
+            {
+                "index_min": 70,
+                "index_max_exclusive": 101,
+                "level": GovernanceActivityLevelApi.HIGH.value,
+                "label_de": INDEX_LEVEL_DE[GovernanceActivityLevelApi.HIGH.value],
+            },
+        ],
+    }
 
 
 def regulatory_context_standard() -> str:
