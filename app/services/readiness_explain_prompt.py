@@ -40,6 +40,5 @@ def build_readiness_explain_prompt(*, facts_envelope: dict[str, Any]) -> str:
         + "\n\n"
         "Nutze ausschließlich die nachfolgenden JSON-Fakten; erfinde keine Zahlen, Mandanten "
         "oder KI-Systeme.\n\n"
-        "JSON-Fakten:\n"
-        + facts
+        "JSON-Fakten:\n" + facts
     )
