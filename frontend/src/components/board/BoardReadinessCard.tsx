@@ -9,19 +9,31 @@ import {
 } from "@/lib/api";
 import { CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
 import { featureLlmEnabled, featureLlmExplain, featureReadinessScore } from "@/lib/config";
+import {
+  DEMO_HINT_READINESS_CARD,
+  READINESS_DIM_COVERAGE,
+  READINESS_DIM_COVERAGE_HINT,
+  READINESS_DIM_GAPS,
+  READINESS_DIM_GAPS_HINT,
+  READINESS_DIM_KPIS,
+  READINESS_DIM_KPIS_HINT,
+  READINESS_DIM_REPORTING,
+  READINESS_DIM_REPORTING_HINT,
+  READINESS_DIM_SETUP,
+  READINESS_DIM_SETUP_HINT,
+  READINESS_FIVE_DIMS_CAPTION,
+  READINESS_PRODUCT_TITLE,
+  READINESS_REG_HINT_SHORT,
+  READINESS_TAGLINE,
+  READINESS_TOOLTIP_C_LEVEL,
+  readinessLevelLabelDe,
+} from "@/lib/governanceMaturityDeCopy";
 import { openWorkspaceTenantAndGo } from "@/lib/workspaceTenantClient";
 
 function scoreAccent(score: number): string {
   if (score < 40) return "text-rose-700";
   if (score < 70) return "text-amber-800";
   return "text-emerald-800";
-}
-
-function levelLabelDe(level: string): string {
-  if (level === "basic") return "Basic";
-  if (level === "managed") return "Managed";
-  if (level === "embedded") return "Embedded";
-  return level;
 }
 
 function DimBar({
@@ -108,14 +120,13 @@ export function BoardReadinessCard({
 
   return (
     <article className={CH_CARD} data-testid="board-readiness-card">
-      <p className={CH_SECTION_LABEL}>AI &amp; Compliance Readiness</p>
+      <p className={CH_SECTION_LABEL} title={READINESS_TOOLTIP_C_LEVEL}>
+        {READINESS_PRODUCT_TITLE}
+      </p>
+      <p className="mt-1 text-xs leading-snug text-slate-600">{READINESS_TAGLINE}</p>
+      <p className="mt-1 text-[0.65rem] leading-snug text-slate-500">{READINESS_REG_HINT_SHORT}</p>
       {isDemoTenant ? (
-        <p className="mt-1 text-xs leading-snug text-slate-500">
-          <strong className="font-semibold text-slate-600">Demomandant</strong> – keine echten
-          Betriebsdaten. Score = strukturelle Reife (EU AI Act, ISO 42001/27001, Nachweise). Nutzung
-          der Plattform (GAI) und Laufzeit-Signale (OAMI) ergänzen das Bild im Board-Report bzw. in
-          der Governance-Maturity-Auswertung.
-        </p>
+        <p className="mt-2 text-xs leading-snug text-amber-900/90">{DEMO_HINT_READINESS_CARD}</p>
       ) : null}
       {busy && !data ? <p className="mt-2 text-sm text-slate-600">Lade Score…</p> : null}
       {err ? (
@@ -133,7 +144,10 @@ export function BoardReadinessCard({
                 <span className="text-lg font-semibold text-slate-500">/100</span>
               </p>
               <p className="mt-1 text-sm font-medium text-slate-700">
-                Level: <span className="text-slate-900">{levelLabelDe(data.level)}</span>
+                Reifegrad:{" "}
+                <span className="text-slate-900" title={READINESS_REG_HINT_SHORT}>
+                  {readinessLevelLabelDe(data.level)}
+                </span>
               </p>
             </div>
             <button
@@ -149,37 +163,37 @@ export function BoardReadinessCard({
           {d ? (
             <div className="mt-4 max-w-md border-t border-slate-100 pt-3">
               <p className="mb-1 text-[0.65rem] font-medium text-slate-500">
-                Fünf Dimensionen (ohne einzelne KI-Laufzeit – die liefert OAMI separat)
+                {READINESS_FIVE_DIMS_CAPTION}
               </p>
               <DimBar
                 testId="readiness-dim-setup"
-                label="Setup"
+                label={READINESS_DIM_SETUP}
                 value={d.setup.score_0_100}
-                hint="AI-Governance-Wizard, Rollen, Framework-Scopes (u. a. ISO 42001-Anschluss)."
+                hint={READINESS_DIM_SETUP_HINT}
               />
               <DimBar
                 testId="readiness-dim-coverage"
-                label="Coverage"
+                label={READINESS_DIM_COVERAGE}
                 value={d.coverage.score_0_100}
-                hint="Abdeckung EU AI Act, NIS2, ISO 27001/42001 im Compliance-Graphen."
+                hint={READINESS_DIM_COVERAGE_HINT}
               />
               <DimBar
                 testId="readiness-dim-kpi"
-                label="KPIs"
+                label={READINESS_DIM_KPIS}
                 value={d.kpi.score_0_100}
-                hint="KPI-/KRI-Zeitreihen im KI-Register (Drift, Incidents, …)."
+                hint={READINESS_DIM_KPIS_HINT}
               />
               <DimBar
                 testId="readiness-dim-gaps"
-                label="Gaps"
+                label={READINESS_DIM_GAPS}
                 value={d.gaps.score_0_100}
-                hint="Regulatorische Lücken – z. B. fehlende Controls zu EU-AI-Act-Pflichten."
+                hint={READINESS_DIM_GAPS_HINT}
               />
               <DimBar
                 testId="readiness-dim-reporting"
-                label="Reporting"
+                label={READINESS_DIM_REPORTING}
                 value={d.reporting.score_0_100}
-                hint="Board- und Management-Reports – Transparenz für Aufsichtsrat / GF."
+                hint={READINESS_DIM_REPORTING_HINT}
               />
             </div>
           ) : null}

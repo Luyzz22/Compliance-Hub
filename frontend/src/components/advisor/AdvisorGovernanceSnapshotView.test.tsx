@@ -106,6 +106,7 @@ describe("AdvisorGovernanceSnapshotView", () => {
     });
     expect(await screen.findByText("Mandant X")).toBeTruthy();
     expect(screen.getByTestId("snap-client-info")).toBeTruthy();
+    expect(screen.getByTestId("snap-gai-note")).toBeTruthy();
     expect(screen.getByTestId("snap-oami")).toBeTruthy();
     expect(screen.getByText(/Operatives Monitoring: mittlere Reife/i)).toBeTruthy();
 

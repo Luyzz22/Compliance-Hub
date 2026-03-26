@@ -9,6 +9,7 @@ import {
   type DemoTenantTemplateDto,
 } from "@/lib/api";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
+import { DEMO_SEED_SUCCESS_GOVERNANCE_NOTE } from "@/lib/governanceMaturityDeCopy";
 import { openWorkspaceTenantAndGoComplianceOverview } from "@/lib/workspaceTenantClient";
 
 export interface DemoTenantSetupPanelProps {
@@ -129,11 +130,8 @@ export function DemoTenantSetupPanel({
             <li>{result.policy_rows_count} Policy-Zeilen</li>
           </ul>
           <p className="mt-2 text-xs text-emerald-800">
-            Alerts und Readiness sind aktiv. Governance-Telemetrie (GAI) und Laufzeit-Demo (OAMI)
-            werden mitgeseedet. Öffnen Sie den Mandanten im Workspace für die Compliance-Übersicht.
-            Internes 10–15-Minuten-Skript:{" "}
-            <code className="rounded bg-white/80 px-1">docs/demo-board-ready-walkthrough.md</code> im
-            Repository.
+            Alerts und struktureller Readiness sind aktiv. {DEMO_SEED_SUCCESS_GOVERNANCE_NOTE} Öffnen
+            Sie den Mandanten im Workspace für die Compliance-Übersicht.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button

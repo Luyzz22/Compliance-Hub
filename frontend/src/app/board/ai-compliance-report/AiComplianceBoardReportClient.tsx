@@ -22,6 +22,7 @@ import { BoardReadinessCard } from "@/components/board/BoardReadinessCard";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { GovernanceViewFeatureTelemetry } from "@/components/workspace/GovernanceViewFeatureTelemetry";
 import { useWorkspaceMode } from "@/hooks/useWorkspaceMode";
+import { DEMO_BANNER_BOARD_REPORT } from "@/lib/governanceMaturityDeCopy";
 
 const ALL_FRAMEWORKS: { key: string; label: string }[] = [
   { key: "eu_ai_act", label: "EU AI Act" },
@@ -196,10 +197,7 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
           className="mb-6 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-950"
           role="status"
         >
-          <strong className="font-semibold">Demomandant (read-only):</strong> Keine produktiven
-          Änderungen; Runtime-Telemetrie und Reports sind <strong>synthetisch</strong>, aber für EU AI
-          Act / NIS2 / ISO-Gespräche anschlussfähig. Vorhandene Reports ansehen und exportieren – neue
-          KI-Generierung ist deaktiviert.
+          {DEMO_BANNER_BOARD_REPORT}
         </div>
       ) : null}
 

@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { portfolioHealth } from "@/lib/advisorPortfolioHealth";
 import { CH_CARD, CH_SECTION_LABEL, CH_SHELL } from "@/lib/boardLayout";
+import { PORTFOLIO_GOVERNANCE_MATURITY_NOTE } from "@/lib/governanceMaturityDeCopy";
 import {
   featureAdvisorWorkspace,
   featureAiComplianceBoardReport,
@@ -235,6 +236,10 @@ export default function AdvisorPortfolioPage() {
               tenantIds={[...new Set(processed.map((t) => t.tenant_id))]}
             />
           ) : null}
+
+          <p className="mb-3 max-w-4xl text-xs leading-relaxed text-slate-600">
+            {PORTFOLIO_GOVERNANCE_MATURITY_NOTE}
+          </p>
 
           <AdvisorPortfolioTable rows={processed} advisorId={advisorId} />
         </>

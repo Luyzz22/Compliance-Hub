@@ -10,7 +10,8 @@
 - [`governance-activity-index.md`](./governance-activity-index.md) – GAI-Formel, Gewichte, Datenmodell-Skizze.  
 - [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md) – SAP AI Core Events, OAMI, Persistenz, BTP-Integrationsmuster.  
 - [`demo-governance-maturity-flow.md`](./demo-governance-maturity-flow.md) – Demo/Pilot: Seeding, Szenarien, 10–15-Minuten-Ablauf.  
-- [`demo-board-ready-walkthrough.md`](./demo-board-ready-walkthrough.md) – Internes Skript (CISO/Board vs. Advisor, Talking Points).
+- [`demo-board-ready-walkthrough.md`](./demo-board-ready-walkthrough.md) – Internes Skript (CISO/Board vs. Advisor, Talking Points).  
+- [`governance-maturity-copy-de.md`](./governance-maturity-copy-de.md) – **Terminologie und Tooltips** (Board-taugliches Deutsch).
 
 ---
 
