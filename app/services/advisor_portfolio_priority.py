@@ -10,10 +10,6 @@ from __future__ import annotations
 from typing import Literal
 
 from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturityBrief
-from app.advisor_portfolio_models import (
-    GovernanceActivityPortfolioSummary,
-    OperationalMonitoringPortfolioSummary,
-)
 from app.readiness_score_models import ReadinessScoreSummary
 
 AdvisorPriorityBucket = Literal["high", "medium", "low"]

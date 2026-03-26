@@ -83,7 +83,7 @@ class AdvisorPortfolioTenantEntry(BaseModel):
     )
     maturity_scenario_hint: AdvisorMaturityScenarioHint | None = Field(
         default=None,
-        description="Optional: Zuordnung zu Golden-Szenario A–D bei passender Kennzahl-Kombination.",
+        description="Optional: Golden-Szenario A–D, wenn Kennzahlen zum Muster passen.",
     )
     primary_focus_tag_de: str = Field(
         default="Governance",
