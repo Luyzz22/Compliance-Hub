@@ -53,6 +53,16 @@ def main() -> int:
     finally:
         engine.dispose()
 
+    if not summary.ledger_available:
+        print(
+            "Ledger unavailable (no schema_migrations table): read-only / restricted role — "
+            "no DDL from this run; use a privileged role to run migrations if needed.",
+        )
+    if summary.ledgerless_unsatisfied:
+        print(
+            "WARNING: migrations not satisfied (DBA may need to apply DDL):",
+            ", ".join(summary.ledgerless_unsatisfied),
+        )
     if summary.applied_ddl or summary.ledger_backfilled or summary.skipped_ledger:
         if summary.applied_ddl:
             print("DDL applied:", ", ".join(summary.applied_ddl))
@@ -63,7 +73,11 @@ def main() -> int:
             )
         if summary.skipped_ledger:
             print("Skipped (already in schema_migrations):", ", ".join(summary.skipped_ledger))
-    elif not args.quiet:
+    elif (
+        not args.quiet
+        and summary.ledger_available
+        and not summary.ledgerless_unsatisfied
+    ):
         print("No pending migrations (database URL:", url, ")")
     return 0
 
