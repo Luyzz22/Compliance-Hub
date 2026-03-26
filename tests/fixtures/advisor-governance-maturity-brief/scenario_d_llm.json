@@ -1,0 +1,31 @@
+{
+  "governance_maturity_summary": {
+    "readiness": {
+      "score": 0,
+      "level": "basic",
+      "short_reason": "Readiness ist auf integriertem Niveau: Register, Risikoklassifikation und Nachweise sind weitgehend konsistent gepflegt."
+    },
+    "activity": {
+      "index": 0,
+      "level": "low",
+      "short_reason": "Governance-Aktivität ist hoch; die Plattform wird für laufende Steuerung, Reporting und Nachweise regelmäßig genutzt."
+    },
+    "operational_monitoring": {
+      "index": 0,
+      "level": "low",
+      "short_reason": "Laufzeit-Signale und Trendauswertungen sind für die wesentlichen Systeme verfügbar und werden ausgewertet."
+    },
+    "overall_assessment": {
+      "level": "low",
+      "short_summary": "Das Gesamtbild ist konservativ hoch eingestuft: Struktur, Nutzung und Monitoring greifen zusammen. Der Beratungsschwerpunkt verschiebt sich auf Feintuning, Skalierung bei wachsendem Portfolio und kontinuierliche Post-Market-Überwachung.",
+      "key_risks": ["Komplexitätszuwachs bei Portfolio-Erweiterung"],
+      "key_strengths": ["Integrierte Steuerung", "Belastbares Monitoring"]
+    }
+  },
+  "recommended_focus_areas": [
+    "Feintuning: Schwellen und Eskalationspfade mit Fachbereichen abstimmen.",
+    "Skalierung: Onboarding neuer Systeme an etablierte Governance-Patterns koppeln."
+  ],
+  "suggested_next_steps_window": "nächste 90 Tage",
+  "client_ready_paragraph_de": "Ihre KI-Governance ist auf einem hohen Niveau angekommen. Sinnvoll ist jetzt die Feinjustierung bei wachsender Systemlandschaft und die Sicherstellung, dass neue Use Cases die gleichen Standards erfüllen. Wir beraten gern zu Skalierung und kontinuierlicher Überwachung."
+}

@@ -1,5 +1,22 @@
 # Advisor Governance-Maturity-Brief
 
+## Kanonische Berater-Szenarien (A–D)
+
+Für Regression und Qualitätssicherung sind **vier Profile** definiert (siehe `tests/fixtures/advisor-governance-maturity-brief/README.md`):
+
+| ID | Readiness / GAI / OAMI | Konservatives Gesamt | Nutzen für den Berater |
+|----|-------------------------|----------------------|-------------------------|
+| **A** | basic / low / low | low | Grundlagen: Register, Steuerungsnutzung, Monitoring aufbauen |
+| **B** | managed / high / low | low | Monitoring und Laufzeit-Signale nachziehen |
+| **C** | embedded / medium / medium | medium | Nutzung verbreitern, Monitoring harmonisieren |
+| **D** | embedded / high / high | high | Feintuning, Skalierung, kontinuierliche Überwachung |
+
+- **JSON (Fake-LLM):** `tests/fixtures/advisor-governance-maturity-brief/scenario_{a,b,c,d}_llm.json`
+- **Markdown-Goldens (Brief-Abschnitt):** `tests/fixtures/advisor-tenant-report-markdown/scenario_{a,b,c,d}_brief_section.md`
+- **Snapshots (Readiness/GAI/OAMI-Zahlen):** `tests/advisor_brief_scenario_snapshots.py`
+
+Die Auswertung entspricht dem **Board-Kern**: gleiche API-Enums (`basic`/`managed`/`embedded`, `low`/`medium`/`high`), konservatives Gesamtlevel als Minimum der Säulen. Der Berater-Brief ergänzt **Fokuslisten** und **Mandantentext**, ohne neue messbare Fakten neben dem Snapshot zu erfinden.
+
 ## Beziehung zum Board-`GovernanceMaturitySummary`
 
 | Artefakt | Rolle |
@@ -20,6 +37,38 @@ Die UI und Integrationen sollen **strukturierte Felder** (Enums, Listen) nutzen,
 - **Einbindung:** Advisor-Portfolio (`governance_maturity_advisor_brief`), Mandanten-Snapshot-API, Markdown-Steckbrief (`render_tenant_report_markdown`), KI-Snapshot-Markdown (Präfix-Abschnitt vor LLM-Fließtext).
 
 Hinweis: Ist `COMPLIANCEHUB_FEATURE_LLM_ENABLED` aktiv, kann pro Mandant im Portfolio **ein zusätzlicher LLM-Aufruf** für den Brief entstehen (Triaging). Ohne LLM nutzt das System den deterministischen Fallback.
+
+## Beispiel JSON – Szenario A (Grundlagen, Auszug)
+
+Vollständige Datei: `tests/fixtures/advisor-governance-maturity-brief/scenario_a_llm.json`. Kurzfassung:
+
+```json
+{
+  "recommended_focus_areas": [
+    "Readiness: KI-Register und Rollen konsistent führen; offene Nachweise zu High-Risk-Systemen schließen.",
+    "GAI: Steuerungsprozesse in der Plattform verankern (Reviews, Freigaben, dokumentierte Nutzung).",
+    "OAMI: Mindestens für High-Risk-Systeme Monitoring und Incident-Runbooks vorbereiten."
+  ],
+  "suggested_next_steps_window": "nächste 90 Tage",
+  "client_ready_paragraph_de": "Für die kommenden drei Monate empfehlen wir, die Grundlagen der KI-Governance zu schließen …"
+}
+```
+
+Der Block `governance_maturity_summary` in derselben Datei wird beim Parsen an den Snapshot angeglichen; Enums und Zahlen im Export folgen der API, nicht dem rohen LLM-JSON.
+
+## Beispiel JSON – Szenario B (Monitoring nachziehen, Auszug)
+
+Datei: `scenario_b_llm.json`. Typische Fokuszeile:
+
+```json
+{
+  "recommended_focus_areas": [
+    "OAMI priorisieren: KPI-Zeitreihen, Incidents und Runbooks für High-Risk-Systeme ausbauen.",
+    "Readiness-Lücken bei High-Risk parallel schließen, damit Monitoring auf saubere Stammdaten aufsetzt."
+  ],
+  "suggested_next_steps_window": "nächste 90 Tage"
+}
+```
 
 ## Beispiel JSON (Mandant mit niedrigem OAMI)
 
@@ -59,7 +108,30 @@ Hinweis: Ist `COMPLIANCEHUB_FEATURE_LLM_ENABLED` aktiv, kann pro Mandant im Port
 
 ## Beispiel Markdown-Abschnitt (Steckbrief / Export)
 
-Der Block wird von `render_advisor_governance_maturity_brief_markdown_section` erzeugt und in den Mandanten-Steckbrief sowie optional vor den KI-Snapshot-Markdown gesetzt:
+Der Block wird von `render_advisor_governance_maturity_brief_markdown_section` erzeugt und in den Mandanten-Steckbrief sowie optional vor den KI-Snapshot-Markdown gesetzt.
+
+**Referenz-Goldens pro Szenario:** `tests/fixtures/advisor-tenant-report-markdown/scenario_{a,b,c,d}_brief_section.md`
+
+Beispiel (Szenario B, gekürzt — Monitoring-Schwerpunkt):
+
+```markdown
+## Governance-Reife – Kurzüberblick
+
+**Gesamtbild (konservativ):** low
+
+Struktur und Steuerungsnutzung sind gestärkt; das konservative Gesamtbild wird jedoch durch begrenztes Laufzeit-Monitoring nach unten gezogen. …
+
+**Empfohlene Fokusbereiche**
+
+- OAMI priorisieren: KPI-Zeitreihen, Incidents und Runbooks für High-Risk-Systeme ausbauen.
+- Readiness-Lücken bei High-Risk parallel schließen, damit Monitoring auf saubere Stammdaten aufsetzt.
+
+**Vorgeschlagener Zeithorizont:** nächste 90 Tage
+
+Ihre organisatorische und prozessuale Steuerung ist auf einem guten Weg; sinnvoll ist jetzt, operatives Monitoring …
+```
+
+Älteres Beispiel (generischer Low-OAMI-Fall) zur Einordnung:
 
 ```markdown
 ## Governance-Reife – Kurzüberblick
@@ -81,5 +153,6 @@ Aus Sicht der KI-Governance empfehlen wir, operatives Monitoring und die offenen
 ## Tests
 
 - `tests/test_advisor_governance_maturity_brief_parse.py` — Parse, Align, Fallback, Markdown, Prompt-Marker.
+- `tests/test_advisor_brief_golden_scenarios.py` — Szenarien A–D: Fake-LLM-JSON, konservatives Level, Markdown-Goldens, Einbettung im Mandanten-Steckbrief.
 - `tests/test_governance_maturity_contract.py::test_advisor_brief_json_schema_instructions_shape` — Contract-String.
-- Fixture: `tests/fixtures/advisor_governance_maturity_brief_golden/response_ok.json`.
+- Legacy-Fixture: `tests/fixtures/advisor_governance_maturity_brief_golden/response_ok.json`.
