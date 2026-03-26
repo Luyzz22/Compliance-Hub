@@ -8,7 +8,12 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from app.advisor_portfolio_models import AdvisorPortfolioResponse, AdvisorPortfolioTenantEntry
+from app.advisor_portfolio_models import (
+    AdvisorPortfolioResponse,
+    AdvisorPortfolioTenantEntry,
+    GovernanceActivityPortfolioSummary,
+    OperationalMonitoringPortfolioSummary,
+)
 from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.readiness_score_models import ReadinessScoreSummary
 from app.repositories.advisor_tenants import AdvisorTenantRepository
@@ -23,6 +28,7 @@ from app.repositories.violations import ViolationRepository
 from app.services.advisor_client_governance_snapshot import build_governance_brief_for_tenant
 from app.services.ai_governance_kpis import compute_ai_governance_kpis
 from app.services.compliance_dashboard import compute_ai_compliance_overview
+from app.services.governance_maturity_service import build_governance_maturity_response
 from app.services.readiness_score_service import compute_readiness_score
 from app.services.setup_status import compute_tenant_setup_status
 
@@ -85,6 +91,27 @@ def build_advisor_portfolio(
                 logger.exception("advisor_portfolio_readiness_failed tenant=%s", tid)
                 readiness_summary = None
 
+        gai_summary: GovernanceActivityPortfolioSummary | None = None
+        oami_summary: OperationalMonitoringPortfolioSummary | None = None
+        if is_feature_enabled(FeatureFlag.governance_maturity):
+            try:
+                gm = build_governance_maturity_response(session, tid, window_days=90)
+                ga = gm.governance_activity
+                gai_summary = GovernanceActivityPortfolioSummary(
+                    index=ga.index,
+                    level=ga.level,
+                )
+                ob = gm.operational_ai_monitoring
+                if ob.status == "active" and ob.level is not None:
+                    oami_summary = OperationalMonitoringPortfolioSummary(
+                        index=ob.index,
+                        level=ob.level,
+                    )
+            except Exception:
+                logger.exception("advisor_portfolio_governance_maturity_failed tenant=%s", tid)
+                gai_summary = None
+                oami_summary = None
+
         tenants_out.append(
             AdvisorPortfolioTenantEntry(
                 tenant_id=tid,
@@ -104,6 +131,8 @@ def build_advisor_portfolio(
                 setup_progress_ratio=setup_ratio,
                 governance_brief=brief,
                 readiness_summary=readiness_summary,
+                governance_activity_summary=gai_summary,
+                operational_monitoring_summary=oami_summary,
             ),
         )
 
@@ -131,6 +160,10 @@ def advisor_portfolio_to_csv(portfolio: AdvisorPortfolioResponse) -> str:
         "setup_progress_ratio",
         "readiness_score",
         "readiness_level",
+        "gai_index",
+        "gai_level",
+        "oami_index",
+        "oami_level",
     ]
     w = csv.DictWriter(buf, fieldnames=fieldnames)
     w.writeheader()
@@ -139,6 +172,12 @@ def advisor_portfolio_to_csv(portfolio: AdvisorPortfolioResponse) -> str:
         rs = row.get("readiness_summary")
         row["readiness_score"] = rs["score"] if rs else ""
         row["readiness_level"] = rs["level"] if rs else ""
+        ga = row.get("governance_activity_summary")
+        om = row.get("operational_monitoring_summary")
+        row["gai_index"] = ga["index"] if ga else ""
+        row["gai_level"] = ga["level"] if ga else ""
+        row["oami_index"] = om["index"] if om and om.get("index") is not None else ""
+        row["oami_level"] = om["level"] if om and om.get("level") is not None else ""
         w.writerow({k: row.get(k) for k in fieldnames})
     return buf.getvalue()
 

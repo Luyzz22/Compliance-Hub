@@ -26,11 +26,14 @@ import {
   GAI_FULL_NAME,
   GAI_REG_HINT_SHORT,
   GAI_TOOLTIP_C_LEVEL,
+  getReadinessCopy,
   OAMI_ADVISOR_DETAIL_EXTRA,
+  OAMI_DEMO_SIGNALS_NOTE,
   OAMI_FULL_NAME,
   OAMI_REG_HINT_SHORT,
   OAMI_SECTION_TITLE,
   OAMI_TOOLTIP_C_LEVEL,
+  parseReadinessLevel,
   READINESS_ADVISOR_DETAIL_EXTRA,
   READINESS_PRODUCT_TITLE,
   READINESS_REG_HINT_SHORT,
@@ -142,6 +145,8 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
   useEffect(() => {
     void syncReadiness(snap);
   }, [snap, syncReadiness]);
+
+  const readinessLevelParsed = readiness ? parseReadinessLevel(readiness.level) : null;
 
   const genMd = async () => {
     if (!advisorId) return;
@@ -270,7 +275,11 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
                 <span className="text-lg font-semibold text-slate-500">/100</span>
                 <span
                   className="ml-2 text-base font-medium text-slate-600"
-                  title={READINESS_REG_HINT_SHORT}
+                  title={
+                    readinessLevelParsed
+                      ? getReadinessCopy(readinessLevelParsed).levelWithRegTooltip
+                      : READINESS_REG_HINT_SHORT
+                  }
                 >
                   ({readinessLevelLabelDe(readiness.level)})
                 </span>
@@ -317,9 +326,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
               <p className="mt-1 text-xs text-slate-600">{OAMI_TOOLTIP_C_LEVEL}</p>
               <p className="mt-1 text-xs text-slate-600">{OAMI_ADVISOR_DETAIL_EXTRA}</p>
               <p className="mt-1 text-[0.65rem] text-slate-500">{OAMI_REG_HINT_SHORT}</p>
-              <p className="mt-1 text-xs text-slate-500">
-                In Demos typischerweise synthetische Signale – keine Anbindung an Produktiv-SAP.
-              </p>
+              <p className="mt-1 text-xs text-slate-500">{OAMI_DEMO_SIGNALS_NOTE}</p>
               <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="text-xs font-semibold text-slate-500">Index / Level</dt>

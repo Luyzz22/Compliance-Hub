@@ -1,12 +1,26 @@
 /**
- * Board-taugliche deutsche Texte: Governance-Maturity (Readiness, GAI, OAMI).
- * Einheitliche Begriffe für Board, CISO, Aufsichtsrat und Berater (DACH).
+ * Zentrale deutschsprachige Texte für Governance Maturity (Readiness, GAI, OAMI).
  *
- * Referenz für Redaktion: docs/governance-maturity-copy-de.md
+ * **Konvention:** Alle sichtbaren Board-/Berater-Strings zu diesen Themen kommen aus diesem Modul
+ * (keine parallelen Inline-Literals in Komponenten). Anpassungen nur hier vornehmen.
+ *
+ * Inhaltliche Abstimmung mit dem Demo-Script: `docs/demo-board-ready-walkthrough.md`
+ * Begriffstabelle: `docs/governance-maturity-copy-de.md`
+ *
+ * Level-Typen: `governanceMaturityTypes.ts` — Parser/Helper unten für konsistente Labels.
  */
+
+import type { ActivityLevel, IndexLevel, MonitoringLevel, ReadinessLevel } from "@/lib/governanceMaturityTypes";
+import {
+  INDEX_LEVEL_API_VALUES,
+  READINESS_LEVEL_API_VALUES,
+} from "@/lib/governanceMaturityTypes";
 
 /** Produktbezeichnung in der UI (nicht übersetzen: etabliertes Marken-Element). */
 export const READINESS_PRODUCT_TITLE = "AI & Compliance Readiness";
+
+/** Zeile unter dem Score: „Reifegrad: …“. */
+export const READINESS_LEVEL_ROW_LABEL = "Reifegrad:";
 
 /** Kurz erklärt, was der Score misst (Unterzeile / Fließtext). */
 export const READINESS_TAGLINE =
@@ -49,6 +63,10 @@ export const OAMI_REG_HINT_SHORT =
 /** Abschnittstitel Snapshot / Board (90-Tage-Fenster). */
 export const OAMI_SECTION_TITLE = "Operativer KI-Monitoring-Index (OAMI, 90 Tage)";
 
+/** Hinweis unter OAMI in Demos (Snapshot). */
+export const OAMI_DEMO_SIGNALS_NOTE =
+  "In Demos typischerweise synthetische Signale – keine Anbindung an Produktiv-SAP.";
+
 /** Demomandant: Board-Report-Banner (ein Absatz). */
 export const DEMO_BANNER_BOARD_REPORT =
   "Demomandant (read-only): keine produktiven Änderungen. Alle Werte sind Beispieldaten ohne echten Betrieb. Sie dienen EU-AI-Act-, NIS2- und ISO-Gesprächen; vorgefüllte Reports ansehen und exportieren – neue KI-Generierung ist deaktiviert.";
@@ -63,12 +81,22 @@ export const DEMO_SEED_SUCCESS_GOVERNANCE_NOTE =
 
 /** Portfolio: Hinweis unter Überschrift / vor Tabelle. */
 export const PORTFOLIO_GOVERNANCE_MATURITY_NOTE =
-  "Hinweis: In der Spalte „Readiness“ sehen Sie den strukturellen AI- & Compliance-Readiness-Score (0–100). Governance-Aktivität (GAI) und operativer KI-Monitoring-Index (OAMI) je Mandant finden Sie im Governance-Snapshot.";
+  "Hinweis: In der Spalte „Readiness“ sehen Sie den strukturellen AI- & Compliance-Readiness-Score (0–100). Spalten Governance-Aktivität und Operatives Monitoring zeigen GAI- und OAMI-Level; Details im Governance-Snapshot.";
 
 /** Spalten-Header (kurz). */
 export const PORTFOLIO_COL_READINESS = "Readiness";
 
 export const PORTFOLIO_COL_READINESS_TOOLTIP = `${READINESS_TOOLTIP_C_LEVEL} ${READINESS_REG_HINT_SHORT}`;
+
+/** Portfolio: GAI-Spalte (Kurzform). */
+export const PORTFOLIO_COL_GAI_SHORT = "Governance-Aktivität";
+
+export const PORTFOLIO_COL_GAI_TOOLTIP = `${GAI_TOOLTIP_C_LEVEL} ${GAI_REG_HINT_SHORT}`;
+
+/** Portfolio: OAMI-Spalte (Kurzform). */
+export const PORTFOLIO_COL_OAMI_SHORT = "Operatives Monitoring";
+
+export const PORTFOLIO_COL_OAMI_TOOLTIP = `${OAMI_TOOLTIP_C_LEVEL} ${OAMI_REG_HINT_SHORT}`;
 
 export const PORTFOLIO_COL_EU_AI_ACT = "EU AI Act (Register)";
 
@@ -99,31 +127,91 @@ export const READINESS_DIM_REPORTING = "Board-Reporting";
 export const READINESS_DIM_REPORTING_HINT =
   "Berichte für Vorstand, Aufsichtsrat und Prüfer – Transparenz der Governance.";
 
+const READINESS_LEVEL_LABEL_DE: Record<ReadinessLevel, string> = {
+  basic: "Basis",
+  managed: "Etabliert",
+  embedded: "Integriert",
+};
+
+const INDEX_LEVEL_LABEL_DE: Record<IndexLevel, string> = {
+  low: "Niedrig",
+  medium: "Mittel",
+  high: "Hoch",
+};
+
+export function parseReadinessLevel(raw: string | null | undefined): ReadinessLevel | null {
+  if (raw == null || raw === "") return null;
+  const v = String(raw).toLowerCase().trim();
+  return (READINESS_LEVEL_API_VALUES as readonly string[]).includes(v)
+    ? (v as ReadinessLevel)
+    : null;
+}
+
+export function parseIndexLevel(raw: string | null | undefined): IndexLevel | null {
+  if (raw == null || raw === "") return null;
+  const v = String(raw).toLowerCase().trim();
+  return (INDEX_LEVEL_API_VALUES as readonly string[]).includes(v) ? (v as IndexLevel) : null;
+}
+
+/** Tooltip-Text für Readiness-Badge in der Portfolio-Tabelle (ohne numerischen Score). */
+export function readinessPortfolioBadgeTooltip(levelApi: string): string {
+  const p = parseReadinessLevel(levelApi);
+  const label = p ? getReadinessCopy(p).levelLabelDe : levelApi;
+  return `Reifegrad ${label} (0–100). ${READINESS_REG_HINT_SHORT}`;
+}
+
+export function getReadinessCopy(level: ReadinessLevel) {
+  return {
+    levelLabelDe: READINESS_LEVEL_LABEL_DE[level],
+    productTitle: READINESS_PRODUCT_TITLE,
+    tagline: READINESS_TAGLINE,
+    cLevelTooltip: READINESS_TOOLTIP_C_LEVEL,
+    regHintShort: READINESS_REG_HINT_SHORT,
+    /** Kurz-Tooltip nur für das Level-Badge (Readiness-Karte / Snapshot). */
+    levelWithRegTooltip: `${READINESS_LEVEL_LABEL_DE[level]} — ${READINESS_REG_HINT_SHORT}`,
+  };
+}
+
+export function getActivityCopy(level: ActivityLevel) {
+  return {
+    levelLabelDe: INDEX_LEVEL_LABEL_DE[level],
+    fullName: GAI_FULL_NAME,
+    cLevelTooltip: GAI_TOOLTIP_C_LEVEL,
+    advisorExtra: GAI_ADVISOR_DETAIL_EXTRA,
+    regHintShort: GAI_REG_HINT_SHORT,
+    columnHeaderShort: PORTFOLIO_COL_GAI_SHORT,
+    columnTooltip: PORTFOLIO_COL_GAI_TOOLTIP,
+  };
+}
+
+export function getMonitoringCopy(level: MonitoringLevel) {
+  return {
+    levelLabelDe: INDEX_LEVEL_LABEL_DE[level],
+    fullName: OAMI_FULL_NAME,
+    sectionTitle: OAMI_SECTION_TITLE,
+    cLevelTooltip: OAMI_TOOLTIP_C_LEVEL,
+    advisorExtra: OAMI_ADVISOR_DETAIL_EXTRA,
+    regHintShort: OAMI_REG_HINT_SHORT,
+    columnHeaderShort: PORTFOLIO_COL_OAMI_SHORT,
+    columnTooltip: PORTFOLIO_COL_OAMI_TOOLTIP,
+  };
+}
+
 /** Readiness-Level (API: basic | managed | embedded). */
 export function readinessLevelLabelDe(level: string): string {
-  switch (level) {
-    case "basic":
-      return "Basis";
-    case "managed":
-      return "Etabliert";
-    case "embedded":
-      return "Integriert";
-    default:
-      return level;
-  }
+  const p = parseReadinessLevel(level);
+  return p ? getReadinessCopy(p).levelLabelDe : level;
 }
 
 /** GAI / OAMI Level (API: low | medium | high). */
 export function indexLevelLabelDe(level: string | null | undefined): string {
-  if (!level) return "–";
-  switch (String(level).toLowerCase()) {
-    case "low":
-      return "Niedrig";
-    case "medium":
-      return "Mittel";
-    case "high":
-      return "Hoch";
-    default:
-      return level;
-  }
+  if (level == null || level === "") return "–";
+  const p = parseIndexLevel(level);
+  return p ? INDEX_LEVEL_LABEL_DE[p] : String(level);
 }
+
+export type { ActivityLevel, IndexLevel, MonitoringLevel, ReadinessLevel } from "@/lib/governanceMaturityTypes";
+export {
+  INDEX_LEVEL_API_VALUES,
+  READINESS_LEVEL_API_VALUES,
+} from "@/lib/governanceMaturityTypes";

@@ -2,10 +2,21 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AdvisorPortfolioTenantEntry } from "@/lib/api";
+import {
+  PORTFOLIO_COL_GAI_SHORT,
+  PORTFOLIO_COL_OAMI_SHORT,
+  PORTFOLIO_COL_READINESS,
+  getActivityCopy,
+  getMonitoringCopy,
+} from "@/lib/governanceMaturityDeCopy";
 
 import { AdvisorPortfolioTable } from "./AdvisorPortfolioTable";
 
-const portfolioFeatureFlags = vi.hoisted(() => ({ snapshot: true, readiness: true }));
+const portfolioFeatureFlags = vi.hoisted(() => ({
+  snapshot: true,
+  readiness: true,
+  governanceMaturity: true,
+}));
 
 vi.mock("@/lib/workspaceTenantClient", () => ({
   openWorkspaceTenantAndGoComplianceOverview: vi.fn(),
@@ -19,12 +30,14 @@ vi.mock("@/lib/config", async (importOriginal) => {
     featurePilotRunbook: () => true,
     featureAdvisorClientSnapshot: () => portfolioFeatureFlags.snapshot,
     featureReadinessScore: () => portfolioFeatureFlags.readiness,
+    featureGovernanceMaturity: () => portfolioFeatureFlags.governanceMaturity,
   };
 });
 
 afterEach(() => {
   portfolioFeatureFlags.snapshot = true;
   portfolioFeatureFlags.readiness = true;
+  portfolioFeatureFlags.governanceMaturity = true;
   cleanup();
 });
 
@@ -51,6 +64,8 @@ const sampleRows: AdvisorPortfolioTenantEntry[] = [
       nis2_critical_ai_count: 1,
     },
     readiness_summary: { score: 58, level: "managed" },
+    governance_activity_summary: { index: 42, level: "medium" },
+    operational_monitoring_summary: { index: 55, level: "high" },
   },
 ];
 
@@ -110,6 +125,36 @@ describe("AdvisorPortfolioTable", () => {
     portfolioFeatureFlags.snapshot = true;
     render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     expect(screen.queryByTestId("advisor-readiness-badge-t-demo-1")).toBeNull();
-    expect(screen.queryByText("Readiness")).toBeNull();
+    expect(screen.queryByText(PORTFOLIO_COL_READINESS)).toBeNull();
+  });
+
+  it("uses governanceMaturityDeCopy column headers and index level labels for GAI/OAMI", () => {
+    portfolioFeatureFlags.governanceMaturity = true;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+
+    expect(
+      screen.getByRole("columnheader", { name: PORTFOLIO_COL_READINESS }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("columnheader", { name: PORTFOLIO_COL_GAI_SHORT }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("columnheader", { name: PORTFOLIO_COL_OAMI_SHORT }),
+    ).toBeTruthy();
+
+    const gaiCell = screen.getByTestId("advisor-gai-cell-t-demo-1");
+    expect(gaiCell.textContent).toContain("42");
+    expect(gaiCell.textContent).toContain(getActivityCopy("medium").levelLabelDe);
+
+    const oamiCell = screen.getByTestId("advisor-oami-cell-t-demo-1");
+    expect(oamiCell.textContent).toContain("55");
+    expect(oamiCell.textContent).toContain(getMonitoringCopy("high").levelLabelDe);
+  });
+
+  it("hides GAI/OAMI columns when featureGovernanceMaturity is off", () => {
+    portfolioFeatureFlags.governanceMaturity = false;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    expect(screen.queryByRole("columnheader", { name: PORTFOLIO_COL_GAI_SHORT })).toBeNull();
+    expect(screen.queryByTestId("advisor-gai-cell-t-demo-1")).toBeNull();
   });
 });
