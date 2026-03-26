@@ -3,13 +3,15 @@
 Zielgruppe: **Sales**, **Customer Success**, **Berater-Partner** – reproduzierbare Führung für **CISO/Board** (ein Mandant) und **Advisor** (Portfolio + Deep Dive).  
 Technische Provisionierung: [`demo-governance-maturity-flow.md`](./demo-governance-maturity-flow.md).
 
-**Kernbotschaft in drei Säulen**
+**Kernbotschaft in drei Säulen** (Begriffe wie in der UI, siehe [`governance-maturity-copy-de.md`](./governance-maturity-copy-de.md))
 
-| Säule | Produktname | Was Sie sagen (Kurz) |
-|-------|-------------|----------------------|
-| **Struktur** | AI & Compliance **Readiness** | „Wo stehen wir mit EU AI Act, ISO 42001/27001 und Nachweisen – unabhängig vom Tagesgeschäft?“ |
-| **Nutzung** | **GAI** (Governance Activity Index) | „Nutzen wir ComplianceHub wirklich für Steuerung – Playbook, Cross-Reg, Board?“ |
-| **Betrieb** | **OAMI** (Operational AI Monitoring) | „Sehen wir Laufzeit-Signale und Vorfälle – Anknüpfung an NIS2-Incident-Themen und Post-Market-Monitoring?“ |
+| Säule | Produktname (deutsch) | Was Sie sagen (1 Satz) |
+|-------|------------------------|-------------------------|
+| **Struktur** | **AI & Compliance Readiness** | „Wo stehen Aufbau, Framework-Abdeckung, KPI-Register, Lücken und Board-Reporting – also die strukturelle KI-Compliance-Reife zu EU AI Act, ISO/IEC 42001 und 27001?“ |
+| **Nutzung** | **Governance-Aktivitätsindex (GAI)** | „Nutzen wir Playbook, Cross-Regulation und Board-Reports wirklich – oder nur auf dem Papier?“ |
+| **Betrieb** | **Operativer KI-Monitoring-Index (OAMI)** | „Welche technischen Laufzeit-Signale sehen wir – zur Einordnung von Post-Market-Monitoring und NIS2-Incident-Themen, ohne automatische Melde-Entscheidung?“ |
+
+**Reifegrade Readiness:** Basis · Etabliert · Integriert. **Stufen GAI/OAMI:** Niedrig · Mittel · Hoch.
 
 Alle **Demodaten sind synthetisch** (keine echten Betriebs- oder Personendaten). Runtime-Events und Telemetrie sind **realistisch**, aber **nicht** aus Produktiv-SAP.
 
@@ -42,14 +44,14 @@ Alle **Demodaten sind synthetisch** (keine echten Betriebs- oder Personendaten).
 | 2 | **KI-Register** (`/tenant/ai-systems`) | 2′ / 3′ | Hochrisiko-Systeme (Anhang III), Kurzbezug **EU AI Act**; NIS2-Relevanz über Kritikalität. |
 | 3 | **Cross-Regulation** (`/tenant/cross-regulation-dashboard`) | 2′ / 4′ | Coverage vs. Gaps (**Art. 9, 11, 12** etc.), ISO-42001/27001-Kontext. |
 | 4 | **Board-KPIs / NIS2** (`/board/nis2-kritis`, `/board/kpis`) | 1′ / 2′ | Incident-Readiness, Supplier – **NIS2**-Narrativ ohne Rechtsberatung. |
-| 5 | **AI Compliance Board-Report** (`/board/ai-compliance-report`) | 2′ / 3′ | **Readiness-Karte** (strukturell); vorgefertigter **Demo-Board-Report**; OAMI-Auszug im Report wo vorhanden. |
-| 6 | **Optional 15′** | +3′ | EU-AI-Act-Readiness-Seite, Playbook-Phase, oder **Governance-Maturity** per API/Docs erwähnen (Readiness + GAI + OAMI in einem JSON). |
+| 5 | **AI Compliance Board-Report** (`/board/ai-compliance-report`) | 2′ / 3′ | **AI & Compliance Readiness**-Karte; **Demomandant**-Banner; vorgefüllter **Demo-Board-Report**; OAMI im Report wo vorhanden. |
+| 6 | **Optional 15′** | +3′ | EU-AI-Act-Readiness-Seite, Playbook, oder API **Governance Maturity** (Readiness + **governance_activity** + **operational_ai_monitoring**). |
 
-### Talking Points (Auszug)
+### Talking Points (Auszug) – gleiche Wortwahl wie in der Oberfläche
 
-- „Der **Readiness Score** bündelt Setup, Coverage, KPIs, Gaps und Reporting – das ist unsere **Board-taugliche** Einordnung zur **EU AI Act**-Reife, nicht die juristische Klassifikation.“  
-- „**GAI** messen wir aus der **Nutzung** von Playbook, Cross-Reg und Board – das unterscheidet **Papier-Compliance** von aktiver Governance.“  
-- „**OAMI** steht für **operative Signale** (Vorfälle, Drift, Deployments) – das stützt **Post-Market-Monitoring** und das Gespräch mit **NIS2**-Incident-Prozessen, ohne dass wir hier Meldepflichten automatisch qualifizieren.“
+- „**AI & Compliance Readiness** bündelt die fünf Dimensionen struktureller Reife – das ist unsere **board-taugliche** Einordnung, **nicht** die juristische Hochrisiko-Klassifikation und **nicht** dasselbe wie die Spalte **EU AI Act (Register)** im Berater-Portfolio.“  
+- „Der **Governance-Aktivitätsindex** zeigt, ob die Governance-Funktionen **tatsächlich genutzt** werden – Unterscheidung von Papier-Compliance.“  
+- „Der **operative KI-Monitoring-Index** fasst Laufzeit-Signale zusammen – Gespräch zu **EU AI Act** Post-Market-Monitoring und **NIS2**-Incidents, **ohne** automatische Qualifikation von Meldepflichten.“
 
 ### Typische Board-/CISO-Fragen (diese Demo adressiert)
 
@@ -65,17 +67,17 @@ Alle **Demodaten sind synthetisch** (keine echten Betriebs- oder Personendaten).
 
 | # | Screen | Dauer (10′ / 15′) | Was Sie zeigen |
 |---|--------|-------------------|----------------|
-| 1 | **Advisor-Portfolio** (`/advisor`) | 2′ / 3′ | Vergleich Mandanten: EU-AI-Act-Readiness, **Readiness-Badge** (strukturell), Cross-Reg-Ø, High-Risk-Anzahl. |
-| 2 | **Spalten-Tooltips** | 0.5′ | Kurz: Readiness = fünf Dimensionen; Cross-Reg = Framework-Coverage. |
-| 3 | **Governance-Snapshot** (Mandant wählen) | 4′ / 6′ | Mandantenstammdaten, **Readiness**, Setup, AI-Systeme, KPIs, Cross-Reg-Tabelle, **OAMI** (Index, Level, Kurznarrativ), Reports. |
-| 4 | **Board im Workspace** (CTA aus Snapshot) | 2′ / 3′ | Gleicher Mandant: **Demo-Board-Report anzeigen**, Readiness-Karte erneut – roter Faden. |
+| 1 | **Advisor-Portfolio** (`/advisor`) | 2′ / 3′ | Vergleich Mandanten: Spalte **EU AI Act (Register)**, **Readiness** (struktureller Score), Cross-Reg-Ø, High-Risk. Hinweiszeile zu **GAI** und **OAMI** im Snapshot. |
+| 2 | **Spalten-Tooltips** | 0.5′ | **Readiness** = AI & Compliance Readiness (fünf Dimensionen); **EU AI Act (Register)** = Register-Heuristik. |
+| 3 | **Governance-Snapshot** (Mandant wählen) | 4′ / 6′ | Einleitung (drei Säulen), **AI & Compliance Readiness**, Kachel **GAI** (Verweis API), **OAMI** (Index, Stufe Niedrig/Mittel/Hoch, Narrativ), Setup, KPIs, Cross-Reg, Reports. |
+| 4 | **Board im Workspace** (CTA aus Snapshot) | 2′ / 3′ | **Demo-Board-Report anzeigen**, Readiness-Karte – gleiche Begriffe wie oben. |
 | 5 | **Optional 15′** | +3′ | Zweiter Mandant im Portfolio kurz vergleichen (z. B. Industrie vs. Kanzlei-Template). |
 
 ### Talking Points
 
-- „Im Portfolio sehen Sie **schnell**, wo Mandanten in **Readiness** und **Cross-Reg** auseinanderlaufen – ideal für **Priorisierung**.“  
-- „Der **Snapshot** ist Ihr **einziges Blatt** vor dem Mandantentermin: Register, KPIs, Lücken, **operative KI-Überwachung** (OAMI).“  
-- „Alles, was wie **Live-Betrieb** aussieht, ist in der Demo **synthetisch** – für Vertrauen in die **Story**, nicht für echte SLAs.“
+- „Im Portfolio sehen Sie **schnell** Unterschiede zwischen **EU AI Act (Register)** und strukturellem **Readiness** sowie Cross-Reg – ideal zur **Priorisierung**.“  
+- „Der **Snapshot** bündelt **Readiness**, den erklärten **GAI** und **OAMI**, KPIs und Lücken – ein Blatt fürs Mandantengespräch.“  
+- „Laufzeit-Daten in der Demo sind **synthetisch** – glaubwürdige Story, keine Produktiv-SLA.“
 
 ### Typische Berater-Fragen
 

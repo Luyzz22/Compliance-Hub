@@ -7,6 +7,14 @@ import { portfolioHealth, type PortfolioHealth } from "@/lib/advisorPortfolioHea
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD } from "@/lib/boardLayout";
 import * as chConfig from "@/lib/config";
 import {
+  PORTFOLIO_COL_EU_AI_ACT,
+  PORTFOLIO_COL_EU_AI_ACT_TOOLTIP,
+  PORTFOLIO_COL_READINESS,
+  PORTFOLIO_COL_READINESS_TOOLTIP,
+  READINESS_REG_HINT_SHORT,
+  readinessLevelLabelDe,
+} from "@/lib/governanceMaturityDeCopy";
+import {
   openWorkspaceTenantAndGo,
   openWorkspaceTenantAndGoComplianceOverview,
 } from "@/lib/workspaceTenantClient";
@@ -79,11 +87,8 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                   <th>Cross-Reg Ø</th>
                 </>
               ) : null}
-              <th
-                title="Heuristischer Register-/Klassifikationsüberblick – nicht identisch mit dem strukturellen AI & Compliance Readiness Score (fünf Dimensionen)."
-                className="max-w-[7rem]"
-              >
-                EU AI Act Readiness
+              <th title={PORTFOLIO_COL_EU_AI_ACT_TOOLTIP} className="max-w-[7rem]">
+                {PORTFOLIO_COL_EU_AI_ACT}
               </th>
               <th>NIS2 Ø / Coverage</th>
               <th>High-Risk</th>
@@ -91,11 +96,8 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
               <th>Offene Actions</th>
               <th>Status</th>
               {readinessUi ? (
-                <th
-                  title="AI & Compliance Readiness (0–100): Setup, EU-AI-Act-/ISO-Coverage, KPI-Register, regulatorische Gaps, Board-Reporting. Ergänzt GAI (Nutzung) und OAMI (Laufzeit) im Snapshot."
-                  className="max-w-[6rem]"
-                >
-                  Readiness
+                <th title={PORTFOLIO_COL_READINESS_TOOLTIP} className="max-w-[6rem]">
+                  {PORTFOLIO_COL_READINESS}
                 </th>
               ) : null}
               {snapUi ? <th>Snapshot</th> : null}
@@ -199,7 +201,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                       {t.readiness_summary ? (
                         <span
                           className={`inline-flex min-w-[2.25rem] justify-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${readinessBadgeClasses(t.readiness_summary.score)}`}
-                          title={`Level ${t.readiness_summary.level}; aus Setup, Coverage, KPIs, Gaps, Reports.`}
+                          title={`Reifegrad ${readinessLevelLabelDe(t.readiness_summary.level)} (0–100). ${READINESS_REG_HINT_SHORT}`}
                           data-testid={`advisor-readiness-badge-${t.tenant_id}`}
                         >
                           {t.readiness_summary.score}
