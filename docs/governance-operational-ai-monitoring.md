@@ -89,7 +89,7 @@ Runtime-Events werden **nicht** als neue „Pflichten“ im Graph gespeichert, s
 | `source_event_id` | text, NOT NULL | UNIQUE (tenant_id, source, source_event_id) | Idempotenz je Quelle (gleiche externe ID bei anderem `source` ist erlaubt). |
 | `source` | text, NOT NULL | | |
 | `event_type` | text, NOT NULL | ja | |
-| `event_subtype` | text, NULL | nein | Optional; feinere Codes (z. B. Provider-/Szenario-Tags) für Analytics; OAMI nutzt sie vorerst nicht zwingend. |
+| `event_subtype` | text, NULL | nein | Optional; kanonische Kurzcodes pro `event_type` (siehe unten). OAMI gewichtet u. a. `safety_violation` stärker; API `monitoring-index` liefert `incident_count_by_subtype`. |
 | `severity` | text | | |
 | `occurred_at` | timestamptz, NOT NULL | ja | |
 | `ingested_at` | timestamptz, NOT NULL | | |
@@ -101,6 +101,51 @@ Runtime-Events werden **nicht** als neue „Pflichten“ im Graph gespeichert, s
 | `payload_json` | jsonb | GIN optional | Nur kanonisiertes `context` + feste Felder, die nicht in Spalten liegen. |
 
 **RLS:** `tenant_id` = aktueller Mandant; Advisor-Zugriff über bestehende Advisor-Policies.
+
+#### `event_subtype` (v1) — Taxonomie und SAP-Zuordnung
+
+Kanonische Mengen und Normalisierung: **`app/runtime_event_catalog.py`** (`EVENT_SUBTYPES_BY_TYPE`, `SAP_AI_CORE_CODE_MAP`, `resolve_event_subtype`). Ingest mappt unbekannte Freitexte soft auf `other_incident` / `other_metric_breach` / `other_deployment`.
+
+| `event_type` | Erlaubte `event_subtype`-Werte |
+|--------------|--------------------------------|
+| `incident` | `sap_alert_incident`, `safety_violation`, `availability_incident`, `other_incident` |
+| `metric_threshold_breach` | `drift_high`, `performance_degradation`, `other_metric_breach` |
+| `deployment_change` | `model_rollout`, `model_rollback`, `other_deployment` |
+
+**SAP AI Core (Beispiele):** Technische Codes in `incident_code` (uppercase), Quelle `sap_ai_core` — z. B. `SAFETY_VIOLATION` → `safety_violation`, `DRIFT_HIGH` → `drift_high` (nur wenn `event_type` zur Map passt). Explizites JSON-Feld `event_subtype` hat Vorrang vor der Code-Ableitung.
+
+**Beispielabfragen (90-Tage-Fenster, ein System):**
+
+```sql
+-- Incidents nach Subtype (Postgres)
+SELECT event_subtype, COUNT(*) AS n
+FROM ai_runtime_events
+WHERE tenant_id = :tenant_id
+  AND ai_system_id = :ai_system_id
+  AND event_type = 'incident'
+  AND occurred_at >= NOW() - INTERVAL '90 days'
+GROUP BY event_subtype
+ORDER BY n DESC;
+```
+
+```python
+# SQLAlchemy (Auszug)
+from sqlalchemy import func, select
+from app.models_db import AiRuntimeEventTable
+
+stmt = (
+    select(AiRuntimeEventTable.event_subtype, func.count())
+    .where(
+        AiRuntimeEventTable.tenant_id == tenant_id,
+        AiRuntimeEventTable.ai_system_id == ai_system_id,
+        AiRuntimeEventTable.event_type == "incident",
+        AiRuntimeEventTable.occurred_at >= since,
+    )
+    .group_by(AiRuntimeEventTable.event_subtype)
+)
+```
+
+**Board / Advisor:** Unter der Haube können sicherheitsrelevante Vorfälle über `event_subtype` (z. B. `safety_violation`) von reinen Verfügbarkeitsvorfällen unterscheiden; der System-OAMI berücksichtigt das im Stabilitäts-Teilscore. Portfolio- und Steckbrief-Oberflächen nutzen weiterhin aggregierte Kennzahlen (u. a. OAMI-Level), nicht Roh-Events.
 
 ### 2.2 Tabelle `ai_runtime_incident_summaries`
 

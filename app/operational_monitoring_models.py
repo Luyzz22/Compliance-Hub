@@ -35,6 +35,13 @@ class RuntimeEventIn(BaseModel):
     occurred_at: datetime
     metric_key: str | None = Field(default=None, max_length=128)
     incident_code: str | None = Field(default=None, max_length=128)
+    event_subtype: str | None = Field(
+        default=None,
+        max_length=64,
+        description=(
+            "Optional feinere Kategorie (siehe runtime_event_catalog.EVENT_SUBTYPES_BY_TYPE)."
+        ),
+    )
     value: float | None = None
     delta: float | None = None
     threshold_breached: bool | None = None
@@ -89,6 +96,10 @@ class SystemMonitoringIndexOut(BaseModel):
     last_event_at: datetime | None
     incident_count: int = 0
     high_severity_incident_count: int = 0
+    incident_count_by_subtype: dict[str, int] = Field(
+        default_factory=dict,
+        description="Nur Incidents; Schlüssel = kanonischer event_subtype.",
+    )
     metric_threshold_breach_count: int = 0
     distinct_active_days: int = 0
     components: OamiComponentsOut

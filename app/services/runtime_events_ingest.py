@@ -19,6 +19,7 @@ from app.repositories.ai_runtime_events import AiRuntimeEventRepository
 from app.runtime_event_catalog import (
     ValidatedRuntimeFields,
     rejection_message_en,
+    resolve_event_subtype,
     validate_runtime_event_fields,
 )
 from app.services.runtime_event_sanitize import sanitize_runtime_event_extra
@@ -110,6 +111,16 @@ def ingest_runtime_events(
                     )
                 continue
 
+            vf, subtype_warnings = resolve_event_subtype(ev, vf)
+            for wcode in subtype_warnings:
+                logger.info(
+                    "%s tenant_id=%s source_event_id=%s subtype_soft_warning=%s",
+                    _RUNTIME_EVENTS_INGEST_LOG,
+                    tenant_id,
+                    sid[:128],
+                    wcode,
+                )
+
             dedupe_key = (vf.source, sid[:128])
             if dedupe_key in batch_seen:
                 skipped += 1
@@ -127,6 +138,7 @@ def ingest_runtime_events(
                 source=vf.source,
                 source_event_id=sid[:128],
                 event_type=vf.event_type,
+                event_subtype=vf.event_subtype,
                 severity=vf.severity,
                 metric_key=vf.metric_key,
                 incident_code=vf.incident_code,

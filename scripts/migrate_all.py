@@ -73,11 +73,7 @@ def main() -> int:
             )
         if summary.skipped_ledger:
             print("Skipped (already in schema_migrations):", ", ".join(summary.skipped_ledger))
-    elif (
-        not args.quiet
-        and summary.ledger_available
-        and not summary.ledgerless_unsatisfied
-    ):
+    elif not args.quiet and summary.ledger_available and not summary.ledgerless_unsatisfied:
         print("No pending migrations (database URL:", url, ")")
     return 0
 

@@ -77,12 +77,14 @@ class AiRuntimeEventRepository:
                 "incident_high": 0,
                 "breach_count": 0,
                 "incident_count": 0,
+                "incident_count_by_subtype": {},
             }
         last_at = max(_occurred_at_utc(r.occurred_at) for r in rows)
         days: set[str] = set()
         incident_high = 0
         breach_count = 0
         incident_count = 0
+        incident_by_subtype: dict[str, int] = {}
         sev_hi = frozenset({"high", "critical"})
         for r in rows:
             d = _occurred_at_utc(r.occurred_at).date().isoformat()
@@ -92,6 +94,9 @@ class AiRuntimeEventRepository:
                 incident_count += 1
                 if (r.severity or "").lower() in sev_hi:
                     incident_high += 1
+                st = (getattr(r, "event_subtype", None) or "").strip().lower()
+                if st:
+                    incident_by_subtype[st] = incident_by_subtype.get(st, 0) + 1
             if et == "metric_threshold_breach":
                 breach_count += 1
         return {
@@ -101,6 +106,7 @@ class AiRuntimeEventRepository:
             "incident_high": incident_high,
             "breach_count": breach_count,
             "incident_count": incident_count,
+            "incident_count_by_subtype": incident_by_subtype,
         }
 
     def list_system_ids_with_events(

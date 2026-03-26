@@ -38,6 +38,8 @@ Die UI und Integrationen sollen **strukturierte Felder** (Enums, Listen) nutzen,
 
 Hinweis: Ist `COMPLIANCEHUB_FEATURE_LLM_ENABLED` aktiv, kann pro Mandant im Portfolio **ein zusätzlicher LLM-Aufruf** für den Brief entstehen (Triaging). Ohne LLM nutzt das System den deterministischen Fallback.
 
+**Laufzeit-Events:** `ai_runtime_events.event_subtype` erlaubt feinere Gruppierung (z. B. `safety_violation` vs. `availability_incident`). Der **OAMI** auf Systemebene gewichtet sicherheitsrelevante Subtypen stärker; Advisor- und Board-Ansichten bleiben auf aggregierte Monitoring-Kennzahlen ausgerichtet. Details: `docs/governance-operational-ai-monitoring.md` (Abschnitt `event_subtype`).
+
 ## Beispiel JSON – Szenario A (Grundlagen, Auszug)
 
 Vollständige Datei: `tests/fixtures/advisor-governance-maturity-brief/scenario_a_llm.json`. Kurzfassung:

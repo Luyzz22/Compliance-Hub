@@ -41,6 +41,13 @@ def explain_system_oami_de(result: SystemMonitoringIndexOut) -> OamiExplanationO
     elif c.activity_days <= 0.2:
         drivers.append("Wenige aktive Tage – mögliche Lücke in der kontinuierlichen Überwachung.")
 
+    sv = int(result.incident_count_by_subtype.get("safety_violation", 0))
+    if sv > 0:
+        drivers.append(
+            f'{sv} sicherheitsrelevante Vorfälle (event_subtype "safety_violation") — '
+            "stärkerer Einfluss auf den OAMI-Stabilitätsanteil."
+        )
+
     if result.high_severity_incident_count > 0:
         drivers.append(
             f"{result.high_severity_incident_count} schwerwiegende Vorfälle (high/critical) "
