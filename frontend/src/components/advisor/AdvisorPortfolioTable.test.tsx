@@ -81,6 +81,12 @@ const sampleRows: AdvisorPortfolioTenantEntry[] = [
       recommended_focus_areas: ["OAMI niedrig – Monitoring ausbauen"],
       suggested_next_steps_window: "nächste 90 Tage",
     },
+    advisor_priority: "medium",
+    advisor_priority_sort_key: 1,
+    advisor_priority_explanation_de:
+      "Mittlere Priorität: Readiness etabliert; GAI/OAMI ohne kritische Lücke.",
+    maturity_scenario_hint: null,
+    primary_focus_tag_de: "Monitoring",
   },
 ];
 
@@ -138,7 +144,9 @@ describe("AdvisorPortfolioTable", () => {
     portfolioFeatureFlags.readiness = true;
     render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     const snap = screen.getByTestId("advisor-snapshot-link-t-demo-1");
-    expect(snap.getAttribute("href")).toBe("/advisor/clients/t-demo-1/governance-snapshot");
+    expect(snap.getAttribute("href")).toBe(
+      "/advisor/clients/t-demo-1/governance-snapshot?highlight=governance-maturity",
+    );
     expect(screen.getByText("eu_ai_act")).toBeTruthy();
     expect(screen.getByText("4/6")).toBeTruthy();
     expect(screen.getByText("62%")).toBeTruthy();
@@ -182,6 +190,17 @@ describe("AdvisorPortfolioTable", () => {
     const oamiCell = screen.getByTestId("advisor-oami-cell-t-demo-1");
     expect(oamiCell.textContent).toContain("55");
     expect(oamiCell.textContent).toContain(getMonitoringCopy("high").levelLabelDe);
+  });
+
+  it("renders advisor priority badge and Schwerpunkt from API fields", () => {
+    portfolioFeatureFlags.governanceMaturity = true;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    const pri = screen.getByTestId("advisor-priority-t-demo-1");
+    expect(pri.textContent).toContain("Mittel");
+    const focus = screen.getByTestId("advisor-primary-focus-t-demo-1");
+    expect(focus.textContent).toContain("Monitoring");
+    const priWrap = pri.querySelector("span[title]");
+    expect(priWrap?.getAttribute("title") ?? "").toContain("Mittlere Priorität");
   });
 
   it("hides GAI/OAMI columns when featureGovernanceMaturity is off", () => {

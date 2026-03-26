@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
@@ -95,6 +96,9 @@ function readinessRecommendations(d: ReadinessScoreDimensionsDto): string[] {
 
 export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenantId: string }) {
   const advisorId = ADVISOR_ID_FROM_ENV;
+  const searchParams = useSearchParams();
+  const highlightGovernanceMaturity = searchParams.get("highlight") === "governance-maturity";
+  const [gmHighlightPulse, setGmHighlightPulse] = useState(false);
   const [snap, setSnap] = useState<AdvisorClientGovernanceSnapshotDto | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
@@ -121,6 +125,25 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (
+      !highlightGovernanceMaturity ||
+      !featureGovernanceMaturity() ||
+      !snap?.governance_maturity_advisor_brief
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      document.getElementById("governance-maturity-anchor")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      setGmHighlightPulse(true);
+      window.setTimeout(() => setGmHighlightPulse(false), 4500);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [highlightGovernanceMaturity, snap?.governance_maturity_advisor_brief]);
 
   const syncReadiness = useCallback(
     async (loaded: AdvisorClientGovernanceSnapshotDto | null) => {
@@ -305,7 +328,13 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
           ) : null}
 
           {featureGovernanceMaturity() && snap.governance_maturity_advisor_brief ? (
-            <section className={CH_CARD} data-testid="snap-gm-advisor-brief">
+            <section
+              id="governance-maturity-anchor"
+              className={`${CH_CARD} ${
+                gmHighlightPulse ? "ring-2 ring-cyan-500 ring-offset-2 transition-shadow" : ""
+              }`}
+              data-testid="snap-gm-advisor-brief"
+            >
               <p className={CH_SECTION_LABEL}>Governance-Maturity-Brief</p>
               <p className="mt-1 text-xs text-slate-500">
                 Strukturierte Kurzfassung für Triaging und Mandantenkommunikation (gleiche
