@@ -8,6 +8,10 @@ from typing import Final
 
 from app.operational_monitoring_models import RuntimeEventIn
 
+# event_subtype: optional DB column on AiRuntimeEventTable (nullable VARCHAR(64)).
+# Future: whitelist / ingest validation for analytics (e.g. sap_ai_core_alert, drift_high,
+# safety_violation). OAMI scoring today uses event_type + severity only; subtype is metadata.
+
 # event_type (kleingeschrieben persistiert)
 CANONICAL_EVENT_TYPES: Final[frozenset[str]] = frozenset(
     {

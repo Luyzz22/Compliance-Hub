@@ -767,6 +767,7 @@ class AiRuntimeEventTable(Base):
     source: Mapped[str] = mapped_column(String(64), nullable=False)
     source_event_id: Mapped[str] = mapped_column(String(128), nullable=False)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    event_subtype: Mapped[str | None] = mapped_column(String(64), nullable=True)
     severity: Mapped[str | None] = mapped_column(String(32), nullable=True)
     metric_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     incident_code: Mapped[str | None] = mapped_column(String(128), nullable=True)

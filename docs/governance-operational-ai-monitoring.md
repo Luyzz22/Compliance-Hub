@@ -89,6 +89,7 @@ Runtime-Events werden **nicht** als neue „Pflichten“ im Graph gespeichert, s
 | `source_event_id` | text, NOT NULL | UNIQUE (tenant_id, source, source_event_id) | Idempotenz je Quelle (gleiche externe ID bei anderem `source` ist erlaubt). |
 | `source` | text, NOT NULL | | |
 | `event_type` | text, NOT NULL | ja | |
+| `event_subtype` | text, NULL | nein | Optional; feinere Codes (z. B. Provider-/Szenario-Tags) für Analytics; OAMI nutzt sie vorerst nicht zwingend. |
 | `severity` | text | | |
 | `occurred_at` | timestamptz, NOT NULL | ja | |
 | `ingested_at` | timestamptz, NOT NULL | | |
