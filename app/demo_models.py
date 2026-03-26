@@ -30,6 +30,30 @@ class DemoSeedResponse(BaseModel):
     board_reports_count: int = 0
     ai_kpi_value_rows_count: int = 0
     cross_reg_control_rows_count: int = 0
+    demo_governance_telemetry_events_inserted: int = Field(
+        default=0,
+        description="usage_events für GAI (Governance Activity Index), idempotent.",
+    )
+    demo_governance_runtime_events_inserted: int = Field(
+        default=0,
+        description="Neue ai_runtime_events (synthetisch) für OAMI-Demo.",
+    )
+    demo_oami_snapshot_refreshed: bool = Field(
+        default=False,
+        description="Tenant-OAMI-Snapshot nach Seed neu persistiert.",
+    )
+
+
+class DemoGovernanceMaturityLayerRequest(BaseModel):
+    tenant_id: str = Field(..., min_length=1, max_length=255)
+
+
+class DemoGovernanceMaturityLayerResponse(BaseModel):
+    tenant_id: str
+    telemetry_events_inserted: int
+    runtime_events_inserted: int
+    oami_snapshot_persisted: bool
+    skipped_already_seeded: bool
 
 
 class TenantWorkspaceMetaResponse(BaseModel):

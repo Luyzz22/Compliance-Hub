@@ -8,7 +8,8 @@
 
 - [`governance-telemetry.md`](./governance-telemetry.md) – Event-Modell, keine PII.  
 - [`governance-activity-index.md`](./governance-activity-index.md) – GAI-Formel, Gewichte, Datenmodell-Skizze.  
-- [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md) – SAP AI Core Events, OAMI, Persistenz, BTP-Integrationsmuster.
+- [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md) – SAP AI Core Events, OAMI, Persistenz, BTP-Integrationsmuster.  
+- [`demo-governance-maturity-flow.md`](./demo-governance-maturity-flow.md) – Demo/Pilot: Seeding, Szenarien, 10–15-Minuten-Ablauf.
 
 ---
 

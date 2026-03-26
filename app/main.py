@@ -123,7 +123,13 @@ from app.cross_regulation_models import (
     RequirementControlsDetailResponse,
 )
 from app.db import engine, get_session
-from app.demo_models import DemoSeedRequest, DemoSeedResponse, TenantWorkspaceMetaResponse
+from app.demo_models import (
+    DemoGovernanceMaturityLayerRequest,
+    DemoGovernanceMaturityLayerResponse,
+    DemoSeedRequest,
+    DemoSeedResponse,
+    TenantWorkspaceMetaResponse,
+)
 from app.demo_templates import DemoTenantTemplate, get_demo_template, list_demo_tenant_templates
 from app.demo_tenant_guard import (
     compute_workspace_mode_ui,
@@ -279,6 +285,7 @@ from app.services.cross_regulation_llm_gap_assistant import (
     generate_cross_regulation_llm_gap_suggestions,
 )
 from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded
+from app.services.demo_governance_maturity_seed import seed_demo_governance_maturity_layer
 from app.services.demo_tenant_seeder import seed_demo_tenant
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
 from app.services.evidence_service import (
@@ -3098,6 +3105,7 @@ def post_demo_tenant_seed(
             action_repo=action_repo,
             evidence_repo=evidence_repo,
         )
+        layer = seed_demo_governance_maturity_layer(session, body.tenant_id)
         usage_event_logger.log_usage_event(
             session,
             body.tenant_id,
@@ -3105,9 +3113,17 @@ def post_demo_tenant_seed(
             {
                 "template_key": body.template_key,
                 "advisor_linked": result.advisor_linked,
+                "demo_governance_telemetry_events_inserted": layer.telemetry_events_inserted,
+                "demo_governance_runtime_events_inserted": layer.runtime_events_inserted,
             },
         )
-        return result
+        return result.model_copy(
+            update={
+                "demo_governance_telemetry_events_inserted": layer.telemetry_events_inserted,
+                "demo_governance_runtime_events_inserted": layer.runtime_events_inserted,
+                "demo_oami_snapshot_refreshed": layer.oami_snapshot_persisted,
+            },
+        )
     except ValueError as exc:
         msg = str(exc)
         if "already has AI systems" in msg:
@@ -3119,6 +3135,38 @@ def post_demo_tenant_seed(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=msg,
         ) from exc
+
+
+@app.post(
+    "/api/v1/demo/tenants/governance-maturity-layer",
+    response_model=DemoGovernanceMaturityLayerResponse,
+    tags=["demo"],
+)
+def post_demo_governance_maturity_layer(
+    body: DemoGovernanceMaturityLayerRequest,
+    _ff_demos: Annotated[None, Depends(create_feature_guard(FeatureFlag.demo_seeding))],
+    session: Annotated[Session, Depends(get_session)],
+    _api_key: Annotated[str, Depends(require_demo_seed_api_key)],
+) -> DemoGovernanceMaturityLayerResponse:
+    """
+    Demo/Pilot: GAI-Telemetrie (usage_events), synthetische Runtime-Events (OAMI),
+    Snapshot-Refresh. Für Mandanten mit Kern-Demo-Daten (z. B. nach 409 auf vollen Seed).
+    """
+    ensure_demo_tenant_seed_allowed(body.tenant_id)
+    try:
+        layer = seed_demo_governance_maturity_layer(session, body.tenant_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    return DemoGovernanceMaturityLayerResponse(
+        tenant_id=body.tenant_id.strip(),
+        telemetry_events_inserted=layer.telemetry_events_inserted,
+        runtime_events_inserted=layer.runtime_events_inserted,
+        oami_snapshot_persisted=layer.oami_snapshot_persisted,
+        skipped_already_seeded=layer.skipped_already_seeded,
+    )
 
 
 @app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)

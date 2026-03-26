@@ -42,7 +42,14 @@ function DimBar({ testId, label, value }: { testId: string; label: string; value
   );
 }
 
-export function BoardReadinessCard({ tenantId }: { tenantId: string }) {
+export function BoardReadinessCard({
+  tenantId,
+  isDemoTenant = false,
+}: {
+  tenantId: string;
+  /** Pilot/Seed-Mandant: kurzer Hinweis, dass der Score aus Demo-Daten stammt. */
+  isDemoTenant?: boolean;
+}) {
   const [data, setData] = useState<ReadinessScoreResponseDto | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
@@ -91,6 +98,12 @@ export function BoardReadinessCard({ tenantId }: { tenantId: string }) {
   return (
     <article className={CH_CARD} data-testid="board-readiness-card">
       <p className={CH_SECTION_LABEL}>AI &amp; Compliance Readiness</p>
+      {isDemoTenant ? (
+        <p className="mt-1 text-xs leading-snug text-slate-500">
+          Demo: Score aus synthetischen Mandantendaten. Nutzung (GAI) und Laufzeitüberwachung (OAMI)
+          siehe Governance-Maturity-API bzw. Board-Report.
+        </p>
+      ) : null}
       {busy && !data ? <p className="mt-2 text-sm text-slate-600">Lade Score…</p> : null}
       {err ? (
         <p className="mt-2 text-sm text-rose-800">{err}</p>

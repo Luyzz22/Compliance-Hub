@@ -88,6 +88,20 @@ def test_post_demo_seed_creates_expected_entities() -> None:
     assert int(body.get("board_reports_count", 0)) >= 2
     assert int(body.get("ai_kpi_value_rows_count", 0)) >= 4
     assert int(body.get("cross_reg_control_rows_count", 0)) >= 1
+    assert int(body.get("demo_governance_telemetry_events_inserted", 0)) >= 1
+    assert int(body.get("demo_governance_runtime_events_inserted", 0)) >= 1
+    assert body.get("demo_oami_snapshot_refreshed") is True
+
+    r_layer = client.post(
+        "/api/v1/demo/tenants/governance-maturity-layer",
+        headers=_demo_headers(),
+        json={"tenant_id": T1},
+    )
+    assert r_layer.status_code == 200, r_layer.text
+    layer_body = r_layer.json()
+    assert layer_body["telemetry_events_inserted"] == 0
+    assert layer_body["runtime_events_inserted"] == 0
+    assert layer_body["skipped_already_seeded"] is True
 
     meta = client.get(
         "/api/v1/workspace/tenant-meta",

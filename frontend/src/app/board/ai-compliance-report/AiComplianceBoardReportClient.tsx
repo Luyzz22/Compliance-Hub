@@ -55,7 +55,7 @@ const mdComponents = {
 };
 
 export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }) {
-  const { mutationsBlocked } = useWorkspaceMode(tenantId);
+  const { mutationsBlocked, isDemoTenant } = useWorkspaceMode(tenantId);
   const [history, setHistory] = useState<AiComplianceBoardReportListItemDto[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AiComplianceBoardReportDetailDto | null>(null);
@@ -182,7 +182,7 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
       </p>
 
       <div className="mb-6">
-        <BoardReadinessCard tenantId={tenantId} />
+        <BoardReadinessCard tenantId={tenantId} isDemoTenant={isDemoTenant} />
       </div>
 
       {loadErr ? (
@@ -216,7 +216,7 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
                 className={`${CH_BTN_SECONDARY} mt-3 text-xs`}
                 onClick={() => setSelectedId(last.id)}
               >
-                Anzeigen
+                {mutationsBlocked ? "Demo-Report ansehen" : "Anzeigen"}
               </button>
             </>
           ) : (
