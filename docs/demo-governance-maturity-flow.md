@@ -4,6 +4,7 @@ Ziel: In **10–15 Minuten** CISO-, Board- oder Advisor-Demo die **drei Säulen*
 
 Verwandte Runbooks:
 
+- [`demo-board-ready-walkthrough.md`](./demo-board-ready-walkthrough.md) – **Internes Skript** (10/15 Min., CISO/Board vs. Advisor, Talking Points).  
 - [`runtime-events-oami-operations-runbook.md`](./runtime-events-oami-operations-runbook.md) – Logs, ENV, Einzelskript Runtime-Events.  
 - [`governance-operational-ai-monitoring.md`](./governance-operational-ai-monitoring.md) – OAMI-Fachspezifikation.  
 - [`governance-activity-index.md`](./governance-activity-index.md) – GAI-Formel.

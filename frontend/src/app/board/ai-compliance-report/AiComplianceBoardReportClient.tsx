@@ -196,8 +196,10 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
           className="mb-6 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-sm text-amber-950"
           role="status"
         >
-          <strong className="font-semibold">Demo (read-only):</strong> Vorhandene Reports ansehen und
-          exportieren. Neue KI-Generierung ist deaktiviert.
+          <strong className="font-semibold">Demomandant (read-only):</strong> Keine produktiven
+          Änderungen; Runtime-Telemetrie und Reports sind <strong>synthetisch</strong>, aber für EU AI
+          Act / NIS2 / ISO-Gespräche anschlussfähig. Vorhandene Reports ansehen und exportieren – neue
+          KI-Generierung ist deaktiviert.
         </div>
       ) : null}
 
@@ -216,7 +218,7 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
                 className={`${CH_BTN_SECONDARY} mt-3 text-xs`}
                 onClick={() => setSelectedId(last.id)}
               >
-                {mutationsBlocked ? "Demo-Report ansehen" : "Anzeigen"}
+                {mutationsBlocked ? "Demo-Board-Report anzeigen" : "Anzeigen"}
               </button>
             </>
           ) : (

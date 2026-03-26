@@ -156,6 +156,12 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
           Mandanten-Governance-Snapshot
         </h1>
         <p className="mt-2 font-mono text-sm text-slate-600">{clientTenantId}</p>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600">
+          Überblick für Beratungsgespräche: <strong className="font-medium text-slate-800">Readiness</strong>{" "}
+          (strukturelle EU-AI-Act-/ISO-Reife), KPIs/Cross-Reg, Reports und optional{" "}
+          <strong className="font-medium text-slate-800">OAMI</strong> (operative Laufzeit-Signale –
+          Post-Market-/NIS2-Anschluss ohne automatische Rechtsqualifikation).
+        </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/advisor" className={`${CH_BTN_SECONDARY} text-xs no-underline`}>
             Zurück zum Portfolio
@@ -224,6 +230,11 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
           {featureReadinessScore() && readiness ? (
             <section className={CH_CARD} data-testid="snap-readiness">
               <p className={CH_SECTION_LABEL}>AI &amp; Compliance Readiness</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Struktureller Reifegrad (Setup, Framework-Coverage, KPIs, Gaps, Reporting) – ergänzt
+                durch Nutzung der Plattform (GAI) und Laufzeit (OAMI), nicht identisch mit dem
+                EU-AI-Act-Readiness-Badge im Portfolio.
+              </p>
               <p className="mt-2 text-sm text-slate-700">{readiness.interpretation}</p>
               <p className="mt-3 text-3xl font-bold tabular-nums text-slate-900">
                 <span className={readiness.score < 40 ? "text-rose-700" : readiness.score < 70 ? "text-amber-800" : "text-emerald-800"}>
@@ -247,6 +258,53 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
                   <li key={i}>{line}</li>
                 ))}
               </ul>
+            </section>
+          ) : null}
+
+          {snap.operational_ai_monitoring &&
+          (snap.operational_ai_monitoring.systems_scored > 0 ||
+            (snap.operational_ai_monitoring.narrative_de &&
+              snap.operational_ai_monitoring.narrative_de.length > 0) ||
+            snap.operational_ai_monitoring.index_90d != null) ? (
+            <section className={CH_CARD} data-testid="snap-oami">
+              <p className={CH_SECTION_LABEL}>Operatives KI-Monitoring (OAMI, 90 Tage)</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Technische Signale aus dem KI-Betrieb (Vorfälle, Drift, Deployments). Unterstützt
+                Gespräche zu <strong className="font-medium text-slate-700">EU AI Act</strong>{" "}
+                Post-Market-Monitoring und <strong className="font-medium text-slate-700">NIS2</strong>{" "}
+                Incident-Management – ohne Roh-Inhalte und ohne automatische Melde-Entscheidung. In
+                Demos häufig <strong className="font-medium text-slate-700">synthetisch</strong>.
+              </p>
+              <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs font-semibold text-slate-500">Index / Level</dt>
+                  <dd className="font-medium text-slate-900">
+                    {snap.operational_ai_monitoring.index_90d ?? "–"}{" "}
+                    <span className="text-slate-500">
+                      / 100 · {snap.operational_ai_monitoring.level ?? "–"}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold text-slate-500">Systeme mit Daten</dt>
+                  <dd className="tabular-nums text-slate-800">
+                    {snap.operational_ai_monitoring.systems_scored}
+                  </dd>
+                </div>
+              </dl>
+              {snap.operational_ai_monitoring.narrative_de ? (
+                <p className="mt-3 text-sm text-slate-700">{snap.operational_ai_monitoring.narrative_de}</p>
+              ) : null}
+              {snap.operational_ai_monitoring.drivers_de?.length ? (
+                <div className="mt-3">
+                  <p className={CH_SECTION_LABEL}>Treiber</p>
+                  <ul className="mt-1 list-inside list-disc text-sm text-slate-700">
+                    {snap.operational_ai_monitoring.drivers_de.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
           ) : null}
 
@@ -326,7 +384,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
                   openWorkspaceTenantAndGo(clientTenantId, "/board/ai-compliance-report")
                 }
               >
-                Board-Report-Ansicht öffnen (Mandanten-Workspace)
+                Demo-Board-Report / Workspace öffnen
               </button>
             ) : null}
           </section>
