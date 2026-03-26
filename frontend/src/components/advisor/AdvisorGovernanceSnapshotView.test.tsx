@@ -218,5 +218,8 @@ describe("AdvisorGovernanceSnapshotView", () => {
     expect(screen.getByText(/Governance-Maturity-Brief/i)).toBeTruthy();
     expect(screen.getByText(/Konservatives Gesamtbild/i)).toBeTruthy();
     expect(screen.getByText(/nächste 90 Tage/i)).toBeTruthy();
+    const focusList = screen.getByTestId("snap-gm-advisor-brief").querySelector("ul");
+    expect(focusList?.textContent).toContain("OAMI niedrig");
+    expect(screen.getByText(/Nächste Schritte \(Horizont\)/i)).toBeTruthy();
   });
 });

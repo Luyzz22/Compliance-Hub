@@ -1,0 +1,32 @@
+{
+  "governance_maturity_summary": {
+    "readiness": {
+      "score": 0,
+      "level": "embedded",
+      "short_reason": "Strukturell sind Register und Rollen noch nicht durchgängig; der fachliche Aufbau der KI-Governance steht im Vordergrund."
+    },
+    "activity": {
+      "index": 0,
+      "level": "high",
+      "short_reason": "Die dokumentierte Nutzung von Steuerungsartefakten ist noch gering; wiederkehrende Governance-Rituale werden selten abgebildet."
+    },
+    "operational_monitoring": {
+      "index": 0,
+      "level": "high",
+      "short_reason": "Operative Laufzeit-Signale und Alarmierungen sind nur ansatzweise vorhanden; Transparenz im Betrieb bleibt begrenzt."
+    },
+    "overall_assessment": {
+      "level": "high",
+      "short_summary": "Aus Beratersicht liegt der Schwerpunkt auf dem Aufbau belastbarer Grundlagen: Register, Verantwortlichkeiten und erste Monitoring-Fähigkeiten sollten in den nächsten Wochen priorisiert werden.",
+      "key_risks": ["Lücken im KI-Register", "Fehlende Laufzeit-Transparenz"],
+      "key_strengths": []
+    }
+  },
+  "recommended_focus_areas": [
+    "Readiness: KI-Register und Rollen konsistent führen; offene Nachweise zu High-Risk-Systemen schließen.",
+    "GAI: Steuerungsprozesse in der Plattform verankern (Reviews, Freigaben, dokumentierte Nutzung).",
+    "OAMI: Mindestens für High-Risk-Systeme Monitoring und Incident-Runbooks vorbereiten."
+  ],
+  "suggested_next_steps_window": "nächste 90 Tage",
+  "client_ready_paragraph_de": "Für die kommenden drei Monate empfehlen wir, die Grundlagen der KI-Governance zu schließen: vollständiges Register, klare Rollen und erste belastbare Monitoring-Signale. Wir begleiten Sie gern bei der Priorisierung."
+}

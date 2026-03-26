@@ -102,6 +102,16 @@ describe("AdvisorPortfolioTable", () => {
     expect(cell.textContent).toContain("OAMI");
   });
 
+  it("includes focus areas and next-steps window in Reife-Brief tooltip title", () => {
+    portfolioFeatureFlags.governanceMaturity = true;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    const span = screen.getByTestId("advisor-gm-brief-t-demo-1").querySelector("span[title]");
+    const title = span?.getAttribute("title") ?? "";
+    expect(title).toContain("OAMI niedrig");
+    expect(title).toContain("Zeithorizont:");
+    expect(title).toContain("nächste 90 Tage");
+  });
+
   it("shows Mandanten-Steckbrief download links when advisorId is set", () => {
     portfolioFeatureFlags.snapshot = true;
     portfolioFeatureFlags.readiness = true;

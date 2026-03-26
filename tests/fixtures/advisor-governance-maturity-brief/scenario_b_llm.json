@@ -1,0 +1,31 @@
+{
+  "governance_maturity_summary": {
+    "readiness": {
+      "score": 0,
+      "level": "basic",
+      "short_reason": "Readiness ist auf einem soliden mittleren Niveau; wesentliche Register- und Rollenstrukturen sind angelegt, Einzellücken bei High-Risk bleiben."
+    },
+    "activity": {
+      "index": 0,
+      "level": "low",
+      "short_reason": "Governance-Aktivität ist hoch: Policies, Actions und Nachweise werden in der Plattform aktiv genutzt und nachverfolgt."
+    },
+    "operational_monitoring": {
+      "index": 0,
+      "level": "high",
+      "short_reason": "Operatives Monitoring liefert noch wenig belastbare Signale; Alarmierung und Trendauswertung sind ausbaufähig."
+    },
+    "overall_assessment": {
+      "level": "medium",
+      "short_summary": "Struktur und Steuerungsnutzung sind gestärkt; das konservative Gesamtbild wird jedoch durch begrenztes Laufzeit-Monitoring nach unten gezogen. Hier sollte der Beratungsschwerpunkt in den nächsten 90 Tagen liegen.",
+      "key_risks": ["Laufzeit-Blindstellen bei produktiven KI-Systemen"],
+      "key_strengths": ["Hohe Governance-Aktivität in der Plattform"]
+    }
+  },
+  "recommended_focus_areas": [
+    "OAMI priorisieren: KPI-Zeitreihen, Incidents und Runbooks für High-Risk-Systeme ausbauen.",
+    "Readiness-Lücken bei High-Risk parallel schließen, damit Monitoring auf saubere Stammdaten aufsetzt."
+  ],
+  "suggested_next_steps_window": "nächste 90 Tage",
+  "client_ready_paragraph_de": "Ihre organisatorische und prozessuale Steuerung ist auf einem guten Weg; sinnvoll ist jetzt, operatives Monitoring und Laufzeit-Transparenz nachzuziehen. Gemeinsam können wir ein belastbares 90-Tage-Fahrplanpaket definieren."
+}
