@@ -748,6 +748,13 @@ class AiRuntimeEventTable(Base):
             "event_type",
             "occurred_at",
         ),
+        Index(
+            "ix_ai_runtime_events_tenant_system_time",
+            "tenant_id",
+            "ai_system_id",
+            "occurred_at",
+            postgresql_ops={"occurred_at": "DESC"},
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

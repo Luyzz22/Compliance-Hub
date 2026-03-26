@@ -108,8 +108,20 @@ python scripts/migrate_20260326_add_tenants_kritis_sector.py
 | Legacy KRITIS | `tests/test_db_migrations_kritis_sector.py` |
 | Discovery + `setup_notes` + Logging | `tests/test_db_migrations_discovery_and_setup_notes.py` |
 | Ledger optional (CREATE verweigert) | `tests/test_db_migrations_ledger_optional.py` |
+| `ai_runtime_events` Zeitpfad-Index | `tests/test_db_migrations_ai_runtime_events_index.py` |
 
 `conftest.py`: `DROP TABLE IF EXISTS schema_migrations` vor `drop_all`, danach `run_all_db_migrations`.
+
+## Beispiel: Index auf `ai_runtime_events`
+
+**Referenzmodul:** `app/db_migrations/migrations/m20260328_ai_runtime_events_tenant_system_time_idx.py`
+
+OAMI- und Board-/Advisor-Auswertungen filtern Laufzeit-Events typischerweise nach **Mandant**, **KI-System** und **Zeitfenster** (`occurred_at`). Der zusätzliche Index
+`ix_ai_runtime_events_tenant_system_time` auf `(tenant_id, ai_system_id, occurred_at DESC)` unterstützt genau diese Zugriffsmuster; er ergänzt die bestehenden Indizes (u. a. mit `event_type`).
+
+- **ORM:** `AiRuntimeEventTable` in `app/models_db.py` enthält denselben Index-Namen (PostgreSQL: `DESC` auf `occurred_at` via `postgresql_ops`; SQLite legt bei `create_all` einen kompatiblen Index an).
+- **Migration:** `CREATE INDEX IF NOT EXISTS …` + Introspection (`index_exists`), idempotent.
+- **Ledgerless:** siehe Docstring im Modul — ohne DDL-Rolle wird der Index nicht von der App angelegt.
 
 ## Registrierte Migrationen
 
@@ -117,6 +129,7 @@ python scripts/migrate_20260326_add_tenants_kritis_sector.py
 |----------------|--------|
 | `20260326_add_tenants_kritis_sector` | `tenants.kritis_sector` VARCHAR(64) NULL |
 | `20260327_add_tenant_ai_governance_setup_notes` | `tenant_ai_governance_setup.setup_notes` TEXT NULL (optional, DevEx-Beispiel) |
+| `20260328_add_ai_runtime_events_tenant_system_time_idx` | Index `ix_ai_runtime_events_tenant_system_time` (tenant, system, `occurred_at DESC`) |
 
 ## Später: Alembic?
 
