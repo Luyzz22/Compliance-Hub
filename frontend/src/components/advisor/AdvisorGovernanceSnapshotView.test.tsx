@@ -27,6 +27,12 @@ const snapshotViewFlags = vi.hoisted(() => ({
   governanceMaturity: false,
 }));
 
+const navSearchParams = vi.hoisted(() => ({ current: new URLSearchParams() }));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => navSearchParams.current,
+}));
+
 const { fetchSnap, postMd, fetchAdvisorReadiness, minimalSnapshot } = vi.hoisted(() => {
   const minimalSnapshot: AdvisorClientGovernanceSnapshotDto = {
     advisor_id: "adv@x",
@@ -139,6 +145,8 @@ afterEach(() => {
   snapshotViewFlags.readinessScore = false;
   snapshotViewFlags.governanceMaturity = false;
   minimalSnapshot.governance_maturity_advisor_brief = null;
+  navSearchParams.current = new URLSearchParams();
+  vi.useRealTimers();
   cleanup();
 });
 
@@ -221,5 +229,53 @@ describe("AdvisorGovernanceSnapshotView", () => {
     const focusList = screen.getByTestId("snap-gm-advisor-brief").querySelector("ul");
     expect(focusList?.textContent).toContain("OAMI niedrig");
     expect(screen.getByText(/Nächste Schritte \(Horizont\)/i)).toBeTruthy();
+  });
+
+  it("scrolls to governance-maturity brief when URL highlight=governance-maturity", async () => {
+    snapshotViewFlags.governanceMaturity = true;
+    navSearchParams.current = new URLSearchParams("highlight=governance-maturity");
+    minimalSnapshot.governance_maturity_advisor_brief = {
+      governance_maturity_summary: {
+        readiness: { score: 40, level: "basic", short_reason: "Aufbau." },
+        activity: { index: 35, level: "low", short_reason: "Nutzen." },
+        operational_monitoring: {
+          index: 30,
+          level: "low",
+          short_reason: "Monitoring.",
+        },
+        overall_assessment: {
+          level: "low",
+          short_summary: "Konservatives Gesamtbild.",
+          key_risks: [],
+          key_strengths: [],
+        },
+      },
+      recommended_focus_areas: ["OAMI niedrig – Monitoring ausbauen"],
+      suggested_next_steps_window: "nächste 90 Tage",
+      client_ready_paragraph_de: "Kurz.",
+    };
+    const scrollIntoView = vi.fn();
+    const origGet = document.getElementById.bind(document);
+    const idSpy = vi.spyOn(document, "getElementById").mockImplementation((id: string) => {
+      if (id === "governance-maturity-anchor") {
+        return { scrollIntoView } as unknown as HTMLElement;
+      }
+      return origGet(id);
+    });
+    try {
+      render(<AdvisorGovernanceSnapshotView clientTenantId="t-1" />);
+      const section = await screen.findByTestId("snap-gm-advisor-brief");
+      expect(section.id).toBe("governance-maturity-anchor");
+      await waitFor(
+        () => {
+          expect(scrollIntoView).toHaveBeenCalledWith(
+            expect.objectContaining({ behavior: "smooth", block: "start" }),
+          );
+        },
+        { timeout: 3000 },
+      );
+    } finally {
+      idSpy.mockRestore();
+    }
   });
 });

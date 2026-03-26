@@ -13,6 +13,13 @@ import {
   type AdvisorPortfolioTenantEntry,
 } from "@/lib/api";
 import { portfolioHealth } from "@/lib/advisorPortfolioHealth";
+import {
+  advisorPrioritySortKey,
+  applyAdvisorPortfolioFilters,
+  type PortfolioPillarFilter,
+  type PortfolioScenarioFilter,
+  type PortfolioSegmentFilter,
+} from "@/lib/advisorPortfolioPriority";
 import { CH_CARD, CH_SECTION_LABEL, CH_SHELL } from "@/lib/boardLayout";
 import { PORTFOLIO_GOVERNANCE_MATURITY_NOTE } from "@/lib/governanceMaturityDeCopy";
 import {
@@ -21,7 +28,12 @@ import {
   featureDemoSeeding,
 } from "@/lib/config";
 
-type SortKey = "readiness" | "nis2_mean" | "setup" | "high_risk";
+type SortKey =
+  | "advisor_priority"
+  | "readiness"
+  | "nis2_mean"
+  | "setup"
+  | "high_risk";
 type AdvisorTab = "portfolio" | "board_reports";
 
 function nis2Mean(t: AdvisorPortfolioTenantEntry): number {
@@ -33,9 +45,13 @@ export default function AdvisorPortfolioPage() {
   const [rows, setRows] = useState<AdvisorPortfolioTenantEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("readiness");
-  const [sortAsc, setSortAsc] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("advisor_priority");
+  const [sortAsc, setSortAsc] = useState(true);
   const [onlyCriticalFilter, setOnlyCriticalFilter] = useState(false);
+  const [pillarFilter, setPillarFilter] = useState<PortfolioPillarFilter | null>(null);
+  const [scenarioFilter, setScenarioFilter] = useState<PortfolioScenarioFilter | null>(null);
+  const [segmentFilter, setSegmentFilter] = useState<PortfolioSegmentFilter | null>(null);
+  const [onlyHighPriority, setOnlyHighPriority] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const showBoardReportsTab =
     Boolean(advisorId) && featureAdvisorWorkspace() && featureAiComplianceBoardReport();
@@ -74,7 +90,12 @@ export default function AdvisorPortfolioPage() {
   }, [advisorId, loadAttempt]);
 
   const processed = useMemo(() => {
-    let list = [...rows];
+    let list = applyAdvisorPortfolioFilters(rows, {
+      pillar: pillarFilter,
+      scenario: scenarioFilter,
+      segment: segmentFilter,
+      priorityBucket: onlyHighPriority ? "high" : null,
+    });
     if (onlyCriticalFilter) {
       list = list.filter((t) => {
         const h = portfolioHealth(t.eu_ai_act_readiness, t.setup_progress_ratio);
@@ -85,7 +106,10 @@ export default function AdvisorPortfolioPage() {
     list.sort((a, b) => {
       let va = 0;
       let vb = 0;
-      if (sortKey === "readiness") {
+      if (sortKey === "advisor_priority") {
+        va = advisorPrioritySortKey(a);
+        vb = advisorPrioritySortKey(b);
+      } else if (sortKey === "readiness") {
         va = a.eu_ai_act_readiness;
         vb = b.eu_ai_act_readiness;
       } else if (sortKey === "nis2_mean") {
@@ -102,7 +126,24 @@ export default function AdvisorPortfolioPage() {
       return va < vb ? -dir : dir;
     });
     return list;
-  }, [rows, onlyCriticalFilter, sortKey, sortAsc]);
+  }, [
+    rows,
+    onlyCriticalFilter,
+    sortKey,
+    sortAsc,
+    pillarFilter,
+    scenarioFilter,
+    segmentFilter,
+    onlyHighPriority,
+  ]);
+
+  function togglePillar(p: PortfolioPillarFilter) {
+    setPillarFilter((cur) => (cur === p ? null : p));
+  }
+
+  function toggleSegment(s: PortfolioSegmentFilter) {
+    setSegmentFilter((cur) => (cur === s ? null : s));
+  }
 
   return (
     <div className={CH_SHELL}>
@@ -183,7 +224,82 @@ export default function AdvisorPortfolioPage() {
         <>
           <section className={CH_CARD} aria-label="Filter und Sortierung">
             <p className={CH_SECTION_LABEL}>Ansicht</p>
-            <div className="mt-3 flex flex-wrap items-end gap-4">
+            <p className="mt-1 max-w-3xl text-xs text-slate-600">
+              Standard: Sortierung nach Beraterpriorität (hoch zuerst). Filter kombinieren sich per
+              UND; Schnellfilter betonen Aufbau/Monitoring bzw. Optimierung laut Reife-Szenario.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Schnellfilter">
+              <button
+                type="button"
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                  segmentFilter === "aufbau_monitoring"
+                    ? "border-rose-300 bg-rose-50 text-rose-900"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+                onClick={() => toggleSegment("aufbau_monitoring")}
+              >
+                Aufbau / Monitoring nötig
+              </button>
+              <button
+                type="button"
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                  segmentFilter === "optimierung"
+                    ? "border-slate-400 bg-slate-100 text-slate-900"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+                onClick={() => toggleSegment("optimierung")}
+              >
+                Optimierung
+              </button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Säulen-Fokus">
+              <span className="self-center text-xs font-semibold text-slate-500">Fokus:</span>
+              {(["readiness", "gai", "monitoring"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                    pillarFilter === p
+                      ? "border-cyan-400 bg-cyan-50 text-cyan-950"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                  onClick={() => togglePillar(p)}
+                >
+                  {p === "readiness" ? "Readiness" : p === "gai" ? "Governance-Aktivität" : "Monitoring"}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-xs text-slate-600" htmlFor="adv-scenario">
+                Reife-Szenario
+              </label>
+              <select
+                id="adv-scenario"
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                value={scenarioFilter ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setScenarioFilter(
+                    v === "" ? null : (v as PortfolioScenarioFilter),
+                  );
+                }}
+              >
+                <option value="">Alle</option>
+                <option value="a">A — Grundlagen</option>
+                <option value="b">B — Monitoring nachziehen</option>
+                <option value="c">C — Nutzung ausbauen</option>
+                <option value="d">D — Feintuning</option>
+              </select>
+              <label className="flex items-center gap-2 text-xs text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={onlyHighPriority}
+                  onChange={(e) => setOnlyHighPriority(e.target.checked)}
+                />
+                Nur hohe Priorität
+              </label>
+            </div>
+            <div className="mt-4 flex flex-wrap items-end gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600" htmlFor="adv-sort">
                   Sortierung
@@ -194,6 +310,7 @@ export default function AdvisorPortfolioPage() {
                   value={sortKey}
                   onChange={(e) => setSortKey(e.target.value as SortKey)}
                 >
+                  <option value="advisor_priority">Beraterpriorität</option>
                   <option value="readiness">EU AI Act Readiness</option>
                   <option value="nis2_mean">NIS2 KPI Mittelwert</option>
                   <option value="setup">Setup-Fortschritt</option>

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
+from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturityBrief
 from app.advisor_portfolio_models import (
     AdvisorPortfolioResponse,
     AdvisorPortfolioTenantEntry,
@@ -29,6 +30,14 @@ from app.services.advisor_client_governance_snapshot import build_governance_bri
 from app.services.advisor_governance_maturity_brief_llm import (
     maybe_build_advisor_governance_maturity_brief_result,
 )
+from app.services.advisor_portfolio_priority import (
+    advisor_portfolio_priority_sort_key,
+    advisor_priority_explanation_de,
+    compute_advisor_priority_bucket,
+    derive_primary_focus_tag_de,
+    effective_readiness_level,
+    infer_maturity_scenario_hint,
+)
 from app.services.ai_governance_kpis import compute_ai_governance_kpis
 from app.services.compliance_dashboard import compute_ai_compliance_overview
 from app.services.governance_maturity_service import build_governance_maturity_response
@@ -36,6 +45,55 @@ from app.services.readiness_score_service import compute_readiness_score
 from app.services.setup_status import compute_tenant_setup_status
 
 logger = logging.getLogger(__name__)
+
+
+def _portfolio_priority_fields(
+    *,
+    readiness_summary: ReadinessScoreSummary | None,
+    eu_ai_act_readiness: float,
+    gai_summary: GovernanceActivityPortfolioSummary | None,
+    oami_summary: OperationalMonitoringPortfolioSummary | None,
+    gm_brief: AdvisorGovernanceMaturityBrief | None,
+) -> dict[str, object]:
+    """Regelbasierte Priorität + Szenario-Hint + Hauptschwerpunkt."""
+    rd_level = effective_readiness_level(readiness_summary, eu_ai_act_readiness)
+    gai_lv = gai_summary.level if gai_summary else None
+    oami_lv = oami_summary.level if oami_summary and oami_summary.level is not None else None
+
+    if gai_summary is None and oami_summary is None:
+        primary = derive_primary_focus_tag_de(
+            gm_brief,
+            readiness_level=rd_level,
+            gai_level=None,
+            oami_level=None,
+        )
+        return {
+            "advisor_priority": "medium",
+            "advisor_priority_sort_key": 1,
+            "advisor_priority_explanation_de": (
+                "Keine GAI/OAMI-Kennzahlen verfügbar; Priorität standardmäßig „mittel“. "
+                "Hauptschwerpunkt aus Kontext geschätzt."
+            ),
+            "maturity_scenario_hint": None,
+            "primary_focus_tag_de": primary,
+        }
+
+    scenario = infer_maturity_scenario_hint(rd_level, gai_lv, oami_lv)
+    bucket = compute_advisor_priority_bucket(rd_level, gai_lv, oami_lv, scenario)
+    primary = derive_primary_focus_tag_de(
+        gm_brief,
+        readiness_level=rd_level,
+        gai_level=gai_lv,
+        oami_level=oami_lv,
+    )
+    explanation = advisor_priority_explanation_de(bucket, scenario, primary)
+    return {
+        "advisor_priority": bucket,
+        "advisor_priority_sort_key": advisor_portfolio_priority_sort_key(bucket),
+        "advisor_priority_explanation_de": explanation,
+        "maturity_scenario_hint": scenario,
+        "primary_focus_tag_de": primary,
+    }
 
 
 def build_advisor_portfolio(
@@ -126,13 +184,22 @@ def build_advisor_portfolio(
                 )
                 gm_brief = None
 
+        eu_rd = round(overview.overall_readiness, 4)
+        pri = _portfolio_priority_fields(
+            readiness_summary=readiness_summary,
+            eu_ai_act_readiness=eu_rd,
+            gai_summary=gai_summary,
+            oami_summary=oami_summary,
+            gm_brief=gm_brief,
+        )
+
         tenants_out.append(
             AdvisorPortfolioTenantEntry(
                 tenant_id=tid,
                 tenant_name=(link.tenant_display_name or tid).strip() or tid,
                 industry=link.industry,
                 country=link.country,
-                eu_ai_act_readiness=round(overview.overall_readiness, 4),
+                eu_ai_act_readiness=eu_rd,
                 nis2_kritis_kpi_mean_percent=overview.nis2_kritis_kpi_mean_percent,
                 nis2_kritis_systems_full_coverage_ratio=round(
                     overview.nis2_kritis_systems_full_coverage_ratio,
@@ -148,8 +215,15 @@ def build_advisor_portfolio(
                 governance_activity_summary=gai_summary,
                 operational_monitoring_summary=oami_summary,
                 governance_maturity_advisor_brief=gm_brief,
+                advisor_priority=pri["advisor_priority"],  # type: ignore[arg-type]
+                advisor_priority_sort_key=int(pri["advisor_priority_sort_key"]),
+                advisor_priority_explanation_de=str(pri["advisor_priority_explanation_de"]),
+                maturity_scenario_hint=pri["maturity_scenario_hint"],  # type: ignore[arg-type]
+                primary_focus_tag_de=str(pri["primary_focus_tag_de"]),
             ),
         )
+
+    tenants_out.sort(key=lambda t: (t.advisor_priority_sort_key, t.tenant_name.lower()))
 
     return AdvisorPortfolioResponse(
         advisor_id=advisor_id,
@@ -208,6 +282,10 @@ def advisor_portfolio_to_csv(portfolio: AdvisorPortfolioResponse) -> str:
             row["governance_maturity_overall_level"] = ""
             row["governance_maturity_focus_1"] = ""
             row["governance_maturity_next_window"] = ""
+        row["advisor_priority"] = row.get("advisor_priority", "")
+        row["advisor_priority_sort_key"] = row.get("advisor_priority_sort_key", "")
+        row["maturity_scenario_hint"] = row.get("maturity_scenario_hint") or ""
+        row["primary_focus_tag_de"] = row.get("primary_focus_tag_de", "")
         w.writerow({k: row.get(k) for k in fieldnames})
     return buf.getvalue()
 

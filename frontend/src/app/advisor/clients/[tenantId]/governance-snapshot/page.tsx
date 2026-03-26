@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { notFound } from "next/navigation";
 
 import { AdvisorGovernanceSnapshotView } from "@/components/advisor/AdvisorGovernanceSnapshotView";
@@ -13,5 +15,15 @@ export default async function AdvisorClientGovernanceSnapshotPage({
   }
   const { tenantId } = await params;
   const decoded = decodeURIComponent(tenantId);
-  return <AdvisorGovernanceSnapshotView clientTenantId={decoded} />;
+  return (
+    <Suspense
+      fallback={
+        <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-600">
+          Governance-Snapshot wird geladen …
+        </p>
+      }
+    >
+      <AdvisorGovernanceSnapshotView clientTenantId={decoded} />
+    </Suspense>
+  );
 }

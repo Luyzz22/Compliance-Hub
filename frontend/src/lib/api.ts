@@ -1454,6 +1454,11 @@ export interface AdvisorPortfolioTenantEntry {
     level: string | null;
   } | null;
   governance_maturity_advisor_brief?: AdvisorGovernanceMaturityBriefDto | null;
+  advisor_priority?: "high" | "medium" | "low";
+  advisor_priority_sort_key?: number;
+  advisor_priority_explanation_de?: string;
+  maturity_scenario_hint?: "a" | "b" | "c" | "d" | null;
+  primary_focus_tag_de?: string;
 }
 
 export interface AdvisorPortfolioResponse {

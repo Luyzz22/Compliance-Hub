@@ -23,6 +23,10 @@ import {
   readinessPortfolioBadgeTooltip,
 } from "@/lib/governanceMaturityDeCopy";
 import {
+  priorityBadgeClasses,
+  priorityLabelDe,
+} from "@/lib/advisorPortfolioPriority";
+import {
   openWorkspaceTenantAndGo,
   openWorkspaceTenantAndGoComplianceOverview,
 } from "@/lib/workspaceTenantClient";
@@ -107,6 +111,18 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
           <thead>
             <tr>
               <th>Mandant</th>
+              <th
+                className="max-w-[6.5rem]"
+                title="Regelbasiert aus Readiness, GAI, OAMI und Reife-Szenario A–D. Tooltip zeigt Begründung."
+              >
+                Priorität
+              </th>
+              <th
+                className="max-w-[6rem]"
+                title="Hauptschwerpunkt aus Kurzbrief oder Heuristik (Monitoring, Readiness, Nutzung, Governance)."
+              >
+                Schwerpunkt
+              </th>
               <th>Branche / Land</th>
               {snapUi ? (
                 <>
@@ -171,6 +187,48 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                     <div className="text-xs font-mono text-[var(--sbs-text-muted)]">
                       {t.tenant_id}
                     </div>
+                  </td>
+                  <td
+                    className="align-middle text-xs"
+                    data-testid={`advisor-priority-${t.tenant_id}`}
+                  >
+                    <span
+                      className="inline-flex flex-col items-start gap-0.5"
+                      title={
+                        t.advisor_priority_explanation_de?.trim() ||
+                        "Priorität basiert auf Readiness, Governance-Aktivität (GAI), operativem Monitoring (OAMI) und Reife-Szenario A–D (regelbasiert)."
+                      }
+                    >
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${priorityBadgeClasses(t.advisor_priority)}`}
+                      >
+                        {priorityLabelDe(t.advisor_priority)}
+                      </span>
+                      {t.maturity_scenario_hint ? (
+                        <span className="text-[0.65rem] font-medium text-slate-600">
+                          Sz. {t.maturity_scenario_hint.toUpperCase()}
+                        </span>
+                      ) : null}
+                    </span>
+                  </td>
+                  <td
+                    className="align-middle text-xs"
+                    data-testid={`advisor-primary-focus-${t.tenant_id}`}
+                  >
+                    {t.primary_focus_tag_de ? (
+                      <span
+                        className="inline-flex max-w-[6.5rem] truncate rounded-full bg-cyan-50 px-2 py-0.5 font-medium text-cyan-900 ring-1 ring-cyan-200"
+                        title={
+                          (t.governance_maturity_advisor_brief?.recommended_focus_areas?.[0] ??
+                            t.advisor_priority_explanation_de ??
+                            "").trim() || undefined
+                        }
+                      >
+                        {t.primary_focus_tag_de}
+                      </span>
+                    ) : (
+                      <span className="text-[var(--sbs-text-muted)]">–</span>
+                    )}
                   </td>
                   <td className="text-sm text-[var(--sbs-text-secondary)]">
                     {[t.industry, t.country].filter(Boolean).join(" · ") || "–"}
@@ -309,7 +367,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                   {snapUi ? (
                     <td className="align-top">
                       <Link
-                        href={`/advisor/clients/${encodeURIComponent(t.tenant_id)}/governance-snapshot`}
+                        href={`/advisor/clients/${encodeURIComponent(t.tenant_id)}/governance-snapshot?highlight=governance-maturity`}
                         className={`${CH_BTN_SECONDARY} inline-block text-xs no-underline`}
                         data-testid={`advisor-snapshot-link-${t.tenant_id}`}
                       >

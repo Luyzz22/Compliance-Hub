@@ -10,6 +10,8 @@ from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturi
 from app.readiness_score_models import ReadinessScoreSummary
 
 GaiOamiLevel = Literal["low", "medium", "high"]
+AdvisorPortfolioPriority = Literal["high", "medium", "low"]
+AdvisorMaturityScenarioHint = Literal["a", "b", "c", "d"]
 
 
 class GovernanceActivityPortfolioSummary(BaseModel):
@@ -64,6 +66,28 @@ class AdvisorPortfolioTenantEntry(BaseModel):
     governance_maturity_advisor_brief: AdvisorGovernanceMaturityBrief | None = Field(
         default=None,
         description="Optional: Berater-Brief (FEATURE_GOVERNANCE_MATURITY).",
+    )
+    advisor_priority: AdvisorPortfolioPriority = Field(
+        default="medium",
+        description="Regelbasierte Beraterpriorität (hoch = zuerst klären).",
+    )
+    advisor_priority_sort_key: int = Field(
+        default=1,
+        ge=0,
+        le=2,
+        description="0=hoch, 1=mittel, 2=niedrig; aufsteigend sortieren für Dringlichkeit oben.",
+    )
+    advisor_priority_explanation_de: str = Field(
+        default="",
+        description="Kurzer Tooltip-Text zur Priorität (ohne LLM).",
+    )
+    maturity_scenario_hint: AdvisorMaturityScenarioHint | None = Field(
+        default=None,
+        description="Optional: Golden-Szenario A–D, wenn Kennzahlen zum Muster passen.",
+    )
+    primary_focus_tag_de: str = Field(
+        default="Governance",
+        description="Kompakter Hauptschwerpunkt (Monitoring, Readiness, Nutzung, Governance).",
     )
 
 

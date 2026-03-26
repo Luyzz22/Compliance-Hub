@@ -156,3 +156,7 @@ Aus Sicht der KI-Governance empfehlen wir, operatives Monitoring und die offenen
 - `tests/test_advisor_brief_golden_scenarios.py` — Szenarien A–D: Fake-LLM-JSON, konservatives Level, Markdown-Goldens, Einbettung im Mandanten-Steckbrief.
 - `tests/test_governance_maturity_contract.py::test_advisor_brief_json_schema_instructions_shape` — Contract-String.
 - Legacy-Fixture: `tests/fixtures/advisor_governance_maturity_brief_golden/response_ok.json`.
+
+## Siehe auch
+
+- Portfolio-Priorität, Sortierung, Filter und Deep-Link in den Snapshot: [`advisor-portfolio-prioritization.md`](./advisor-portfolio-prioritization.md).
