@@ -1,0 +1,35 @@
+{
+  "contract_version": "2",
+  "readiness_api_levels": ["basic", "managed", "embedded"],
+  "readiness_level_de": {
+    "basic": "Basis",
+    "managed": "Etabliert",
+    "embedded": "Integriert"
+  },
+  "index_api_levels": ["low", "medium", "high"],
+  "index_level_de": {
+    "low": "Niedrig",
+    "medium": "Mittel",
+    "high": "Hoch"
+  },
+  "readiness_score_bands": [
+    {
+      "score_min": 0,
+      "score_max_exclusive": 45,
+      "level": "basic",
+      "label_de": "Basis"
+    },
+    {
+      "score_min": 45,
+      "score_max_exclusive": 70,
+      "level": "managed",
+      "label_de": "Etabliert"
+    },
+    {
+      "score_min": 70,
+      "score_max_exclusive": 101,
+      "level": "embedded",
+      "label_de": "Integriert"
+    }
+  ]
+}

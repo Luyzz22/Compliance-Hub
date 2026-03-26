@@ -124,6 +124,37 @@ def contract_mapping_for_tests() -> dict[str, object]:
     }
 
 
+def contract_full_mapping_snapshot() -> dict[str, object]:
+    """
+    Full mapping for regression: enums, DE labels, readiness score bands (documentation bands).
+
+    Checked against ``tests/fixtures/governance_maturity_mapping_snapshot.json`` — update that
+    file intentionally when bands or labels change.
+    """
+    base = contract_mapping_for_tests()
+    bands: list[dict[str, object]] = [
+        {
+            "score_min": 0,
+            "score_max_exclusive": 45,
+            "level": ReadinessLevelApi.BASIC.value,
+            "label_de": READINESS_LEVEL_DE[ReadinessLevelApi.BASIC.value],
+        },
+        {
+            "score_min": 45,
+            "score_max_exclusive": 70,
+            "level": ReadinessLevelApi.MANAGED.value,
+            "label_de": READINESS_LEVEL_DE[ReadinessLevelApi.MANAGED.value],
+        },
+        {
+            "score_min": 70,
+            "score_max_exclusive": 101,
+            "level": ReadinessLevelApi.EMBEDDED.value,
+            "label_de": READINESS_LEVEL_DE[ReadinessLevelApi.EMBEDDED.value],
+        },
+    ]
+    return {**base, "readiness_score_bands": bands}
+
+
 def regulatory_context_standard() -> str:
     """Short regulatory framing for LLM prompts (no article citations)."""
     return (

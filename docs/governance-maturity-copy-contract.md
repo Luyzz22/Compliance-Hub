@@ -107,6 +107,41 @@ Antwort **ein** JSON-Objekt, kein Markdown. Felder:
 
 **Maschinelle Schema-Beschreibung für Prompts:** `readiness_explain_json_schema_instructions()` im Contract-Modul.
 
+### 4.3 Golden Samples (Referenz-JSON für Tests & Reviews)
+
+Unter `tests/fixtures/readiness_explain_golden/` liegen **drei** vollständige Modell-Response-Beispiele (ohne Markdown), die die erwartete Struktur und erlaubte Enums illustrieren:
+
+| Datei | Szenario | Score (Beispiel) | `level` (API) | DE-Label (UI) |
+|-------|----------|------------------|---------------|---------------|
+| `response_a_basic.json` | Viele strukturelle Lücken | ~44 | `basic` | Basis |
+| `response_b_managed.json` | Etablierte Basis, Restarbeiten | ~68 | `managed` | Etabliert |
+| `response_c_embedded.json` | Hohe Reife, Feintuning | ~88 | `embedded` | Integriert |
+
+**Feldinhalt (für GRC- und Engineering-Reviews):**
+
+- **`short_reason`:** 1–3 Sätze Einordnung ohne erfundene Stufen-Synonyme; beschreibt Ursachen auf Deutsch.
+- **`drivers_positive`:** kurze Bullet-Sätze zu vorhandenen Stärken (max. 5 Einträge à ≤ 200 Zeichen).
+- **`drivers_negative`:** priorisierte Maßnahmen / Lücken (gleiche Limits).
+- **`regulatory_focus`:** ein Satz Bezug zu EU AI Act, NIS2, ISO/IEC 42001/27001 — ohne Paragraphenzitate.
+
+Die Dateien sind **canonical fixtures** für `tests/test_readiness_explain_golden_regression.py`. Bei Schema- oder Enum-Änderungen: Golden-Dateien und Tests **gemeinsam** anpassen (bewusster Review).
+
+**Beispiel (Auszug Sample A — vollständig siehe Fixture):**
+
+```json
+{
+  "readiness_explanation": {
+    "score": 44,
+    "level": "basic",
+    "short_reason": "…",
+    "drivers_positive": ["…"],
+    "drivers_negative": ["…", "…"],
+    "regulatory_focus": "…"
+  },
+  "operational_monitoring_explanation": null
+}
+```
+
 ---
 
 ## 5. Regeln für LLM-Output
@@ -123,7 +158,7 @@ Antwort **ein** JSON-Objekt, kein Markdown. Felder:
 
 | Baustein | Datei / Funktion |
 |----------|------------------|
-| Enums, Labels, Limits, Version | `app/governance_maturity_contract.py` |
+| Enums, Labels, Limits, Version, `contract_full_mapping_snapshot()` | `app/governance_maturity_contract.py` |
 | Prompt-Zusammenbau (nur Contract + Fakten) | `app/services/readiness_explain_prompt.py` → `build_readiness_explain_prompt` |
 | LLM-Aufruf | `app/services/readiness_score_explain.py` → `explain_readiness_score` |
 | Parse / Validierung / Fallback | `app/services/readiness_explain_structured.py` → `parse_readiness_explain_llm_json`, `parse_and_validate_readiness_explain_response` |
@@ -147,14 +182,30 @@ Antwort **ein** JSON-Objekt, kein Markdown. Felder:
 3. **Dieses Dokument** + `docs/governance-maturity-copy-de.md` + ggf. `readiness-score.md` aktualisieren.
 4. **Frontend:** `governanceMaturityTypes.ts`, `governanceMaturityDeCopy.ts`, `api.ts` DTOs.
 5. **Pydantic:** `readiness_score_models.py` (Listenlängen, Literals).
-6. **Tests:** `tests/test_governance_maturity_contract.py`, `tests/test_readiness_explain_structured.py`, `tests/test_readiness_explain_prompt.py` und Mapping-Snapshot anpassen.
+6. **Tests:** `tests/test_governance_maturity_contract.py`, `tests/test_readiness_explain_structured.py`, `tests/test_readiness_explain_prompt.py`, `tests/test_readiness_explain_golden_regression.py` anpassen.
+7. **Fixtures:** `tests/fixtures/governance_maturity_mapping_snapshot.json` und `tests/fixtures/readiness_explain_golden/*.json` bei Band- oder Golden-Änderungen aktualisieren.
 
 ---
 
 ## 9. Tests (Referenz)
 
-- Contract- und Mapping-Snapshot: `contract_mapping_for_tests()`
-- Prompt enthält alle API-Werte und DE-Labels aus den Maps (keine parallele Hardcode-Liste in Tests).
-- Parser: gültige Golden-JSONs, ungültige `level`-Strings, fehlende Blöcke.
+- **Mapping-Datei:** `tests/fixtures/governance_maturity_mapping_snapshot.json` muss exakt `contract_full_mapping_snapshot()` aus `governance_maturity_contract.py` entsprechen (CI bricht bei Drift).
+- **Golden-Regression:** `tests/test_readiness_explain_golden_regression.py` — Parser, Snapshot-Ausrichtung, erlaubte Keys, Whitespace-Toleranz, Prompt-Struktur (Version + Mandantenfakten).
+- **Contract:** `contract_mapping_for_tests()` / Score-Bänder vs. `derive_readiness_level_from_score`.
+- **Prompt:** alle API-Werte und DE-Labels aus den Maps; keine parallele Hardcode-Liste.
+- **Parser:** ungültige `level`-Strings, fehlende Blöcke (`test_readiness_explain_structured.py`).
 
 Demo-Script: `docs/demo-board-ready-walkthrough.md`.
+
+---
+
+## 10. Optional: LLM-Smoke (nicht in CI)
+
+Vor größeren Releases kann ein **manueller** Lauf gegen ein echtes Modell die JSON-Treue prüfen (nur in Nicht-Produktion, mit gültigen API-Keys):
+
+1. Mandanten-DB mit bekanntem Readiness-Snapshot wählen.
+2. `explain_readiness_score(session, tenant_id, snapshot)` aufrufen (oder HTTP `POST …/readiness-score/explain` mit Tenant-Header).
+3. Rohantwort: ein JSON-Objekt ohne Markdown; `readiness_explanation.level` ∈ `{basic, managed, embedded}`.
+4. Logs / Export für menschliche Kurzreview (Tonfall DE, keine wilden Stufenlabels).
+
+**Hinweis:** Kein separates Skript-Pflicht — wer automatisieren will, kann ein kleines `python -c "…"` oder ein internes Notebook nutzen, das `build_readiness_explain_prompt` + Router nur bei gesetzten Keys ausführt.
