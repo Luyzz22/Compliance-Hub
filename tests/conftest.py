@@ -4,9 +4,11 @@ import os
 from collections.abc import Iterator
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import engine, get_session
+from app.db_migrations import run_all_db_migrations
 from app.main import app
 from app.models_db import Base
 from app.security import get_settings
@@ -31,8 +33,11 @@ def setup_test_db() -> None:
     os.environ["COMPLIANCEHUB_DEMO_SEED_TENANT_IDS"] = _DEMO_SEED_TENANTS
     os.environ["COMPLIANCEHUB_ADMIN_API_KEYS"] = "provision-admin-test-key"
     get_settings.cache_clear()
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS schema_migrations"))
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    run_all_db_migrations(engine)
     with Session(engine) as s:
         ensure_cross_regulation_catalog_seeded(s)
 

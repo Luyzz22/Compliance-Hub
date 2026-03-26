@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session
 
 from app.db_migrations import migrate_add_tenants_kritis_sector, run_all_db_migrations
+from app.db_migrations.schema_alignment import list_orm_columns_missing_in_db
 from app.models_db import TenantDB
 
 
@@ -37,6 +38,9 @@ def test_migrate_adds_kritis_sector_idempotent(tmp_path) -> None:
     _create_legacy_tenants_table_without_kritis(url)
 
     engine = create_engine(url, future=True, connect_args={"check_same_thread": False})
+    assert "tenants.kritis_sector" in list_orm_columns_missing_in_db(
+        engine, require_all_tables=False
+    )
     assert migrate_add_tenants_kritis_sector(engine) is True
     assert migrate_add_tenants_kritis_sector(engine) is False
 
@@ -62,7 +66,16 @@ def test_migrate_adds_kritis_sector_idempotent(tmp_path) -> None:
         assert loaded is not None
         assert loaded.kritis_sector == "energy"
 
-    assert run_all_db_migrations(engine) == []
+    post = run_all_db_migrations(engine)
+    assert post.applied_ddl == []
+    assert post.ledger_backfilled == ["20260326_add_tenants_kritis_sector"]
+    assert "tenants.kritis_sector" not in list_orm_columns_missing_in_db(
+        engine, require_all_tables=False
+    )
+
+    again = run_all_db_migrations(engine)
+    assert again.applied_ddl == []
+    assert again.skipped_ledger == ["20260326_add_tenants_kritis_sector"]
     engine.dispose()
 
 
@@ -72,7 +85,9 @@ def test_run_all_migrations_reports_applied_once(tmp_path) -> None:
     _create_legacy_tenants_table_without_kritis(url)
 
     engine = create_engine(url, future=True, connect_args={"check_same_thread": False})
-    applied = run_all_db_migrations(engine)
-    assert applied == ["20260326_add_tenants_kritis_sector"]
-    assert run_all_db_migrations(engine) == []
+    first = run_all_db_migrations(engine)
+    assert first.applied_ddl == ["20260326_add_tenants_kritis_sector"]
+    second = run_all_db_migrations(engine)
+    assert second.applied_ddl == []
+    assert second.skipped_ledger == ["20260326_add_tenants_kritis_sector"]
     engine.dispose()
