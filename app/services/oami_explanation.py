@@ -44,7 +44,7 @@ def explain_system_oami_de(result: SystemMonitoringIndexOut) -> OamiExplanationO
     sv = int(result.incident_count_by_subtype.get("safety_violation", 0))
     if sv > 0:
         drivers.append(
-            f"{sv} sicherheitsrelevante Vorfälle (event_subtype \"safety_violation\") — "
+            f'{sv} sicherheitsrelevante Vorfälle (event_subtype "safety_violation") — '
             "stärkerer Einfluss auf den OAMI-Stabilitätsanteil."
         )
 

@@ -91,9 +91,7 @@ def _components_from_agg(
     breach_count = int(agg.get("breach_count") or 0)
     incident_count = int(agg.get("incident_count") or 0)
     raw_sub = agg.get("incident_count_by_subtype")
-    incident_by_subtype: dict[str, int] = (
-        dict(raw_sub) if isinstance(raw_sub, dict) else {}
-    )
+    incident_by_subtype: dict[str, int] = dict(raw_sub) if isinstance(raw_sub, dict) else {}
     safety_sv = int(incident_by_subtype.get("safety_violation", 0))
 
     f = _freshness_component(last_dt, now)
