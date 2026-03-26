@@ -66,6 +66,21 @@ const sampleRows: AdvisorPortfolioTenantEntry[] = [
     readiness_summary: { score: 58, level: "managed" },
     governance_activity_summary: { index: 42, level: "medium" },
     operational_monitoring_summary: { index: 55, level: "high" },
+    governance_maturity_advisor_brief: {
+      governance_maturity_summary: {
+        readiness: { score: 58, level: "managed", short_reason: "x" },
+        activity: { index: 42, level: "medium", short_reason: "y" },
+        operational_monitoring: { index: 55, level: "high", short_reason: "z" },
+        overall_assessment: {
+          level: "medium",
+          short_summary: "Kurz.",
+          key_risks: [],
+          key_strengths: [],
+        },
+      },
+      recommended_focus_areas: ["OAMI niedrig – Monitoring ausbauen"],
+      suggested_next_steps_window: "nächste 90 Tage",
+    },
   },
 ];
 
@@ -77,6 +92,14 @@ describe("AdvisorPortfolioTable", () => {
     expect(screen.getByText("Demo Mandant A")).toBeTruthy();
     expect(screen.getByText("72%")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Tenant öffnen/i })).toBeTruthy();
+  });
+
+  it("shows Reife-Brief focus marker when governance maturity brief is present", () => {
+    portfolioFeatureFlags.governanceMaturity = true;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    const cell = screen.getByTestId("advisor-gm-brief-t-demo-1");
+    expect(cell.textContent).toContain("Fokus:");
+    expect(cell.textContent).toContain("OAMI");
   });
 
   it("shows Mandanten-Steckbrief download links when advisorId is set", () => {
@@ -156,5 +179,7 @@ describe("AdvisorPortfolioTable", () => {
     render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
     expect(screen.queryByRole("columnheader", { name: PORTFOLIO_COL_GAI_SHORT })).toBeNull();
     expect(screen.queryByTestId("advisor-gai-cell-t-demo-1")).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: /Reife-Brief/i })).toBeNull();
+    expect(screen.queryByTestId("advisor-gm-brief-t-demo-1")).toBeNull();
   });
 });

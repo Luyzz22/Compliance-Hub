@@ -339,3 +339,54 @@ def governance_maturity_board_summary_json_schema_instructions() -> str:
         "Feld `executive_overview_governance_maturity_de` ist Pflicht und muss mindestens "
         "80 Zeichen enthalten.\n"
     )
+
+
+# Advisor-Brief: JSON-Shape-Version (unabhängig von GOVERNANCE_MATURITY_CONTRACT_VERSION).
+ADVISOR_GOVERNANCE_MATURITY_BRIEF_SCHEMA_VERSION: Final[str] = "1"
+
+
+def advisor_governance_maturity_brief_json_schema_instructions() -> str:
+    """
+    JSON-Objekt für Berater-Kurzbrief: gleicher Block `governance_maturity_summary` wie Board,
+    plus advisor-spezifische Felder (kein Vorstands-Fließtext-Pflichtfeld).
+    """
+    rl = " | ".join(f'"{x}"' for x in READINESS_API_LEVELS)
+    il = " | ".join(f'"{x}"' for x in INDEX_API_LEVELS)
+    return (
+        "Antworte ausschließlich mit **einem** JSON-Objekt (kein Markdown, keine Codefences). "
+        "Schema:\n"
+        "{\n"
+        '  "governance_maturity_summary": {\n'
+        '    "readiness": {\n'
+        '      "score": <integer 0-100>,\n'
+        f'      "level": {rl},\n'
+        '      "short_reason": "<1-3 Sätze Deutsch; keine UI-Stufenbezeichnungen>"\n'
+        "    },\n"
+        '    "activity": {\n'
+        '      "index": <integer 0-100>,\n'
+        f'      "level": {il},\n'
+        '      "short_reason": "<1-3 Sätze Deutsch; Steuerungsnutzung>"\n'
+        "    },\n"
+        '    "operational_monitoring": {\n'
+        '      "index": <integer 0-100 oder null>,\n'
+        f'      "level": null | {il},\n'
+        '      "short_reason": "<1-3 Sätze Deutsch; operative Sicht>"\n'
+        "    },\n"
+        '    "overall_assessment": {\n'
+        f'      "level": {il},\n'
+        '      "short_summary": "<2-3 Sätze Deutsch; Berater-Perspektive: Priorisierung>",\n'
+        f'      "key_risks": ["<kurz>", "..."],\n'
+        f'      "key_strengths": ["<kurz>", "..."]\n'
+        "    }\n"
+        "  },\n"
+        '  "recommended_focus_areas": '
+        '["<z. B. OAMI niedrig – Monitoring ausbauen>", "..."],\n'
+        '  "suggested_next_steps_window": "<z. B. nächste 90 Tage>",\n'
+        '  "client_ready_paragraph_de": '
+        '"<optional null oder 1-2 Sätze Deutsch; sachlich; geeignet zur Weitergabe an Mandant>"\n'
+        "}\n"
+        f"recommended_focus_areas: höchstens {EXPLAIN_LIST_MAX_ITEMS} Einträge, "
+        f"je höchstens {EXPLAIN_LIST_ITEM_MAX_CHARS} Zeichen.\n"
+        "Feld `client_ready_paragraph_de` ist optional; wenn gesetzt, höchstens 600 Zeichen, "
+        "ohne interne Produktcodes.\n"
+    )

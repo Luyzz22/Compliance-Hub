@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from app.advisor_models import AdvisorTenantReport
+from app.services.advisor_governance_maturity_brief_markdown import (
+    render_advisor_governance_maturity_brief_markdown_section,
+)
 
 
 def render_tenant_report_markdown(report: AdvisorTenantReport) -> str:
@@ -45,11 +48,21 @@ def render_tenant_report_markdown(report: AdvisorTenantReport) -> str:
             f"{report.executive_summary_narrative.strip()}\n"
         )
 
+    gm_brief_block = ""
+    if report.governance_maturity_advisor_brief is not None:
+        gm_brief_block = (
+            "\n"
+            + render_advisor_governance_maturity_brief_markdown_section(
+                report.governance_maturity_advisor_brief,
+            )
+            + "\n"
+        )
+
     return f"""# Compliance Hub Mandanten-Steckbrief – {report.tenant_name}
 
 **Mandanten-ID:** `{report.tenant_id}`  
 **Stand (UTC):** {report.generated_at_utc.isoformat()}
-{narrative_block}
+{gm_brief_block}{narrative_block}
 ## Profil
 
 - Branche / Region: {loc}

@@ -22,9 +22,12 @@ import {
 
 import { AdvisorGovernanceSnapshotView } from "./AdvisorGovernanceSnapshotView";
 
-const snapshotViewFlags = vi.hoisted(() => ({ readinessScore: false }));
+const snapshotViewFlags = vi.hoisted(() => ({
+  readinessScore: false,
+  governanceMaturity: false,
+}));
 
-const { fetchSnap, postMd, fetchAdvisorReadiness } = vi.hoisted(() => {
+const { fetchSnap, postMd, fetchAdvisorReadiness, minimalSnapshot } = vi.hoisted(() => {
   const minimalSnapshot: AdvisorClientGovernanceSnapshotDto = {
     advisor_id: "adv@x",
     client_tenant_id: "t-1",
@@ -83,6 +86,7 @@ const { fetchSnap, postMd, fetchAdvisorReadiness } = vi.hoisted(() => {
       narrative_de: "Operatives Monitoring: mittlere Reife (Demo).",
       drivers_de: ["Letzte Laufzeitereignisse", "KPI-Trends"],
     },
+    governance_maturity_advisor_brief: null,
   };
   const fetchSnap = vi.fn().mockResolvedValue(minimalSnapshot);
   const postMd = vi.fn().mockResolvedValue({
@@ -103,7 +107,7 @@ const { fetchSnap, postMd, fetchAdvisorReadiness } = vi.hoisted(() => {
       reporting: { normalized: 0.7, score_0_100: 70 },
     },
   });
-  return { fetchSnap, postMd, fetchAdvisorReadiness };
+  return { fetchSnap, postMd, fetchAdvisorReadiness, minimalSnapshot };
 });
 
 vi.mock("@/lib/api", async (importOriginal) => {
@@ -127,11 +131,14 @@ vi.mock("@/lib/config", async (importOriginal) => {
     ...actual,
     featureAiComplianceBoardReport: () => false,
     featureReadinessScore: () => snapshotViewFlags.readinessScore,
+    featureGovernanceMaturity: () => snapshotViewFlags.governanceMaturity,
   };
 });
 
 afterEach(() => {
   snapshotViewFlags.readinessScore = false;
+  snapshotViewFlags.governanceMaturity = false;
+  minimalSnapshot.governance_maturity_advisor_brief = null;
   cleanup();
 });
 
@@ -182,5 +189,34 @@ describe("AdvisorGovernanceSnapshotView", () => {
     expect(within(oamiTile).getByText(OAMI_SECTION_TITLE)).toBeTruthy();
     expect(oamiTile.textContent).toContain(OAMI_TOOLTIP_C_LEVEL.slice(0, 50));
     expect(within(oamiTile).getByText(OAMI_DEMO_SIGNALS_NOTE)).toBeTruthy();
+  });
+
+  it("shows Governance-Maturity-Brief when feature flag and payload are set", async () => {
+    snapshotViewFlags.governanceMaturity = true;
+    minimalSnapshot.governance_maturity_advisor_brief = {
+      governance_maturity_summary: {
+        readiness: { score: 40, level: "basic", short_reason: "Aufbau." },
+        activity: { index: 35, level: "low", short_reason: "Nutzen." },
+        operational_monitoring: {
+          index: 30,
+          level: "low",
+          short_reason: "Monitoring.",
+        },
+        overall_assessment: {
+          level: "low",
+          short_summary: "Konservatives Gesamtbild.",
+          key_risks: [],
+          key_strengths: [],
+        },
+      },
+      recommended_focus_areas: ["OAMI niedrig – Monitoring ausbauen", "Readiness stärken"],
+      suggested_next_steps_window: "nächste 90 Tage",
+      client_ready_paragraph_de: "Kurz zum Weiterleiten an den Mandanten.",
+    };
+    render(<AdvisorGovernanceSnapshotView clientTenantId="t-1" />);
+    expect(await screen.findByTestId("snap-gm-advisor-brief")).toBeTruthy();
+    expect(screen.getByText(/Governance-Maturity-Brief/i)).toBeTruthy();
+    expect(screen.getByText(/Konservatives Gesamtbild/i)).toBeTruthy();
+    expect(screen.getByText(/nächste 90 Tage/i)).toBeTruthy();
   });
 });

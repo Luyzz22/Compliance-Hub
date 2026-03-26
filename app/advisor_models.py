@@ -6,6 +6,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturityBrief
+
 
 class TenantReportCriticalRequirementItem(BaseModel):
     """Kompakte Darstellung einer Top-Lücke (EU AI Act Readiness)."""
@@ -63,5 +65,12 @@ class AdvisorTenantReport(BaseModel):
         description=(
             "Optional sprachlich verdichtete Kurzfassung aus deterministischen Kennzahlen "
             "(LLM-Assist); keine neuen Fakten gegenüber den strukturierten Feldern."
+        ),
+    )
+    governance_maturity_advisor_brief: AdvisorGovernanceMaturityBrief | None = Field(
+        default=None,
+        description=(
+            "Optional: Berater-Kurzbrief (gleicher Kern wie Board governance_maturity_summary, "
+            "plus Fokus und Zeithorizont)."
         ),
     )

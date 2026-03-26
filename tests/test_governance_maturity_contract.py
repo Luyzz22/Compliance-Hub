@@ -11,6 +11,7 @@ from app.governance_maturity_contract import (
     INDEX_LEVEL_DE,
     READINESS_API_LEVELS,
     READINESS_LEVEL_DE,
+    advisor_governance_maturity_brief_json_schema_instructions,
     contract_full_mapping_snapshot,
     contract_full_oami_mapping_snapshot,
     contract_mapping_for_tests,
@@ -73,6 +74,15 @@ def test_board_summary_json_schema_instructions_shape() -> None:
     assert "executive_overview_governance_maturity_de" in instr
     assert "overall_assessment" in instr
     assert "basic" in instr and "low" in instr
+
+
+def test_advisor_brief_json_schema_instructions_shape() -> None:
+    instr = advisor_governance_maturity_brief_json_schema_instructions()
+    assert "governance_maturity_summary" in instr
+    assert "recommended_focus_areas" in instr
+    assert "suggested_next_steps_window" in instr
+    assert "client_ready_paragraph_de" in instr
+    assert "executive_overview_governance_maturity_de" not in instr
 
 
 def test_contract_mapping_snapshot_stable() -> None:

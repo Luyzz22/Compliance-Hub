@@ -20,7 +20,11 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
-import { featureAiComplianceBoardReport, featureReadinessScore } from "@/lib/config";
+import {
+  featureAiComplianceBoardReport,
+  featureGovernanceMaturity,
+  featureReadinessScore,
+} from "@/lib/config";
 import {
   GAI_ADVISOR_DETAIL_EXTRA,
   GAI_FULL_NAME,
@@ -297,6 +301,44 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
                   <li key={i}>{line}</li>
                 ))}
               </ul>
+            </section>
+          ) : null}
+
+          {featureGovernanceMaturity() && snap.governance_maturity_advisor_brief ? (
+            <section className={CH_CARD} data-testid="snap-gm-advisor-brief">
+              <p className={CH_SECTION_LABEL}>Governance-Maturity-Brief</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Strukturierte Kurzfassung für Triaging und Mandantenkommunikation (gleiche
+                API-Enums wie Board-Kern).
+              </p>
+              {(() => {
+                const gb = snap.governance_maturity_advisor_brief;
+                const oa = gb.governance_maturity_summary.overall_assessment;
+                return (
+                  <>
+                    <p className="mt-3 text-sm text-slate-800">
+                      <span className="font-semibold">Gesamtbild (konservativ):</span>{" "}
+                      {indexLevelLabelDe(oa.level)} ({oa.level})
+                    </p>
+                    <p className="mt-2 text-sm text-slate-700">{oa.short_summary}</p>
+                    <p className={`${CH_SECTION_LABEL} mt-4`}>Fokusbereiche</p>
+                    <ul className="mt-2 list-inside list-disc text-sm text-slate-700">
+                      {gb.recommended_focus_areas.slice(0, 5).map((line, i) => (
+                        <li key={i}>{line}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 text-sm text-slate-700">
+                      <span className="font-semibold">Nächste Schritte (Horizont):</span>{" "}
+                      {gb.suggested_next_steps_window}
+                    </p>
+                    {gb.client_ready_paragraph_de ? (
+                      <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                        {gb.client_ready_paragraph_de}
+                      </p>
+                    ) : null}
+                  </>
+                );
+              })()}
             </section>
           ) : null}
 

@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 
-import { getAdvisorTenantReportUrl, type AdvisorPortfolioTenantEntry } from "@/lib/api";
+import {
+  getAdvisorTenantReportUrl,
+  type AdvisorGovernanceMaturityBriefDto,
+  type AdvisorPortfolioTenantEntry,
+} from "@/lib/api";
 import { portfolioHealth, type PortfolioHealth } from "@/lib/advisorPortfolioHealth";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD } from "@/lib/boardLayout";
 import * as chConfig from "@/lib/config";
@@ -37,6 +41,25 @@ function badgeLabel(h: PortfolioHealth): string {
   if (h === "critical") return "Critical";
   if (h === "attention") return "Attention";
   return "On Track";
+}
+
+function advisorBriefFocusMarker(brief: AdvisorGovernanceMaturityBriefDto): string {
+  const a = brief.recommended_focus_areas?.[0]?.trim();
+  if (a) {
+    const t = a.length > 44 ? `${a.slice(0, 41)}…` : a;
+    return `Fokus: ${t}`;
+  }
+  return `Gesamt: ${brief.governance_maturity_summary.overall_assessment.level}`;
+}
+
+function advisorBriefPortfolioTooltip(brief: AdvisorGovernanceMaturityBriefDto): string {
+  const oa = brief.governance_maturity_summary.overall_assessment;
+  const parts = [
+    `Gesamtbild (konservativ): ${oa.level}.`,
+    ...(brief.recommended_focus_areas ?? []).slice(0, 3),
+    `Zeithorizont: ${brief.suggested_next_steps_window}`,
+  ];
+  return parts.join(" ").slice(0, 500);
 }
 
 function crossRegCoverageIndicator(meanPercent: number | null | undefined): {
@@ -112,6 +135,12 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                   </th>
                   <th title={PORTFOLIO_COL_OAMI_TOOLTIP} className="max-w-[7rem]">
                     {PORTFOLIO_COL_OAMI_SHORT}
+                  </th>
+                  <th
+                    title="Strukturierter Berater-Kurzbrief (JSON-Felder; Tooltip mit Fokus und Horizont)"
+                    className="max-w-[9rem]"
+                  >
+                    Reife-Brief
                   </th>
                 </>
               ) : null}
@@ -255,6 +284,21 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                               {" "}
                               · {indexLevelLabelDe(t.operational_monitoring_summary.level)}
                             </span>
+                          </span>
+                        ) : (
+                          <span className="text-[var(--sbs-text-muted)]">–</span>
+                        )}
+                      </td>
+                      <td
+                        className="align-middle text-xs text-[var(--sbs-text-secondary)]"
+                        data-testid={`advisor-gm-brief-${t.tenant_id}`}
+                      >
+                        {t.governance_maturity_advisor_brief ? (
+                          <span
+                            className="block max-w-[11rem] truncate font-medium text-slate-800"
+                            title={advisorBriefPortfolioTooltip(t.governance_maturity_advisor_brief)}
+                          >
+                            {advisorBriefFocusMarker(t.governance_maturity_advisor_brief)}
                           </span>
                         ) : (
                           <span className="text-[var(--sbs-text-muted)]">–</span>

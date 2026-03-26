@@ -1409,6 +1409,30 @@ export interface AdvisorTenantGovernanceBriefDto {
   nis2_critical_ai_count: number;
 }
 
+/** Board-kompatibler Kern + Berater-Felder (API-Enums wie Backend). */
+export interface GovernanceMaturitySummaryDto {
+  readiness: { score: number; level: string; short_reason: string };
+  activity: { index: number; level: string; short_reason: string };
+  operational_monitoring: {
+    index: number | null;
+    level: string | null;
+    short_reason: string;
+  };
+  overall_assessment: {
+    level: string;
+    short_summary: string;
+    key_risks: string[];
+    key_strengths: string[];
+  };
+}
+
+export interface AdvisorGovernanceMaturityBriefDto {
+  governance_maturity_summary: GovernanceMaturitySummaryDto;
+  recommended_focus_areas: string[];
+  suggested_next_steps_window: string;
+  client_ready_paragraph_de?: string | null;
+}
+
 export interface AdvisorPortfolioTenantEntry {
   tenant_id: string;
   tenant_name: string;
@@ -1429,6 +1453,7 @@ export interface AdvisorPortfolioTenantEntry {
     index: number | null;
     level: string | null;
   } | null;
+  governance_maturity_advisor_brief?: AdvisorGovernanceMaturityBriefDto | null;
 }
 
 export interface AdvisorPortfolioResponse {
@@ -1538,6 +1563,7 @@ export interface AdvisorClientGovernanceSnapshotDto {
     narrative_de: string;
     drivers_de: string[];
   } | null;
+  governance_maturity_advisor_brief?: AdvisorGovernanceMaturityBriefDto | null;
 }
 
 export async function fetchAdvisorClientGovernanceSnapshot(

@@ -222,7 +222,10 @@ from app.services.advisor_portfolio import (
     advisor_portfolio_to_json_bytes,
     build_advisor_portfolio,
 )
-from app.services.advisor_report_llm_enrichment import maybe_enrich_advisor_report_with_llm_summary
+from app.services.advisor_report_llm_enrichment import (
+    enrich_advisor_tenant_report_with_governance_maturity_brief,
+    maybe_enrich_advisor_report_with_llm_summary,
+)
 from app.services.advisor_tenant_report import build_advisor_tenant_report
 from app.services.advisor_tenant_report_markdown import render_tenant_report_markdown
 from app.services.ai_act_docs import build_ai_act_doc_list_response, upsert_ai_act_doc
@@ -2932,6 +2935,7 @@ def get_advisor_tenant_report(
         violation_repo=violation_repo,
         action_repo=action_repo,
     )
+    report = enrich_advisor_tenant_report_with_governance_maturity_brief(session, tenant_id, report)
     report = maybe_enrich_advisor_report_with_llm_summary(session, tenant_id, report)
     if export_format == "markdown":
         md = render_tenant_report_markdown(report)
