@@ -15,8 +15,10 @@ from app.repositories.ai_governance_actions import AIGovernanceActionRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
+from app.repositories.incidents import IncidentRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.violations import ViolationRepository
+from app.services.advisor_tenant_report_risiko import build_tenant_report_risiko_fields
 from app.services.ai_governance_kpis import compute_ai_board_kpis
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
 from app.services.setup_status import compute_tenant_setup_status
@@ -48,6 +50,7 @@ def build_advisor_tenant_report(
     nis2_repo: Nis2KritisKpiRepository,
     violation_repo: ViolationRepository,
     action_repo: AIGovernanceActionRepository,
+    incident_repo: IncidentRepository,
 ) -> AdvisorTenantReport:
     """
     Aggregiert einen Mandanten-Steckbrief ausschließlich über tenant-gefilterte Services/Repos.
@@ -95,6 +98,14 @@ def build_advisor_tenant_report(
 
     display_name = (link.tenant_display_name or "").strip() or tenant_id
 
+    risiko = build_tenant_report_risiko_fields(
+        session,
+        tenant_id,
+        incident_repo,
+        eu_ai_act_readiness_score=round(readiness.overall_readiness, 4),
+        nis2_incident_readiness_percent=round(board.nis2_incident_readiness_ratio * 100.0, 1),
+    )
+
     return AdvisorTenantReport(
         tenant_id=tenant_id,
         tenant_name=display_name,
@@ -117,4 +128,5 @@ def build_advisor_tenant_report(
         setup_completed_steps=setup.completed_steps,
         setup_total_steps=setup.total_steps,
         setup_open_step_labels=_open_setup_labels(setup),
+        **risiko,
     )

@@ -19,6 +19,8 @@ Erweiterung der **regelbasierten** `advisor_priority` im Mandanten-Portfolio. Zi
 
 Provisioning: optional `kritis_sector` im Body von `POST /api/v1/tenants/provision`.
 
+**Schema:** Die Spalte `tenants.kritis_sector` wird bei API-Start bzw. über `python scripts/migrate_all.py` idempotent nachgezogen (siehe `docs/db-migrations.md`). Ohne Migration schlagen Lese-/Schreibzugriffe auf älteren Datenbanken fehl.
+
 ## Incident-Last (90 Tage)
 
 - **low:** keine Vorfälle im Fenster
@@ -54,6 +56,23 @@ Der Tooltip-Text (`advisor_priority_explanation_de`) erhält einen kurzen Satz *
 ## CSV / JSON
 
 Export-Spalten u. a.: `nis2_entity_category`, `kritis_sector_key`, `recent_incidents_90d`, `incident_burden_level`, plus bestehende Prioritäts- und Reife-Felder.
+
+## Mandanten-Steckbrief (Markdown)
+
+Der Abschnitt **„Risiko- und Incident-Lage (NIS2/KRITIS)“** im Markdown-Report (`GET …/report?format=markdown`) ist **template-basiert** und nutzt:
+
+- `risiko_nis2_scope_label_de`, `risiko_kritis_sector_label_de` (Stammdaten),
+- Zähler 90 Tage und `risiko_incident_burden_level`, offene Vorfälle (Aggregat),
+- optional `risiko_regulatory_priority_note_de` (derselbe erklärende Zusatz wie beim Portfolio-Aufstock).
+
+Es werden **keine** Inhalte aus Einzelvorfällen ausgegeben. Goldens: `tests/fixtures/advisor-tenant-report-markdown/risiko-incident-lage/`.
+
+**LLM:** Die optionale Executive Summary (`executive_summary_narrative`) erhält die Risiko-Felder zusätzlich im Fakten-JSON (`advisor_report_llm_enrichment`), damit Formulierungen ohne neue erfundene Zahlen möglich sind. Der Risiko-Abschnitt selbst bleibt deterministisch.
+
+### Gesprächshilfen für Mandantengespräche
+
+- *„Wir klassifizieren eure Einordnung nach NIS2 aus den Stammdaten; im Report seht ihr die aggregierte Incident-Last der letzten 90 Tage ohne Details zu Einzelfällen.“*
+- *„Wenn das Berater-Portfolio einen regulatorischen Aufstock gesetzt hat, steht derselbe Hinweis im Steckbrief unter ‚Berater-Portfolio (Priorität)‘ – das ist bewusst konsistent mit eurer Mandantenliste.“*
 
 ## Verwandte Dokumente
 

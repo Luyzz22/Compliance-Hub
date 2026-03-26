@@ -4,6 +4,77 @@ from app.advisor_models import AdvisorTenantReport
 from app.services.advisor_governance_maturity_brief_markdown import (
     render_advisor_governance_maturity_brief_markdown_section,
 )
+from app.services.advisor_tenant_report_risiko import incident_burden_label_de
+
+
+def render_risiko_incident_lage_markdown_section(report: AdvisorTenantReport) -> str:
+    """
+    Deterministischer Markdown-Block: NIS2/KRITIS-Stammdaten, 90-Tage-Aggregate, Kurzbeobachtungen.
+
+    Keine LLM-Pflicht; optional kann später ein interpretierender Satz ergänzt werden.
+    """
+    kritis_line = (
+        f"**KRITIS-Sektor:** {report.risiko_kritis_sector_label_de}."
+        if report.risiko_kritis_sector_label_de
+        else "**KRITIS-Sektor:** nicht hinterlegt."
+    )
+    burden_de = incident_burden_label_de(report.risiko_incident_burden_level)
+    if report.risiko_open_incidents_count > 0:
+        open_line = (
+            f"**Offene/laufende Vorfälle (Register):** {report.risiko_open_incidents_count}."
+        )
+    else:
+        open_line = "**Offene/laufende Vorfälle (Register):** keine erfasst."
+
+    obs: list[str] = []
+    if report.risiko_open_incidents_count > 0:
+        obs.append(
+            "- Engere Nachverfolgung der offenen Vorfälle ist sinnvoll "
+            "(Nachweise, interne Fristen, ggf. Vorstandsinformation gemäß Policies).",
+        )
+    if report.risiko_incident_burden_level in ("medium", "high"):
+        obs.append(
+            "- Erhöhte Incident-Aktivität: Melde- und Dokumentationspflichten nach NIS2 sowie "
+            "Anforderungen aus dem KRITIS-Dachgesetz im Blick behalten."
+        )
+    if report.risiko_nis2_entity_category == "essential_entity":
+        obs.append(
+            "- Wesentliche Einrichtung: erhöhte Erwartungen an Incident-Response, "
+            "Dokumentation und IKT-Risikomanagement."
+        )
+    if not obs:
+        obs.append(
+            "- Keine zusätzlichen aggregierten Kurzbeobachtungen über die Kennzahlen hinaus.",
+        )
+
+    reg_block = ""
+    if report.risiko_regulatory_priority_note_de:
+        reg_block = (
+            f"\n**Berater-Portfolio (Priorität):** {report.risiko_regulatory_priority_note_de}\n"
+        )
+
+    obs_text = "\n".join(obs)
+    v90 = report.risiko_incidents_90d_count
+    h90 = report.risiko_incidents_90d_high_severity
+    agg_line = (
+        f"**Vorfälle (90 Tage, aggregiert):** {v90} erfasst, davon **{h90}** "
+        f"mit Schweregrad „hoch“; Laststufe **{burden_de}**. "
+        "Keine Inhalte oder Personen aus Einzelfällen."
+    )
+    return f"""## Risiko- und Incident-Lage (NIS2/KRITIS)
+
+**NIS2-Einordnung:** {report.risiko_nis2_scope_label_de}
+
+{kritis_line}
+
+{agg_line}
+
+{open_line}
+
+### Kurzbeobachtungen
+
+{obs_text}
+{reg_block}"""
 
 
 def render_tenant_report_markdown(report: AdvisorTenantReport) -> str:
@@ -58,6 +129,8 @@ def render_tenant_report_markdown(report: AdvisorTenantReport) -> str:
             + "\n"
         )
 
+    risiko_md = render_risiko_incident_lage_markdown_section(report)
+
     return f"""# Compliance Hub Mandanten-Steckbrief – {report.tenant_name}
 
 **Mandanten-ID:** `{report.tenant_id}`  
@@ -69,6 +142,8 @@ def render_tenant_report_markdown(report: AdvisorTenantReport) -> str:
 - KI-Systeme gesamt: **{report.ai_systems_total}**
 - High-Risk-Systeme (Register): **{report.high_risk_systems_count}**
 - High-Risk mit vollständigen Essential-Controls: **{report.high_risk_with_full_controls_count}**
+
+{risiko_md}
 
 ## EU AI Act
 

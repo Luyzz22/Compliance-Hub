@@ -14,6 +14,7 @@ from app.repositories.ai_governance_actions import AIGovernanceActionRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
+from app.repositories.incidents import IncidentRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.violations import ViolationRepository
 from app.services.advisor_tenant_report import build_advisor_tenant_report
@@ -122,6 +123,7 @@ def test_build_advisor_tenant_report_aggregates(advisor_allowlist: None) -> None
             nis2_repo=Nis2KritisKpiRepository(s),
             violation_repo=ViolationRepository(s),
             action_repo=AIGovernanceActionRepository(s),
+            incident_repo=IncidentRepository(s),
         )
     finally:
         s.close()
@@ -155,6 +157,8 @@ def test_get_advisor_tenant_report_json(advisor_allowlist: None) -> None:
     assert "eu_ai_act_readiness_score" in data
     assert "nis2_incident_readiness_percent" in data
     assert "setup_completed_steps" in data
+    assert "risiko_incidents_90d_count" in data
+    assert "risiko_incident_burden_level" in data
 
 
 def test_get_advisor_tenant_report_markdown(advisor_allowlist: None) -> None:
@@ -176,6 +180,7 @@ def test_get_advisor_tenant_report_markdown(advisor_allowlist: None) -> None:
     assert "## EU AI Act" in text
     assert "## NIS2 / KRITIS" in text
     assert "## Governance und Maßnahmen" in text
+    assert "## Risiko- und Incident-Lage (NIS2/KRITIS)" in text
 
 
 def test_advisor_tenant_report_not_linked_404(advisor_allowlist: None) -> None:
@@ -219,3 +224,4 @@ def test_render_tenant_report_markdown_structure() -> None:
     assert "X AG" in md
     assert "EU AI Act" in md
     assert "C1" in md
+    assert "## Risiko- und Incident-Lage (NIS2/KRITIS)" in md

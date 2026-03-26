@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturityBrief
+
+RisikoNis2EntityCategory = Literal["none", "important_entity", "essential_entity"]
 
 
 class TenantReportCriticalRequirementItem(BaseModel):
@@ -73,4 +76,34 @@ class AdvisorTenantReport(BaseModel):
             "Optional: Berater-Kurzbrief (gleicher Kern wie Board governance_maturity_summary, "
             "plus Fokus und Zeithorizont)."
         ),
+    )
+
+    risiko_nis2_scope_label_de: str = Field(
+        default=(
+            "Es liegt keine Einordnung als wichtige oder wesentliche Einrichtung nach NIS2 vor "
+            "(bzw. außerhalb des relevanten NIS2-Scope in den Stammdaten geführt)."
+        ),
+        description="Fließtext zur NIS2-Stammdaten-Einordnung für den Risiko-Abschnitt.",
+    )
+    risiko_kritis_sector_label_de: str | None = Field(
+        default=None,
+        description="Anzeigename KRITIS-Sektor, falls hinterlegt.",
+    )
+    risiko_incidents_90d_count: int = Field(default=0, ge=0)
+    risiko_incidents_90d_high_severity: int = Field(default=0, ge=0)
+    risiko_incident_burden_level: Literal["low", "medium", "high"] = Field(
+        default="low",
+        description="Aggregierte Last 90 Tage (ohne Einzelfallinhalte).",
+    )
+    risiko_open_incidents_count: int = Field(default=0, ge=0)
+    risiko_regulatory_priority_note_de: str | None = Field(
+        default=None,
+        description=(
+            "Optional: gleicher erklärender Zusatz wie bei Portfolio-Priorität (Aufstock), "
+            "falls die Heuristik greift."
+        ),
+    )
+    risiko_nis2_entity_category: RisikoNis2EntityCategory | None = Field(
+        default=None,
+        description="Normalisierte NIS2-Kategorie für Templates.",
     )

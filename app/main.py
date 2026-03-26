@@ -123,6 +123,7 @@ from app.cross_regulation_models import (
     RequirementControlsDetailResponse,
 )
 from app.db import engine, get_session
+from app.db_migrations import run_all_db_migrations
 from app.demo_models import (
     DemoGovernanceMaturityLayerRequest,
     DemoGovernanceMaturityLayerResponse,
@@ -374,6 +375,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup phase
     Base.metadata.create_all(bind=engine)
+    run_all_db_migrations(engine)
     with Session(engine) as seed_session:
         ensure_cross_regulation_catalog_seeded(seed_session)
         ensure_ai_kpi_definitions_seeded(seed_session)
@@ -2919,6 +2921,7 @@ def get_advisor_tenant_report(
         AIGovernanceActionRepository,
         Depends(get_ai_governance_action_repository),
     ],
+    incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
     export_format: Annotated[Literal["json", "markdown"], Query(alias="format")] = "json",
 ) -> AdvisorTenantReport | Response:
     """Mandanten-Steckbrief (JSON oder Markdown) nur bei Zuordnung in advisor_tenants."""
@@ -2938,6 +2941,7 @@ def get_advisor_tenant_report(
         nis2_repo=nis2_repo,
         violation_repo=violation_repo,
         action_repo=action_repo,
+        incident_repo=incident_repo,
     )
     report = enrich_advisor_tenant_report_with_governance_maturity_brief(session, tenant_id, report)
     report = maybe_enrich_advisor_report_with_llm_summary(session, tenant_id, report)

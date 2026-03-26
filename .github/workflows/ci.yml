@@ -26,3 +26,5 @@ jobs:
 
       - name: Test
         run: python -m pytest tests/ -q
+        # DB additive migrations: covered by tests/test_db_migrations_kritis_sector.py;
+        # production/pilot: run `python scripts/migrate_all.py` or rely on API lifespan.
