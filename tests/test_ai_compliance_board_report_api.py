@@ -42,6 +42,7 @@ def test_board_report_forbidden_when_feature_off(monkeypatch: pytest.MonkeyPatch
 
 def test_board_report_create_and_list(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_AI_COMPLIANCE_BOARD_REPORT", "true")
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_GOVERNANCE_MATURITY", "false")
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_ENABLED", "true")
     tid = f"br-api-{uuid.uuid4().hex[:10]}"
 

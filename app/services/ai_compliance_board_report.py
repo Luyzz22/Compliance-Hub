@@ -28,6 +28,9 @@ from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
 from app.services.cross_regulation_llm_gap_assistant import (
     generate_cross_regulation_llm_gap_suggestions,
 )
+from app.services.governance_maturity_board_summary_llm import (
+    maybe_build_governance_maturity_board_summary_result,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -125,6 +128,17 @@ def create_ai_compliance_board_report(
         include_ai_act_only=body.include_ai_act_only,
     )
 
+    gm_result = maybe_build_governance_maturity_board_summary_result(session, tenant_id)
+    if gm_result is not None:
+        inp = inp.model_copy(
+            update={
+                "governance_maturity_summary": gm_result.summary,
+                "governance_maturity_executive_paragraph_de": (
+                    gm_result.executive_overview_governance_maturity_de
+                ),
+            },
+        )
+
     md = render_ai_compliance_board_report_markdown(inp, tenant_id, session=session)
     if not md.strip():
         md = (
@@ -144,6 +158,15 @@ def create_ai_compliance_board_report(
         "include_ai_act_only": body.include_ai_act_only,
         "language": body.language,
         "input": inp.model_dump(),
+        "governance_maturity_board_summary": (
+            {
+                "parse_ok": gm_result.parse_ok,
+                "used_llm_paragraph": gm_result.used_llm_paragraph,
+                "summary": gm_result.summary.model_dump(),
+            }
+            if gm_result is not None
+            else None
+        ),
     }
 
     repo = AiComplianceBoardReportRepository(session)

@@ -147,6 +147,7 @@ from app.feature_flags import (
     require_tenant_llm_features,
 )
 from app.governance_maturity_models import GovernanceMaturityResponse
+from app.governance_maturity_summary_models import GovernanceMaturityBoardSummaryParseResult
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.llm_models import LLMTaskType
 from app.models import (
@@ -301,6 +302,9 @@ from app.services.evidence_service import (
     upload_evidence as upload_evidence_file,
 )
 from app.services.evidence_storage import get_evidence_storage
+from app.services.governance_maturity_board_summary_llm import (
+    maybe_build_governance_maturity_board_summary_result,
+)
 from app.services.governance_maturity_service import build_governance_maturity_response
 from app.services.high_risk_scenarios import list_high_risk_scenarios
 from app.services.llm_router import LLMRouter
@@ -3930,6 +3934,33 @@ def get_tenant_governance_maturity(
     if tenant_id != auth_context.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
     return build_governance_maturity_response(session, tenant_id, window_days=window_days)
+
+
+@app.post(
+    "/api/v1/tenants/{tenant_id}/governance-maturity/board-summary",
+    response_model=GovernanceMaturityBoardSummaryParseResult,
+    tags=["tenants"],
+)
+def post_tenant_governance_maturity_board_summary(
+    tenant_id: str,
+    _ff_gm: Annotated[None, Depends(create_feature_guard(FeatureFlag.governance_maturity))],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> GovernanceMaturityBoardSummaryParseResult:
+    """
+    Strukturierte Governance-Reife-Zusammenfassung für Board/Executive (Readiness, GAI, OAMI).
+
+    Nutzt LLM wenn aktiviert (gleicher Task wie Board-Report); sonst deterministische Fallbacks.
+    """
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    result = maybe_build_governance_maturity_board_summary_result(session, tenant_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Governance maturity board summary unavailable",
+        )
+    return result
 
 
 @app.post(

@@ -1,0 +1,31 @@
+{
+  "governance_maturity_summary": {
+    "readiness": {
+      "score": 0,
+      "level": "basic",
+      "short_reason": "Falsche Stufe im Roh-JSON — wird durch Snapshot überschrieben."
+    },
+    "activity": {
+      "index": 0,
+      "level": "low",
+      "short_reason": "Ebenfalls absichtlich falsch für Alignment-Test."
+    },
+    "operational_monitoring": {
+      "index": 0,
+      "level": "low",
+      "short_reason": "Roh-OAMI unplausibel."
+    },
+    "overall_assessment": {
+      "level": "low",
+      "short_summary": "Trotz belastbarer Grundlagen bleibt ein wachsames Augenmerk auf Lieferketten- und Änderungsrisiken angezeigt.",
+      "key_risks": [
+        "Wachstum könnte dokumentarische Tiefe überfordern"
+      ],
+      "key_strengths": [
+        "Etablierte Steuerungsrituale",
+        "Sichtbare Betriebsintelligenz bei kritischen Systemen"
+      ]
+    }
+  },
+  "executive_overview_governance_maturity_de": "Für Vorstand und Aufsichtsrat zeichnet sich ein reifes Steuerungsbild ab: strukturelle Grundlagen, aktive Nutzung der Governance-Werkzeuge und belastbare Laufzeit-Signale greifen zusammen. Die Organisation kann Prioritäten klarer auf strategische Weiterentwicklung und Resilienz legen. Wesentliche Risiken bleiben beherrschbar, sofern Tempo und Dokumentationstiefe bei wachsendem KI-Portfolio im Gleichklang bleiben. Die nachfolgenden Kennzahlen und Gap-Ausführungen konkretisieren den Handlungsbedarf."
+}

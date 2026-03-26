@@ -288,3 +288,54 @@ def readiness_explain_json_schema_instructions() -> str:
         f"Listen: höchstens je {EXPLAIN_LIST_MAX_ITEMS} Einträge, je Eintrag höchstens "
         f"{EXPLAIN_LIST_ITEM_MAX_CHARS} Zeichen.\n"
     )
+
+
+def governance_maturity_board_summary_json_schema_instructions() -> str:
+    """
+    Expected JSON shape for Board governance maturity executive summary (single object).
+
+    Top-level keys: structured `governance_maturity_summary` plus
+    `executive_overview_governance_maturity_de` paragraph. API enums only inside JSON `level`
+    fields; paragraph must not spell UI labels (Basis/Etabliert/Integriert, Niedrig/Mittel/Hoch).
+    """
+    rl = " | ".join(f'"{x}"' for x in READINESS_API_LEVELS)
+    il = " | ".join(f'"{x}"' for x in INDEX_API_LEVELS)
+    return (
+        "Antworte ausschließlich mit **einem** JSON-Objekt "
+        "(kein Markdown, keine Codefences). Schema:\n"
+        "{\n"
+        '  "governance_maturity_summary": {\n'
+        '    "readiness": {\n'
+        '      "score": <integer 0-100>,\n'
+        f'      "level": {rl},\n'
+        '      "short_reason": "<1-3 Sätze Deutsch; relative Einordnung; '
+        'keine UI-Stufenbezeichnungen>"\n'
+        "    },\n"
+        '    "activity": {\n'
+        '      "index": <integer 0-100>,\n'
+        f'      "level": {il},\n'
+        '      "short_reason": "<1-3 Sätze Deutsch; Nutzung/Steuerungsaktivität; '
+        'keine UI-Stufenbezeichnungen>"\n'
+        "    },\n"
+        '    "operational_monitoring": {\n'
+        '      "index": <integer 0-100 oder null wenn kein Laufzeit-Monitoring sichtbar>,\n'
+        f'      "level": null | {il},\n'
+        '      "short_reason": "<1-3 Sätze Deutsch; operative Sicht; '
+        'keine UI-Stufenbezeichnungen>"\n'
+        "    },\n"
+        '    "overall_assessment": {\n'
+        f'      "level": {il},\n'
+        '      "short_summary": "<2-4 Sätze Deutsch; Gesamtbild für Vorstand/Aufsicht>",\n'
+        f'      "key_risks": ["<kurz>", "..."],\n'
+        f'      "key_strengths": ["<kurz>", "..."]\n'
+        "    }\n"
+        "  },\n"
+        '  "executive_overview_governance_maturity_de": '
+        '"<genau 3-5 vollständige Sätze Deutsch; Vorstand/Aufsicht; sachlich, nicht technisch; '
+        'keine UI-Labels für Stufen; keine neuen Akronyme; keine Zitate von Normtexten>"\n'
+        "}\n"
+        f"Listen key_risks/key_strengths: je höchstens {EXPLAIN_LIST_MAX_ITEMS} Einträge, "
+        f"je Eintrag höchstens {EXPLAIN_LIST_ITEM_MAX_CHARS} Zeichen.\n"
+        "Feld `executive_overview_governance_maturity_de` ist Pflicht und muss mindestens "
+        "80 Zeichen enthalten.\n"
+    )

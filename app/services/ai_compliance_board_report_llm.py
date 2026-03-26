@@ -36,15 +36,44 @@ def _audience_label(audience: str) -> str:
 
 def build_board_report_user_prompt(inp: AiComplianceBoardReportInput) -> str:
     payload = inp.model_dump()
+    gov_block = ""
+    para_de = (inp.governance_maturity_executive_paragraph_de or "").strip()
+    if para_de:
+        quoted = para_de
+        gov_block = (
+            "\n**Governance-Reife (Pflicht):** Unter „## Executive Overview“ beginne mit "
+            "**genau einem** Absatz, der **wörtlich** dem folgenden Text entspricht "
+            "(keine Änderung, kein Zusammenfassen):\n\n"
+            f'"""\n{quoted}\n"""\n\n'
+            "Optional **ein** weiterer kurzer Absatz (höchstens 3 Sätze) zur Einordnung der "
+            "übrigen Report-Daten — ohne die Governance-Kernaussage zu wiederholen.\n"
+        )
+    status_gov = ""
+    if inp.governance_maturity_summary is not None:
+        status_gov = (
+            "\n**Status — Governance-Reife:** Im Abschnitt „## Status & Kennzahlen“ füge nach der "
+            "Framework-Coverage einen Unterblock **Governance-Reife (Readiness, GAI, OAMI)** ein: "
+            "je ein knapper Satz Interpretation pro Säule, basierend auf dem JSON-Feld "
+            "`governance_maturity_summary` "
+            "(Felder `short_reason` / `overall_assessment.short_summary`). "
+            "Wiederhole **keine** numerischen Scores oder Indizes aus dem JSON "
+            "(Frontend zeigt Zahlen); keine deutschen UI-Stufenbezeichnungen aus dem Contract "
+            "ausformulieren.\n"
+            "Im Abschnitt „## Ausblick & nächste Meilensteine“ nimm **optional** 1–2 Sätze auf, "
+            "die sich aus `overall_assessment.key_risks` und `key_strengths` ableiten "
+            "(priorisiert, ohne neue Fakten).\n"
+        )
+    exec_intro = "" if gov_block else "1–2 knappe Absätze.\n"
     structure = (
         "Erzeuge ein Markdown-Dokument mit exakt diesen Hauptüberschriften (##):\n"
         "## Executive Overview\n"
-        "1–2 knappe Absätze.\n"
+        f"{exec_intro}{gov_block}"
         "## Regulatorischer Scope\n"
         "Welche Frameworks sind aus den Daten erkennbar im Scope "
         "(EU AI Act, NIS2, ISO 42001/27001, DSGVO etc.).\n"
         "## Status & Kennzahlen\n"
         "Coverage-Übersicht pro Framework, relevante KI-Inventar-Kennzahlen aus dem JSON.\n"
+        f"{status_gov}"
         "## AI Performance & Risk KPIs\n"
         "Nutze high_risk_kpi_summaries und kpi_portfolio_aggregates aus dem JSON (falls leer: "
         "kurz vermerken, dass noch keine KPI-Zeitreihen gepflegt werden). "
