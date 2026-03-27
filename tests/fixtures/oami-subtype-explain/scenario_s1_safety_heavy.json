@@ -1,0 +1,71 @@
+{
+  "id": "S1",
+  "title_de": "Sicherheitslast: wenige Vorfälle, hoher Einfluss",
+  "presenter_script_de": "Hier sehen Sie, dass der OAMI vor allem durch sicherheitsrelevante Incidents getrieben wird: wenige Ereignisse, aber mit Subtype safety_violation und hoher Schwere – das Gewicht im Index liegt stärker auf Sicherheit als auf reiner Verfügbarkeit.",
+  "window_days": 90,
+  "oami_aggregate": {
+    "last_event_age_days": 1,
+    "event_count": 120,
+    "distinct_days": 20,
+    "incident_high": 2,
+    "breach_count": 0,
+    "incident_count": 4,
+    "incident_count_by_subtype": {
+      "safety_violation": 3,
+      "availability_incident": 1
+    },
+    "metric_breach_count_by_subtype": {},
+    "incident_weighted_penalty_sum": 0.7625,
+    "weighted_breach_units": 0.0
+  },
+  "expected": {
+    "operational_monitoring_index": 65,
+    "level": "medium"
+  },
+  "readiness_explain_llm_json": {
+    "readiness_explanation": {
+      "score": 62,
+      "level": "managed",
+      "short_reason": "Struktur und Register sind tragfähig; im Betrieb rücken sicherheitsrelevante Laufzeitvorfälle in den Fokus.",
+      "drivers_positive": [
+        "Register und Steuerungsartefakte sind weitgehend gepflegt."
+      ],
+      "drivers_negative": [
+        "Sicherheitsnahe KI-Laufzeitvorfälle engmaschig reviewen und mit Post-Market-Prozessen verzahnen."
+      ],
+      "regulatory_focus": "EU AI Act Post-Market-Monitoring und dokumentierte Reaktion auf sicherheitsrelevante Signale."
+    },
+    "operational_monitoring_explanation": {
+      "index": 65,
+      "level": "medium",
+      "recent_incidents_summary": "Wenige Incidents insgesamt, aber klarer Schwerpunkt auf Subtype safety_violation mit hoher bzw. kritischer Schwere – der Index gewichtet diese Signale stärker als reine Verfügbarkeitsvorfälle.",
+      "monitoring_gaps": [
+        "Einheitliche Eskalationspfade für safety_violation über alle KI-Systeme im Scope."
+      ],
+      "improvement_suggestions": [
+        "Safety-Runbooks und Retraining-Triggers mit dem Register verknüpfen.",
+        "Review-Zyklen für High-Severity-Safety-Incidents dokumentieren."
+      ]
+    }
+  },
+  "oami_enrichment": {
+    "safety_related_incidents_90d": 3,
+    "availability_incidents_90d": 1,
+    "oami_subtype_hint_de": "Sicherheitsrelevante Laufzeitvorfälle fließen stärker in den Index ein als reine Verfügbarkeitssignale."
+  },
+  "governance_maturity_fragment": {
+    "operational_monitoring_short_reason_de": "Operatives Monitoring zeigt trotz geringer Ereigniszahl einen belasteten Stabilitätsanteil durch sicherheitsklassifizierte Laufzeit-Subtypes.",
+    "recommended_focus_areas": [
+      "Sicherheitsrelevante AI-Laufzeitvorfälle reduzieren (Monitoring, Eskalation, Retraining).",
+      "Verfügbarkeits-Incidents von Safety-Signalen trennen und getrennt auswerten."
+    ]
+  },
+  "assert_explain_drivers_contain": [
+    "sicherheit",
+    "safety_violation"
+  ],
+  "assert_llm_oami_text_contains": [
+    "safety_violation",
+    "Verfügbarkeit"
+  ]
+}

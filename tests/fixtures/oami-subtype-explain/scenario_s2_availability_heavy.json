@@ -1,0 +1,70 @@
+{
+  "id": "S2",
+  "title_de": "Verfügbarkeitslast: viele Incidents, überwiegend niedrigere Schwere",
+  "presenter_script_de": "Hier dominieren Verfügbarkeits-Incidents: der OAMI bleibt mittel, aber die Einordnung zeigt, dass die Lage primär Betriebsstabilität betrifft – nicht denselben Gewichtspfad wie sicherheitsklassifizierte Subtypes.",
+  "window_days": 90,
+  "oami_aggregate": {
+    "last_event_age_days": 5,
+    "event_count": 200,
+    "distinct_days": 12,
+    "incident_high": 0,
+    "breach_count": 0,
+    "incident_count": 9,
+    "incident_count_by_subtype": {
+      "availability_incident": 9
+    },
+    "metric_breach_count_by_subtype": {},
+    "incident_weighted_penalty_sum": 0.585,
+    "weighted_breach_units": 0.0
+  },
+  "expected": {
+    "operational_monitoring_index": 60,
+    "level": "medium"
+  },
+  "readiness_explain_llm_json": {
+    "readiness_explanation": {
+      "score": 58,
+      "level": "managed",
+      "short_reason": "Strukturell etabliert; operative Signale zeigen erhöhte Verfügbarkeitsthemen ohne dominante Safety-Subtype-Last.",
+      "drivers_positive": [
+        "Laufzeit-Pipeline liefert kontinuierliche Heartbeats und Incidents."
+      ],
+      "drivers_negative": [
+        "Wiederkehrende availability_incident-Cluster auf Ursachen (Kapazität, Routing) prüfen."
+      ],
+      "regulatory_focus": "NIS2: Erkennung und Dokumentation von Betriebsstörungen; Abgrenzung zu sicherheitsrelevanten KI-Vorfällen."
+    },
+    "operational_monitoring_explanation": {
+      "index": 60,
+      "level": "medium",
+      "recent_incidents_summary": "Höhere Anzahl Incidents, überwiegend Subtype availability_incident mit mittlerer oder niedriger Schwere – Schwerpunkt Verfügbarkeit, nicht Safety-Subtype-Dominanz im 90-Tage-Fenster.",
+      "monitoring_gaps": [
+        "Teilweise fehlende Fehlerbudget-Zuordnung pro KI-System."
+      ],
+      "improvement_suggestions": [
+        "SLA und Runbooks für Verfügbarkeit mit Register-Kritikalität abstimmen.",
+        "Post-Mortems für wiederkehrende Ausfälle standardisieren."
+      ]
+    }
+  },
+  "oami_enrichment": {
+    "safety_related_incidents_90d": 0,
+    "availability_incidents_90d": 9,
+    "oami_subtype_hint_de": "Die Lage ist vor allem durch Verfügbarkeits-Incidents geprägt (ohne Sicherheits-Subtype in den Laufzeitdaten)."
+  },
+  "governance_maturity_fragment": {
+    "operational_monitoring_short_reason_de": "Laufzeitbild durch viele Verfügbarkeits-Incidents geprägt; keine sicherheitsklassifizierten Subtype-Häufungen in den aggregierten Daten.",
+    "recommended_focus_areas": [
+      "Verfügbarkeit und Service-Recovery für KI-Workloads stabilisieren.",
+      "Safety-Subtype-Erfassung prüfen, falls produktiv Safety-Alarms separat laufen."
+    ]
+  },
+  "assert_explain_drivers_contain": [
+    "Verfügbarkeit",
+    "availability"
+  ],
+  "assert_llm_oami_text_contains": [
+    "availability_incident",
+    "Verfügbarkeit"
+  ]
+}

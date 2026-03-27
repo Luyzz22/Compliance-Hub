@@ -53,6 +53,15 @@ Alle **Demodaten sind synthetisch** (keine echten Betriebs- oder Personendaten).
 - „Der **Governance-Aktivitätsindex** zeigt, ob die Governance-Funktionen **tatsächlich genutzt** werden – Unterscheidung von Papier-Compliance.“  
 - „Der **operative KI-Monitoring-Index** fasst Laufzeit-Signale zusammen – Gespräch zu **EU AI Act** Post-Market-Monitoring und **NIS2**-Incidents, **ohne** automatische Qualifikation von Meldepflichten.“
 
+### OAMI und Incident-Subtypes (optional, ~1 Minute)
+
+Der Index gewichtet u. a. nach **Laufzeit-Subtype** (z. B. sicherheitsnahe vs. verfügbarkeitsbezogene Signale). Für ein glaubwürdiges Narrativ ohne Live-Zahlenpaukerei eignen sich die synthetischen **Golden-Szenarien** unter `tests/fixtures/oami-subtype-explain/` (S1–S3); CI deckt Index, Stufe und Keywords ab (`tests/test_oami_subtype_explain_golden.py`).
+
+| Szenario | Kurzinhalt | Beispiel-Satz für den Presenter (aus Fixture `presenter_script_de`) |
+|----------|------------|----------------------------------------------------------------------|
+| **S1** | Wenige Incidents, Schwerpunkt **safety_violation** + hohe Schwere | „Hier sehen Sie, dass der OAMI vor allem durch sicherheitsrelevante Incidents getrieben wird: wenige Ereignisse, aber mit Subtype safety_violation und hoher Schwere – das Gewicht im Index liegt stärker auf Sicherheit als auf reiner Verfügbarkeit.“ |
+| **S2** | Mehr Incidents, überwiegend **availability_incident** | „Hier dominieren Verfügbarkeits-Incidents: der OAMI bleibt mittel, aber die Einordnung zeigt, dass die Lage primär Betriebsstabilität betrifft – nicht denselben Gewichtspfad wie sicherheitsklassifizierte Subtypes.“ |
+
 ### Typische Board-/CISO-Fragen (diese Demo adressiert)
 
 - „**Wie sehen wir unseren EU-AI-Act-Reifegrad** über eine Zahl hinaus?“ → Readiness-Dimensionen + Cross-Reg-Gaps.  
@@ -108,6 +117,8 @@ Siehe **`tests/test_demo_walkthrough_smoke.py`**: seeded Demo-Mandant, dann GET 
 
 ```bash
 pytest tests/test_demo_walkthrough_smoke.py -q
+# Optional: OAMI-Subtype-Golden (Index, Explain, Advisor-Fokus aus Fixtures)
+pytest tests/test_oami_subtype_explain_golden.py -q
 ```
 
 ---
