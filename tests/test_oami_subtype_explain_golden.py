@@ -217,9 +217,10 @@ def test_governance_maturity_fragment_maps_to_advisor_brief_tooltips(
     focus_blob = " ".join(brief.recommended_focus_areas).lower()
     for s in focus_substrs:
         assert s.lower() in focus_blob
-    assert brief.governance_maturity_summary.operational_monitoring.short_reason == fragment[
-        "operational_monitoring_short_reason_de"
-    ]
+    assert (
+        brief.governance_maturity_summary.operational_monitoring.short_reason
+        == fragment["operational_monitoring_short_reason_de"]
+    )
     marker = advisor_brief_focus_marker_de(brief)
     assert marker.startswith("Fokus:")
     tooltip = advisor_brief_portfolio_tooltip_de(brief).lower()
