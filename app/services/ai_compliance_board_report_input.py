@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
 from sqlalchemy.orm import Session
@@ -17,6 +18,12 @@ from app.repositories.ai_systems import AISystemRepository
 from app.services.ai_kpi_service import build_board_report_kpi_briefs
 from app.services.cross_regulation import build_cross_regulation_summary
 from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
+from app.services.oami_incident_subtype_profile_board import (
+    build_oami_incident_subtype_profile_for_board,
+)
+from app.services.operational_monitoring_index import compute_tenant_operational_monitoring_index
+
+logger = logging.getLogger(__name__)
 
 _CRIT_ORDER = {"high": 0, "medium": 1, "low": 2}
 _FW_RISK = {
@@ -144,6 +151,23 @@ def assemble_ai_compliance_board_report_input(
     else:
         hr_kpis, port_kpis = [], []
 
+    oami_subtype_profile = None
+    try:
+        toami = compute_tenant_operational_monitoring_index(
+            session,
+            tenant_id,
+            window_days=90,
+            persist_snapshot=False,
+        )
+        oami_subtype_profile = build_oami_incident_subtype_profile_for_board(toami)
+    except Exception as exc:
+        logger.warning(
+            "board_report_input_oami_subtype_skipped tenant_id=%s err=%s",
+            tenant_id,
+            type(exc).__name__,
+        )
+        oami_subtype_profile = None
+
     return AiComplianceBoardReportInput(
         tenant_id=tenant_id,
         audience_type=audience_type,
@@ -155,4 +179,5 @@ def assemble_ai_compliance_board_report_input(
         trend_note="Keine historische Trendzeitreihe in dieser Version hinterlegt.",
         high_risk_kpi_summaries=hr_kpis,
         kpi_portfolio_aggregates=port_kpis,
+        oami_subtype_profile=oami_subtype_profile,
     )

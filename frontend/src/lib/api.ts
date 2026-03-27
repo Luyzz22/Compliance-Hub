@@ -516,6 +516,33 @@ export function fetchBoardAlertsExport(format?: "json" | "csv"): string {
   return `/api/board/alerts/export?format=${format ?? "json"}`;
 }
 
+/** Gewichtete OAMI-Incident-Subtypen (Board-Markdown / spätere Charts). */
+export interface OamiIncidentSubtypeProfileDto {
+  incident_weighted_share_safety: number;
+  incident_weighted_share_availability: number;
+  incident_weighted_share_other: number;
+  incident_count_by_category: {
+    safety: number;
+    availability: number;
+    other: number;
+  };
+  oami_subtype_narrative_de: string;
+  chart_note_de: string;
+  category_labels_de: Record<string, string>;
+}
+
+/** OAMI-Abschnitt im Board-Governance-Report (90-Tage-Laufzeitfenster). */
+export interface BoardOperationalMonitoringSectionDto {
+  index_value: number;
+  level: string;
+  window_days: number;
+  has_data: boolean;
+  systems_scored: number;
+  summary_de: string;
+  drivers_de: string[];
+  oami_incident_subtype_profile?: OamiIncidentSubtypeProfileDto | null;
+}
+
 /** Vorstands-/Aufsichtsreport: alle AI-Governance-Kennzahlen gebündelt. */
 export interface AIBoardGovernanceReport {
   tenant_id: string;
@@ -526,6 +553,7 @@ export interface AIBoardGovernanceReport {
   incidents_overview: AIIncidentOverview;
   supplier_risk_overview: AISupplierRiskOverview;
   alerts: AIKpiAlert[];
+  operational_monitoring?: BoardOperationalMonitoringSectionDto | null;
 }
 
 export async function fetchBoardGovernanceReport(): Promise<AIBoardGovernanceReport> {
