@@ -372,6 +372,7 @@ Mindestumfang (ohne Payload-Inhalte, DSGVO-minimiert):
 | OAMI & Erklärungen | `app/services/operational_monitoring_index.py`, `app/services/oami_explanation.py` |
 | Governance Maturity | `app/services/governance_maturity_service.py`, `GET .../governance-maturity` |
 | Board / Advisor | `app/main.py` (Board-Report), `app/services/board_report_markdown.py`, `app/services/advisor_client_governance_snapshot.py` |
+| OAMI Subtype-Profil (Board) | `app/services/oami_incident_subtype_profile_board.py`, `app/ai_governance_models.py` → `OamiIncidentSubtypeProfile`; optionaler Markdown-Block „Incident-Subtypen“ + Feld `oami_subtype_profile` im AI-Compliance-Board-Report-LLM-Input |
 | Demo-Sperre Ingest | `app/services/runtime_events_demo_guard.py` |
 | Workspace-Telemetrie (getrennt) | `app/services/workspace_telemetry.py` |
 

@@ -48,6 +48,23 @@ def build_board_report_user_prompt(inp: AiComplianceBoardReportInput) -> str:
             "Optional **ein** weiterer kurzer Absatz (höchstens 3 Sätze) zur Einordnung der "
             "übrigen Report-Daten — ohne die Governance-Kernaussage zu wiederholen.\n"
         )
+    oami_subtype = ""
+    if inp.oami_subtype_profile is not None:
+        oami_subtype = (
+            "\n**OAMI Incident-Subtypen:** Das JSON enthält `oami_subtype_profile` "
+            "(normierte Anteile Sicherheit/Verfügbarkeit/Sonstige, Kurznarrativ deutsch). "
+            "Unter „## Status & Kennzahlen“ optional einen Unterpunkt "
+            "**Operatives AI-Monitoring – Incident-Subtypen** mit 2–3 knappen Bullets "
+            "(C-Level, keine Rohgewichte, keine Melde- oder Rechtsqualifikation). "
+            "Wenn `oami_subtype_profile` null ist, diesen Unterpunkt weglassen.\n"
+            "Referenz-Töne (nur Stil, nicht wörtlich wiederholen, falls nicht passend):\n"
+            "- Sicherheitsfokus: Post-Market/Eskalation für Sicherheitssignale priorisieren.\n"
+            "- Verfügbarkeit: Betriebsstabilität, Service-Recovery, "
+            "Abgrenzung zu Safety-Vorfällen.\n"
+            "- Niedrig/benign: wenige unspezifische Incidents; "
+            "Datenaktualität und Überwachung stärken.\n"
+        )
+
     status_gov = ""
     if inp.governance_maturity_summary is not None:
         status_gov = (
@@ -73,6 +90,7 @@ def build_board_report_user_prompt(inp: AiComplianceBoardReportInput) -> str:
         "(EU AI Act, NIS2, ISO 42001/27001, DSGVO etc.).\n"
         "## Status & Kennzahlen\n"
         "Coverage-Übersicht pro Framework, relevante KI-Inventar-Kennzahlen aus dem JSON.\n"
+        f"{oami_subtype}"
         f"{status_gov}"
         "## AI Performance & Risk KPIs\n"
         "Nutze high_risk_kpi_summaries und kpi_portfolio_aggregates aus dem JSON (falls leer: "

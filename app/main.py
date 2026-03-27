@@ -317,6 +317,9 @@ from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signa
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
 from app.services.oami_explanation import explain_tenant_oami_de
+from app.services.oami_incident_subtype_profile_board import (
+    build_oami_incident_subtype_profile_for_board,
+)
 from app.services.operational_monitoring_index import (
     compute_system_monitoring_index,
     compute_tenant_operational_monitoring_index,
@@ -1992,6 +1995,7 @@ def _build_board_report(
             persist_snapshot=False,
         )
         ex = explain_tenant_oami_de(to)
+        subtype_prof = build_oami_incident_subtype_profile_for_board(to)
         operational_monitoring = BoardOperationalMonitoringSection(
             index_value=to.operational_monitoring_index,
             level=str(to.level),
@@ -2000,6 +2004,7 @@ def _build_board_report(
             systems_scored=to.systems_scored,
             summary_de=ex.summary_de,
             drivers_de=list(ex.drivers_de)[:8],
+            oami_incident_subtype_profile=subtype_prof,
         )
     except Exception:
         logger.exception("board_report_operational_monitoring_failed tenant_id=%s", tenant_id)

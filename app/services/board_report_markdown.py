@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.ai_governance_models import AIBoardGovernanceReport
+from app.ai_governance_models import (
+    AIBoardGovernanceReport,
+    BoardOperationalMonitoringSection,
+    OamiIncidentSubtypeProfile,
+)
 
 
 def _fmt_pct(value: float) -> str:
@@ -13,6 +17,68 @@ def _fmt_pct(value: float) -> str:
 
 def _fmt_date(dt: datetime) -> str:
     return dt.strftime("%d.%m.%Y")
+
+
+_BULLET_SAFETY_SUBTYPE_DE = (
+    "Im Berichtszeitraum überwiegen bzw. sind anteilig stark sicherheitsrelevante "
+    "Laufzeit-Incidents (z. B. sicherheitsbezogene Vorfälle im KI-Betrieb). "
+    "Diese fließen im OAMI stärker in die Bewertung ein als reine Verfügbarkeitssignale."
+)
+
+_BULLET_AVAILABILITY_SUBTYPE_DE = (
+    "Verfügbarkeits- und leistungsbezogene Signale (Betriebsstabilität, Metrik-Schwellen) "
+    "machen den größeren Teil der sichtbaren Last aus bzw. dominieren das Laufzeitbild."
+)
+
+_BULLET_BALANCED_SUBTYPE_DE = (
+    "Die sichtbare Incident-Last verteilt sich über mehrere Subtyp-Kategorien; es liegt "
+    "keine einseitige Dominanz von Sicherheits- gegenüber Verfügbarkeitssignalen vor."
+)
+
+
+def _append_oami_subtype_markdown_block(
+    lines: list[str],
+    om: BoardOperationalMonitoringSection,
+    profile: OamiIncidentSubtypeProfile,
+) -> None:
+    sh = profile.incident_weighted_share_safety
+    av = profile.incident_weighted_share_availability
+    ot = profile.incident_weighted_share_other
+    safety_dom = sh >= 0.45 and sh > av and sh > ot
+    avail_dom = av >= 0.45 and av > sh and av > ot
+
+    lines.append("")
+    lines.append("### Operatives AI-Monitoring – Incident-Subtypen")
+    lines.append("")
+    lines.append(
+        "Einordnung der Laufzeit-Incidents für den OAMI – ohne Melde- oder Rechtsqualifikation.",
+    )
+    lines.append("")
+    if safety_dom:
+        lines.append(f"- {_BULLET_SAFETY_SUBTYPE_DE}")
+    elif avail_dom:
+        lines.append(f"- {_BULLET_AVAILABILITY_SUBTYPE_DE}")
+    else:
+        lines.append(f"- {_BULLET_BALANCED_SUBTYPE_DE}")
+
+    if (profile.oami_subtype_narrative_de or "").strip():
+        lines.append(f"- {profile.oami_subtype_narrative_de.strip()}")
+
+    ps = round(sh * 100)
+    pa = round(av * 100)
+    po = round(ot * 100)
+    lbl = profile.category_labels_de
+    lines.append(
+        f"- Verteilung (gewichteter Fokus, normiert): "
+        f"{lbl.get('safety', 'Sicherheit')} ca. {ps} %, "
+        f"{lbl.get('availability', 'Verfügbarkeit')} ca. {pa} %, "
+        f"{lbl.get('other', 'Sonstige')} ca. {po} %.",
+    )
+    lines.append("")
+    lines.append("<!-- chart:oami-subtype-shares -->")
+    lines.append("")
+    lines.append(f"*Hinweis Diagramm (Export):* {profile.chart_note_de}")
+    lines.append("")
 
 
 def render_board_report_markdown(report: AIBoardGovernanceReport) -> str:
@@ -87,6 +153,9 @@ def render_board_report_markdown(report: AIBoardGovernanceReport) -> str:
         lines.append(f"  - Kurzfassung: {om.summary_de}")
         for d in om.drivers_de[:5]:
             lines.append(f"  - Treiber: {d}")
+        prof = om.oami_incident_subtype_profile
+        if prof is not None:
+            _append_oami_subtype_markdown_block(lines, om, prof)
     lines.extend(["", "---", "", "## 2. KPIs", ""])
 
     # KPIs als Tabelle
