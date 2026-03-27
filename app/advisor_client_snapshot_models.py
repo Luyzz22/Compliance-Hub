@@ -104,6 +104,9 @@ class OperationalAiMonitoringSnapshot(BaseModel):
     systems_scored: int = Field(ge=0)
     narrative_de: str = ""
     drivers_de: list[str] = Field(default_factory=list, max_length=12)
+    safety_related_runtime_incidents_90d: int = Field(default=0, ge=0)
+    availability_runtime_incidents_90d: int = Field(default=0, ge=0)
+    operational_subtype_hint_de: str | None = Field(default=None, max_length=400)
 
 
 class AdvisorClientGovernanceSnapshotResponse(BaseModel):

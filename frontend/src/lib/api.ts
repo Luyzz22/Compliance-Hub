@@ -1390,6 +1390,12 @@ export interface OperationalMonitoringExplanationStructuredDto {
   recent_incidents_summary: string;
   monitoring_gaps: string[];
   improvement_suggestions: string[];
+  /** Server: Subtype safety_violation im 90-Tage-Fenster (Laufzeit-Incidents). */
+  safety_related_incidents_90d?: number | null;
+  /** Server: Subtype availability_incident. */
+  availability_incidents_90d?: number | null;
+  /** Server: Kurz-Hinweis ohne numerische Gewichte. */
+  oami_subtype_hint_de?: string | null;
 }
 
 export interface ReadinessScoreExplainResponseDto {
@@ -1460,6 +1466,9 @@ export interface AdvisorPortfolioTenantEntry {
   operational_monitoring_summary?: {
     index: number | null;
     level: string | null;
+    safety_related_runtime_incidents_90d?: number;
+    availability_runtime_incidents_90d?: number;
+    oami_operational_hint_de?: string | null;
   } | null;
   governance_maturity_advisor_brief?: AdvisorGovernanceMaturityBriefDto | null;
   advisor_priority?: "high" | "medium" | "low";
@@ -1575,6 +1584,9 @@ export interface AdvisorClientGovernanceSnapshotDto {
     systems_scored: number;
     narrative_de: string;
     drivers_de: string[];
+    safety_related_runtime_incidents_90d?: number;
+    availability_runtime_incidents_90d?: number;
+    operational_subtype_hint_de?: string | null;
   } | null;
   governance_maturity_advisor_brief?: AdvisorGovernanceMaturityBriefDto | null;
 }

@@ -203,6 +203,14 @@ Beispiel-Gewichtung (kalibrierbar):
 
 **Level:** wie GAI: 0–39 low, 40–69 medium, 70–100 high – oder an KPI-Schwellen für Hochrisiko-Systeme gekoppelt (Policy).
 
+### 3.2.1 Subtype-Gewichtung (v1, erklärbar)
+
+**Implementierung:** `app/oami_subtype_weights.py` zusammen mit der Aggregation in `AiRuntimeEventRepository.aggregate_for_oami` und `operational_monitoring_index`.
+
+- **Ziel:** Gleiche Anzahl Vorfälle kann den Index unterschiedlich belasten: **sicherheitsnahe** Subtypes (z. B. `safety_violation`) wirken **stärker** als reine **Verfügbarkeit** (`availability_incident`). **Drift**-Breaches (`drift_high`) zählen etwas schwerer als reine **Leistungs**-Alarme (`performance_degradation`). **`other_*`-Subtypes** sind konservativ etwas **leichter** als explizit klassifizierte Codes.
+- **Keine UI-Zahlen:** Mandanten sehen Kurztexte und Zähler (z. B. „davon X sicherheitsrelevant“), **keine** ausgewiesenen Gewichtsfaktoren.
+- **Bänder:** Die Zuordnung Index → `low` | `medium` | `high` bleibt unverändert; die Kalibrierung ist bewusst moderat, damit bestehende OAMI-Stufen nicht springen.
+
 ### 3.3 Tenant-Aggregation
 
 - **Einfach:** Mittelwert über Systeme mit `risk_level` in Scope (z. B. high + limited).  

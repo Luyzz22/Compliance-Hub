@@ -21,6 +21,9 @@ from app.advisor_client_snapshot_models import (
     ReportsSummarySnapshot,
     SetupStatusSnapshot,
 )
+from app.advisor_governance_maturity_brief_models import (
+    merge_recommended_focus_areas_runtime_safety,
+)
 from app.ai_kpi_models import AiKpiSummaryResponse
 from app.ai_system_models import AISystemCriticality, AISystemRiskLevel
 from app.feature_flags import FeatureFlag, is_feature_enabled
@@ -265,6 +268,9 @@ def build_client_governance_snapshot(
             systems_scored=oami.systems_scored,
             narrative_de=expl.summary_de,
             drivers_de=list(expl.drivers_de)[:12],
+            safety_related_runtime_incidents_90d=oami.safety_related_runtime_incident_count,
+            availability_runtime_incidents_90d=oami.availability_runtime_incident_count,
+            operational_subtype_hint_de=oami.oami_operational_hint_de,
         )
     except Exception:
         logger.exception("snapshot_oami_failed tenant=%s", client_tenant_id)
@@ -275,6 +281,15 @@ def build_client_governance_snapshot(
             br = maybe_build_advisor_governance_maturity_brief_result(session, client_tenant_id)
             if br is not None:
                 gm_advisor_brief = br.brief
+                safety_ct = (
+                    int(oami_snap.safety_related_runtime_incidents_90d)
+                    if oami_snap is not None
+                    else 0
+                )
+                gm_advisor_brief = merge_recommended_focus_areas_runtime_safety(
+                    gm_advisor_brief,
+                    safety_ct,
+                )
         except Exception:
             logger.exception(
                 "snapshot_governance_maturity_advisor_brief_failed tenant=%s",

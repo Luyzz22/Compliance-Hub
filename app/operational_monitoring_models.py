@@ -100,6 +100,20 @@ class SystemMonitoringIndexOut(BaseModel):
         default_factory=dict,
         description="Nur Incidents; Schlüssel = kanonischer event_subtype.",
     )
+    metric_breach_count_by_subtype: dict[str, int] = Field(
+        default_factory=dict,
+        description="Nur metric_threshold_breach; Schlüssel = kanonischer event_subtype.",
+    )
+    safety_related_incident_count: int = Field(
+        default=0,
+        ge=0,
+        description="Anzahl Incidents mit Subtype safety_violation im Fenster.",
+    )
+    oami_operational_hint_de: str | None = Field(
+        default=None,
+        description="Kurzhinweis für Board/UI (ohne numerische Gewichte).",
+        max_length=400,
+    )
     metric_threshold_breach_count: int = 0
     distinct_active_days: int = 0
     components: OamiComponentsOut
@@ -115,3 +129,10 @@ class TenantOperationalMonitoringIndexOut(BaseModel):
     has_any_runtime_data: bool
     components: OamiComponentsOut | None = None
     explanation: OamiExplanationOut | None = None
+    runtime_incident_by_subtype: dict[str, int] = Field(
+        default_factory=dict,
+        description="Tenant-aggregat über Systeme mit Events (nur Incidents).",
+    )
+    safety_related_runtime_incident_count: int = Field(default=0, ge=0)
+    availability_runtime_incident_count: int = Field(default=0, ge=0)
+    oami_operational_hint_de: str | None = Field(default=None, max_length=400)

@@ -8,6 +8,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models_db import AiRuntimeEventTable
+from app.oami_subtype_weights import (
+    incident_weighted_penalty_contribution,
+    metric_breach_subtype_oami_weight,
+)
 
 
 def _occurred_at_utc(dt: datetime) -> datetime:
@@ -78,6 +82,9 @@ class AiRuntimeEventRepository:
                 "breach_count": 0,
                 "incident_count": 0,
                 "incident_count_by_subtype": {},
+                "metric_breach_count_by_subtype": {},
+                "incident_weighted_penalty_sum": 0.0,
+                "weighted_breach_units": 0.0,
             }
         last_at = max(_occurred_at_utc(r.occurred_at) for r in rows)
         days: set[str] = set()
@@ -85,6 +92,9 @@ class AiRuntimeEventRepository:
         breach_count = 0
         incident_count = 0
         incident_by_subtype: dict[str, int] = {}
+        breach_by_subtype: dict[str, int] = {}
+        incident_penalty_sum = 0.0
+        weighted_breach = 0.0
         sev_hi = frozenset({"high", "critical"})
         for r in rows:
             d = _occurred_at_utc(r.occurred_at).date().isoformat()
@@ -97,8 +107,16 @@ class AiRuntimeEventRepository:
                 st = (getattr(r, "event_subtype", None) or "").strip().lower()
                 if st:
                     incident_by_subtype[st] = incident_by_subtype.get(st, 0) + 1
+                incident_penalty_sum += incident_weighted_penalty_contribution(
+                    subtype=st if st else None,
+                    severity=r.severity,
+                )
             if et == "metric_threshold_breach":
                 breach_count += 1
+                bst = (getattr(r, "event_subtype", None) or "").strip().lower()
+                if bst:
+                    breach_by_subtype[bst] = breach_by_subtype.get(bst, 0) + 1
+                weighted_breach += metric_breach_subtype_oami_weight(bst if bst else None)
         return {
             "event_count": len(rows),
             "last_occurred_at": last_at,
@@ -107,6 +125,9 @@ class AiRuntimeEventRepository:
             "breach_count": breach_count,
             "incident_count": incident_count,
             "incident_count_by_subtype": incident_by_subtype,
+            "metric_breach_count_by_subtype": breach_by_subtype,
+            "incident_weighted_penalty_sum": incident_penalty_sum,
+            "weighted_breach_units": weighted_breach,
         }
 
     def list_system_ids_with_events(

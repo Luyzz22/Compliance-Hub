@@ -16,7 +16,11 @@ from app.operational_monitoring_models import (
 )
 from app.repositories.ai_runtime_events import AiRuntimeEventRepository
 from app.repositories.ai_systems import AISystemRepository
-from app.services.oami_explanation import explain_system_oami_de, explain_tenant_oami_de
+from app.services.oami_explanation import (
+    explain_system_oami_de,
+    explain_tenant_oami_de,
+    oami_operational_hint_de,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,28 +55,16 @@ def _coverage_component(distinct_days: int, window_days: int) -> float:
     return min(1.0, float(distinct_days) / float(max(1, d_sat)))
 
 
-def _incident_component(
-    incident_count: int,
-    incident_high: int,
-    *,
-    safety_violation_incidents: int = 0,
-) -> float:
-    """Ohne Ticket-Workflow: weniger Incidents und weniger high/critical = besser.
-
-    Zusätzlich: ``safety_violation``-Subtype (stärker gewichtet, Board/OAMI-relevant).
-    """
-    penalty = min(
-        1.0,
-        incident_high * 0.22
-        + max(0, incident_count - incident_high) * 0.07
-        + safety_violation_incidents * 0.12,
-    )
+def _incident_component(incident_weighted_penalty_sum: float) -> float:
+    """Subtype- und schweregradgewichtete Incident-Last (siehe ``oami_subtype_weights``)."""
+    penalty = min(1.0, float(incident_weighted_penalty_sum))
     return max(0.0, 1.0 - penalty)
 
 
-def _stability_component(breach_count: int, window_days: int) -> float:
+def _stability_component(weighted_breach_units: float, window_days: int) -> float:
+    """Schwellenverletzungen mit Subtype-Gewicht (z. B. Drift etwas schwerer als reine Latenz)."""
     scale = max(3.0, (window_days / 30.0) * 5.0)
-    penalty = min(1.0, float(breach_count) / scale)
+    penalty = min(1.0, float(weighted_breach_units) / scale)
     return max(0.0, 1.0 - penalty)
 
 
@@ -92,16 +84,26 @@ def _components_from_agg(
     incident_count = int(agg.get("incident_count") or 0)
     raw_sub = agg.get("incident_count_by_subtype")
     incident_by_subtype: dict[str, int] = dict(raw_sub) if isinstance(raw_sub, dict) else {}
-    safety_sv = int(incident_by_subtype.get("safety_violation", 0))
+    iwp = agg.get("incident_weighted_penalty_sum")
+    if isinstance(iwp, (int, float)):
+        incident_penalty_sum = float(iwp)
+    else:
+        # Rückwärtskompatibilität älterer Aggregationen
+        safety_sv = int(incident_by_subtype.get("safety_violation", 0))
+        incident_penalty_sum = min(
+            1.0,
+            incident_high * 0.22 + max(0, incident_count - incident_high) * 0.07 + safety_sv * 0.12,
+        )
+    wb = agg.get("weighted_breach_units")
+    if isinstance(wb, (int, float)):
+        weighted_breach = float(wb)
+    else:
+        weighted_breach = float(breach_count)
 
     f = _freshness_component(last_dt, now)
     c = _coverage_component(distinct_days, window_days)
-    i = _incident_component(
-        incident_count,
-        incident_high,
-        safety_violation_incidents=safety_sv,
-    )
-    s = _stability_component(breach_count, window_days)
+    i = _incident_component(incident_penalty_sum)
+    s = _stability_component(weighted_breach, window_days)
 
     if not has_data:
         z = OamiComponentsOut(
@@ -142,6 +144,11 @@ def compute_system_monitoring_index(
 
     raw_sub = agg.get("incident_count_by_subtype")
     inc_sub: dict[str, int] = dict(raw_sub) if isinstance(raw_sub, dict) else {}
+    raw_msub = agg.get("metric_breach_count_by_subtype")
+    msub: dict[str, int] = dict(raw_msub) if isinstance(raw_msub, dict) else {}
+    safety_n = int(inc_sub.get("safety_violation", 0))
+    avail_n = int(inc_sub.get("availability_incident", 0))
+    hint = oami_operational_hint_de(safety_incidents=safety_n, availability_incidents=avail_n)
 
     base = SystemMonitoringIndexOut(
         ai_system_id=ai_system_id,
@@ -154,6 +161,9 @@ def compute_system_monitoring_index(
         incident_count=int(agg.get("incident_count") or 0),
         high_severity_incident_count=int(agg.get("incident_high") or 0),
         incident_count_by_subtype=inc_sub,
+        metric_breach_count_by_subtype=msub,
+        safety_related_incident_count=safety_n,
+        oami_operational_hint_de=hint,
         metric_threshold_breach_count=int(agg.get("breach_count") or 0),
         distinct_active_days=int(agg.get("distinct_days") or 0),
         components=comp,
@@ -200,6 +210,10 @@ def compute_tenant_operational_monitoring_index(
             has_any_runtime_data=False,
             components=None,
             explanation=None,
+            runtime_incident_by_subtype={},
+            safety_related_runtime_incident_count=0,
+            availability_runtime_incident_count=0,
+            oami_operational_hint_de=None,
         )
         out = out.model_copy(update={"explanation": explain_tenant_oami_de(out)})
         if persist_snapshot:
@@ -215,6 +229,7 @@ def compute_tenant_operational_monitoring_index(
     weighted_index = 0.0
     wf = wc = wi = ws = 0.0
     w_sum = 0.0
+    merged_inc_subtype: dict[str, int] = {}
 
     for sid in system_ids:
         system = sys_repo.get_by_id(tenant_id, sid)
@@ -227,6 +242,17 @@ def compute_tenant_operational_monitoring_index(
         wi += w * comp.incident_stability
         ws += w * comp.metric_stability
         w_sum += w
+        raw_is = agg.get("incident_count_by_subtype")
+        if isinstance(raw_is, dict):
+            for k, v in raw_is.items():
+                try:
+                    n = int(v)
+                except (TypeError, ValueError):
+                    continue
+                if n <= 0:
+                    continue
+                ks = str(k).strip().lower()
+                merged_inc_subtype[ks] = merged_inc_subtype.get(ks, 0) + n
 
     if w_sum <= 0:
         w_sum = 1.0
@@ -238,6 +264,9 @@ def compute_tenant_operational_monitoring_index(
         incident_stability=wi / w_sum,
         metric_stability=ws / w_sum,
     )
+    sv_t = int(merged_inc_subtype.get("safety_violation", 0))
+    av_t = int(merged_inc_subtype.get("availability_incident", 0))
+    hint_t = oami_operational_hint_de(safety_incidents=sv_t, availability_incidents=av_t)
     out = TenantOperationalMonitoringIndexOut(
         tenant_id=tenant_id,
         window_days=window_days,
@@ -247,6 +276,10 @@ def compute_tenant_operational_monitoring_index(
         has_any_runtime_data=True,
         components=comp_t,
         explanation=None,
+        runtime_incident_by_subtype=dict(sorted(merged_inc_subtype.items())),
+        safety_related_runtime_incident_count=sv_t,
+        availability_runtime_incident_count=av_t,
+        oami_operational_hint_de=hint_t,
     )
     out = out.model_copy(update={"explanation": explain_tenant_oami_de(out)})
     if persist_snapshot:

@@ -22,7 +22,7 @@ from enum import StrEnum
 from typing import Final, Literal
 
 # Bump when JSON shape or enum sets change (keep in sync with docs + frontend types).
-GOVERNANCE_MATURITY_CONTRACT_VERSION: Final[str] = "2"
+GOVERNANCE_MATURITY_CONTRACT_VERSION: Final[str] = "3"
 
 # --- Explain payload limits (single source for parser + doc) ---
 EXPLAIN_LIST_MAX_ITEMS: Final[int] = 5
@@ -236,6 +236,19 @@ def index_mapping_lines_for_prompt() -> str:
     return "\n".join(lines)
 
 
+def oami_event_subtype_context_for_prompt() -> str:
+    """
+    Kurz: OAMI nutzt weiter nur level low|medium|high; Subtype-Kategorien nur zur Einordnung.
+    """
+    return (
+        "OAMI-Laufzeitdaten: optionaler technischer ``event_subtype`` pro Incident oder "
+        "Metrikalarm (z. B. safety_violation, availability_incident, drift_high). "
+        "Sicherheitsnahe Subtypes werden im Index stärker gewichtet als reine "
+        "Verfügbarkeit — ohne konkrete Gewichtszahlen zu nennen. "
+        "JSON-Feld ``level`` für OAMI bleibt ausschließlich low | medium | high."
+    )
+
+
 def terminology_contract_for_llm_prompt() -> str:
     """
     Instruct the model: JSON `level` fields = API enums only; narrative without invented
@@ -256,7 +269,7 @@ def terminology_contract_for_llm_prompt() -> str:
         "keine Synonyme (z. B. nicht „advanced“ statt embedded).\n"
         "Alle Freitext-Felder auf Deutsch; keine neuen Akronyme für Readiness/GAI/OAMI erfinden.\n"
         "In Fließtext-Feldern: keine eigenen Synonyme für Stufen; "
-        "Ursachen und Maßnahmen sachlich.\n"
+        "Ursachen und Maßnahmen sachlich.\n" + oami_event_subtype_context_for_prompt() + "\n"
     )
 
 

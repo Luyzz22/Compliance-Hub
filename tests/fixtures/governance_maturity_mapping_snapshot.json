@@ -1,5 +1,5 @@
 {
-  "contract_version": "2",
+  "contract_version": "3",
   "readiness_api_levels": ["basic", "managed", "embedded"],
   "readiness_level_de": {
     "basic": "Basis",

@@ -8,7 +8,10 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturityBrief
+from app.advisor_governance_maturity_brief_models import (
+    AdvisorGovernanceMaturityBrief,
+    merge_recommended_focus_areas_runtime_safety,
+)
 from app.advisor_portfolio_models import (
     AdvisorPortfolioResponse,
     AdvisorPortfolioTenantEntry,
@@ -213,6 +216,9 @@ def build_advisor_portfolio(
                     oami_summary = OperationalMonitoringPortfolioSummary(
                         index=ob.index,
                         level=ob.level,
+                        safety_related_runtime_incidents_90d=ob.safety_related_runtime_incident_count,
+                        availability_runtime_incidents_90d=ob.availability_runtime_incident_count,
+                        oami_operational_hint_de=ob.operational_subtype_hint_de,
                     )
             except Exception:
                 logger.exception("advisor_portfolio_governance_maturity_failed tenant=%s", tid)
@@ -222,6 +228,12 @@ def build_advisor_portfolio(
                 br = maybe_build_advisor_governance_maturity_brief_result(session, tid)
                 if br is not None:
                     gm_brief = br.brief
+                    safety_ct = (
+                        int(oami_summary.safety_related_runtime_incidents_90d)
+                        if oami_summary is not None
+                        else 0
+                    )
+                    gm_brief = merge_recommended_focus_areas_runtime_safety(gm_brief, safety_ct)
             except Exception:
                 logger.exception(
                     "advisor_portfolio_governance_maturity_brief_failed tenant=%s",

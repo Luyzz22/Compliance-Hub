@@ -181,3 +181,45 @@ def test_oami_struct_coerced_when_context_present() -> None:
     )
     assert out.operational_monitoring_explanation is not None
     assert out.operational_monitoring_explanation.level == "medium"
+
+
+def test_readiness_explain_oami_server_enrichment_merged() -> None:
+    snap = _snapshot()
+    llm = """
+    {
+      "readiness_explanation": {
+        "score": 55,
+        "level": "managed",
+        "short_reason": "ok",
+        "drivers_positive": [],
+        "drivers_negative": [],
+        "regulatory_focus": ""
+      },
+      "operational_monitoring_explanation": {
+        "index": 50,
+        "level": "medium",
+        "recent_incidents_summary": "",
+        "monitoring_gaps": [],
+        "improvement_suggestions": []
+      }
+    }
+    """
+    out = build_readiness_explain_response_from_llm_text(
+        llm,
+        snapshot=snap,
+        oami_index=50,
+        oami_level="medium",
+        has_oami_context=True,
+        provider="x",
+        model_id="y",
+        oami_operational_enrichment={
+            "safety_related_incidents_90d": 2,
+            "availability_incidents_90d": 1,
+            "oami_subtype_hint_de": "Sicherheitsnahe Signale wiegen stärker.",
+        },
+    )
+    assert out.operational_monitoring_explanation is not None
+    om = out.operational_monitoring_explanation
+    assert om.safety_related_incidents_90d == 2
+    assert om.availability_incidents_90d == 1
+    assert om.oami_subtype_hint_de == "Sicherheitsnahe Signale wiegen stärker."

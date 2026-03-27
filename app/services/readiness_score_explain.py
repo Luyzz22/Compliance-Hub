@@ -32,6 +32,7 @@ def explain_readiness_score(
     oami_index: int | None = None
     oami_level: str | None = None
     has_oami_context = False
+    oami_enrichment: dict[str, object] | None = None
     try:
         from app.services.oami_explanation import explain_tenant_oami_de
         from app.services.operational_monitoring_index import (
@@ -56,7 +57,22 @@ def explain_readiness_score(
             "systems_scored": oami.systems_scored,
             "summary_de": expl.summary_de,
             "drivers_de": expl.drivers_de[:6],
+            "runtime_incident_by_subtype": oami.runtime_incident_by_subtype,
+            "safety_related_runtime_incidents_90d": oami.safety_related_runtime_incident_count,
+            "availability_runtime_incidents_90d": oami.availability_runtime_incident_count,
+            "oami_operational_hint_de": oami.oami_operational_hint_de,
+            "oami_subtype_note": (
+                "Laufzeit-Incidents können z. B. Subtypes safety_violation oder "
+                "availability_incident tragen; sicherheitsrelevante Subtypes zählen im Index "
+                "stärker als reine Verfügbarkeit (keine Gewichtszahlen nennen)."
+            ),
         }
+        if oami.has_any_runtime_data:
+            oami_enrichment = {
+                "safety_related_incidents_90d": oami.safety_related_runtime_incident_count,
+                "availability_incidents_90d": oami.availability_runtime_incident_count,
+                "oami_subtype_hint_de": oami.oami_operational_hint_de,
+            }
     except Exception:
         logger.exception("readiness_explain_oami_context_failed tenant=%s", tenant_id)
 
@@ -101,4 +117,5 @@ def explain_readiness_score(
         has_oami_context=has_oami_context,
         provider=str(resp.provider.value),
         model_id=resp.model_id,
+        oami_operational_enrichment=oami_enrichment,
     )

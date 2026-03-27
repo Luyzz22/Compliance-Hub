@@ -28,6 +28,17 @@ class OperationalMonitoringPortfolioSummary(BaseModel):
 
     index: int | None = Field(default=None, ge=0, le=100)
     level: GaiOamiLevel | None = None
+    safety_related_runtime_incidents_90d: int = Field(
+        default=0,
+        ge=0,
+        description="Laufzeit-Incidents (Subtype safety_violation) im OAMI-Fenster.",
+    )
+    availability_runtime_incidents_90d: int = Field(default=0, ge=0)
+    oami_operational_hint_de: str | None = Field(
+        default=None,
+        max_length=400,
+        description="Kurz: ob Sicherheits- vs. Verfügbarkeitslage den Index prägt.",
+    )
 
 
 class AdvisorPortfolioTenantEntry(BaseModel):

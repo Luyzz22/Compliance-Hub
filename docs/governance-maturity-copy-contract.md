@@ -13,7 +13,7 @@ Ziel: **stabile Enums**, **nachvollziehbare LLM-Ausgaben** und **ein gemeinsames
 
 | Feld | Wert | Zweck |
 |------|------|--------|
-| `GOVERNANCE_MATURITY_CONTRACT_VERSION` | siehe `governance_maturity_contract.py` | Wird in LLM-Prompts (`Explain-Contract-Version`) und Tests gesnapshottet. Bei Änderung am JSON-Schema oder an erlaubten Enums **Version erhöhen** und Frontend/Docs/Tests anpassen. |
+| `GOVERNANCE_MATURITY_CONTRACT_VERSION` | siehe `governance_maturity_contract.py` | Wird in LLM-Prompts (`Explain-Contract-Version`) und Tests gesnapshottet. Bei Änderung am JSON-Schema oder an erlaubten Enums **Version erhöhen** und Frontend/Docs/Tests anpassen. **v3:** Zusatzkontext zu OAMI-`event_subtype`-Kategorien in `terminology_contract_for_llm_prompt()` (Enums `low`/`medium`/`high` unverändert). |
 
 ---
 

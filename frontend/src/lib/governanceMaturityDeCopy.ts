@@ -97,7 +97,7 @@ export const PORTFOLIO_COL_GAI_TOOLTIP = `${GAI_TOOLTIP_C_LEVEL} ${GAI_REG_HINT_
 /** Portfolio: OAMI-Spalte (Kurzform). */
 export const PORTFOLIO_COL_OAMI_SHORT = "Operatives Monitoring";
 
-export const PORTFOLIO_COL_OAMI_TOOLTIP = `${OAMI_TOOLTIP_C_LEVEL} ${OAMI_REG_HINT_SHORT}`;
+export const PORTFOLIO_COL_OAMI_TOOLTIP = `${OAMI_TOOLTIP_C_LEVEL} Sicherheitsnahe Laufzeit-Subtypen zählen im Index stärker als reine Verfügbarkeit (ohne angezeigte Gewichte). ${OAMI_REG_HINT_SHORT}`;
 
 export const PORTFOLIO_COL_EU_AI_ACT = "EU AI Act (Register)";
 

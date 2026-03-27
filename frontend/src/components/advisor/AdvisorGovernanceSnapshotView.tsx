@@ -415,6 +415,28 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
                   </dd>
                 </div>
               </dl>
+              {(snap.operational_ai_monitoring.safety_related_runtime_incidents_90d ?? 0) > 0 ||
+              (snap.operational_ai_monitoring.availability_runtime_incidents_90d ?? 0) > 0 ||
+              snap.operational_ai_monitoring.operational_subtype_hint_de ? (
+                <div
+                  className="mt-3 rounded-md border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs text-slate-700"
+                  data-testid="snap-oami-subtype"
+                >
+                  <p className="font-semibold text-slate-800">Laufzeit-Incidents nach Subtype (90 Tage)</p>
+                  <p className="mt-1 tabular-nums">
+                    Sicherheits-Subtype:{" "}
+                    {snap.operational_ai_monitoring.safety_related_runtime_incidents_90d ?? 0}
+                    <span className="mx-2 text-slate-300">|</span>
+                    Verfügbarkeit:{" "}
+                    {snap.operational_ai_monitoring.availability_runtime_incidents_90d ?? 0}
+                  </p>
+                  {snap.operational_ai_monitoring.operational_subtype_hint_de ? (
+                    <p className="mt-2 text-slate-600">
+                      {snap.operational_ai_monitoring.operational_subtype_hint_de}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {snap.operational_ai_monitoring.narrative_de ? (
                 <p className="mt-3 text-sm text-slate-700">{snap.operational_ai_monitoring.narrative_de}</p>
               ) : null}

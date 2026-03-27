@@ -91,6 +91,9 @@ const { fetchSnap, postMd, fetchAdvisorReadiness, minimalSnapshot } = vi.hoisted
       systems_scored: 2,
       narrative_de: "Operatives Monitoring: mittlere Reife (Demo).",
       drivers_de: ["Letzte Laufzeitereignisse", "KPI-Trends"],
+      safety_related_runtime_incidents_90d: 2,
+      availability_runtime_incidents_90d: 1,
+      operational_subtype_hint_de: "Sicherheitsnahe Signale prägen den Index stärker.",
     },
     governance_maturity_advisor_brief: null,
   };
@@ -161,6 +164,7 @@ describe("AdvisorGovernanceSnapshotView", () => {
     expect(screen.getByTestId("snap-client-info")).toBeTruthy();
     expect(screen.getByTestId("snap-gai-note")).toBeTruthy();
     expect(screen.getByTestId("snap-oami")).toBeTruthy();
+    expect(screen.getByTestId("snap-oami-subtype")).toBeTruthy();
     expect(screen.getByText(/Operatives Monitoring: mittlere Reife/i)).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("snap-gen-md"));
