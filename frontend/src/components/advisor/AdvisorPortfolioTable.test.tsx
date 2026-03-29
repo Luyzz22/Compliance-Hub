@@ -223,5 +223,14 @@ describe("AdvisorPortfolioTable", () => {
     expect(screen.queryByTestId("advisor-gai-cell-t-demo-1")).toBeNull();
     expect(screen.queryByRole("columnheader", { name: /Reife-Brief/i })).toBeNull();
     expect(screen.queryByTestId("advisor-gm-brief-t-demo-1")).toBeNull();
+    expect(screen.queryByTestId("advisor-incident-drilldown-link-t-demo-1")).toBeNull();
+  });
+
+  it("links to incident drilldown per tenant when governance maturity is on", () => {
+    portfolioFeatureFlags.governanceMaturity = true;
+    render(<AdvisorPortfolioTable rows={sampleRows} advisorId="advisor-demo@example.com" />);
+    const link = screen.getByTestId("advisor-incident-drilldown-link-t-demo-1");
+    expect(link.getAttribute("href")).toBe("/advisor/clients/t-demo-1/incident-drilldown");
+    expect(link.textContent).toContain("Incident-Drilldown");
   });
 });

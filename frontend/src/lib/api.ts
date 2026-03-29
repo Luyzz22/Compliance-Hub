@@ -1693,6 +1693,50 @@ export async function postAdvisorGovernanceSnapshotMarkdown(
   return res.json() as Promise<{ markdown: string; provider: string; model_id: string }>;
 }
 
+/** Incident-Drilldown (Advisor → verknüpfter Mandant), JSON. */
+export async function fetchAdvisorTenantIncidentDrilldown(
+  advisorId: string,
+  clientTenantId: string,
+  windowDays = 90,
+): Promise<TenantIncidentDrilldownOutDto> {
+  const aid = encodeURIComponent(advisorId);
+  const tid = encodeURIComponent(clientTenantId);
+  const url = `${API_BASE_URL}/api/v1/advisors/${aid}/tenants/${tid}/incident-drilldown?window_days=${windowDays}`;
+  const res = await fetch(url, {
+    headers: {
+      "x-api-key": API_KEY,
+      "x-advisor-id": advisorId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Incident drilldown failed: ${res.status}`);
+  }
+  return res.json() as Promise<TenantIncidentDrilldownOutDto>;
+}
+
+/** Incident-Drilldown als CSV-Blob (UTF-8). */
+export async function fetchAdvisorTenantIncidentDrilldownCsvBlob(
+  advisorId: string,
+  clientTenantId: string,
+  windowDays = 90,
+): Promise<Blob> {
+  const aid = encodeURIComponent(advisorId);
+  const tid = encodeURIComponent(clientTenantId);
+  const url = `${API_BASE_URL}/api/v1/advisors/${aid}/tenants/${tid}/incident-drilldown?window_days=${windowDays}&format=csv`;
+  const res = await fetch(url, {
+    headers: {
+      "x-api-key": API_KEY,
+      "x-advisor-id": advisorId,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Incident drilldown CSV failed: ${res.status}`);
+  }
+  return res.blob();
+}
+
 export interface AdvisorBoardReportListRowDto {
   tenant_id: string;
   tenant_display_name: string | null;

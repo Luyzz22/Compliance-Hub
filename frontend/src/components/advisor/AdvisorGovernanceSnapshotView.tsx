@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
+import { AdvisorIncidentDrilldownPanel } from "@/components/advisor/AdvisorIncidentDrilldownPanel";
 import {
   ADVISOR_ID_FROM_ENV,
   fetchAdvisorClientGovernanceSnapshot,
@@ -452,6 +453,8 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
               ) : null}
             </section>
           ) : null}
+
+          <AdvisorIncidentDrilldownPanel advisorId={advisorId} clientTenantId={clientTenantId} variant="snapshot" />
 
           <section className={CH_CARD} data-testid="snap-setup">
             <p className={CH_SECTION_LABEL}>AI Governance Setup &amp; Playbook</p>
