@@ -531,6 +531,32 @@ export interface OamiIncidentSubtypeProfileDto {
   category_labels_de: Record<string, string>;
 }
 
+/** Incident-Drilldown je KI-System / Lieferant (Advisor & Mandant, siehe docs/incidents-supplier-drilldowns.md). */
+export interface TenantIncidentDrilldownItemDto {
+  ai_system_id: string;
+  ai_system_name: string;
+  supplier_label_de: string;
+  event_source: string;
+  incident_total_90d: number;
+  incident_count_by_category: {
+    safety: number;
+    availability: number;
+    other: number;
+  };
+  weighted_incident_share_safety: number;
+  weighted_incident_share_availability: number;
+  weighted_incident_share_other: number;
+  oami_local_hint_de: string;
+}
+
+export interface TenantIncidentDrilldownOutDto {
+  tenant_id: string;
+  window_days: number;
+  systems_with_runtime_events: number;
+  systems_with_incidents: number;
+  items: TenantIncidentDrilldownItemDto[];
+}
+
 /** OAMI-Abschnitt im Board-Governance-Report (90-Tage-Laufzeitfenster). */
 export interface BoardOperationalMonitoringSectionDto {
   index_value: number;

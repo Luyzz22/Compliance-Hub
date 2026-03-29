@@ -149,6 +149,7 @@ from app.feature_flags import (
 )
 from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturityBoardSummaryParseResult
+from app.incident_drilldown_models import TenantIncidentDrilldownOut
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.llm_models import LLMTaskType
 from app.models import (
@@ -337,6 +338,10 @@ from app.services.tenant_ai_governance_setup import (
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
     compute_tenant_compliance_overview,
+)
+from app.services.tenant_incident_drilldown import (
+    compute_tenant_incident_drilldown,
+    tenant_incident_drilldown_to_csv,
 )
 from app.services.tenant_provisioning import provision_tenant
 from app.services.tenant_usage_metrics import compute_tenant_usage_metrics
@@ -2907,6 +2912,42 @@ def get_advisor_tenant_governance_maturity(
 
 
 @app.get(
+    "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/incident-drilldown",
+    response_model=None,
+    tags=["advisors"],
+)
+def get_advisor_tenant_incident_drilldown(
+    _ff_gm: Annotated[None, Depends(create_feature_guard(FeatureFlag.governance_maturity))],
+    _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
+    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    tenant_id: str,
+    session: Annotated[Session, Depends(get_session)],
+    advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
+    window_days: Annotated[int, Query(ge=1, le=366)] = 90,
+    export_format: Annotated[Literal["json", "csv"], Query(alias="format")] = "json",
+) -> TenantIncidentDrilldownOut | Response:
+    """
+    Incident-Drilldown je KI-System und dominanter Laufzeit-Quelle (Berater, verknüpfter Mandant).
+    CSV für interne Auswertung; keine Roh-Events, nur Aggregationen.
+    """
+    if advisor_repo.get_link(advisor_id, tenant_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not linked to this advisor",
+        )
+    data = compute_tenant_incident_drilldown(session, tenant_id, window_days=window_days)
+    if export_format == "csv":
+        body = tenant_incident_drilldown_to_csv(data)
+        fname = f"incident-drilldown-{tenant_id}.csv"
+        return Response(
+            content=body.encode("utf-8"),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": _evidence_content_disposition(fname)},
+        )
+    return data
+
+
+@app.get(
     "/api/v1/advisors/{advisor_id}/tenants/{tenant_id}/report",
     tags=["advisors"],
     response_model=None,
@@ -3933,6 +3974,37 @@ def get_tenant_operational_monitoring_index(
         window_days=window_days,
         persist_snapshot=False,
     )
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/incident-drilldown",
+    response_model=None,
+    tags=["tenants"],
+)
+def get_tenant_incident_drilldown(
+    tenant_id: str,
+    _ff_gm: Annotated[None, Depends(create_feature_guard(FeatureFlag.governance_maturity))],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    window_days: Annotated[int, Query(ge=1, le=366)] = 90,
+    export_format: Annotated[Literal["json", "csv"], Query(alias="format")] = "json",
+) -> TenantIncidentDrilldownOut | Response:
+    """
+    Incident-Drilldown (Mandant, API-Key muss zu tenant_id passen). CSV optional.
+    Nicht für anonyme Self-Service-Endnutzer gedacht.
+    """
+    if tenant_id != auth_context.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    data = compute_tenant_incident_drilldown(session, tenant_id, window_days=window_days)
+    if export_format == "csv":
+        body = tenant_incident_drilldown_to_csv(data)
+        fname = f"incident-drilldown-{tenant_id}.csv"
+        return Response(
+            content=body.encode("utf-8"),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": _evidence_content_disposition(fname)},
+        )
+    return data
 
 
 @app.get(

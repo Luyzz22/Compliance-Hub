@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Literal
+
+IncidentOamiCategory = Literal["safety", "availability", "other"]
 
 # Relativ zu Neutral 1.0; keine exponenziellen Formeln.
 _INCIDENT_WEIGHTS: Final[dict[str, float]] = {
@@ -22,6 +24,18 @@ _METRIC_BREACH_WEIGHTS: Final[dict[str, float]] = {
 _COEF_INCIDENT_HIGH: Final[float] = 0.20
 _COEF_INCIDENT_OTHER_SEV: Final[float] = 0.065
 _SEV_HI: Final[frozenset[str]] = frozenset({"high", "critical"})
+
+
+def incident_subtype_oami_category(subtype: str | None) -> IncidentOamiCategory:
+    """Gruppiert kanonische Incident-``event_subtype``-Schlüssel für OAMI/Board/Drilldown."""
+    if not subtype or not str(subtype).strip():
+        return "other"
+    k = str(subtype).strip().lower()
+    if k in ("safety_violation", "bias_discrimination_incident"):
+        return "safety"
+    if k == "availability_incident":
+        return "availability"
+    return "other"
 
 
 def incident_subtype_oami_weight(subtype: str | None) -> float:
