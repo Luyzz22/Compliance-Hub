@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.ai_governance_models import OamiIncidentSubtypeProfile
 from app.governance_maturity_summary_models import GovernanceMaturitySummary
 
 
@@ -109,6 +110,12 @@ class AiComplianceBoardReportInput(BaseModel):
     governance_maturity_executive_paragraph_de: str | None = Field(
         default=None,
         description="Fixer Executive-Overview-Absatz zur Governance-Reife (wörtlich übernehmen).",
+    )
+    oami_subtype_profile: OamiIncidentSubtypeProfile | None = Field(
+        default=None,
+        description=(
+            "Optional: gewichtete OAMI-Incident-Subtypen (Board-Markdown-Parität, LLM-Kontext)."
+        ),
     )
 
 

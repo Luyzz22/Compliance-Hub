@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.compliance_gap_models import AIComplianceOverview
 from app.incident_models import AIIncidentOverview
@@ -151,6 +151,59 @@ class AIKpiAlertExport(BaseModel):
     alerts: list[AIKpiAlert]
 
 
+OAMI_SUBTYPE_CHART_NOTE_DE = (
+    "Relative Darstellung; sicherheitsrelevante Incidents sind im OAMI "
+    "stärker gewichtet als rein verfügbarkeitsbezogene."
+)
+
+
+class OamiIncidentCategoryCounts(BaseModel):
+    """Rohzähler je Subtyp-Kategorie (nur Laufzeit-Incidents, 90-Tage-Fenster)."""
+
+    safety: int = Field(ge=0)
+    availability: int = Field(ge=0)
+    other: int = Field(ge=0)
+
+
+class OamiIncidentSubtypeProfile(BaseModel):
+    """Gewichtete Subtype-Einordnung für Board-Markdown, LLM-Input und spätere PDF/Charts."""
+
+    incident_weighted_share_safety: float = Field(ge=0.0, le=1.0)
+    incident_weighted_share_availability: float = Field(ge=0.0, le=1.0)
+    incident_weighted_share_other: float = Field(ge=0.0, le=1.0)
+    incident_count_by_category: OamiIncidentCategoryCounts
+    oami_subtype_narrative_de: str = Field(default="", max_length=280)
+    chart_note_de: str = Field(default=OAMI_SUBTYPE_CHART_NOTE_DE, max_length=400)
+    category_labels_de: dict[str, str] = Field(
+        default_factory=lambda: {
+            "safety": "Sicherheit",
+            "availability": "Verfügbarkeit",
+            "other": "Sonstige",
+        },
+    )
+
+    @model_validator(mode="after")
+    def _normalize_shares(self) -> OamiIncidentSubtypeProfile:
+        s = (
+            self.incident_weighted_share_safety
+            + self.incident_weighted_share_availability
+            + self.incident_weighted_share_other
+        )
+        if s <= 0:
+            return self
+        if abs(s - 1.0) > 0.02:
+            return self.model_copy(
+                update={
+                    "incident_weighted_share_safety": self.incident_weighted_share_safety / s,
+                    "incident_weighted_share_availability": (
+                        self.incident_weighted_share_availability / s
+                    ),
+                    "incident_weighted_share_other": self.incident_weighted_share_other / s,
+                },
+            )
+        return self
+
+
 class BoardOperationalMonitoringSection(BaseModel):
     """OAMI-Zusammenfassung für Board (90-Tage-Fenster, mandantenweit)."""
 
@@ -161,6 +214,10 @@ class BoardOperationalMonitoringSection(BaseModel):
     systems_scored: int = Field(ge=0)
     summary_de: str = ""
     drivers_de: list[str] = Field(default_factory=list, max_length=12)
+    oami_incident_subtype_profile: OamiIncidentSubtypeProfile | None = Field(
+        default=None,
+        description="Optional: gewichtete Incident-Subtypen für Board-Text und Export-Charts.",
+    )
 
 
 class AIBoardGovernanceReport(BaseModel):
