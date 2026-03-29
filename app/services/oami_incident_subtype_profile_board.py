@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Literal
 
 from app.ai_governance_models import (
     OAMI_SUBTYPE_CHART_NOTE_DE,
@@ -11,19 +10,10 @@ from app.ai_governance_models import (
     OamiIncidentSubtypeProfile,
 )
 from app.governance_maturity_contract import INDEX_LEVEL_DE
-from app.oami_subtype_weights import incident_subtype_oami_weight
+from app.oami_subtype_weights import incident_subtype_oami_category, incident_subtype_oami_weight
 from app.operational_monitoring_models import TenantOperationalMonitoringIndexOut
 
 logger = logging.getLogger(__name__)
-
-
-def _incident_subtype_category(subtype: str) -> Literal["safety", "availability", "other"]:
-    k = subtype.strip().lower()
-    if k in ("safety_violation", "bias_discrimination_incident"):
-        return "safety"
-    if k == "availability_incident":
-        return "availability"
-    return "other"
 
 
 def _trim_board_sentence(text: str, *, max_len: int = 240) -> str:
@@ -101,7 +91,7 @@ def build_oami_incident_subtype_profile_for_board(
             if n <= 0:
                 continue
             ks = str(raw_k).strip().lower()
-            cat = _incident_subtype_category(ks)
+            cat = incident_subtype_oami_category(ks)
             w = incident_subtype_oami_weight(ks)
             burden[cat] += float(n) * w
             counts[cat] += n
