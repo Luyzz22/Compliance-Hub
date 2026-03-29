@@ -38,10 +38,15 @@ Query **`format`:** `json` (Standard) oder `csv` (UTF-8, Download-Header).
 - **Advisor Governance-Snapshot / Mandanten-Detail:** Abschnitt *„Incident-Drilldown (System / Lieferant)“* – Tabelle: `ai_system_name`, `supplier_label_de`, `incident_total_90d`, Spalten für Kategoriezähler oder ein einfaches Badge aus den gewichteten Anteilen; Tooltip mit `oami_local_hint_de`.
 - **Intern:** CSV-Export-Link auf `format=csv` für Analyse in Excel/Sheets.
 
+## Mandanten-Steckbrief (Markdown)
+
+Bei `GET .../report?format=markdown` wird nach dem Block **„Risiko- und Incident-Lage“** optional ein Abschnitt **„System- und Lieferanten-Drilldown“** eingefügt (Überschrift `###`), sofern im 90-Tage-Fenster aggregierte Laufzeit-Incidents vorliegen. Inhalt: bis zu fünf priorisierte KI-Systeme mit Lieferanten-Label und qualitativer Safety-/Verfügbarkeits-Einordnung (ohne Roh-Gewichte im Text). Implementierung: `build_incident_system_supplier_drilldown_section` in `app/services/advisor_tenant_report_incident_drilldown_md.py`; Daten kommen aus dem gleichen `compute_tenant_incident_drilldown` wie die JSON-API.
+
 ## Code
 
 - Modelle: `app/incident_drilldown_models.py`
 - Logik: `app/services/tenant_incident_drilldown.py`
+- Steckbrief-Markdown: `app/services/advisor_tenant_report_incident_drilldown_md.py`, `app/services/advisor_tenant_report_markdown.py`
 - Endpunkte: `app/main.py`
 
 *Version: 1.0 – ergänzend zu `governance-operational-ai-monitoring.md`.*

@@ -4,6 +4,9 @@ from app.advisor_models import AdvisorTenantReport
 from app.services.advisor_governance_maturity_brief_markdown import (
     render_advisor_governance_maturity_brief_markdown_section,
 )
+from app.services.advisor_tenant_report_incident_drilldown_md import (
+    build_incident_system_supplier_drilldown_section,
+)
 from app.services.advisor_tenant_report_risiko import incident_burden_label_de
 
 
@@ -130,6 +133,9 @@ def render_tenant_report_markdown(report: AdvisorTenantReport) -> str:
         )
 
     risiko_md = render_risiko_incident_lage_markdown_section(report)
+    drill_md = build_incident_system_supplier_drilldown_section(report.incident_drilldown_snapshot)
+    if drill_md:
+        risiko_md = f"{risiko_md}\n\n{drill_md}"
 
     return f"""# Compliance Hub Mandanten-Steckbrief – {report.tenant_name}
 
