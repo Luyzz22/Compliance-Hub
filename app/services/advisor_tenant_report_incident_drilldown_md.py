@@ -149,8 +149,5 @@ def build_incident_system_supplier_drilldown_section(
 
     bullets = "\n".join(_bullet_for_item(it) for it in selected)
     return (
-        "### System- und Lieferanten-Drilldown\n\n"
-        f"{subtitle}\n\n"
-        f"{intro_a} {intro_b}\n\n"
-        f"{bullets}\n"
+        f"### System- und Lieferanten-Drilldown\n\n{subtitle}\n\n{intro_a} {intro_b}\n\n{bullets}\n"
     )
