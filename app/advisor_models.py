@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.advisor_governance_maturity_brief_models import AdvisorGovernanceMaturityBrief
+from app.incident_drilldown_models import TenantIncidentDrilldownOut
 
 RisikoNis2EntityCategory = Literal["none", "important_entity", "essential_entity"]
 
@@ -76,6 +77,10 @@ class AdvisorTenantReport(BaseModel):
             "Optional: Berater-Kurzbrief (gleicher Kern wie Board governance_maturity_summary, "
             "plus Fokus und Zeithorizont)."
         ),
+    )
+    incident_drilldown_snapshot: TenantIncidentDrilldownOut | None = Field(
+        default=None,
+        description="90-Tage-Laufzeit-Incident-Drilldown (wie API) für Steckbrief-Markdown.",
     )
 
     risiko_nis2_scope_label_de: str = Field(

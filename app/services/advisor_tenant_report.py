@@ -22,6 +22,7 @@ from app.services.advisor_tenant_report_risiko import build_tenant_report_risiko
 from app.services.ai_governance_kpis import compute_ai_board_kpis
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
 from app.services.setup_status import compute_tenant_setup_status
+from app.services.tenant_incident_drilldown import compute_tenant_incident_drilldown
 from app.setup_models import TenantSetupStatus
 
 
@@ -105,6 +106,11 @@ def build_advisor_tenant_report(
         eu_ai_act_readiness_score=round(readiness.overall_readiness, 4),
         nis2_incident_readiness_percent=round(board.nis2_incident_readiness_ratio * 100.0, 1),
     )
+    incident_drilldown_snapshot = compute_tenant_incident_drilldown(
+        session,
+        tenant_id,
+        window_days=90,
+    )
 
     return AdvisorTenantReport(
         tenant_id=tenant_id,
@@ -128,5 +134,6 @@ def build_advisor_tenant_report(
         setup_completed_steps=setup.completed_steps,
         setup_total_steps=setup.total_steps,
         setup_open_step_labels=_open_setup_labels(setup),
+        incident_drilldown_snapshot=incident_drilldown_snapshot,
         **risiko,
     )
