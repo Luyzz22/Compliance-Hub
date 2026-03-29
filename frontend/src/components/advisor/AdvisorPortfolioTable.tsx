@@ -158,6 +158,12 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                   >
                     Reife-Brief
                   </th>
+                  <th
+                    title="90-Tage-Laufzeit-Incidents und OAMI-Treiber nach KI-System und Lieferant"
+                    className="max-w-[8rem]"
+                  >
+                    Incident-Drilldown
+                  </th>
                 </>
               ) : null}
               {snapUi ? <th>Snapshot</th> : null}
@@ -418,6 +424,16 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                         ) : (
                           <span className="text-[var(--sbs-text-muted)]">–</span>
                         )}
+                      </td>
+                      <td className="align-top">
+                        <Link
+                          href={`/advisor/clients/${encodeURIComponent(t.tenant_id)}/incident-drilldown`}
+                          className={`${CH_BTN_SECONDARY} inline-block text-xs no-underline`}
+                          title="Vollansicht: Incidents nach KI-System und Lieferant (OAMI-Logik)"
+                          data-testid={`advisor-incident-drilldown-link-${t.tenant_id}`}
+                        >
+                          Incident-Drilldown
+                        </Link>
                       </td>
                     </>
                   ) : null}
