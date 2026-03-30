@@ -11,30 +11,58 @@ ComplianceHub needs **retrieval-augmented** answers that are **explainable in au
 ## Pilot scope
 
 - **Use case:** Advisors ask **German** questions about **EU AI Act**, **NIS2**, and **ISO 42001** using a **small curated corpus** under `app/rag/corpus/` (markdown snippets, not full legal texts).
-- **Retriever (v1):** `InMemoryBM25Retriever` over `InMemoryDocumentStore` — fast, deterministic in CI, no embedding download.
-- **Generator:** `GuardrailedEuRegRagGenerator` calls **`safe_llm_call_sync`** with a Pydantic JSON contract (`EuRegRagLlmOutput`) so **guardrails + LLMRouter** stay aligned with the rest of the platform.
-- **API:** `POST /api/v1/advisor/rag/eu-ai-act-nis2-query` with OPA action **`advisor_rag_eu_ai_act_nis2_query`**, headers `x-api-key` + **`x-advisor-id`**, feature flag **`COMPLIANCEHUB_FEATURE_COMPLIANCE_RAG_KNOWLEDGE_HUB`**.
+- **Retriever (v1):** **BM25** (`InMemoryBM25Retriever`) over `InMemoryDocumentStore` — fast, deterministic in CI.
+- **Generator:** `generate_eu_reg_rag_llm_output` → **`safe_llm_call_sync`** with `EuRegRagLlmOutput` (JSON) and **`LlmCallContext`** (`action_name=advisor_rag_eu_ai_act_nis2_query`).
+- **API:** `POST /api/v1/advisor/rag/eu-ai-act-nis2-query` with OPA **`advisor_rag_eu_ai_act_nis2_query`**, headers `x-api-key` + **`x-advisor-id`**, feature flag **`COMPLIANCEHUB_FEATURE_COMPLIANCE_RAG_KNOWLEDGE_HUB`**.
 
-Configuration hints live in `app/rag/haystack_config.py` (e.g. future `COMPLIANCEHUB_RAG_RETRIEVER=embedding` + multilingual sentence-transformers).
+Configuration: `app/rag/haystack_config.py`.
 
-## Pipeline graph
+## Execution graph (explicit, auditable)
 
-Defined in `app/rag/pipelines/eu_ai_act_nis2_pipeline.py`:
+Implemented as a **fixed sequence** in `app/rag/pipelines/eu_ai_act_nis2_pipeline.py` (no hidden lambdas):
 
-1. **Retriever** — BM25 over the in-memory store.
-2. **`EuAiActNis2PromptBuilder`** — builds the German compliance prompt and passes through **`retrieved_documents`** (Haystack only returns leaf outputs; this preserves audit context).
-3. **`GuardrailedEuRegRagGenerator`** — structured LLM answer + citations.
+1. **`merged_bm25_retrieve`** (`app/rag/retrieval.py`) — always queries **global** snippets (`meta.rag_scope == global`); optionally **tenant guidance** (`rag_scope == tenant_guidance` + `meta.tenant_id`).
+2. **`filter_documents_by_min_score`** — drops weak BM25 hits (`COMPLIANCEHUB_RAG_BM25_MIN_SCORE`, default `0.08`).
+3. **`compute_confidence_level`** (`app/rag/confidence.py`) — coarse **high / medium / low** from best score and top-1 vs top-2 gap (`COMPLIANCEHUB_RAG_CONFIDENCE_*`).
+4. If nothing passes the threshold: **no LLM call**; returns a **safe German** stock answer and `confidence_level=low` plus `notes_de`.
+5. **`build_eu_reg_rag_prompt`** (`app/rag/prompting.py`) — catalog labels **EU/NIS2/ISO-Korpus** vs **Mandanten-Leitfaden**.
+6. **`generate_eu_reg_rag_llm_output`** (`app/rag/generation.py`) — guardrailed structured answer.
+
+Top-k caps (each max 10): `COMPLIANCEHUB_RAG_GLOBAL_TOP_K`, `COMPLIANCEHUB_RAG_TENANT_TOP_K`, merged cap `COMPLIANCEHUB_RAG_MERGED_TOP_K` (alias: legacy `COMPLIANCEHUB_RAG_TOP_K`).
+
+## Observability
+
+`log_rag_query_event` in `app/rag/observability.py` emits **two** JSON log lines per request:
+
+- **`retrieval_complete`:** `query_sha256`, length, **redacted** preview (long digit runs masked), `retrieved_doc_ids`, `retrieval_scores`, `top_k_effective`, retrieval latency.
+- **`response_complete`:** same hash/preview identifiers, optional LLM latency, total latency, `confidence_level`, `extra.used_llm` / hit counts.
+
+Raw `question_de` is **not** logged.
+
+## Tenant-scoping
+
+- **Global law / norm pilot text:** `meta.rag_scope = "global"` (set automatically in `documents_from_markdown_files`).
+- **Tenant overlays:** documents with `meta.rag_scope = "tenant_guidance"` and `meta.tenant_id = "<tenant>"`. Helper: `register_tenant_guidance_documents` in `app/rag/store.py`.
+- API citations include **`is_tenant_specific`** (true for tenant guidance). Legacy fields **`doc_id`**, **`source`**, **`section`** remain; added **`source_id`** (defaults to `doc_id`) and **`title`**.
+
+## API response (advisory)
+
+`EuAiActNis2RagResponse` includes:
+
+- `answer_de`, `citations`, **`confidence_level`**, optional **`notes_de`**.
+
+**Advisory notice:** RAG output is **not legal advice**. For **`low`** or **`medium`** confidence, `notes_de` prompts human review. Operators should treat the feature as **decision support** only.
 
 ## Ingestion
 
-`scripts/ingest_eu_ai_act_nis2_corpus.py` loads `.md` files, splits into paragraph chunks with metadata (`source`, `section`, `article`), and writes to an in-memory store (stdout logging). Point `--corpus-dir` at additional curated files when expanding the pilot.
+`scripts/ingest_eu_ai_act_nis2_corpus.py` loads `.md` files; chunks get `rag_scope=global` unless extended for tenant uploads.
 
 ## Integration outlook
 
-- **Temporal (Wave 2):** Long-running advisor or board workflows can call this RAG as an **activity** (same guardrailed generator, same OPA action or a derived one) to pre-answer recurring regulatory questions and attach citations to workflow artefacts.
-- **Advisor / board flows:** Responses can be merged into tenant reports or snapshot exports once tenant–advisor linkage and retention policies are applied.
+- **Temporal (Wave 2):** RAG can run inside an activity with the same guardrails and logging hooks.
+- **Advisor / board flows:** attach `query_sha256`, doc ids, and `confidence_level` to workflow artefacts for audit.
 
 ## Operational notes
 
 - Default feature flag for RAG is **off** until operators enable keys and policies.
-- Corpus is **global** for the pilot; tenant-specific indexes can follow via metadata filters on the document store and OPA-scoped actions.
+- Without LLM keys, generation fails gracefully; observability logs still record retrieval.

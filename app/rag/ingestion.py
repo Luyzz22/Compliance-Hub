@@ -50,6 +50,7 @@ def documents_from_markdown_files(
                 "source": source_hint,
                 "section": title_line[:200],
                 "article": slug,
+                "rag_scope": "global",
             }
             out.append(Document(id=doc_id, content=chunk, meta=meta))
     return out
