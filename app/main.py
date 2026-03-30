@@ -5,6 +5,8 @@ import io
 import json
 import logging
 import os
+import re
+import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -46,6 +48,9 @@ from app.ai_compliance_board_report_models import (
     AiComplianceBoardReportCreateResponse,
     AiComplianceBoardReportDetailResponse,
     AiComplianceBoardReportListItem,
+    BoardReportWorkflowStartBody,
+    BoardReportWorkflowStartResponse,
+    BoardReportWorkflowStatusResponse,
 )
 from app.ai_governance_action_models import (
     AIGovernanceActionCreate,
@@ -364,11 +369,18 @@ from app.supplier_risk_models import (
     AISupplierRiskBySystemEntry,
     AISupplierRiskOverview,
 )
+from app.temporal_client import get_temporal_client
 from app.tenant_ai_governance_setup_models import (
     TenantAIGovernanceSetupPatch,
     TenantAIGovernanceSetupResponse,
 )
 from app.usage_metrics_models import TenantUsageMetricsResponse
+from app.workflows.board_report import (
+    BoardReportWorkflow,
+    BoardReportWorkflowInput,
+    BoardReportWorkflowResult,
+)
+from app.workflows.config import temporal_task_queue
 
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
@@ -3802,6 +3814,103 @@ def post_ai_compliance_board_report(
         },
     )
     return out
+
+
+def _sanitize_tenant_id_for_temporal_workflow_id(tenant_id: str) -> str:
+    s = re.sub(r"[^a-zA-Z0-9_-]+", "-", tenant_id).strip("-")
+    return s[:64] if s else "tenant"
+
+
+@app.post(
+    "/api/v1/tenants/{tenant_id}/board-report/workflows/start",
+    response_model=BoardReportWorkflowStartResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def post_start_board_report_workflow(
+    tenant_id: str,
+    body: BoardReportWorkflowStartBody,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report))],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> BoardReportWorkflowStartResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    wf_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_BOARD_REPORT,
+        default="tenant_admin",
+    )
+    enforce_action_policy(
+        "start_board_report_workflow",
+        UserPolicyContext(tenant_id=tenant_id, user_role=wf_role),
+        risk_score=0.75,
+    )
+    safe = _sanitize_tenant_id_for_temporal_workflow_id(tenant_id)
+    workflow_id = f"board-report-{safe}-{uuid.uuid4()}"
+    client = await get_temporal_client()
+    handle = await client.start_workflow(
+        BoardReportWorkflow.run,
+        BoardReportWorkflowInput(
+            tenant_id=tenant_id,
+            snapshot_reference=body.snapshot_reference,
+            audience_type=body.audience_type,
+            primary_ai_system_id=body.primary_ai_system_id,
+            focus_frameworks=list(body.focus_frameworks or []),
+            include_ai_act_only=body.include_ai_act_only,
+            language=body.language,
+            user_role_for_opa=wf_role,
+        ),
+        id=workflow_id,
+        task_queue=temporal_task_queue(),
+    )
+    desc = await handle.describe()
+    audit_repo.log_event(
+        tenant_id=tenant_id,
+        actor_type="api_key",
+        actor_id=None,
+        entity_type="temporal_board_report_workflow",
+        entity_id=workflow_id,
+        action="started",
+        metadata={"task_queue": temporal_task_queue()},
+    )
+    return BoardReportWorkflowStartResponse(workflow_id=workflow_id, run_id=desc.run_id)
+
+
+@app.get(
+    "/api/v1/tenants/{tenant_id}/board-report/workflows/{workflow_id}",
+    response_model=BoardReportWorkflowStatusResponse,
+)
+async def get_board_report_workflow_status(
+    tenant_id: str,
+    workflow_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report))],
+) -> BoardReportWorkflowStatusResponse:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    safe = _sanitize_tenant_id_for_temporal_workflow_id(tenant_id)
+    prefix = f"board-report-{safe}-"
+    if not workflow_id.startswith(prefix):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
+    client = await get_temporal_client()
+    handle = client.get_workflow_handle(workflow_id)
+    desc = await handle.describe()
+    status_name = desc.status.name
+    report_id: str | None = None
+    if status_name == "COMPLETED":
+        try:
+            result = await handle.result()
+            if isinstance(result, BoardReportWorkflowResult):
+                report_id = result.report_id
+            elif isinstance(result, dict):
+                rid = result.get("report_id")
+                report_id = str(rid) if rid else None
+        except Exception:
+            logger.exception("board_report_workflow_result_read_failed id=%s", workflow_id)
+    return BoardReportWorkflowStatusResponse(
+        workflow_id=workflow_id,
+        status=status_name,
+        report_id=report_id,
+    )
 
 
 @app.get(

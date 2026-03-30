@@ -40,6 +40,24 @@ test_tenant_admin_langgraph_oami_allowed {
 	}
 }
 
+test_tenant_admin_start_board_report_workflow_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "tenant_admin",
+		"action": "start_board_report_workflow",
+		"risk_score": 0.5,
+	}
+}
+
+test_advisor_start_board_report_workflow_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "advisor",
+		"action": "start_board_report_workflow",
+		"risk_score": 0.5,
+	}
+}
+
 test_advisor_tenant_report_allowed {
 	compliancehub.allow_action with input as {
 		"tenant_id": "t1",
