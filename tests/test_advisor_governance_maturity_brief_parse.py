@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from app.advisor_governance_maturity_brief_models import (
     advisor_brief_focus_marker_de,
     advisor_brief_portfolio_tooltip_de,
@@ -15,6 +17,7 @@ from app.governance_maturity_models import (
     GovernanceReadinessBlock,
     OperationalAiMonitoringBlock,
 )
+from app.llm.exceptions import LLMContractViolation
 from app.services.advisor_governance_maturity_brief_markdown import (
     render_advisor_governance_maturity_brief_markdown_section,
 )
@@ -80,6 +83,25 @@ def test_parse_advisor_brief_aligns_core_to_snapshot() -> None:
 def test_parse_advisor_brief_invalid_json_falls_back() -> None:
     snap = _snap_basic_low()
     out = parse_advisor_governance_maturity_brief("not json {{{", snap)
+    assert out.parse_ok is False
+    assert out.brief.governance_maturity_summary.readiness.score == 38
+
+
+def test_parse_advisor_brief_contract_violation_falls_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Explicit ``validate_llm_json_output`` failure maps to deterministic fallback."""
+
+    def _raise(*_a: object, **_k: object) -> object:
+        raise LLMContractViolation("forced contract failure")
+
+    monkeypatch.setattr(
+        "app.services.advisor_governance_maturity_brief_parse.validate_llm_json_output",
+        _raise,
+    )
+    snap = _snap_basic_low()
+    raw = (_FIXTURES / "response_ok.json").read_text(encoding="utf-8")
+    out = parse_advisor_governance_maturity_brief(raw, snap)
     assert out.parse_ok is False
     assert out.brief.governance_maturity_summary.readiness.score == 38
 

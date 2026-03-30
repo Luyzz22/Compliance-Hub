@@ -33,7 +33,7 @@ from app.advisor_client_snapshot_models import (
 )
 from app.advisor_models import AdvisorTenantReport
 from app.advisor_portfolio_models import AdvisorPortfolioResponse
-from app.agents.langgraph.oami_explain_poc import run_oami_explain_poc
+from app.agents.langgraph.oami_explain_poc import run_oami_explain_poc_async
 from app.ai_act_doc_models import (
     AIActDoc,
     AIActDocListResponse,
@@ -153,6 +153,7 @@ from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturityBoardSummaryParseResult
 from app.incident_drilldown_models import TenantIncidentDrilldownOut
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
+from app.llm.context import LlmCallContext
 from app.llm_models import LLMTaskType
 from app.models import (
     ComplianceAction,
@@ -4124,8 +4125,18 @@ def post_tenant_readiness_score_explain(
         risk_score=0.45,
     )
     snapshot = compute_readiness_score(session, tenant_id)
+    llm_ctx = LlmCallContext(
+        tenant_id=tenant_id,
+        user_role=readiness_role,
+        action_name="call_llm_explain_readiness",
+    )
     try:
-        return explain_readiness_score(session, tenant_id, snapshot)
+        return explain_readiness_score(
+            session,
+            tenant_id,
+            snapshot,
+            llm_call_context=llm_ctx,
+        )
     except PermissionError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -4139,11 +4150,55 @@ def post_tenant_readiness_score_explain(
 
 
 @app.post(
+    "/api/v1/oami-explain-langgraph-poc",
+    response_model=OamiExplanationOut,
+    tags=["agents"],
+)
+async def post_oami_explain_langgraph_poc(
+    body: OamiExplainPocRequestBody,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> OamiExplanationOut:
+    """
+    LangGraph PoC (tenant aus ``x-tenant-id``): OAMI-Erklärung, OPA + Guardrails.
+
+    Gleicher Vertrag wie der mandantenspezifische Pfad unter ``/tenants/{id}/agents/...``.
+    """
+    if not _langgraph_poc_enabled():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    tenant_id = auth_context.tenant_id
+    poc_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_LANGGRAPH_OAMI_POC,
+        default="tenant_admin",
+    )
+    enforce_action_policy(
+        "call_langgraph_oami_explain",
+        UserPolicyContext(tenant_id=tenant_id, user_role=poc_role),
+        risk_score=0.4,
+    )
+    try:
+        return await run_oami_explain_poc_async(
+            session,
+            tenant_id=tenant_id,
+            ai_system_id=body.ai_system_id,
+            window_days=body.window_days,
+            user_role=poc_role,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="OAMI explain PoC workflow failed",
+        ) from exc
+
+
+@app.post(
     "/api/v1/tenants/{tenant_id}/agents/oami-explain-poc",
     response_model=OamiExplanationOut,
     tags=["agents"],
 )
-def post_tenant_oami_explain_langgraph_poc(
+async def post_tenant_oami_explain_langgraph_poc(
     tenant_id: str,
     body: OamiExplainPocRequestBody,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
@@ -4169,11 +4224,12 @@ def post_tenant_oami_explain_langgraph_poc(
         risk_score=0.4,
     )
     try:
-        return run_oami_explain_poc(
+        return await run_oami_explain_poc_async(
             session,
             tenant_id=tenant_id,
             ai_system_id=body.ai_system_id,
             window_days=body.window_days,
+            user_role=poc_role,
         )
     except Exception as exc:
         raise HTTPException(
