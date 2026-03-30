@@ -1,127 +1,69 @@
 """
-EU AI Act / NIS2 / ISO 42001 advisor RAG — explicit Haystack 2 graph.
+EU AI Act / NIS2 / ISO 42001 advisor RAG — explicit execution graph (BM25 pilot).
 
-Graph (BM25 pilot):
-  ``query`` → Retriever → PromptBuilder → Guardrailed Generator → structured JSON
+Steps (auditable, no hidden lambdas):
+  1. ``merged_bm25_retrieve`` — global corpus + optional tenant guidance (metadata filters).
+  2. ``filter_documents_by_min_score`` — quality gate.
+  3. ``compute_confidence_level`` — heuristic label from scores.
+  4. ``build_eu_reg_rag_prompt`` — German prompt + source catalog.
+  5. ``generate_eu_reg_rag_llm_output`` — ``safe_llm_call_sync`` + ``LlmCallContext``.
 
-All nodes are dedicated component classes (no hidden lambdas). The generator uses
-``safe_llm_call_sync`` + ``LlmCallContext`` so guardrails and task routing match the rest
-of ComplianceHub.
+Haystack ``Pipeline`` is not required for this wave; the sequence above is fixed in code
+so logs and tests can hook each stage.
 """
 
 from __future__ import annotations
 
-import json
-import logging
+import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from haystack import Pipeline, component
-from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-from app.llm.client_wrapped import safe_llm_call_sync
-from app.llm.context import LlmCallContext
-from app.llm_models import LLMTaskType
-from app.rag.haystack_config import rag_retriever_top_k
+from app.rag.confidence import compute_confidence_level
+from app.rag.generation import generate_eu_reg_rag_llm_output
+from app.rag.haystack_config import (
+    rag_bm25_min_score,
+    rag_confidence_gap_min,
+    rag_confidence_high_score_min,
+    rag_merged_top_k,
+)
 from app.rag.models import EuRegRagLlmOutput
+from app.rag.observability import (
+    log_rag_query_event,
+    query_sha256_hex,
+    redacted_query_preview,
+)
+from app.rag.prompting import build_eu_reg_rag_prompt
+from app.rag.retrieval import (
+    documents_scores_and_ids,
+    filter_documents_by_min_score,
+    merged_bm25_retrieve,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
 
-_SYSTEM_DE = (
-    "Du bist ein Compliance-Assistent für Berater im DACH-Raum. Antworte auf Deutsch, sachlich, "
-    "ohne Rechtsberatung. Nutze ausschließlich die unten nummerierten Kurzfragmente; keine "
-    "externen Fakten. Wenn der Kurpus nicht reicht, sage das klar.\n\n"
-    "Gib die Antwort als ein JSON-Objekt mit genau diesen Schlüsseln:\n"
-    '- "answer_de": string (Markdown erlaubt, max. knapp)\n'
-    '- "citations": Liste von Objekten mit "doc_id", "source", "section" '
-    "(höchstens 5 Einträge; doc_id exakt wie im Katalog).\n\n"
+@dataclass(frozen=True)
+class EuRegRagPipelineResult:
+    """Structured outcome for API mapping and tests."""
+
+    structured: dict
+    documents_for_prompt: list[Document]
+    merged_documents: list[Document]
+    merged_scores: list[float]
+    confidence_level: str
+    notes_de: str | None
+    used_llm: bool
+
+
+_FALLBACK_NO_HIT_DE = (
+    "Für diese Frage liegen uns in der EU-AI-Act/NIS2-Wissensbasis aktuell keine eindeutigen "
+    "Textstellen vor. Bitte ziehen Sie bei Bedarf eine menschliche Fachexpertin bzw. einen "
+    "Fachexperten hinzu."
 )
-
-
-@component
-class EuAiActNis2PromptBuilder:
-    """Builds the LLM prompt and a machine-readable source catalog from retrieved docs."""
-
-    @component.output_types(prompt=str, retrieved_documents=list)
-    def run(self, query: str, documents: list[Document]) -> dict[str, object]:
-        catalog_lines: list[str] = []
-        for i, doc in enumerate(documents, start=1):
-            did = str(doc.id or f"doc-{i}")
-            meta = doc.meta or {}
-            source = str(meta.get("source", ""))
-            section = str(meta.get("section", ""))
-            body = (doc.content or "").strip()
-            catalog_lines.append(
-                f"[{i}] doc_id={did!r} source={source!r} section={section!r}\n{body}\n",
-            )
-        catalog = "\n".join(catalog_lines) if catalog_lines else "(Keine Treffer im Kurpus.)"
-        prompt = (
-            f"{_SYSTEM_DE}--- Kurpus ---\n{catalog}\n--- Frage ---\n{query.strip()}\n--- JSON ---\n"
-        )
-        return {"prompt": prompt, "retrieved_documents": documents}
-
-
-@component
-class GuardrailedEuRegRagGenerator:
-    """LLM step: guardrailed structured JSON via existing ComplianceHub client."""
-
-    def __init__(self, session: Session | None = None) -> None:
-        self._session = session
-
-    @component.output_types(structured=dict)
-    def run(self, prompt: str, tenant_id: str, user_role: str) -> dict[str, object]:
-        ctx = LlmCallContext(
-            tenant_id=tenant_id.strip(),
-            user_role=(user_role or "").strip(),
-            action_name="advisor_rag_eu_ai_act_nis2_query",
-        )
-        try:
-            parsed = safe_llm_call_sync(
-                prompt,
-                EuRegRagLlmOutput,
-                context=ctx,
-                session=self._session,
-                task_type=LLMTaskType.ADVISOR_REGULATORY_RAG,
-            )
-            payload = parsed.model_dump(mode="json")
-        except Exception as exc:
-            logger.exception(
-                "eu_reg_rag_generator_failed tenant=%s err=%s",
-                tenant_id,
-                type(exc).__name__,
-            )
-            payload = EuRegRagLlmOutput(
-                answer_de=(
-                    "Die KI-Antwort konnte nicht verlässlich erzeugt werden. "
-                    "Bitte LLM-Konfiguration prüfen."
-                ),
-                citations=[],
-            ).model_dump(mode="json")
-        return {"structured": payload}
-
-
-def build_eu_ai_act_nis2_pipeline(
-    document_store: InMemoryDocumentStore,
-    *,
-    session: Session | None = None,
-    top_k: int | None = None,
-) -> Pipeline:
-    k = top_k if top_k is not None else rag_retriever_top_k()
-    retriever = InMemoryBM25Retriever(document_store=document_store, top_k=k)
-    prompt_builder = EuAiActNis2PromptBuilder()
-    generator = GuardrailedEuRegRagGenerator(session=session)
-
-    pipeline = Pipeline()
-    pipeline.add_component("retriever", retriever)
-    pipeline.add_component("prompt_builder", prompt_builder)
-    pipeline.add_component("generator", generator)
-    pipeline.connect("retriever.documents", "prompt_builder.documents")
-    pipeline.connect("prompt_builder.prompt", "generator.prompt")
-    return pipeline
 
 
 def run_eu_ai_act_nis2_pipeline(
@@ -131,26 +73,113 @@ def run_eu_ai_act_nis2_pipeline(
     user_role: str,
     document_store: InMemoryDocumentStore,
     session: Session | None = None,
-    top_k: int | None = None,
-) -> tuple[dict, list[Document]]:
-    """
-    Execute the full graph. Returns (generator structured dict, retrieved documents).
-    """
-    pipe = build_eu_ai_act_nis2_pipeline(
-        document_store,
-        session=session,
-        top_k=top_k,
-    )
+    advisor_id: str | None = None,
+) -> EuRegRagPipelineResult:
+    t0 = time.perf_counter()
     q = question_de.strip()
-    out = pipe.run(
-        {
-            "retriever": {"query": q},
-            "prompt_builder": {"query": q},
-            "generator": {"tenant_id": tenant_id, "user_role": user_role},
-        },
+    q_hash = query_sha256_hex(q)
+    q_prev = redacted_query_preview(q)
+    q_len = len(q)
+
+    merged = merged_bm25_retrieve(document_store, query=q, tenant_id=tenant_id)
+    merged_scores, merged_ids = documents_scores_and_ids(merged)
+    t_after_retrieval = time.perf_counter()
+    latency_retrieval_ms = (t_after_retrieval - t0) * 1000.0
+
+    log_rag_query_event(
+        phase="retrieval_complete",
+        tenant_id=tenant_id,
+        user_role=user_role,
+        advisor_id=advisor_id,
+        query_sha256=q_hash,
+        query_length_chars=q_len,
+        query_redacted_preview=q_prev,
+        top_k_effective=rag_merged_top_k(),
+        retrieved_doc_ids=merged_ids,
+        retrieval_scores=merged_scores,
+        latency_ms_retrieval=latency_retrieval_ms,
+        extra={"merged_hits": len(merged)},
     )
-    structured = out["generator"]["structured"]
-    documents = out["prompt_builder"]["retrieved_documents"]
-    if isinstance(structured, str):
-        structured = json.loads(structured)
-    return structured, documents
+
+    min_s = rag_bm25_min_score()
+    filtered = filter_documents_by_min_score(merged, min_s)
+    conf_scores = documents_scores_and_ids(filtered)[0] if filtered else merged_scores
+    confidence_level, conf_notes = compute_confidence_level(
+        conf_scores,
+        min_score_for_answer=min_s,
+        high_score_min=rag_confidence_high_score_min(),
+        score_gap_min=rag_confidence_gap_min(),
+    )
+
+    if not filtered:
+        payload = EuRegRagLlmOutput(
+            answer_de=_FALLBACK_NO_HIT_DE,
+            citations=[],
+        ).model_dump(mode="json")
+        t_end = time.perf_counter()
+        log_rag_query_event(
+            phase="response_complete",
+            tenant_id=tenant_id,
+            user_role=user_role,
+            advisor_id=advisor_id,
+            query_sha256=q_hash,
+            query_length_chars=q_len,
+            query_redacted_preview=q_prev,
+            top_k_effective=rag_merged_top_k(),
+            retrieved_doc_ids=merged_ids,
+            retrieval_scores=merged_scores,
+            latency_ms_retrieval=latency_retrieval_ms,
+            latency_ms_llm=0.0,
+            latency_ms_total=(t_end - t0) * 1000.0,
+            confidence_level="low",
+            extra={"used_llm": False, "filtered_hits": 0},
+        )
+        return EuRegRagPipelineResult(
+            structured=payload,
+            documents_for_prompt=[],
+            merged_documents=merged,
+            merged_scores=merged_scores,
+            confidence_level="low",
+            notes_de=conf_notes,
+            used_llm=False,
+        )
+
+    prompt = build_eu_reg_rag_prompt(q, filtered)
+    t_before_llm = time.perf_counter()
+    parsed = generate_eu_reg_rag_llm_output(
+        prompt,
+        tenant_id=tenant_id,
+        user_role=user_role,
+        session=session,
+    )
+    t_end = time.perf_counter()
+    latency_llm_ms = (t_end - t_before_llm) * 1000.0
+    notes = conf_notes if confidence_level in ("low", "medium") else None
+
+    log_rag_query_event(
+        phase="response_complete",
+        tenant_id=tenant_id,
+        user_role=user_role,
+        advisor_id=advisor_id,
+        query_sha256=q_hash,
+        query_length_chars=q_len,
+        query_redacted_preview=q_prev,
+        top_k_effective=rag_merged_top_k(),
+        retrieved_doc_ids=merged_ids,
+        retrieval_scores=merged_scores,
+        latency_ms_retrieval=latency_retrieval_ms,
+        latency_ms_llm=latency_llm_ms,
+        latency_ms_total=(t_end - t0) * 1000.0,
+        confidence_level=confidence_level,
+        extra={"used_llm": True, "filtered_hits": len(filtered)},
+    )
+
+    return EuRegRagPipelineResult(
+        structured=parsed.model_dump(mode="json"),
+        documents_for_prompt=filtered,
+        merged_documents=merged,
+        merged_scores=merged_scores,
+        confidence_level=confidence_level,
+        notes_de=notes,
+        used_llm=True,
+    )

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -19,9 +21,20 @@ class EuAiActNis2RagRequest(BaseModel):
 
 
 class EuAiActNis2RagCitation(BaseModel):
-    doc_id: str
-    source: str
+    """Belegzeile; ältere Clients nutzen weiter ``doc_id``/``source``/``section``."""
+
+    doc_id: str = Field(description="Stabile Chunk-ID (Haystack Document.id).")
+    source_id: str = Field(
+        default="",
+        description="Identisch mit doc_id, falls nicht anders vergeben.",
+    )
+    title: str = Field(default="", description="Kurztitel, typisch Abschnittsüberschrift.")
     section: str
+    source: str = Field(description="Quellenbezeichnung / Dateiname.")
+    is_tenant_specific: bool = Field(
+        default=False,
+        description="True bei Mandanten-Leitfaden (tenant_guidance), sonst globaler Kurpus.",
+    )
 
 
 class EuAiActNis2RagResponse(BaseModel):
@@ -29,6 +42,13 @@ class EuAiActNis2RagResponse(BaseModel):
     citations: list[EuAiActNis2RagCitation] = Field(
         default_factory=list,
         description="Bis zu drei wichtigste Belege aus dem Kurpus.",
+    )
+    confidence_level: Literal["high", "medium", "low"] = Field(
+        description="Heuristik aus BM25-Scores (keine Rechtssicherheit).",
+    )
+    notes_de: str | None = Field(
+        default=None,
+        description="Hinweis bei niedriger/mittlerer Konfidenz oder fehlenden Treffern.",
     )
 
 

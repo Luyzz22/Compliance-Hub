@@ -36,3 +36,22 @@ def replace_eu_reg_document_store_for_tests(store: InMemoryDocumentStore) -> Non
     global _store
     with _lock:
         _store = store
+
+
+def register_tenant_guidance_documents(tenant_id: str, documents: list) -> None:
+    """
+    Append mandanten-spezifische Leitfaden-Fragmente (metadata: rag_scope=tenant_guidance).
+
+    ``documents`` are Haystack ``Document`` instances; ``meta`` wird ergänzt, nicht überschrieben.
+    """
+    from haystack import Document
+
+    store = get_eu_reg_document_store()
+    to_write: list[Document] = []
+    for d in documents:
+        meta = dict(d.meta or {})
+        meta["tenant_id"] = tenant_id.strip()
+        meta["rag_scope"] = "tenant_guidance"
+        to_write.append(Document(id=d.id, content=d.content, meta=meta))
+    if to_write:
+        store.write_documents(to_write)
