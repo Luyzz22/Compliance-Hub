@@ -194,6 +194,7 @@ Aus Sicht der KI-Governance empfehlen wir, operatives Monitoring und die offenen
 - `tests/test_advisor_governance_maturity_brief_parse.py` — Parse, Align, Fallback, Markdown, Prompt-Marker.
 - `tests/test_advisor_brief_drilldown_alignment.py` — Drilldown-Muster → Fokuszeilen, Mandantenabsatz, Steckbrief-Reihenfolge.
 - `tests/test_advisor_brief_golden_scenarios.py` — Szenarien A–D: Fake-LLM-JSON, konservatives Level, Markdown-Goldens, Einbettung im Mandanten-Steckbrief.
+- **`tests/test_advisor_report_e2e_safety_dominant.py`** — End-to-end-Golden für den **Mandanten-Steckbrief**: Maturity-Snapshot + Drilldown → `apply_drilldown_alignment_to_brief` → voller Markdown (Brief, Risiko, Drilldown, Reihenfolge). Fixtures: `tests/fixtures/advisor-report-e2e/` (`safety_dominant_case`, `benign_low_case`). Bei Änderungen an Brief-, Risiko- oder Drilldown-Formulierungen Goldens und `expected_assertions.json` anpassen.
 - `tests/test_governance_maturity_contract.py::test_advisor_brief_json_schema_instructions_shape` — Contract-String.
 - Legacy-Fixture: `tests/fixtures/advisor_governance_maturity_brief_golden/response_ok.json`.
 

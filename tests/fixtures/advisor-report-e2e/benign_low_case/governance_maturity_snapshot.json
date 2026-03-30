@@ -1,0 +1,27 @@
+{
+  "tenant_id": "e2e-golden-benign-tenant",
+  "computed_at": "2025-06-01T12:00:00+00:00",
+  "readiness": {
+    "score": 38,
+    "level": "basic",
+    "interpretation": "Struktureller Aufbau am Anfang."
+  },
+  "governance_activity": {
+    "index": 30,
+    "level": "low",
+    "window_days": 90,
+    "last_computed_at": "2025-06-01T12:00:00+00:00",
+    "components": null
+  },
+  "operational_ai_monitoring": {
+    "status": "active",
+    "index": 28,
+    "level": "low",
+    "window_days": 90,
+    "message_de": "Wenige belastbare Laufzeit-Signale im Fenster.",
+    "drivers_de": [],
+    "safety_related_runtime_incident_count": 0,
+    "availability_runtime_incident_count": 1,
+    "operational_subtype_hint_de": null
+  }
+}

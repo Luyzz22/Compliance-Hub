@@ -1,0 +1,40 @@
+{
+  "tenant_id": "e2e-golden-safety-tenant",
+  "window_days": 90,
+  "systems_with_runtime_events": 2,
+  "systems_with_incidents": 2,
+  "items": [
+    {
+      "ai_system_id": "sys-claims-001",
+      "ai_system_name": "Acme Claims Assistant",
+      "supplier_label_de": "SAP AI Core",
+      "event_source": "sap_ai_core",
+      "incident_total_90d": 14,
+      "incident_count_by_category": {
+        "safety": 9,
+        "availability": 3,
+        "other": 2
+      },
+      "weighted_incident_share_safety": 0.58,
+      "weighted_incident_share_availability": 0.22,
+      "weighted_incident_share_other": 0.2,
+      "oami_local_hint_de": "Schwerpunkt: sicherheitsrelevante Laufzeit-Incidents (OAMI-Gewichtung)."
+    },
+    {
+      "ai_system_id": "sys-batch-002",
+      "ai_system_name": "Batch Scoring API",
+      "supplier_label_de": "SAP BTP Event Mesh",
+      "event_source": "sap_btp_event_mesh",
+      "incident_total_90d": 8,
+      "incident_count_by_category": {
+        "safety": 1,
+        "availability": 5,
+        "other": 2
+      },
+      "weighted_incident_share_safety": 0.18,
+      "weighted_incident_share_availability": 0.55,
+      "weighted_incident_share_other": 0.27,
+      "oami_local_hint_de": "Schwerpunkt: Verfügbarkeits-Incidents (Betriebsstabilität)."
+    }
+  ]
+}
