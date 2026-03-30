@@ -34,7 +34,13 @@ def oami_operational_hint_de(
 
 
 def explain_system_oami_de(result: SystemMonitoringIndexOut) -> OamiExplanationOut:
-    """Haupttreiber aus Teilscores und Zählern (Tenant-System)."""
+    """
+    Haupttreiber aus Teilscores und Zählern (Tenant-System).
+
+    Deterministisch ohne LLM. Guardraile für Freitext-Prompts greifen im LangGraph-PoC
+    und bei anderen LLM-Pfaden, die OAMI-Fakten serialisieren; diese Funktion selbst
+    nimmt keinen Rohtext vom API-Client entgegen.
+    """
     if not result.has_data:
         return OamiExplanationOut(
             summary_de=(

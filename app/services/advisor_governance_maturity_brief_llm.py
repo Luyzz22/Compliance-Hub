@@ -9,7 +9,8 @@ from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturitySummary
 from app.incident_drilldown_models import TenantIncidentDrilldownOut
-from app.llm.guardrails import log_input_guardrail_scan, scan_input_for_pii_and_injection
+from app.llm.client_wrapped import guardrailed_route_and_call_sync
+from app.llm.context import LlmCallContext
 from app.llm_models import LLMTaskType
 from app.services.advisor_brief_drilldown_alignment import apply_drilldown_alignment_to_brief
 from app.services.advisor_governance_maturity_brief_parse import (
@@ -21,7 +22,6 @@ from app.services.advisor_governance_maturity_brief_prompt import (
     build_advisor_governance_maturity_brief_prompt,
 )
 from app.services.governance_maturity_service import build_governance_maturity_response
-from app.services.llm_router import LLMRouter
 from app.services.tenant_incident_drilldown import compute_tenant_incident_drilldown
 
 if TYPE_CHECKING:
@@ -35,23 +35,25 @@ def render_advisor_governance_maturity_brief(
     tenant_id: str,
     snapshot: GovernanceMaturityResponse,
     board_summary: GovernanceMaturitySummary | None = None,
+    *,
+    llm_call_context: LlmCallContext | None = None,
 ) -> AdvisorGovernanceMaturityBriefParseResult:
     prompt = build_advisor_governance_maturity_brief_prompt(
         snapshot,
         board_summary,
     )
-    scan = scan_input_for_pii_and_injection(prompt)
-    log_input_guardrail_scan(
-        context="advisor_governance_maturity_brief",
+    ctx = llm_call_context or LlmCallContext(
         tenant_id=tenant_id,
-        scan=scan,
+        user_role="advisor",
+        action_name="advisor_governance_maturity_brief",
     )
-    router = LLMRouter(session=session)
     try:
-        resp = router.route_and_call(
+        resp = guardrailed_route_and_call_sync(
+            session,
             LLMTaskType.ADVISOR_GOVERNANCE_MATURITY_BRIEF,
             prompt,
             tenant_id,
+            context=ctx,
             response_format="json_object",
         )
     except Exception:

@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 
 from app.advisor_models import AdvisorTenantReport
 from app.feature_flags import FeatureFlag, is_feature_enabled
-from app.llm.guardrails import log_input_guardrail_scan, scan_input_for_pii_and_injection
+from app.llm.client_wrapped import guardrailed_route_and_call_sync
+from app.llm.context import LlmCallContext
 from app.llm_models import LLMTaskType
 from app.services.advisor_governance_maturity_brief_llm import (
     maybe_build_advisor_governance_maturity_brief_result,
 )
-from app.services.llm_router import LLMRouter
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -88,15 +88,20 @@ def maybe_enrich_advisor_report_with_llm_summary(
         "die nicht in den Fakten stehen.\n\n"
         f"{json.dumps(facts, ensure_ascii=False)}"
     )
-    scan = scan_input_for_pii_and_injection(prompt)
-    log_input_guardrail_scan(
-        context="advisor_report_executive_summary",
+    ctx = LlmCallContext(
         tenant_id=tenant_id,
-        scan=scan,
+        user_role="advisor",
+        action_name="advisor_report_executive_summary",
     )
     try:
-        router = LLMRouter(session=session)
-        resp = router.route_and_call(LLMTaskType.STRUCTURED_OUTPUT, prompt, tenant_id)
+        resp = guardrailed_route_and_call_sync(
+            session,
+            LLMTaskType.STRUCTURED_OUTPUT,
+            prompt,
+            tenant_id,
+            context=ctx,
+            response_format=None,
+        )
     except Exception:
         logger.exception("advisor_report_llm_enrichment_failed tenant=%s", tenant_id)
         return report

@@ -15,7 +15,7 @@ from app.ai_system_models import (
     DataSensitivity,
 )
 from app.db import SessionLocal
-from app.llm.guardrails import LLMContractViolation
+from app.llm.exceptions import LLMContractViolation
 from app.main import app
 from app.operational_monitoring_models import OamiExplanationOut
 from app.policy.opa_client import PolicyDecision
@@ -82,7 +82,7 @@ def test_oami_explain_poc_api_403_when_opa_denies(
             headers=_headers(tid),
             json={"ai_system_id": "sys-lg-1", "window_days": 90},
         )
-    assert r.status_code == 403
+        assert r.status_code == 403
 
 
 def test_oami_explain_poc_graph_fallback_matches_deterministic(
@@ -94,7 +94,7 @@ def test_oami_explain_poc_graph_fallback_matches_deterministic(
         raise LLMContractViolation("forced")
 
     monkeypatch.setattr(
-        "app.agents.langgraph.oami_explain_poc.safe_llm_json_call",
+        "app.agents.langgraph.oami_explain_poc.safe_llm_call_sync",
         _boom,
     )
     tid = f"lg-graph-{uuid.uuid4().hex[:10]}"
@@ -141,7 +141,7 @@ def test_oami_explain_poc_graph_llm_path_contract(monkeypatch: pytest.MonkeyPatc
         return fixed
 
     monkeypatch.setattr(
-        "app.agents.langgraph.oami_explain_poc.safe_llm_json_call",
+        "app.agents.langgraph.oami_explain_poc.safe_llm_call_sync",
         _fake,
     )
     tid = f"lg-llm-{uuid.uuid4().hex[:10]}"
@@ -169,3 +169,56 @@ def test_oami_explain_poc_graph_llm_path_contract(monkeypatch: pytest.MonkeyPatc
         session.commit()
         out = run_oami_explain_poc(session, tenant_id=tid, ai_system_id=sid, window_days=90)
     assert out.model_dump() == fixed.model_dump()
+
+
+def test_oami_explain_langgraph_poc_global_path_200(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``POST /api/v1/oami-explain-langgraph-poc`` uses x-tenant-id; tenant in path not required."""
+    monkeypatch.setenv("ENABLE_LANGGRAPH_POC", "true")
+    tid = f"lg-glob-{uuid.uuid4().hex[:10]}"
+    sid = "sys-lg-global"
+    _create_system(client, tid, sid)
+
+    fixed = OamiExplanationOut(
+        summary_de="API summary",
+        drivers_de=["x"],
+        monitoring_gap_de=None,
+    )
+
+    def _fake(*_a: object, **_k: object) -> OamiExplanationOut:
+        return fixed
+
+    monkeypatch.setattr(
+        "app.agents.langgraph.oami_explain_poc.safe_llm_call_sync",
+        _fake,
+    )
+    r = client.post(
+        "/api/v1/oami-explain-langgraph-poc",
+        headers=_headers(tid),
+        json={"ai_system_id": sid, "window_days": 90},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["summary_de"] == "API summary"
+    assert body["drivers_de"] == ["x"]
+
+
+def test_oami_explain_langgraph_poc_global_403_when_opa_denies(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENABLE_LANGGRAPH_POC", "true")
+    tid = f"lg-g403-{uuid.uuid4().hex[:10]}"
+    _create_system(client, tid, "sys-g403")
+    with patch(
+        "app.policy.policy_guard.evaluate_action_policy",
+        return_value=PolicyDecision(allowed=False, reason="deny"),
+    ):
+        r = client.post(
+            "/api/v1/oami-explain-langgraph-poc",
+            headers=_headers(tid),
+            json={"ai_system_id": "sys-g403", "window_days": 90},
+        )
+        assert r.status_code == 403

@@ -8,6 +8,9 @@ from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from app.llm.context import LlmCallContext
+from app.llm.exceptions import LLMContractViolation
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
@@ -16,15 +19,12 @@ GuardrailRiskLevel = Literal["low", "medium", "high"]
 
 
 class GuardrailScanResult(BaseModel):
-    risk_level: GuardrailRiskLevel
-    """Heuristic aggregate risk for logging and future hard blocks."""
+    """Heuristic scan of a prompt prior to LLM invocation (v1: log-only, no hard block)."""
 
+    has_pii: bool = False
+    has_injection_markers: bool = False
+    risk_level: GuardrailRiskLevel = "low"
     flags: list[str] = []
-    matched_patterns: list[str] = []
-
-
-class LLMContractViolation(Exception):
-    """Raised when LLM output does not validate against the expected Pydantic contract."""
 
 
 _EMAIL_RE = re.compile(
@@ -53,65 +53,76 @@ _INJECTION_MARKERS = (
 
 def scan_input_for_pii_and_injection(text: str) -> GuardrailScanResult:
     """
-    Lightweight regex heuristics for obvious PII and prompt-injection markers.
+    Regex heuristics for obvious PII and prompt-injection markers.
 
-    v1: never blocks by itself; callers log and may tighten policy later.
+    risk_level:
+    - high: PII and injection markers
+    - medium: PII only, or injection markers only (stronger logging without PII)
+    - low: neither
     """
     if not text or not str(text).strip():
-        return GuardrailScanResult(risk_level="low")
+        return GuardrailScanResult()
 
     t = str(text)
     lowered = t.lower()
     flags: list[str] = []
-    matched: list[str] = []
 
+    has_pii = False
     if _EMAIL_RE.search(t):
         flags.append("possible_email")
-        matched.append("email")
+        has_pii = True
     if _IBAN_LIKE_RE.search(t):
         flags.append("possible_iban")
-        matched.append("iban_like")
+        has_pii = True
     if _PHONE_RE.search(t) and len(re.sub(r"\D", "", t)) >= 10:
         flags.append("possible_phone")
-        matched.append("phone_like")
+        has_pii = True
 
+    has_inj = False
     for marker in _INJECTION_MARKERS:
         if marker in lowered:
             flags.append("injection_marker")
-            matched.append(marker)
+            has_inj = True
             break
 
-    risk: GuardrailRiskLevel = "low"
-    if flags:
+    if has_pii and has_inj:
+        risk: GuardrailRiskLevel = "high"
+    elif has_pii or has_inj:
         risk = "medium"
-    if "injection_marker" in flags and ("possible_email" in flags or "possible_iban" in flags):
-        risk = "high"
-    elif "injection_marker" in flags:
-        risk = "high"
+    else:
+        risk = "low"
 
-    return GuardrailScanResult(risk_level=risk, flags=flags, matched_patterns=matched)
+    return GuardrailScanResult(
+        has_pii=has_pii,
+        has_injection_markers=has_inj,
+        risk_level=risk,
+        flags=flags,
+    )
 
 
-def log_input_guardrail_scan(
-    *,
-    context: str,
-    tenant_id: str,
-    scan: GuardrailScanResult,
-) -> None:
+def redact_obvious_pii_patterns(text: str) -> str:
+    """Best-effort redaction for high-risk prompts; extend with DLP/HITL in production."""
+    out = _EMAIL_RE.sub("[REDACTED_EMAIL]", text)
+    out = _IBAN_LIKE_RE.sub("[REDACTED_IBAN]", out)
+    return out
+
+
+def log_llm_guardrail_scan(ctx: LlmCallContext, scan: GuardrailScanResult) -> None:
+    """Always log medium and high; low stays at debug to limit noise."""
+    extra = {
+        "tenant_id": ctx.tenant_id,
+        "user_role": ctx.user_role or None,
+        "action_name": ctx.action_name or None,
+        "has_pii": scan.has_pii,
+        "has_injection_markers": scan.has_injection_markers,
+        "flags": scan.flags,
+    }
     if scan.risk_level == "high":
-        logger.warning(
-            "llm_guardrail_input_high_risk context=%s tenant=%s flags=%s",
-            context,
-            tenant_id,
-            scan.flags,
-        )
+        logger.warning("llm_guardrail_input_high_risk %s", extra)
     elif scan.risk_level == "medium":
-        logger.info(
-            "llm_guardrail_input_medium_risk context=%s tenant=%s flags=%s",
-            context,
-            tenant_id,
-            scan.flags,
-        )
+        logger.info("llm_guardrail_input_medium_risk %s", extra)
+    else:
+        logger.debug("llm_guardrail_input_low_risk %s", extra)
 
 
 def validate_llm_json_output(payload: Any, schema: type[T]) -> T:

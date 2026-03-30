@@ -41,19 +41,18 @@ Rollen sind **logische** OPA-Rollen bis echtes User-RBAC (JWT/SSO) angebunden is
 
 ## LLM-Guardrails
 
-- **Modul:** `app/llm/guardrails.py`
-  - `scan_input_for_pii_and_injection` — heuristische Regex (E-Mail, IBAN-ähnlich, Telefon, einfache Injection-Marker); liefert `GuardrailScanResult` mit `risk_level` low/medium/high.
-  - `validate_llm_json_output` — strikte Pydantic-Validierung; bei Fehler `LLMContractViolation`.
-  - `log_input_guardrail_scan` — Logging bei medium/high.
-- **Sichere strukturierte Calls:** `app/llm/safe_llm_invoke.py` — `safe_llm_json_call` = Scan → `LLMRouter.route_and_call` → JSON extrahieren → `validate_llm_json_output`.
-- **Eingebunden (Logging v1):** Prompts für Readiness-Explain, Advisor-Governance-Maturity-Brief und Advisor-Executive-Summary-Anreicherung werden vor dem LLM-Aufruf gescannt und protokolliert (kein hartes Blocken in dieser Welle).
+Siehe ausführlicher: [wave1-opa-guardrails-langgraph-poc.md](./wave1-opa-guardrails-langgraph-poc.md).
+
+- **`app/llm/guardrails.py`:** `GuardrailScanResult` (u. a. `has_pii`, `has_injection_markers`), Scan, Validierung; `LLMContractViolation` in `app/llm/exceptions.py`.
+- **`app/llm/client_wrapped.py`:** `safe_llm_call` (async), `safe_llm_call_sync`, `guardrailed_route_and_call_sync`, Shim `safe_llm_json_call`.
+- **Eingebunden:** Readiness-Explain, Advisor-Brief, Advisor-Executive-Summary, LangGraph-OAMI-PoC (kein hartes Blocken in v1; high → PII-Redaktion im Prompt).
 
 ## LangGraph-PoC (OAMI-Explain)
 
-- **Code:** `app/agents/langgraph/oami_explain_poc.py` — linearer Graph mit bedingtem Zweig: Index laden → guardrailierter LLM-JSON-Call (`OamiExplanationOut`) → bei Vertragsfehler **deterministischer Fallback** (`explain_system_oami_de`).
-- **Checkpointer:** `MemorySaver` (minimal, kein Postgres-Checkpointer in Wave 1).
-- **API:** `POST /api/v1/tenants/{tenant_id}/agents/oami-explain-poc` — gleiches JSON-Contract wie die bestehende OAMI-Erklärung (`OamiExplanationOut`), synchron, mit OPA-Policy `call_langgraph_oami_explain`.
-- **Feature-Flag:** `ENABLE_LANGGRAPH_POC` — wenn nicht `1`/`true`/`yes`/`on`, antwortet der Endpunkt mit **404 Not found** (schrittweise Einführung).
+- **Code:** `app/agents/langgraph/oami_explain_poc.py` — Knoten `normalize_input` → `build_prompt` → `call_llm` → optional `fallback` → `post_process`.
+- **Checkpointer:** `MemorySaver`.
+- **API:** `POST /api/v1/oami-explain-langgraph-poc` (Tenant per `x-tenant-id`) und `POST /api/v1/tenants/{tenant_id}/agents/oami-explain-poc`; OPA `call_langgraph_oami_explain`; async Handler mit `run_oami_explain_poc_async`.
+- **Feature-Flag:** `ENABLE_LANGGRAPH_POC` — aus → **404**.
 
 ## Nicht in Wave 1
 

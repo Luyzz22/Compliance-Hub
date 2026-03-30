@@ -11,6 +11,8 @@ from app.advisor_governance_maturity_brief_models import (
 )
 from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturitySummary
+from app.llm.exceptions import LLMContractViolation
+from app.llm.guardrails import validate_llm_json_output
 from app.services.governance_maturity_summary_parse import (
     align_governance_maturity_summary_to_snapshot,
 )
@@ -101,15 +103,16 @@ def parse_advisor_governance_maturity_brief(
             para = p
             use_llm_para = True
 
+    payload: dict[str, Any] = {
+        "governance_maturity_summary": aligned_summary.model_dump(mode="json"),
+        "recommended_focus_areas": focus_list,
+        "suggested_next_steps_window": window[:120],
+        "client_ready_paragraph_de": para,
+    }
     try:
-        brief = AdvisorGovernanceMaturityBrief(
-            governance_maturity_summary=aligned_summary,
-            recommended_focus_areas=focus_list,
-            suggested_next_steps_window=window[:120],
-            client_ready_paragraph_de=para,
-        )
-    except Exception:
-        logger.info("advisor_governance_maturity_brief_model_validate_failed")
+        brief = validate_llm_json_output(payload, AdvisorGovernanceMaturityBrief)
+    except LLMContractViolation:
+        logger.info("advisor_governance_maturity_brief_contract_validation_failed")
         return build_fallback_advisor_governance_maturity_brief_parse_result(snapshot)
 
     return AdvisorGovernanceMaturityBriefParseResult(
