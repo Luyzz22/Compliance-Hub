@@ -132,24 +132,28 @@ def render_tenant_report_markdown(report: AdvisorTenantReport) -> str:
             + "\n"
         )
 
-    risiko_md = render_risiko_incident_lage_markdown_section(report)
-    drill_md = build_incident_system_supplier_drilldown_section(report.incident_drilldown_snapshot)
+    risiko_only_md = render_risiko_incident_lage_markdown_section(report)
+    drill_md = build_incident_system_supplier_drilldown_section(
+        report.incident_drilldown_snapshot,
+        include_governance_brief_bridge=report.governance_maturity_advisor_brief is not None,
+    )
+    risk_block = risiko_only_md
     if drill_md:
-        risiko_md = f"{risiko_md}\n\n{drill_md}"
+        risk_block = f"{risiko_only_md}\n\n{drill_md}"
 
     return f"""# Compliance Hub Mandanten-Steckbrief – {report.tenant_name}
 
 **Mandanten-ID:** `{report.tenant_id}`  
 **Stand (UTC):** {report.generated_at_utc.isoformat()}
 {gm_brief_block}{narrative_block}
+{risk_block}
+
 ## Profil
 
 - Branche / Region: {loc}
 - KI-Systeme gesamt: **{report.ai_systems_total}**
 - High-Risk-Systeme (Register): **{report.high_risk_systems_count}**
 - High-Risk mit vollständigen Essential-Controls: **{report.high_risk_with_full_controls_count}**
-
-{risiko_md}
 
 ## EU AI Act
 

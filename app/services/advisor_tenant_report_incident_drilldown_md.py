@@ -5,41 +5,24 @@ from __future__ import annotations
 from typing import Literal
 
 from app.incident_drilldown_models import TenantIncidentDrilldownItem, TenantIncidentDrilldownOut
+from app.services.incident_drilldown_signal_utils import (
+    DRILLDOWN_LOW_TOTAL_THRESHOLD,
+    is_availability_driven_item,
+    is_safety_driven_item,
+    rank_drilldown_items_by_volume,
+)
 
-_DOMINANCE = 0.45
 _MAX_BULLETS = 5
-_LOW_TOTAL_THRESHOLD = 3
 
 DominantKind = Literal["safety", "availability", "other"]
 
 
-def _is_safety_driven(it: TenantIncidentDrilldownItem) -> bool:
-    s = it.weighted_incident_share_safety
-    a = it.weighted_incident_share_availability
-    o = it.weighted_incident_share_other
-    return s >= _DOMINANCE and s > a and s > o
-
-
-def _is_availability_driven(it: TenantIncidentDrilldownItem) -> bool:
-    s = it.weighted_incident_share_safety
-    a = it.weighted_incident_share_availability
-    o = it.weighted_incident_share_other
-    return a >= _DOMINANCE and a > s and a > o
-
-
 def _dominant_kind(it: TenantIncidentDrilldownItem) -> DominantKind:
-    if _is_safety_driven(it):
+    if is_safety_driven_item(it):
         return "safety"
-    if _is_availability_driven(it):
+    if is_availability_driven_item(it):
         return "availability"
     return "other"
-
-
-def _ranked_items(items: list[TenantIncidentDrilldownItem]) -> list[TenantIncidentDrilldownItem]:
-    return sorted(
-        items,
-        key=lambda x: (-x.incident_total_90d, -x.weighted_incident_share_safety, x.ai_system_name),
-    )
 
 
 def _select_for_report(
@@ -48,7 +31,7 @@ def _select_for_report(
     """Bis zu fünf Systeme; Safety- und Availability-Treiber, falls im Datenbestand vorhanden."""
     if not items:
         return []
-    ranked = _ranked_items(items)
+    ranked = rank_drilldown_items_by_volume(items)
     seen: set[str] = set()
     out: list[TenantIncidentDrilldownItem] = []
 
@@ -59,11 +42,11 @@ def _select_for_report(
         out.append(it)
 
     for it in ranked:
-        if _is_safety_driven(it):
+        if is_safety_driven_item(it):
             add(it)
             break
     for it in ranked:
-        if _is_availability_driven(it):
+        if is_availability_driven_item(it):
             add(it)
             break
     for it in ranked:
@@ -112,6 +95,8 @@ def _bullet_for_item(it: TenantIncidentDrilldownItem) -> str:
 
 def build_incident_system_supplier_drilldown_section(
     drilldown: TenantIncidentDrilldownOut | None,
+    *,
+    include_governance_brief_bridge: bool = False,
 ) -> str | None:
     """Markdown-Block mit Überschrift ###, oder None ohne sinnvollen Drilldown.
 
@@ -131,11 +116,17 @@ def build_incident_system_supplier_drilldown_section(
         "*Überblick zu den KI-Systemen und Lieferanten, die die Incident- und OAMI-Lage "
         "im Berichtszeitraum prägen.*"
     )
+    bridge = ""
+    if include_governance_brief_bridge:
+        bridge = (
+            "*Die nachfolgenden Systeme und Lieferanten spiegeln die oben genannten Schwerpunkte "
+            "des Governance-Kurzbriefs wider.*\n\n"
+        )
     intro_a = (
         "Die folgende Einordnung basiert auf aggregierten Laufzeit-Incidents "
         "(ohne Einzelfall-Inhalte) und der mandantenweiten OAMI-Gewichtung."
     )
-    if total_incidents <= _LOW_TOTAL_THRESHOLD:
+    if total_incidents <= DRILLDOWN_LOW_TOTAL_THRESHOLD:
         intro_b = (
             "Im Berichtszeitraum wurden nur wenige Incidents beobachtet; kein System dominiert die "
             "OAMI-Lage. Die genannten Systeme sind dennoch die größten relativen Treiber "
@@ -149,5 +140,6 @@ def build_incident_system_supplier_drilldown_section(
 
     bullets = "\n".join(_bullet_for_item(it) for it in selected)
     return (
-        f"### System- und Lieferanten-Drilldown\n\n{subtitle}\n\n{intro_a} {intro_b}\n\n{bullets}\n"
+        f"### System- und Lieferanten-Drilldown\n\n{subtitle}\n\n{bridge}"
+        f"{intro_a} {intro_b}\n\n{bullets}\n"
     )

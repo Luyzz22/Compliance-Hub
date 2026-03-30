@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING
 from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturitySummary
+from app.incident_drilldown_models import TenantIncidentDrilldownOut
 from app.llm_models import LLMTaskType
+from app.services.advisor_brief_drilldown_alignment import apply_drilldown_alignment_to_brief
 from app.services.advisor_governance_maturity_brief_parse import (
     AdvisorGovernanceMaturityBriefParseResult,
     build_fallback_advisor_governance_maturity_brief_parse_result,
@@ -19,6 +21,7 @@ from app.services.advisor_governance_maturity_brief_prompt import (
 )
 from app.services.governance_maturity_service import build_governance_maturity_response
 from app.services.llm_router import LLMRouter
+from app.services.tenant_incident_drilldown import compute_tenant_incident_drilldown
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -50,11 +53,31 @@ def render_advisor_governance_maturity_brief(
     return parse_advisor_governance_maturity_brief(resp.text or "", snapshot)
 
 
+def _maybe_align_brief_with_drilldown(
+    session: Session | None,
+    tenant_id: str,
+    result: AdvisorGovernanceMaturityBriefParseResult,
+    incident_drilldown: TenantIncidentDrilldownOut | None,
+) -> AdvisorGovernanceMaturityBriefParseResult:
+    dd: TenantIncidentDrilldownOut | None = incident_drilldown
+    if dd is None and session is not None:
+        try:
+            dd = compute_tenant_incident_drilldown(session, tenant_id, window_days=90)
+        except Exception:
+            logger.exception("advisor_brief_drilldown_compute_failed tenant=%s", tenant_id)
+            dd = None
+    if dd is None:
+        return result
+    aligned = apply_drilldown_alignment_to_brief(result.brief, dd)
+    return result.model_copy(update={"brief": aligned})
+
+
 def maybe_build_advisor_governance_maturity_brief_result(
     session: Session | None,
     tenant_id: str,
     *,
     board_summary: GovernanceMaturitySummary | None = None,
+    incident_drilldown: TenantIncidentDrilldownOut | None = None,
 ) -> AdvisorGovernanceMaturityBriefParseResult | None:
     """
     Wenn Governance-Maturity aktiv: Brief (LLM falls erlaubt, sonst deterministisch).
@@ -70,10 +93,12 @@ def maybe_build_advisor_governance_maturity_brief_result(
         return None
 
     if is_feature_enabled(FeatureFlag.llm_enabled, tenant_id, session=session):
-        return render_advisor_governance_maturity_brief(
+        out = render_advisor_governance_maturity_brief(
             session,
             tenant_id,
             snapshot,
             board_summary=board_summary,
         )
-    return build_fallback_advisor_governance_maturity_brief_parse_result(snapshot)
+    else:
+        out = build_fallback_advisor_governance_maturity_brief_parse_result(snapshot)
+    return _maybe_align_brief_with_drilldown(session, tenant_id, out, incident_drilldown)

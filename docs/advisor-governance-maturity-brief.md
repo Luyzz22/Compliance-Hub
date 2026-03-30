@@ -28,12 +28,49 @@ Die UI und Integrationen sollen **strukturierte Felder** (Enums, Listen) nutzen,
 
 **JSON-Schema-Hinweise für das LLM:** `advisor_governance_maturity_brief_json_schema_instructions()` in `app/governance_maturity_contract.py` (Schema-Version `ADVISOR_GOVERNANCE_MATURITY_BRIEF_SCHEMA_VERSION`). Die Governance-Maturity-**Contract-Version** (`GOVERNANCE_MATURITY_CONTRACT_VERSION`) bleibt für Enums und Terminologie maßgeblich.
 
+## Abgleich mit Incident-Drilldown (Laufzeit)
+
+Nach LLM-Parse bzw. Fallback wendet `maybe_build_advisor_governance_maturity_brief_result` eine **regelbasierte Abstimmung** mit dem 90-Tage-**Incident-Drilldown** an (`apply_drilldown_alignment_to_brief` in `app/services/advisor_brief_drilldown_alignment.py`). Derselbe Aggregat wie `GET …/incident-drilldown` wird dabei genutzt (optional vorgegeben, sonst frisch berechnet).
+
+| Drilldown-Muster (OAMI-Gewichte, Summe über Systeme) | Erste Fokuszeile (kanonisch, ohne Systemnamen) |
+|-----------------------------------------------------|-----------------------------------------------|
+| Dominanz **Sicherheit** (Volumen Safety ≥ Availability) | Sicherheitsrelevante Incidents und Post-Market-Monitoring (OAMI, Eskalation, Nachweise). |
+| Dominanz **Verfügbarkeit** | Betriebsstabilität und Verfügbarkeit der KI-Systeme (Recovery, SLAs, Betriebsführung). |
+| **Wenige / ausgewogene** Incidents (niedrige Gesamtzahl oder keine klare Dominanz) | Monitoring-Abdeckung und Datenaktualität der Laufzeit-Signale verbessern. |
+
+- **`client_ready_paragraph_de`:** Bei Safety- oder Verfügbarkeits-Muster werden optional **bis zu zwei** Top-Systemnamen aus dem Drilldown ergänzt („Im Fokus stehen … Safety-/Verfügbarkeits-Signalen“); keine Roh-Gewichte.
+- **Markdown-Steckbrief:** Reihenfolge **Governance-Kurzbrief → Risiko-/Incident-Lage → System- und Lieferanten-Drilldown → Profil → …** Der Drilldown kann einen **Brückensatz** enthalten, der auf den Kurzbrief verweist, wenn ein Brief vorliegt.
+
+### Beispiel Abgleich (Auszug)
+
+**Nach Alignment (Safety-Muster, ein System „ClaimsBot“):** `recommended_focus_areas[0]` = kanonische Safety-Zeile; Absatz endet z. B. mit „… Systeme „ClaimsBot“ (Safety-Signalen).“
+
+**Markdown (gekürzt):**
+
+```markdown
+## Governance-Reife – Kurzüberblick
+…
+- Sicherheitsrelevante Incidents und Post-Market-Monitoring (OAMI, Eskalation, Nachweise).
+- …
+
+## Risiko- und Incident-Lage (NIS2/KRITIS)
+…
+
+### System- und Lieferanten-Drilldown
+*Die nachfolgenden Systeme und Lieferanten spiegeln die oben genannten Schwerpunkte des Governance-Kurzbriefs wider.*
+…
+- **ClaimsBot** (Lieferant: SAP AI Core) zeigt … sicherheitsrelevante Incidents …
+```
+
+Details zur Drilldown-API: [`incidents-supplier-drilldowns.md`](./incidents-supplier-drilldowns.md).
+
 ## Backend-Flow
 
 - **Prompt:** `build_advisor_governance_maturity_brief_prompt(snapshot, board_summary | None)` — optionaler Board-Kern nur zur inhaltlichen Konsistenz, ohne neue Fakten.
 - **Parse / Align:** `parse_advisor_governance_maturity_brief` → Kern wie beim Board an den Snapshot anbinden; Advisor-Felder aus JSON übernehmen (Listen gekappt wie im Contract).
 - **LLM-Task:** `LLMTaskType.ADVISOR_GOVERNANCE_MATURITY_BRIEF` (Feature-Gate: `governance_maturity` + `llm_enabled`).
 - **Fallback ohne LLM:** `build_fallback_advisor_governance_maturity_brief_parse_result` — heuristische `recommended_focus_areas`.
+- **Drilldown-Abgleich:** `maybe_build_advisor_governance_maturity_brief_result` → `_maybe_align_brief_with_drilldown` (siehe Abschnitt oben).
 - **Einbindung:** Advisor-Portfolio (`governance_maturity_advisor_brief`), Mandanten-Snapshot-API, Markdown-Steckbrief (`render_tenant_report_markdown`; zusätzlich deterministischer Abschnitt **Risiko- und Incident-Lage (NIS2/KRITIS)** siehe [advisor-priority-nis2-kritis.md](./advisor-priority-nis2-kritis.md)), KI-Snapshot-Markdown (Präfix-Abschnitt vor LLM-Fließtext).
 
 Hinweis: Ist `COMPLIANCEHUB_FEATURE_LLM_ENABLED` aktiv, kann pro Mandant im Portfolio **ein zusätzlicher LLM-Aufruf** für den Brief entstehen (Triaging). Ohne LLM nutzt das System den deterministischen Fallback.
@@ -155,6 +192,7 @@ Aus Sicht der KI-Governance empfehlen wir, operatives Monitoring und die offenen
 ## Tests
 
 - `tests/test_advisor_governance_maturity_brief_parse.py` — Parse, Align, Fallback, Markdown, Prompt-Marker.
+- `tests/test_advisor_brief_drilldown_alignment.py` — Drilldown-Muster → Fokuszeilen, Mandantenabsatz, Steckbrief-Reihenfolge.
 - `tests/test_advisor_brief_golden_scenarios.py` — Szenarien A–D: Fake-LLM-JSON, konservatives Level, Markdown-Goldens, Einbettung im Mandanten-Steckbrief.
 - `tests/test_governance_maturity_contract.py::test_advisor_brief_json_schema_instructions_shape` — Contract-String.
 - Legacy-Fixture: `tests/fixtures/advisor_governance_maturity_brief_golden/response_ok.json`.
