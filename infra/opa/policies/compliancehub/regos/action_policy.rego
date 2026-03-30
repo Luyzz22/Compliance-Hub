@@ -64,3 +64,10 @@ allow_action {
 	input.user_role == "advisor"
 	input.action == "start_board_report_workflow"
 }
+
+allow_action {
+	not denylisted
+	input.risk_score < 0.8
+	input.user_role == "advisor"
+	input.action == "advisor_rag_eu_ai_act_nis2_query"
+}

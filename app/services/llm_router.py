@@ -70,6 +70,7 @@ def _static_fallback_chain(task_type: LLMTaskType) -> list[LLMProvider]:
         LLMTaskType.READINESS_SCORE_EXPLAIN,
         LLMTaskType.GOVERNANCE_MATURITY_BOARD_SUMMARY,
         LLMTaskType.ADVISOR_GOVERNANCE_MATURITY_BRIEF,
+        LLMTaskType.ADVISOR_REGULATORY_RAG,
     ):
         return [LLMProvider.CLAUDE, LLMProvider.OPENAI, LLMProvider.GEMINI, LLMProvider.LLAMA]
     return list(LLMProvider)

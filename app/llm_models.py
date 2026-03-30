@@ -26,6 +26,7 @@ class LLMTaskType(StrEnum):
     READINESS_SCORE_EXPLAIN = "readiness_score_explain"
     GOVERNANCE_MATURITY_BOARD_SUMMARY = "governance_maturity_board_summary"
     ADVISOR_GOVERNANCE_MATURITY_BRIEF = "advisor_governance_maturity_brief"
+    ADVISOR_REGULATORY_RAG = "advisor_regulatory_rag"
 
 
 class LLMProvider(StrEnum):

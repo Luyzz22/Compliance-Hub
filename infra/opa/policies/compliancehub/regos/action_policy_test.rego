@@ -58,6 +58,15 @@ test_advisor_start_board_report_workflow_allowed {
 	}
 }
 
+test_advisor_rag_eu_ai_act_nis2_query_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "advisor",
+		"action": "advisor_rag_eu_ai_act_nis2_query",
+		"risk_score": 0.5,
+	}
+}
+
 test_advisor_tenant_report_allowed {
 	compliancehub.allow_action with input as {
 		"tenant_id": "t1",

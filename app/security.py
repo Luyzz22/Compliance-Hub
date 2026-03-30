@@ -85,6 +85,29 @@ def require_advisor_api_access(
     return advisor_id
 
 
+def require_advisor_rag_headers(
+    x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
+    x_advisor_id: Annotated[str | None, Header(alias="x-advisor-id")] = None,
+) -> str:
+    """
+    Advisor Knowledge-Hub RAG: gültiger API-Key und ``x-advisor-id`` (ohne Pfad-Parameter).
+    """
+    validate_api_key_only(x_api_key)
+    if x_advisor_id is None or not str(x_advisor_id).strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing x-advisor-id header",
+        )
+    aid = str(x_advisor_id).strip()
+    allowed = advisor_id_allowlist()
+    if allowed is not None and aid not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Advisor not authorized for RAG access",
+        )
+    return aid
+
+
 def hash_api_key(raw: str) -> str:
     """SHA-256 Hex-Digest für tenant_api_keys.key_hash (Klartext nur bei Create)."""
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()

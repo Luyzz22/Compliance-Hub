@@ -185,6 +185,7 @@ from app.operational_monitoring_models import (
 )
 from app.policy.policy_guard import enforce_action_policy
 from app.policy.role_resolution import (
+    ENV_ROLE_ADVISOR_RAG,
     ENV_ROLE_ADVISOR_TENANT_REPORT,
     ENV_ROLE_BOARD_REPORT,
     ENV_ROLE_LANGGRAPH_OAMI_POC,
@@ -201,6 +202,8 @@ from app.provisioning_models import (
     TenantApiKeyCreated,
     TenantApiKeyRead,
 )
+from app.rag.models import EuAiActNis2RagRequest, EuAiActNis2RagResponse
+from app.rag.service import run_advisor_eu_reg_rag
 from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_act_docs import AIActDocRepository
@@ -224,6 +227,7 @@ from app.security import (
     ensure_demo_tenant_seed_allowed,
     require_admin_provision_api_key,
     require_advisor_api_access,
+    require_advisor_rag_headers,
     require_demo_seed_api_key,
 )
 from app.services import llm_client as llm_client_mod
@@ -3060,6 +3064,74 @@ def get_advisor_tenant_report(
         {"advisor_id": advisor_id, "format": "json"},
     )
     return report
+
+
+@app.post(
+    "/api/v1/advisor/rag/eu-ai-act-nis2-query",
+    response_model=EuAiActNis2RagResponse,
+    tags=["advisors", "rag"],
+)
+def post_advisor_eu_ai_act_nis2_rag_query(
+    body: EuAiActNis2RagRequest,
+    session: Annotated[Session, Depends(get_session)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+    _ff_rag: Annotated[
+        None,
+        Depends(create_feature_guard(FeatureFlag.compliance_rag_knowledge_hub)),
+    ],
+    advisor_id: Annotated[str, Depends(require_advisor_rag_headers)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> EuAiActNis2RagResponse:
+    """
+    Berater: RAG über den kuratierten EU AI Act / NIS2 / ISO 42001 Pilot-Kurpus (Haystack BM25).
+    """
+    rag_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_ADVISOR_RAG,
+        default="advisor",
+    )
+    enforce_action_policy(
+        "advisor_rag_eu_ai_act_nis2_query",
+        UserPolicyContext(tenant_id=body.tenant_id, user_role=rag_role),
+        risk_score=0.55,
+    )
+    try:
+        out = run_advisor_eu_reg_rag(
+            question_de=body.question_de,
+            tenant_id=body.tenant_id,
+            user_role=rag_role,
+            advisor_id=advisor_id,
+            session=session,
+        )
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except llm_client_mod.LLMProviderHTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    audit_repo.log_event(
+        tenant_id=body.tenant_id,
+        actor_type="advisor",
+        actor_id=advisor_id,
+        entity_type="advisor_regulatory_rag",
+        entity_id=body.tenant_id,
+        action="query",
+        metadata={
+            "citation_count": len(out.citations),
+            "question_preview": body.question_de[:240],
+        },
+    )
+    return out
 
 
 @app.get(
