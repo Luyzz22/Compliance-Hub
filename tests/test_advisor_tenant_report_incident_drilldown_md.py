@@ -187,6 +187,18 @@ def test_high_volume_safety_template() -> None:
     assert "überwiegend sicherheitsrelevant" in md
 
 
+def test_drilldown_includes_governance_brief_bridge_when_requested() -> None:
+    dd = _out([_item(sid="z", name="BridgeSys", total=5, ws=0.55, wa=0.22, wo=0.23)])
+    with_bridge = build_incident_system_supplier_drilldown_section(
+        dd,
+        include_governance_brief_bridge=True,
+    )
+    without = build_incident_system_supplier_drilldown_section(dd)
+    assert with_bridge is not None and without is not None
+    assert "Governance-Kurzbriefs wider" in with_bridge
+    assert "Governance-Kurzbriefs wider" not in without
+
+
 def test_render_full_markdown_inserts_drilldown_before_eu_ai_act_section() -> None:
     from datetime import UTC, datetime
 
@@ -223,6 +235,7 @@ def test_render_full_markdown_inserts_drilldown_before_eu_ai_act_section() -> No
     md = render_tenant_report_markdown(r)
     ridx = md.index("## Risiko- und Incident-Lage (NIS2/KRITIS)")
     didx = md.index("### System- und Lieferanten-Drilldown")
+    pidx = md.index("## Profil")
     eidx = md.index("## EU AI Act")
-    assert ridx < didx < eidx
+    assert ridx < didx < pidx < eidx
     assert "**ReportSys**" in md

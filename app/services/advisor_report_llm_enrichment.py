@@ -55,7 +55,11 @@ def enrich_advisor_tenant_report_with_governance_maturity_brief(
     report: AdvisorTenantReport,
 ) -> AdvisorTenantReport:
     """Setzt optional `governance_maturity_advisor_brief` (Feature governance_maturity)."""
-    res = maybe_build_advisor_governance_maturity_brief_result(session, tenant_id)
+    res = maybe_build_advisor_governance_maturity_brief_result(
+        session,
+        tenant_id,
+        incident_drilldown=report.incident_drilldown_snapshot,
+    )
     if res is None:
         return report
     return report.model_copy(update={"governance_maturity_advisor_brief": res.brief})
