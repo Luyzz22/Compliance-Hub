@@ -140,9 +140,7 @@ def persist_versioned_board_report_from_workflow(
     body_audience = workflow_input_dict.get("audience_type") or "board"
     audience = cast(
         Literal["board", "management", "advisor_client"],
-        body_audience
-        if body_audience in ("board", "management", "advisor_client")
-        else "board",
+        body_audience if body_audience in ("board", "management", "advisor_client") else "board",
     )
     inp = AiComplianceBoardReportInput.model_validate({**assembled_raw, "tenant_id": tenant_id})
     primary = snapshot.get("primary_ai_system_id")
