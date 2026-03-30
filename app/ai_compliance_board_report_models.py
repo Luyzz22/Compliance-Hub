@@ -117,6 +117,34 @@ class AiComplianceBoardReportInput(BaseModel):
             "Optional: gewichtete OAMI-Incident-Subtypen (Board-Markdown-Parität, LLM-Kontext)."
         ),
     )
+    temporal_langgraph_oami_system_id: str | None = Field(
+        default=None,
+        description="Temporal pilot: KI-System-ID für die LangGraph-OAMI-Erklärung.",
+    )
+    temporal_langgraph_oami_explanation: dict[str, object] | None = Field(
+        default=None,
+        description="Temporal pilot: OamiExplanationOut als Dict (LangGraph / Fallback).",
+    )
+
+
+class BoardReportWorkflowStartBody(BaseModel):
+    snapshot_reference: str = "latest"
+    audience_type: Literal["board", "management", "advisor_client"] = "board"
+    primary_ai_system_id: str | None = None
+    focus_frameworks: list[str] | None = None
+    include_ai_act_only: bool = False
+    language: Literal["de"] = "de"
+
+
+class BoardReportWorkflowStartResponse(BaseModel):
+    workflow_id: str
+    run_id: str
+
+
+class BoardReportWorkflowStatusResponse(BaseModel):
+    workflow_id: str
+    status: str
+    report_id: str | None = None
 
 
 class AiComplianceBoardReportCreateBody(BaseModel):

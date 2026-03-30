@@ -7,6 +7,8 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.ai_compliance_board_report_models import AiComplianceBoardReportInput
+from app.llm.client_wrapped import guardrailed_route_and_call_sync
+from app.llm.context import LlmCallContext
 from app.llm_models import LLMTaskType
 from app.services.llm_router import LLMRouter
 
@@ -64,6 +66,16 @@ def build_board_report_user_prompt(inp: AiComplianceBoardReportInput) -> str:
             "- Niedrig/benign: wenige unspezifische Incidents; "
             "Datenaktualität und Überwachung stärken.\n"
         )
+    temporal_oami = ""
+    if inp.temporal_langgraph_oami_explanation:
+        temporal_oami = (
+            "\n**Operatives AI-Monitoring (LangGraph, System "
+            f"{inp.temporal_langgraph_oami_system_id or 'n/a'}):** "
+            "Nutze die Fakten aus `temporal_langgraph_oami_explanation` "
+            "(summary_de, drivers_de, monitoring_gap_de). "
+            "Unter „## Status & Kennzahlen“ einen kurzen Unterpunkt "
+            "**OAMI Kurznarrativ** (2–4 Bullets), keine neuen Zahlen erfinden.\n"
+        )
 
     status_gov = ""
     if inp.governance_maturity_summary is not None:
@@ -91,6 +103,7 @@ def build_board_report_user_prompt(inp: AiComplianceBoardReportInput) -> str:
         "## Status & Kennzahlen\n"
         "Coverage-Übersicht pro Framework, relevante KI-Inventar-Kennzahlen aus dem JSON.\n"
         f"{oami_subtype}"
+        f"{temporal_oami}"
         f"{status_gov}"
         "## AI Performance & Risk KPIs\n"
         "Nutze high_risk_kpi_summaries und kpi_portfolio_aggregates aus dem JSON (falls leer: "
@@ -128,4 +141,33 @@ def render_ai_compliance_board_report_markdown(
     text = (resp.text or "").strip()
     if not text:
         logger.warning("empty_board_report_llm_output tenant=%s", tenant_id)
+    return text
+
+
+def render_ai_compliance_board_report_markdown_guardrailed(
+    inp: AiComplianceBoardReportInput,
+    tenant_id: str,
+    *,
+    session: Session | None,
+    user_role: str = "",
+) -> str:
+    """Temporal / Activity path: guardrails + LlmCallContext (OPA-aligned action name)."""
+    user = build_board_report_user_prompt(inp)
+    full_prompt = f"{AI_COMPLIANCE_BOARD_REPORT_SYSTEM_DE}\n\n{user}"
+    ctx = LlmCallContext(
+        tenant_id=tenant_id,
+        user_role=(user_role or "").strip(),
+        action_name="generate_board_report",
+    )
+    resp = guardrailed_route_and_call_sync(
+        session,
+        LLMTaskType.AI_COMPLIANCE_BOARD_REPORT,
+        full_prompt,
+        tenant_id,
+        context=ctx,
+        response_format=None,
+    )
+    text = (resp.text or "").strip()
+    if not text:
+        logger.warning("empty_board_report_llm_output_guardrailed tenant=%s", tenant_id)
     return text
