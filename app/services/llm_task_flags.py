@@ -38,4 +38,5 @@ _TASK_FLAG: dict[LLMTaskType, FeatureFlag] = {
     LLMTaskType.READINESS_SCORE_EXPLAIN: FeatureFlag.llm_explain,
     LLMTaskType.GOVERNANCE_MATURITY_BOARD_SUMMARY: FeatureFlag.ai_compliance_board_report,
     LLMTaskType.ADVISOR_GOVERNANCE_MATURITY_BRIEF: FeatureFlag.governance_maturity,
+    LLMTaskType.ADVISOR_REGULATORY_RAG: FeatureFlag.compliance_rag_knowledge_hub,
 }
