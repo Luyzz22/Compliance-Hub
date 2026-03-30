@@ -61,6 +61,20 @@ def get_api_key_and_tenant(
     return tid
 
 
+def get_optional_opa_user_role_header(
+    x_opa_user_role: Annotated[str | None, Header(alias="x-opa-user-role")] = None,
+) -> str | None:
+    """
+    Optional role hint for OPA.
+
+    Honored only when COMPLIANCEHUB_OPA_TRUST_CLIENT_ROLE_HEADER is enabled.
+    """
+    if x_opa_user_role is None:
+        return None
+    s = str(x_opa_user_role).strip()
+    return s or None
+
+
 def get_auth_context(
     request: Request,
     session: Annotated[Session, Depends(get_session)],

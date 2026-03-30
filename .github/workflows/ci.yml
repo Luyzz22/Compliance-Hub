@@ -24,6 +24,14 @@ jobs:
           ruff check app/ tests/
           ruff format --check app/ tests/
 
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: v0.70.0
+
+      - name: OPA Rego policy tests
+        run: opa test infra/opa/policies/compliancehub/regos/
+
       - name: Test
         run: python -m pytest tests/ -q
         # DB governance: tests/test_db_schema_alignment.py (ORM vs DB) +

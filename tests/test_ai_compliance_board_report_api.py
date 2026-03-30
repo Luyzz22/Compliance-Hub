@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.llm_models import LLMProvider, LLMResponse
 from app.main import app
+from app.policy.opa_client import PolicyDecision
 
 client = TestClient(app)
 
@@ -26,6 +27,21 @@ def test_board_report_tenant_path_mismatch(monkeypatch: pytest.MonkeyPatch) -> N
         headers=_h(tid),
         json={"audience_type": "board"},
     )
+    assert r.status_code == 403
+
+
+def test_board_report_403_when_opa_denies(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_AI_COMPLIANCE_BOARD_REPORT", "true")
+    tid = f"br-opa-{uuid.uuid4().hex[:10]}"
+    with patch(
+        "app.policy.policy_guard.evaluate_action_policy",
+        return_value=PolicyDecision(allowed=False, reason="deny"),
+    ):
+        r = client.post(
+            f"/api/v1/tenants/{tid}/board/ai-compliance-report",
+            headers=_h(tid),
+            json={"audience_type": "board"},
+        )
     assert r.status_code == 403
 
 

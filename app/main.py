@@ -33,6 +33,7 @@ from app.advisor_client_snapshot_models import (
 )
 from app.advisor_models import AdvisorTenantReport
 from app.advisor_portfolio_models import AdvisorPortfolioResponse
+from app.agents.langgraph.oami_explain_poc import run_oami_explain_poc
 from app.ai_act_doc_models import (
     AIActDoc,
     AIActDocListResponse,
@@ -94,6 +95,7 @@ from app.audit_models import AuditEvent, AuditLog
 from app.auth_dependencies import (
     get_api_key_and_tenant,
     get_auth_context,
+    get_optional_opa_user_role_header,
     require_path_tenant_matches_auth,
 )
 from app.classification_models import (
@@ -169,11 +171,21 @@ from app.nis2_kritis_models import (
     Nis2KritisKpiUpsertRequest,
 )
 from app.operational_monitoring_models import (
+    OamiExplanationOut,
     RuntimeEventsBatchIn,
     RuntimeEventsIngestResult,
     SystemMonitoringIndexOut,
     TenantOperationalMonitoringIndexOut,
 )
+from app.policy.policy_guard import enforce_action_policy
+from app.policy.role_resolution import (
+    ENV_ROLE_ADVISOR_TENANT_REPORT,
+    ENV_ROLE_BOARD_REPORT,
+    ENV_ROLE_LANGGRAPH_OAMI_POC,
+    ENV_ROLE_READINESS_EXPLAIN,
+    resolve_opa_role_for_policy,
+)
+from app.policy.user_context import UserPolicyContext
 from app.policy_models import Violation
 from app.policy_service import evaluate_policies_for_ai_system
 from app.provisioning_models import (
@@ -612,6 +624,18 @@ def _health_payload() -> dict[str, str]:
         "product": "ComplianceHub",
         "region": "DACH",
     }
+
+
+def _langgraph_poc_enabled() -> bool:
+    v = os.getenv("ENABLE_LANGGRAPH_POC", "").strip().lower()
+    return v in ("1", "true", "yes", "on")
+
+
+class OamiExplainPocRequestBody(BaseModel):
+    """Request body for the LangGraph OAMI explain PoC (tenant-scoped)."""
+
+    ai_system_id: str = Field(min_length=1, max_length=256)
+    window_days: int = Field(default=90, ge=1, le=365)
 
 
 @app.get("/api/v1/health")
@@ -2968,9 +2992,20 @@ def get_advisor_tenant_report(
         Depends(get_ai_governance_action_repository),
     ],
     incident_repo: Annotated[IncidentRepository, Depends(get_incident_repository)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
     export_format: Annotated[Literal["json", "markdown"], Query(alias="format")] = "json",
 ) -> AdvisorTenantReport | Response:
     """Mandanten-Steckbrief (JSON oder Markdown) nur bei Zuordnung in advisor_tenants."""
+    advisor_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_ADVISOR_TENANT_REPORT,
+        default="advisor",
+    )
+    enforce_action_policy(
+        "advisor_tenant_report",
+        UserPolicyContext(tenant_id=tenant_id, user_role=advisor_role),
+        risk_score=0.55,
+    )
     link = advisor_repo.get_link(advisor_id, tenant_id)
     if link is None:
         raise HTTPException(
@@ -3717,8 +3752,19 @@ def post_ai_compliance_board_report(
     session: Annotated[Session, Depends(get_session)],
     audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
     _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report))],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
 ) -> AiComplianceBoardReportCreateResponse:
     require_path_tenant_matches_auth(tenant_id, auth_context)
+    board_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_BOARD_REPORT,
+        default="tenant_admin",
+    )
+    enforce_action_policy(
+        "generate_board_report",
+        UserPolicyContext(tenant_id=tenant_id, user_role=board_role),
+        risk_score=0.75,
+    )
     try:
         out = create_ai_compliance_board_report(
             session,
@@ -4062,10 +4108,21 @@ def post_tenant_readiness_score_explain(
     _ff_rs: Annotated[None, Depends(create_feature_guard(FeatureFlag.readiness_score))],
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
 ) -> ReadinessScoreExplainResponse:
     """KI-Erklärung zum Readiness Score (aggregierte Kennzahlen, LLM_EXPLAIN + LLM_ENABLED)."""
     if tenant_id != auth_context.tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    readiness_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_READINESS_EXPLAIN,
+        default="tenant_user",
+    )
+    enforce_action_policy(
+        "call_llm_explain_readiness",
+        UserPolicyContext(tenant_id=tenant_id, user_role=readiness_role),
+        risk_score=0.45,
+    )
     snapshot = compute_readiness_score(session, tenant_id)
     try:
         return explain_readiness_score(session, tenant_id, snapshot)
@@ -4078,4 +4135,48 @@ def post_tenant_readiness_score_explain(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Readiness score explanation failed",
+        ) from exc
+
+
+@app.post(
+    "/api/v1/tenants/{tenant_id}/agents/oami-explain-poc",
+    response_model=OamiExplanationOut,
+    tags=["agents"],
+)
+def post_tenant_oami_explain_langgraph_poc(
+    tenant_id: str,
+    body: OamiExplainPocRequestBody,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> OamiExplanationOut:
+    """
+    LangGraph PoC: OAMI-Kurzerklärung (gleiches JSON-Contract wie deterministische OAMI-Explain).
+
+    Hinter `ENABLE_LANGGRAPH_POC`; außerhalb OPA-Policy `call_langgraph_oami_explain`.
+    """
+    if not _langgraph_poc_enabled():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    poc_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_LANGGRAPH_OAMI_POC,
+        default="tenant_admin",
+    )
+    enforce_action_policy(
+        "call_langgraph_oami_explain",
+        UserPolicyContext(tenant_id=tenant_id, user_role=poc_role),
+        risk_score=0.4,
+    )
+    try:
+        return run_oami_explain_poc(
+            session,
+            tenant_id=tenant_id,
+            ai_system_id=body.ai_system_id,
+            window_days=body.window_days,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="OAMI explain PoC workflow failed",
         ) from exc
