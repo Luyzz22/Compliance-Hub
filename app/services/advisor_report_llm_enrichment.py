@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from app.advisor_models import AdvisorTenantReport
 from app.feature_flags import FeatureFlag, is_feature_enabled
+from app.llm.guardrails import log_input_guardrail_scan, scan_input_for_pii_and_injection
 from app.llm_models import LLMTaskType
 from app.services.advisor_governance_maturity_brief_llm import (
     maybe_build_advisor_governance_maturity_brief_result,
@@ -86,6 +87,12 @@ def maybe_enrich_advisor_report_with_llm_summary(
         "neuen Zahlen, keine neuen regulatorischen Behauptungen und keine Systemnamen, "
         "die nicht in den Fakten stehen.\n\n"
         f"{json.dumps(facts, ensure_ascii=False)}"
+    )
+    scan = scan_input_for_pii_and_injection(prompt)
+    log_input_guardrail_scan(
+        context="advisor_report_executive_summary",
+        tenant_id=tenant_id,
+        scan=scan,
     )
     try:
         router = LLMRouter(session=session)

@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.feature_flags import FeatureFlag, is_feature_enabled
+from app.llm.guardrails import log_input_guardrail_scan, scan_input_for_pii_and_injection
 from app.llm_models import LLMTaskType
 from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
 from app.services.llm_router import LLMRouter
@@ -101,6 +102,8 @@ def explain_readiness_score(
         "governance_activity": gai_context,
     }
     prompt = build_readiness_explain_prompt(facts_envelope=envelope)
+    scan = scan_input_for_pii_and_injection(prompt)
+    log_input_guardrail_scan(context="readiness_score_explain", tenant_id=tenant_id, scan=scan)
 
     router = LLMRouter(session=session)
     resp = router.route_and_call(

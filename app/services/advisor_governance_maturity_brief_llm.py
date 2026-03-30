@@ -9,6 +9,7 @@ from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturitySummary
 from app.incident_drilldown_models import TenantIncidentDrilldownOut
+from app.llm.guardrails import log_input_guardrail_scan, scan_input_for_pii_and_injection
 from app.llm_models import LLMTaskType
 from app.services.advisor_brief_drilldown_alignment import apply_drilldown_alignment_to_brief
 from app.services.advisor_governance_maturity_brief_parse import (
@@ -38,6 +39,12 @@ def render_advisor_governance_maturity_brief(
     prompt = build_advisor_governance_maturity_brief_prompt(
         snapshot,
         board_summary,
+    )
+    scan = scan_input_for_pii_and_injection(prompt)
+    log_input_guardrail_scan(
+        context="advisor_governance_maturity_brief",
+        tenant_id=tenant_id,
+        scan=scan,
     )
     router = LLMRouter(session=session)
     try:
