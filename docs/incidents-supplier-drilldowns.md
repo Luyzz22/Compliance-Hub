@@ -42,6 +42,8 @@ Query **`format`:** `json` (Standard) oder `csv` (UTF-8, Download-Header).
 
 Bei `GET .../report?format=markdown` steht der Drilldown **nach** dem Block **„Risiko- und Incident-Lage“** und **nach** dem optionalen **Governance-Reife-Kurzbrief** (siehe [`advisor-governance-maturity-brief.md`](./advisor-governance-maturity-brief.md): gleiche Datenbasis stützt kanonische Fokuszeilen im Brief). Optionaler Brückensatz verknüpft Kurzbrief und Systemliste. Inhalt: bis zu fünf priorisierte KI-Systeme mit Lieferanten-Label und qualitativer Safety-/Verfügbarkeits-Einordnung (ohne Roh-Gewichte im Text). Implementierung: `build_incident_system_supplier_drilldown_section` in `app/services/advisor_tenant_report_incident_drilldown_md.py`; Daten: `compute_tenant_incident_drilldown` wie die JSON-API.
 
+**E2E-Golden:** `tests/test_advisor_report_e2e_safety_dominant.py`, Fixtures `tests/fixtures/advisor-report-e2e/`.
+
 ## Code
 
 - Modelle: `app/incident_drilldown_models.py`

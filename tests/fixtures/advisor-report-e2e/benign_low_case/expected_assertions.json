@@ -1,0 +1,15 @@
+{
+  "brief_after_alignment": {
+    "recommended_focus_areas_0": "Monitoring-Abdeckung und Datenaktualität der Laufzeit-Signale verbessern.",
+    "client_ready_paragraph_de": null
+  },
+  "full_markdown_must_contain": [
+    "Monitoring-Abdeckung",
+    "nur wenige Incidents beobachtet",
+    "**QuietSvc**",
+    "## Profil"
+  ],
+  "full_markdown_must_not_contain": [
+    "Im Fokus stehen aktuell vor allem die Systeme"
+  ]
+}
