@@ -28,6 +28,8 @@ class AdvisorDailyMetrics(BaseModel):
     confidence_low: int = 0
     agent_answered: int = 0
     agent_escalated: int = 0
+    agent_errors: int = 0
+    agent_duplicates: int = 0
 
 
 class AdvisorMetricsResponse(BaseModel):
@@ -38,7 +40,11 @@ class AdvisorMetricsResponse(BaseModel):
     retrieval_mode_distribution: dict[str, int] = Field(default_factory=dict)
     confidence_distribution: dict[str, int] = Field(default_factory=dict)
     escalation_rate: float | None = None
+    error_rate: float | None = None
     agent_decision_distribution: dict[str, int] = Field(default_factory=dict)
+    channel_distribution: dict[str, int] = Field(default_factory=dict)
+    latency_p50_ms: float | None = None
+    latency_p95_ms: float | None = None
     daily: list[AdvisorDailyMetrics] = Field(default_factory=list)
 
 
@@ -74,14 +80,31 @@ def aggregate_advisor_metrics(
     """
     tenants = [tenant_id] if tenant_id else _discover_tenants(limit=limit)
     daily_map: dict[tuple[str, str], AdvisorDailyMetrics] = {}
+    channel_counts: dict[str, int] = defaultdict(int)
+    latencies: list[float] = []
 
     for tid in tenants:
         _aggregate_rag_events(tid, daily_map, from_date, to_date, limit)
-        _aggregate_agent_events(tid, daily_map, from_date, to_date, limit)
+        _aggregate_agent_events(
+            tid,
+            daily_map,
+            from_date,
+            to_date,
+            limit,
+            channel_counts=channel_counts,
+            latencies=latencies,
+        )
 
     daily = sorted(daily_map.values(), key=lambda m: (m.date, m.tenant_id))
 
     totals = _compute_totals(daily)
+    totals["channel_distribution"] = dict(channel_counts)
+
+    if latencies:
+        latencies.sort()
+        totals["latency_p50_ms"] = round(_percentile(latencies, 50), 1)
+        totals["latency_p95_ms"] = round(_percentile(latencies, 95), 1)
+
     return AdvisorMetricsResponse(
         tenant_id=tenant_id,
         from_date=from_date,
@@ -146,6 +169,9 @@ def _aggregate_agent_events(
     from_date: str | None,
     to_date: str | None,
     limit: int,
+    *,
+    channel_counts: dict[str, int] | None = None,
+    latencies: list[float] | None = None,
 ) -> None:
     events = list_advisor_agent_events(tenant_id, limit=limit)
     for e in events:
@@ -163,6 +189,33 @@ def _aggregate_agent_events(
             m.agent_answered += 1
         elif decision == "escalate_to_human":
             m.agent_escalated += 1
+        elif decision == "error":
+            m.agent_errors += 1
+        elif decision == "duplicate":
+            m.agent_duplicates += 1
+
+        extra = e.get("extra") or {}
+        ch = extra.get("channel", "web")
+        if channel_counts is not None:
+            channel_counts[ch] = channel_counts.get(ch, 0) + 1
+
+        lat = extra.get("latency_ms")
+        if lat is not None and latencies is not None:
+            try:
+                latencies.append(float(lat))
+            except (TypeError, ValueError):
+                pass
+
+
+def _percentile(sorted_vals: list[float], pct: float) -> float:
+    if not sorted_vals:
+        return 0.0
+    k = (len(sorted_vals) - 1) * (pct / 100.0)
+    f = int(k)
+    c = f + 1
+    if c >= len(sorted_vals):
+        return sorted_vals[f]
+    return sorted_vals[f] + (k - f) * (sorted_vals[c] - sorted_vals[f])
 
 
 def _compute_totals(daily: list[AdvisorDailyMetrics]) -> dict[str, Any]:
@@ -179,10 +232,17 @@ def _compute_totals(daily: list[AdvisorDailyMetrics]) -> dict[str, Any]:
         conf_dist["low"] += d.confidence_low
         decision_dist["answered"] += d.agent_answered
         decision_dist["escalated"] += d.agent_escalated
+        decision_dist["errors"] += d.agent_errors
+        decision_dist["duplicates"] += d.agent_duplicates
 
-    total_decisions = decision_dist["answered"] + decision_dist["escalated"]
+    total_decisions = (
+        decision_dist["answered"] + decision_dist["escalated"] + decision_dist["errors"]
+    )
     escalation_rate = (
         round(decision_dist["escalated"] / total_decisions, 4) if total_decisions > 0 else None
+    )
+    error_rate = (
+        round(decision_dist["errors"] / total_decisions, 4) if total_decisions > 0 else None
     )
 
     return {
@@ -190,5 +250,6 @@ def _compute_totals(daily: list[AdvisorDailyMetrics]) -> dict[str, Any]:
         "retrieval_mode_distribution": dict(mode_dist),
         "confidence_distribution": dict(conf_dist),
         "escalation_rate": escalation_rate,
+        "error_rate": error_rate,
         "agent_decision_distribution": dict(decision_dist),
     }

@@ -45,7 +45,14 @@ REFUSAL_SENSITIVE_LOW_CONFIDENCE = (
 )
 
 
-def format_normal_answer(answer: str) -> str:
+DISCLAIMER_SHORT = "Keine Rechtsberatung. Rücksprache mit Fachberater empfohlen."
+
+ANSWER_COMPACT = "{answer}\n\n_{disclaimer}_"
+
+
+def format_normal_answer(answer: str, *, compact: bool = False) -> str:
+    if compact:
+        return ANSWER_COMPACT.format(answer=answer, disclaimer=DISCLAIMER_SHORT)
     return ANSWER_NORMAL.format(answer=answer)
 
 
