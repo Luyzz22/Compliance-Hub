@@ -4848,9 +4848,7 @@ def _enforce_grc_opa(
 )
 def list_ai_systems_endpoint(
     auth: Annotated[AuthContext, Depends(get_auth_context)],
-    opa_role_header: Annotated[
-        str | None, Depends(get_optional_opa_user_role_header)
-    ],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
     tenant_id: str | None = None,
     client_id: str | None = None,
     classification: str | None = None,
@@ -4877,9 +4875,7 @@ def list_ai_systems_endpoint(
 def get_ai_system_overview(
     system_id: str,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
-    opa_role_header: Annotated[
-        str | None, Depends(get_optional_opa_user_role_header)
-    ],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
     tenant_id: str | None = None,
 ) -> dict[str, Any]:
     """AI-system-centric overview: metadata, GRC records, framework hints."""
