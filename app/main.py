@@ -38,6 +38,12 @@ from app.advisor_client_snapshot_models import (
 from app.advisor_models import AdvisorTenantReport
 from app.advisor_portfolio_models import AdvisorPortfolioResponse
 from app.agents.langgraph.oami_explain_poc import run_oami_explain_poc_async
+from app.ai_act_doc_models import (
+    AIActDoc,
+    AIActDocListResponse,
+    AIActDocSectionKey,
+    AIActDocUpsertRequest,
+)
 from app.ai_act_evidence_models import (
     AdvisorAgentEvidenceStoredEvent,
     RagEvidenceStatsResponse,
@@ -79,6 +85,8 @@ from app.ai_governance_models import (
     NormEvidenceLink,
     NormEvidenceLinkCreate,
     NormFramework,
+    WhatIfScenarioInput,
+    WhatIfScenarioResult,
 )
 from app.ai_kpi_models import (
     AiKpiSummaryResponse,
@@ -95,6 +103,7 @@ from app.ai_system_models import (
     AISystemStatus,
     AISystemUpdate,
 )
+from app.audit_models import AuditEvent, AuditLog
 from app.auth_dependencies import (
     get_api_key_and_tenant,
     get_auth_context,
@@ -175,6 +184,7 @@ from app.models import (
 from app.models_db import Base, TenantApiKeyDB
 from app.nis2_kritis_models import (
     Nis2KritisKpi,
+    Nis2KritisKpiDrilldown,
     Nis2KritisKpiListResponse,
     Nis2KritisKpiSuggestionBody,
     Nis2KritisKpiSuggestionRequest,
@@ -259,6 +269,8 @@ from app.services.advisor_report_llm_enrichment import (
 )
 from app.services.advisor_tenant_report import build_advisor_tenant_report
 from app.services.advisor_tenant_report_markdown import render_tenant_report_markdown
+from app.services.ai_act_docs import build_ai_act_doc_list_response, upsert_ai_act_doc
+from app.services.ai_act_docs_export import render_ai_act_documentation_markdown
 from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_compliance_board_report import (
     create_ai_compliance_board_report,
@@ -339,6 +351,7 @@ from app.services.high_risk_scenarios import list_high_risk_scenarios
 from app.services.llm_router import LLMRouter
 from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
+from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
 from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
 from app.services.oami_explanation import explain_tenant_oami_de
 from app.services.oami_incident_subtype_profile_board import (
@@ -380,6 +393,7 @@ from app.services.tenant_incident_drilldown import (
 )
 from app.services.tenant_provisioning import provision_tenant
 from app.services.tenant_usage_metrics import compute_tenant_usage_metrics
+from app.services.what_if_simulator import simulate_board_impact
 from app.setup_models import TenantSetupStatus
 from app.supplier_risk_models import (
     AISupplierRiskBySystemEntry,
@@ -4406,3 +4420,185 @@ async def post_tenant_oami_explain_langgraph_poc(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="OAMI explain PoC workflow failed",
         ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Audit Logs
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/v1/audit-logs", response_model=list[AuditLog], tags=["audit"])
+def list_audit_logs(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> list[AuditLog]:
+    return audit_repo.list_for_tenant(auth.tenant_id)
+
+
+# ---------------------------------------------------------------------------
+# Audit Events
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/v1/audit-events", response_model=list[AuditEvent], tags=["audit"])
+def list_audit_events(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> list[AuditEvent]:
+    return audit_repo.list_events_for_tenant(auth.tenant_id)
+
+
+@app.get(
+    "/api/v1/audit-events/ai-systems/{ai_system_id}",
+    response_model=list[AuditEvent],
+    tags=["audit"],
+)
+def list_audit_events_for_ai_system(
+    ai_system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> list[AuditEvent]:
+    return audit_repo.list_events_for_entity(
+        auth.tenant_id,
+        entity_type="ai_system",
+        entity_id=ai_system_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# AI Act Documentation
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs",
+    response_model=AIActDocListResponse,
+    tags=["ai-act-docs"],
+)
+def get_ai_act_docs(
+    ai_system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
+) -> AIActDocListResponse:
+    _ensure_feature_ai_act_docs(auth.tenant_id, session)
+    _require_high_risk_system(auth.tenant_id, ai_repo, ai_system_id)
+    return build_ai_act_doc_list_response(ai_system_id, doc_repo, auth.tenant_id)
+
+
+@app.get(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/export",
+    tags=["ai-act-docs"],
+)
+def export_ai_act_docs(
+    ai_system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+) -> Response:
+    _ensure_feature_ai_act_docs(auth.tenant_id, session)
+    system = _require_high_risk_system(auth.tenant_id, ai_repo, ai_system_id)
+    classification = cls_repo.get_for_system(auth.tenant_id, ai_system_id)
+    nis2_kpis = nis2_repo.list_for_ai_system(auth.tenant_id, ai_system_id)
+    actions = action_repo.list_for_tenant(auth.tenant_id)
+    evidence_count = len(evidence_repo.list_for_tenant(auth.tenant_id))
+    md = render_ai_act_documentation_markdown(
+        system=system,
+        classification=classification,
+        nis2_kpis=nis2_kpis,
+        actions=actions,
+        evidence_count=evidence_count,
+        docs_repo=doc_repo,
+        tenant_id=auth.tenant_id,
+    )
+    return Response(content=md, media_type="text/markdown")
+
+
+@app.post(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/{section_key}",
+    response_model=AIActDoc,
+    tags=["ai-act-docs"],
+)
+def upsert_ai_act_doc_section(
+    ai_system_id: str,
+    section_key: AIActDocSectionKey,
+    body: AIActDocUpsertRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
+) -> AIActDoc:
+    _ensure_feature_ai_act_docs(auth.tenant_id, session)
+    _require_high_risk_system(auth.tenant_id, ai_repo, ai_system_id)
+    return upsert_ai_act_doc(
+        doc_repo,
+        auth.tenant_id,
+        ai_system_id,
+        section_key,
+        body,
+        actor="api",
+    )
+
+
+# ---------------------------------------------------------------------------
+# NIS2 KRITIS KPI Drilldown
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/nis2-kritis/kpi-drilldown",
+    response_model=Nis2KritisKpiDrilldown,
+    tags=["nis2-kritis"],
+)
+def get_nis2_kritis_kpi_drilldown(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    top_n: int = 5,
+) -> Nis2KritisKpiDrilldown:
+    return build_nis2_kritis_kpi_drilldown(
+        auth.tenant_id,
+        nis2_repo,
+        top_n=top_n,
+    )
+
+
+# ---------------------------------------------------------------------------
+# What-If Board Impact Simulator
+# ---------------------------------------------------------------------------
+
+
+@app.post(
+    "/api/v1/ai-governance/what-if/board-impact",
+    response_model=WhatIfScenarioResult,
+    tags=["ai-governance"],
+)
+def post_what_if_board_impact(
+    body: WhatIfScenarioInput,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+) -> WhatIfScenarioResult:
+    _ensure_feature_what_if_simulator(auth.tenant_id, session)
+    return simulate_board_impact(
+        body,
+        auth.tenant_id,
+        session=session,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+        violation_repo=violation_repo,
+        nis2_repo=nis2_repo,
+    )

@@ -36,7 +36,10 @@ from app.services.rag.hybrid_retriever import HybridRetriever
 
 
 def load_evidence_sample(path: str | Path, limit: int = 50) -> list[dict[str, Any]]:
-    """Load recent RAG evidence rows (JSONL). Expects metadata only (e.g. query_sha256), no raw prompts."""
+    """Load recent RAG evidence rows (JSONL).
+
+    Expects metadata only (e.g. query_sha256), no raw prompts.
+    """
     p = Path(path)
     rows: list[dict[str, Any]] = []
     if not p.is_file():
@@ -172,9 +175,7 @@ def run_evaluation(
         hybrid_config = RAGConfig(retrieval_mode="hybrid", hybrid_alpha=alpha)
         hybrid_retriever = HybridRetriever(corpus, hybrid_config)
         for query_entry in queries:
-            hybrid_result = evaluate_single_query(
-                hybrid_retriever, query_entry, "hybrid", alpha, k
-            )
+            hybrid_result = evaluate_single_query(hybrid_retriever, query_entry, "hybrid", alpha, k)
             all_results.append(hybrid_result)
 
     summary = _aggregate_results(all_results, alphas)
@@ -250,16 +251,18 @@ def _aggregate_results(
         avg_ndcg = sum(r["ndcg_at_k"] for r in group) / n
         avg_confidence = sum(r["confidence_score"] for r in group) / n
 
-        summary.append({
-            "setting": key,
-            "mode": group[0]["mode"],
-            "alpha": group[0]["alpha"],
-            "num_queries": n,
-            "avg_recall_at_k": round(avg_recall, 4),
-            "avg_precision_at_k": round(avg_precision, 4),
-            "avg_ndcg_at_k": round(avg_ndcg, 4),
-            "avg_confidence_score": round(avg_confidence, 4),
-        })
+        summary.append(
+            {
+                "setting": key,
+                "mode": group[0]["mode"],
+                "alpha": group[0]["alpha"],
+                "num_queries": n,
+                "avg_recall_at_k": round(avg_recall, 4),
+                "avg_precision_at_k": round(avg_precision, 4),
+                "avg_ndcg_at_k": round(avg_ndcg, 4),
+                "avg_confidence_score": round(avg_confidence, 4),
+            }
+        )
 
     return summary
 
@@ -332,9 +335,7 @@ def main() -> None:
     print("  Fusion winner (composite recall+precision+NDCG): ", fw.get("winner"), fw, "\n")
 
     if args.output:
-        serializable = {
-            k: v for k, v in results.items()
-        }
+        serializable = {k: v for k, v in results.items()}
         with open(args.output, "w") as f:
             json.dump(serializable, f, indent=2, default=str)
         print(f"  Results written to {args.output}")
