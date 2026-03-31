@@ -353,9 +353,9 @@ class TestJobLifecycle:
         enqueue_job(j2)
 
         assert len(list_jobs(tenant_id="t1")) == 1
-        assert len(list_jobs(target="sap_btp")) == 1
-        assert len(list_jobs(payload_type="nis2_obligation")) == 1
-        assert len(list_jobs()) == 2
+        assert len(list_jobs(tenant_id="t2", target="sap_btp")) == 1
+        assert len(list_jobs(tenant_id="t2", payload_type="nis2_obligation")) == 1
+        assert len(list_jobs(_internal=True)) == 2
 
 
 # ── Dead-letter ──────────────────────────────────────────────────────
