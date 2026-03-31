@@ -4835,3 +4835,84 @@ def _enforce_grc_opa(
         UserPolicyContext(tenant_id=auth.tenant_id, user_role=opa_role),
         risk_score=0.3,
     )
+
+
+# ---------------------------------------------------------------------------
+# AI System Inventory APIs (Wave 11)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/ai-systems",
+    tags=["ai-systems"],
+)
+def list_ai_systems_endpoint(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    classification: str | None = None,
+    nis2_relevant: bool | None = None,
+) -> list[dict[str, Any]]:
+    """List AI systems registered for a tenant."""
+    from app.grc.store import list_ai_systems
+
+    _enforce_grc_opa("view_ai_systems", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+    systems = list_ai_systems(
+        tenant_id=tid,
+        client_id=client_id,
+        classification=classification,
+        nis2_relevant=nis2_relevant,
+    )
+    return [s.model_dump() for s in systems]
+
+
+@app.get(
+    "/api/v1/ai-systems/{system_id}/overview",
+    tags=["ai-systems"],
+)
+def get_ai_system_overview(
+    system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+) -> dict[str, Any]:
+    """AI-system-centric overview: metadata, GRC records, framework hints."""
+    from app.grc.framework_mapping import build_system_overview_hints
+    from app.grc.store import (
+        get_ai_system,
+        list_iso42001_gaps,
+        list_nis2_obligations,
+        list_risks,
+    )
+
+    _enforce_grc_opa("view_ai_systems", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+
+    ai_sys = get_ai_system(tenant_id=tid, system_id=system_id)
+    if ai_sys is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"AI system '{system_id}' not found for tenant.",
+        )
+
+    risks = list_risks(tenant_id=tid, system_id=system_id)
+    nis2 = list_nis2_obligations(tenant_id=tid, client_id=None)
+    nis2_for_sys = [r for r in nis2 if r.system_id == system_id]
+    gaps = list_iso42001_gaps(tenant_id=tid, client_id=None)
+    gaps_for_sys = [g for g in gaps if g.system_id == system_id]
+
+    framework_hints = build_system_overview_hints(
+        risks=risks,
+        nis2_records=nis2_for_sys,
+        gap_records=gaps_for_sys,
+    )
+
+    return {
+        "system": ai_sys.model_dump(),
+        "risk_assessments": [r.model_dump() for r in risks],
+        "nis2_obligations": [r.model_dump() for r in nis2_for_sys],
+        "iso42001_gaps": [g.model_dump() for g in gaps_for_sys],
+        "framework_coverage": framework_hints,
+    }
