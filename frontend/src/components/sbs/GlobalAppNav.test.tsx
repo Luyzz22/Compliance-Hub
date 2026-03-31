@@ -5,6 +5,10 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
+vi.mock("./GlobalWorkspaceEvidenceNavBlock", () => ({
+  GlobalWorkspaceEvidenceNavBlock: () => null,
+}));
+
 const isAdvisorNavEnabled = vi.fn();
 
 vi.mock("@/lib/api", () => ({

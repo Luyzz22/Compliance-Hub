@@ -97,6 +97,11 @@ export function featureAiActDocs(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_ACT_DOCS, true);
 }
 
+/** AI-Act-Evidence-UI (Backend COMPLIANCEHUB_FEATURE_AI_ACT_EVIDENCE_VIEWS); zusätzlich tenant-meta + OPA. */
+export function featureAiActEvidenceViews(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_ACT_EVIDENCE_VIEWS, true);
+}
+
 /** Board-What-if-Simulator (Backend COMPLIANCEHUB_FEATURE_WHAT_IF_SIMULATOR). */
 export function featureWhatIfSimulator(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_WHAT_IF_SIMULATOR, true);

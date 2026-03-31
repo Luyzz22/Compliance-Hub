@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 
+import { useAiActEvidenceNav } from "@/hooks/useAiActEvidenceNav";
+import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
 import { BOARD_NAV_ITEMS, WORKSPACE_NAV_ITEMS } from "@/lib/appNavConfig";
 
 function subLink(active: boolean) {
@@ -17,6 +19,11 @@ function subLink(active: boolean) {
 
 export function AppSecondaryNav() {
   const pathname = usePathname();
+  const workspaceTenantId = useWorkspaceTenantIdClient();
+  const { visible: evidenceVisible, href: evidenceHref, loading: evidenceLoading } =
+    useAiActEvidenceNav(workspaceTenantId);
+  const evidenceActive =
+    pathname === evidenceHref || pathname.startsWith(`${evidenceHref}/`);
 
   if (pathname.startsWith("/board")) {
     return (
@@ -45,7 +52,7 @@ export function AppSecondaryNav() {
     );
   }
 
-  if (pathname.startsWith("/tenant")) {
+  if (pathname.startsWith("/tenant") || pathname.startsWith("/tenants")) {
     return (
       <div className="border-t border-slate-200/80 bg-slate-50/95">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-1 px-4 py-2 md:px-6">
@@ -61,6 +68,11 @@ export function AppSecondaryNav() {
               </Link>
             );
           })}
+          {!evidenceLoading && evidenceVisible ? (
+            <Link href={evidenceHref} className={subLink(evidenceActive)}>
+              EU AI Act Evidenz
+            </Link>
+          ) : null}
           <Link
             href="/board/kpis"
             className="ml-auto text-xs font-semibold text-cyan-800 underline decoration-cyan-600/30 underline-offset-4 hover:text-cyan-950"

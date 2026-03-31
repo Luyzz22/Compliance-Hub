@@ -10,6 +10,8 @@ import {
   WORKSPACE_NAV_ITEMS,
 } from "@/lib/appNavConfig";
 
+import { GlobalWorkspaceEvidenceNavBlock } from "./GlobalWorkspaceEvidenceNavBlock";
+
 function navLinkClass(active: boolean): string {
   return [
     "rounded-lg px-2.5 py-2 text-xs font-medium transition md:text-[0.8rem]",
@@ -112,7 +114,8 @@ function SettingsIcon(props: React.SVGProps<SVGSVGElement>) {
 export function GlobalAppNav() {
   const pathname = usePathname();
   const boardActive = pathname.startsWith("/board");
-  const workspaceActive = pathname.startsWith("/tenant");
+  const workspaceActive =
+    pathname.startsWith("/tenant") || pathname.startsWith("/tenants");
   const homeActive = pathname === "/";
   const incidentsActive =
     pathname === "/incidents" || pathname.startsWith("/board/incidents");
@@ -143,6 +146,7 @@ export function GlobalAppNav() {
             {item.label}
           </DropdownLink>
         ))}
+        <GlobalWorkspaceEvidenceNavBlock />
       </Dropdown>
 
       <Link href="/incidents" className={navLinkClass(incidentsActive)}>
