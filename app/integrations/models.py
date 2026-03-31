@@ -42,6 +42,7 @@ class IntegrationPayloadType(StrEnum):
     iso42001_gap = "iso42001_gap"
     board_report_summary = "board_report_summary"
     ai_system_readiness_snapshot = "ai_system_readiness_snapshot"
+    mandant_compliance_dossier = "mandant_compliance_dossier"
 
 
 class JobWeight(StrEnum):
@@ -82,11 +83,16 @@ class IntegrationJob(BaseModel):
     connector_artifact_name: str = ""
     connector_envelope_id: str = ""
 
+    period: str = ""
+    export_version: int = 1
+    schema_version: str = "v1"
+
 
 HEAVY_PAYLOAD_TYPES: frozenset[str] = frozenset(
     {
         IntegrationPayloadType.board_report_summary,
         IntegrationPayloadType.ai_system_readiness_snapshot,
+        IntegrationPayloadType.mandant_compliance_dossier,
     }
 )
 

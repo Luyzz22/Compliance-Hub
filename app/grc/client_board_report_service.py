@@ -444,6 +444,12 @@ def run_client_board_report(
     _complete_workflow(wf_id, report.id, report.systems_included)
     log_report_evidence(report)
 
+    _maybe_enqueue_dossier(
+        tenant_id=tenant_id,
+        client_id=client_id,
+        period=reporting_period,
+    )
+
     return {
         "workflow_id": wf_id,
         "report_id": report.id,
@@ -453,3 +459,32 @@ def run_client_board_report(
         "systems_included": report.systems_included,
         "status": "COMPLETED",
     }
+
+
+def _maybe_enqueue_dossier(*, tenant_id: str, client_id: str, period: str) -> None:
+    """Optionally enqueue a Kanzlei-Export after a board report (feature-flagged)."""
+    try:
+        from app.integrations.store import ENABLE_DOSSIER_ON_BOARD_REPORT
+
+        if not ENABLE_DOSSIER_ON_BOARD_REPORT:
+            return
+        from app.integrations.outbox import enqueue_mandant_dossier
+
+        enqueue_mandant_dossier(
+            tenant_id=tenant_id,
+            client_id=client_id,
+            period=period,
+        )
+        logger.info(
+            "dossier_enqueued_from_board_report",
+            extra={
+                "tenant_id": tenant_id,
+                "client_id": client_id,
+                "period": period,
+            },
+        )
+    except Exception:
+        logger.warning(
+            "dossier_enqueue_failed",
+            exc_info=True,
+        )

@@ -5222,3 +5222,85 @@ def trigger_integration_dispatch(
 
     _enforce_grc_opa("manage_integrations", auth, opa_role_header)
     return dispatch_pending()
+
+
+# ---------------------------------------------------------------------------
+# Mandant-Dossier Export API (Wave 16)
+# ---------------------------------------------------------------------------
+
+
+class MandantExportRequest(BaseModel):
+    client_id: str
+    period: str = ""
+    export_version: int = 1
+    mandant_kurzname: str = ""
+    branche: str = ""
+    trace_id: str = ""
+
+
+@app.post(
+    "/api/internal/integrations/mandant-export",
+    tags=["integrations"],
+    status_code=201,
+)
+def create_mandant_export(
+    body: MandantExportRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Enqueue a Mandanten-Compliance-Dossier export job."""
+    from app.integrations.outbox import enqueue_mandant_dossier
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    job = enqueue_mandant_dossier(
+        tenant_id=auth.tenant_id,
+        client_id=body.client_id,
+        period=body.period,
+        export_version=body.export_version,
+        trace_id=body.trace_id,
+        mandant_kurzname=body.mandant_kurzname,
+        branche=body.branche,
+    )
+    if job is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Dossier export payload type not enabled or duplicate",
+        )
+    return job.model_dump()
+
+
+# ---------------------------------------------------------------------------
+# SAP S/4 + BTP Inbound Endpoint (Wave 16 — reference flow)
+# ---------------------------------------------------------------------------
+
+
+@app.post(
+    "/api/v1/integrations/sap/ai-system-event",
+    tags=["integrations"],
+    status_code=202,
+)
+def receive_sap_ai_system_event(
+    body: dict[str, Any],
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, Any]:
+    """Receive a CloudEvents envelope from SAP S/4/BTP Event Mesh.
+
+    Validates mandatory fields, maps to an AiSystem stub, and emits
+    evidence.  Designed for future BTP Integration Suite wiring.
+    """
+    from app.integrations.sap_inbound import (
+        process_sap_ai_system_event,
+        validate_sap_envelope,
+    )
+
+    if not body.get("tenantid"):
+        body["tenantid"] = auth.tenant_id
+
+    errors = validate_sap_envelope(body)
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"validation_errors": errors},
+        )
+    result = process_sap_ai_system_event(body)
+    return result
