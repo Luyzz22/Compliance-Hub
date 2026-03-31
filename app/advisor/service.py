@@ -57,6 +57,8 @@ class AdvisorRequest:
         "channel_metadata",
         "request_id",
         "trace_id",
+        "flow_type",
+        "extra_tags",
     )
 
     def __init__(
@@ -67,6 +69,8 @@ class AdvisorRequest:
         channel_metadata: ChannelMetadata | None = None,
         request_id: str | None = None,
         trace_id: str | None = None,
+        flow_type: str | None = None,
+        extra_tags: list[str] | None = None,
     ) -> None:
         self.query = query
         self.tenant_id = tenant_id
@@ -74,6 +78,8 @@ class AdvisorRequest:
         self.channel_metadata = channel_metadata
         self.request_id = request_id
         self.trace_id = trace_id
+        self.flow_type = flow_type
+        self.extra_tags = extra_tags
 
 
 def run_advisor(
@@ -142,10 +148,19 @@ def _build_response(
     elapsed_ms: float,
 ) -> AdvisorStructuredResponse:
     tags = derive_tags(request.query, state.answer)
+    if request.extra_tags:
+        tags = sorted(set(tags) | set(request.extra_tags))
     next_steps = derive_next_steps(state.is_escalated, state.confidence_level, tags)
-    answer = format_answer_for_channel(state.answer, request.channel)
+    answer = format_answer_for_channel(
+        state.answer,
+        request.channel,
+        tags=tags,
+        next_steps=next_steps,
+    )
 
     ref_ids: dict[str, str] = {}
+    if request.flow_type:
+        ref_ids["flow_type"] = request.flow_type
     if request.channel_metadata:
         if request.channel_metadata.sap_document_id:
             ref_ids["sap_document_id"] = request.channel_metadata.sap_document_id
@@ -170,6 +185,7 @@ def _build_response(
             request_id=request.request_id,
             trace_id=request.trace_id,
             latency_ms=round(elapsed_ms, 1),
+            flow_type=request.flow_type,
         ),
         agent_trace=state.agent_trace,
     )
@@ -215,6 +231,8 @@ def _log_invocation(
         "latency_ms": round(elapsed_seconds * 1000, 1),
         "is_duplicate": is_duplicate,
     }
+    if request.flow_type:
+        extra["flow_type"] = request.flow_type
     if response.error:
         extra["error_category"] = response.error.category.value
 

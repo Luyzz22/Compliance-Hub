@@ -47,13 +47,43 @@ REFUSAL_SENSITIVE_LOW_CONFIDENCE = (
 
 DISCLAIMER_SHORT = "Keine Rechtsberatung. Rücksprache mit Fachberater empfohlen."
 
+DISCLAIMER_KANZLEI = (
+    "Wichtiger Hinweis: Diese automatisierte Einschätzung ersetzt keine "
+    "individuelle Rechtsberatung. Die Verantwortung für mandantenbezogene "
+    "Entscheidungen liegt beim beratenden Berufsträger."
+)
+
 ANSWER_COMPACT = "{answer}\n\n_{disclaimer}_"
+
+ANSWER_STRUCTURED = (
+    "{answer}\n\n"
+    "---\n"
+    "Schlagworte: {tags}\n"
+    "Empfohlene nächste Schritte: {next_steps}\n\n"
+    "_{disclaimer}_"
+)
 
 
 def format_normal_answer(answer: str, *, compact: bool = False) -> str:
     if compact:
         return ANSWER_COMPACT.format(answer=answer, disclaimer=DISCLAIMER_SHORT)
     return ANSWER_NORMAL.format(answer=answer)
+
+
+def format_structured_answer(
+    answer: str,
+    tags: list[str],
+    next_steps: list[str],
+    *,
+    kanzlei: bool = False,
+) -> str:
+    disclaimer = DISCLAIMER_KANZLEI if kanzlei else DISCLAIMER_SHORT
+    return ANSWER_STRUCTURED.format(
+        answer=answer,
+        tags=", ".join(tags) if tags else "—",
+        next_steps="; ".join(next_steps) if next_steps else "—",
+        disclaimer=disclaimer,
+    )
 
 
 def format_escalation(reason: str) -> str:

@@ -43,6 +43,7 @@ class AdvisorMetricsResponse(BaseModel):
     error_rate: float | None = None
     agent_decision_distribution: dict[str, int] = Field(default_factory=dict)
     channel_distribution: dict[str, int] = Field(default_factory=dict)
+    flow_type_distribution: dict[str, int] = Field(default_factory=dict)
     latency_p50_ms: float | None = None
     latency_p95_ms: float | None = None
     daily: list[AdvisorDailyMetrics] = Field(default_factory=list)
@@ -81,6 +82,7 @@ def aggregate_advisor_metrics(
     tenants = [tenant_id] if tenant_id else _discover_tenants(limit=limit)
     daily_map: dict[tuple[str, str], AdvisorDailyMetrics] = {}
     channel_counts: dict[str, int] = defaultdict(int)
+    flow_type_counts: dict[str, int] = defaultdict(int)
     latencies: list[float] = []
 
     for tid in tenants:
@@ -92,6 +94,7 @@ def aggregate_advisor_metrics(
             to_date,
             limit,
             channel_counts=channel_counts,
+            flow_type_counts=flow_type_counts,
             latencies=latencies,
         )
 
@@ -99,6 +102,7 @@ def aggregate_advisor_metrics(
 
     totals = _compute_totals(daily)
     totals["channel_distribution"] = dict(channel_counts)
+    totals["flow_type_distribution"] = dict(flow_type_counts)
 
     if latencies:
         latencies.sort()
@@ -171,6 +175,7 @@ def _aggregate_agent_events(
     limit: int,
     *,
     channel_counts: dict[str, int] | None = None,
+    flow_type_counts: dict[str, int] | None = None,
     latencies: list[float] | None = None,
 ) -> None:
     events = list_advisor_agent_events(tenant_id, limit=limit)
@@ -198,6 +203,10 @@ def _aggregate_agent_events(
         ch = extra.get("channel", "web")
         if channel_counts is not None:
             channel_counts[ch] = channel_counts.get(ch, 0) + 1
+
+        ft = extra.get("flow_type")
+        if ft and flow_type_counts is not None:
+            flow_type_counts[ft] = flow_type_counts.get(ft, 0) + 1
 
         lat = extra.get("latency_ms")
         if lat is not None and latencies is not None:
