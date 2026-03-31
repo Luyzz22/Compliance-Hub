@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import logging
 import os
@@ -29,6 +31,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.advisor_client_snapshot_models import (
+    AdvisorClientGovernanceSnapshotResponse,
+    AdvisorGovernanceSnapshotMarkdownResponse,
+)
+from app.advisor_models import AdvisorTenantReport
+from app.advisor_portfolio_models import AdvisorPortfolioResponse
+from app.agents.langgraph.oami_explain_poc import run_oami_explain_poc_async
 from app.ai_act_evidence_models import (
     AdvisorAgentEvidenceStoredEvent,
     RagEvidenceStatsResponse,
@@ -36,7 +45,47 @@ from app.ai_act_evidence_models import (
     RagRetrieveRequest,
     RagRetrieveResponse,
 )
-from app.ai_governance_models import AIBoardKpiSummary, AIGovernanceKpiSummary
+from app.ai_compliance_board_report_models import (
+    AdvisorBoardReportsPortfolioResponse,
+    AiComplianceBoardReportCreateBody,
+    AiComplianceBoardReportCreateResponse,
+    AiComplianceBoardReportDetailResponse,
+    AiComplianceBoardReportListItem,
+    BoardReportWorkflowStartBody,
+    BoardReportWorkflowStartResponse,
+    BoardReportWorkflowStatusResponse,
+)
+from app.ai_governance_action_models import (
+    AIGovernanceActionCreate,
+    AIGovernanceActionRead,
+    AIGovernanceActionUpdate,
+    GovernanceActionStatus,
+)
+from app.ai_governance_models import (
+    AIBoardGovernanceReport,
+    AIBoardKpiSummary,
+    AIGovernanceKpiSummary,
+    AIKpiAlert,
+    AIKpiAlertExport,
+    BoardKpiExportJob,
+    BoardKpiExportJobCreate,
+    BoardOperationalMonitoringSection,
+    BoardReportAuditRecord,
+    BoardReportAuditRecordCreate,
+    BoardReportAuditRecordWithJobs,
+    BoardReportExportJob,
+    BoardReportExportJobCreate,
+    HighRiskScenarioProfile,
+    NormEvidenceLink,
+    NormEvidenceLinkCreate,
+    NormFramework,
+)
+from app.ai_kpi_models import (
+    AiKpiSummaryResponse,
+    AiSystemKpisListResponse,
+    AiSystemKpiUpsertBody,
+    AiSystemKpiUpsertResponse,
+)
 from app.ai_system_models import (
     AIImportResult,
     AISystem,
@@ -46,7 +95,6 @@ from app.ai_system_models import (
     AISystemStatus,
     AISystemUpdate,
 )
-from app.audit_models import AuditEvent, AuditLog
 from app.auth_dependencies import (
     get_api_key_and_tenant,
     get_auth_context,
@@ -106,7 +154,6 @@ from app.evidence.queries import (
     list_ai_events_for_export,
 )
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
-from app.explain_models import ExplainRequest, ExplainResponse
 from app.feature_flags import (
     FeatureFlag,
     create_feature_guard,
@@ -128,7 +175,6 @@ from app.models import (
 from app.models_db import Base, TenantApiKeyDB
 from app.nis2_kritis_models import (
     Nis2KritisKpi,
-    Nis2KritisKpiDrilldown,
     Nis2KritisKpiListResponse,
     Nis2KritisKpiSuggestionBody,
     Nis2KritisKpiSuggestionRequest,
@@ -213,17 +259,12 @@ from app.services.advisor_report_llm_enrichment import (
 )
 from app.services.advisor_tenant_report import build_advisor_tenant_report
 from app.services.advisor_tenant_report_markdown import render_tenant_report_markdown
-from app.services.ai_act_docs import build_ai_act_doc_list_response, upsert_ai_act_doc
-from app.services.ai_act_docs_ai_assist import generate_ai_act_doc_draft
-from app.services.ai_act_docs_export import render_ai_act_documentation_markdown
-from app.services.ai_action_drafts import generate_action_drafts
 from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_compliance_board_report import (
     create_ai_compliance_board_report,
     get_ai_compliance_board_report_detail,
     list_ai_compliance_board_reports,
 )
-from app.services.ai_explain import explain_kpi_or_alert
 from app.services.ai_governance_incidents import (
     compute_ai_incident_overview,
     compute_ai_incidents_by_system,
@@ -261,12 +302,74 @@ from app.services.compliance_dashboard import (
     compute_compliance_dashboard,
 )
 from app.services.compliance_engine import build_audit_hash, derive_actions
+from app.services.cross_regulation import (
+    build_cross_regulation_summary,
+    get_requirement_controls_detail,
+    list_ai_system_regulatory_hints,
+    list_regulatory_controls,
+    list_regulatory_frameworks,
+    list_regulatory_requirement_rows,
+)
+from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
+from app.services.cross_regulation_llm_gap_assistant import (
+    generate_cross_regulation_llm_gap_suggestions,
+)
+from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded
+from app.services.demo_governance_maturity_seed import seed_demo_governance_maturity_layer
+from app.services.demo_tenant_seeder import seed_demo_tenant
+from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
+from app.services.evidence_service import (
+    delete_evidence as delete_evidence_file,
+)
+from app.services.evidence_service import (
+    download_evidence,
+)
+from app.services.evidence_service import (
+    list_evidence as list_evidence_files,
+)
+from app.services.evidence_service import (
+    upload_evidence as upload_evidence_file,
+)
+from app.services.evidence_storage import get_evidence_storage
+from app.services.governance_maturity_board_summary_llm import (
+    maybe_build_governance_maturity_board_summary_result,
+)
+from app.services.governance_maturity_service import build_governance_maturity_response
+from app.services.high_risk_scenarios import list_high_risk_scenarios
+from app.services.llm_router import LLMRouter
+from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
+from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
+from app.services.nis2_kritis_kpis import recommended_kpis_for_ai_system
+from app.services.oami_explanation import explain_tenant_oami_de
+from app.services.oami_incident_subtype_profile_board import (
+    build_oami_incident_subtype_profile_for_board,
+)
+from app.services.operational_monitoring_index import (
+    compute_system_monitoring_index,
+    compute_tenant_operational_monitoring_index,
+)
 from app.services.rag.confidence import should_decline_answer
 from app.services.rag.config import RAGConfig
 from app.services.rag.corpus_loader import load_advisor_corpus
-from app.services.rag.evidence_store import aggregate_rag_hybrid_stats, list_advisor_agent_events, list_rag_events
+from app.services.rag.evidence_store import (
+    aggregate_rag_hybrid_stats,
+    list_advisor_agent_events,
+    list_rag_events,
+)
 from app.services.rag.hybrid_retriever import HybridRetriever
 from app.services.rag.logging import log_rag_query_event
+from app.services.readiness_score_explain import explain_readiness_score
+from app.services.readiness_score_service import compute_readiness_score
+from app.services.runtime_events_demo_guard import (
+    ensure_runtime_events_api_ingest_allowed,
+)
+from app.services.runtime_events_ingest import ingest_runtime_events
+from app.services.setup_status import compute_tenant_setup_status
+from app.services.tenant_ai_governance_setup import (
+    apply_setup_patch,
+    build_setup_response,
+    normalize_payload,
+)
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
     compute_tenant_compliance_overview,
@@ -277,7 +380,6 @@ from app.services.tenant_incident_drilldown import (
 )
 from app.services.tenant_provisioning import provision_tenant
 from app.services.tenant_usage_metrics import compute_tenant_usage_metrics
-from app.services.what_if_simulator import simulate_board_impact
 from app.setup_models import TenantSetupStatus
 from app.supplier_risk_models import (
     AISupplierRiskBySystemEntry,
@@ -1111,7 +1213,10 @@ def advisor_rag_retrieve(
     body: RagRetrieveRequest,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> RagRetrieveResponse:
-    """Retrieval-only advisor call (no LLM). Records metadata-only RAG evidence (SHA-256 of query)."""
+    """Retrieval-only advisor call (no LLM).
+
+    Records metadata-only RAG evidence (SHA-256 of query).
+    """
     corpus = load_advisor_corpus()
     cfg = RAGConfig(retrieval_mode=body.retrieval_mode)
     response = HybridRetriever(corpus, cfg).retrieve(body.query.strip(), k=body.k)

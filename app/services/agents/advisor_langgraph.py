@@ -1,7 +1,8 @@
 """LangGraph ``StateGraph`` for AdvisorComplianceAgent (Wave 6.1).
 
 Mirrors the explicit control flow in ``advisor_compliance_agent`` with the same
-node functions — no unbounded loops. Requires ``langgraph`` (``pip install 'compliancehub[agents]'``).
+node functions — no unbounded loops.
+Requires ``langgraph`` (``pip install 'compliancehub[agents]'``).
 """
 
 from __future__ import annotations
@@ -64,9 +65,7 @@ def build_advisor_compliance_langgraph(
     def n_escalate(s: AdvisorGraphState) -> AdvisorGraphState:
         st = s["_st"]
         if st.intent == aca.IntentType.out_of_scope and not st.escalation_reason:
-            st.escalation_reason = (
-                "Anfrage liegt außerhalb des Compliance-Beratungsbereichs."
-            )
+            st.escalation_reason = "Anfrage liegt außerhalb des Compliance-Beratungsbereichs."
         st = aca.escalate_to_human(st)
         return {**s, "_st": st}
 

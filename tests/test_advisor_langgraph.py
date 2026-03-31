@@ -10,8 +10,6 @@ from app.services.agents.advisor_langgraph import build_advisor_compliance_langg
 from app.services.rag.config import RAGConfig
 from app.services.rag.corpus import Document
 from app.services.rag.hybrid_retriever import HybridRetriever
-from app.services.rag.llm import LlmCallContext, LlmResponse
-
 from tests.test_advisor_agent import MOCK_CORPUS, _mock_llm
 
 
@@ -29,9 +27,7 @@ def test_langgraph_high_confidence_synthesizes() -> None:
     st = out["_st"]
     assert not st.is_escalated
     assert "Mock-Antwort" in st.answer
-    assert any(
-        isinstance(t, dict) and t.get("trace_id") == "trace-lg-1" for t in st.agent_trace
-    )
+    assert any(isinstance(t, dict) and t.get("trace_id") == "trace-lg-1" for t in st.agent_trace)
 
 
 def test_langgraph_out_of_scope_escalates() -> None:

@@ -92,11 +92,7 @@ def should_decline_answer(
         return True, "low_confidence"
     if tenant_expects_guidance and not has_tenant_guidance:
         return True, "tenant_guidance_missing"
-    if (
-        top_bm25 is not None
-        and top_dense is not None
-        and has_results
-    ):
+    if top_bm25 is not None and top_dense is not None and has_results:
         bf = bm25_floor if bm25_floor is not None else 0.10
         dt = dense_threshold if dense_threshold is not None else 0.25
         if top_bm25 < bf * 0.5 and top_dense < dt * 0.5:

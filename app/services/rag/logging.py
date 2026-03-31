@@ -137,9 +137,7 @@ def log_rag_query_event(
 
     if persist_evidence:
         qsha = (
-            hashlib.sha256(query_text.encode()).hexdigest()
-            if query_text
-            else response.query_hash
+            hashlib.sha256(query_text.encode()).hexdigest() if query_text else response.query_hash
         )
         record_event(
             _evidence_payload_from_event(

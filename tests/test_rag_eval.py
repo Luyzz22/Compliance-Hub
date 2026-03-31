@@ -235,7 +235,12 @@ class TestEvalMetrics:
     def test_fusion_winner_prefers_hybrid(self) -> None:
         m = _load_rag_eval_script()
         summary = [
-            {"mode": "bm25", "avg_recall_at_k": 0.1, "avg_precision_at_k": 0.1, "avg_ndcg_at_k": 0.1},
+            {
+                "mode": "bm25",
+                "avg_recall_at_k": 0.1,
+                "avg_precision_at_k": 0.1,
+                "avg_ndcg_at_k": 0.1,
+            },
             {
                 "mode": "hybrid",
                 "alpha": 0.3,
