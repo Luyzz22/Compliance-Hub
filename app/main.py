@@ -4945,6 +4945,39 @@ def get_ai_system_readiness(
 
 
 # ---------------------------------------------------------------------------
+# Deployment Check API (Wave 14)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/ai-systems/{system_id}/deployment-check",
+    tags=["ai-systems"],
+)
+def get_deployment_check(
+    system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    caller_type: str | None = None,
+    trace_id: str | None = None,
+) -> dict[str, Any]:
+    """Deployment readiness check for CI/Temporal (advisory only)."""
+    from app.grc.ai_system_readiness import deployment_check
+
+    _enforce_grc_opa("view_ai_systems", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+    result = deployment_check(
+        tenant_id=tid,
+        system_id=system_id,
+        caller_type=caller_type or "manual",
+        trace_id=trace_id or "",
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Client/Mandant Board Report APIs (Wave 13)
 # ---------------------------------------------------------------------------
 
