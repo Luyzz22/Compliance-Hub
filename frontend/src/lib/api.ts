@@ -2546,3 +2546,50 @@ export async function fetchAdvisorTenantReadinessScore(
   }
   return res.json() as Promise<ReadinessScoreResponseDto>;
 }
+
+// ---------------------------------------------------------------------------
+// Internal: Advisor Metrics
+// ---------------------------------------------------------------------------
+
+export interface AdvisorDailyMetricsDto {
+  date: string;
+  tenant_id: string;
+  total_queries: number;
+  retrieval_mode_bm25: number;
+  retrieval_mode_hybrid: number;
+  confidence_high: number;
+  confidence_medium: number;
+  confidence_low: number;
+  agent_answered: number;
+  agent_escalated: number;
+}
+
+export interface AdvisorMetricsDto {
+  tenant_id: string | null;
+  from_date: string | null;
+  to_date: string | null;
+  total_queries: number;
+  retrieval_mode_distribution: Record<string, number>;
+  confidence_distribution: Record<string, number>;
+  escalation_rate: number | null;
+  agent_decision_distribution: Record<string, number>;
+  daily: AdvisorDailyMetricsDto[];
+}
+
+export async function fetchAdvisorMetrics(
+  params?: { tenant_id?: string; from?: string; to?: string },
+): Promise<AdvisorMetricsDto> {
+  const qs = new URLSearchParams();
+  if (params?.tenant_id) qs.set("tenant_id", params.tenant_id);
+  if (params?.from) qs.set("from", params.from);
+  if (params?.to) qs.set("to", params.to);
+  const url = `${API_BASE_URL}/api/internal/advisor/metrics${qs.toString() ? `?${qs}` : ""}`;
+  const res = await fetch(url, {
+    headers: tenantRequestHeaders(TENANT_ID),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Advisor metrics failed: ${res.status}`);
+  }
+  return res.json() as Promise<AdvisorMetricsDto>;
+}

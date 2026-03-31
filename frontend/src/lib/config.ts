@@ -136,3 +136,8 @@ export function featureAiKpiKri(): boolean {
 export function featureAiGovernanceSetupWizard(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_AI_GOVERNANCE_SETUP_WIZARD, true);
 }
+
+/** Internal Advisor Metrics dashboard (off by default, engineering/compliance tool). */
+export function featureAdvisorMetricsInternal(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_ADVISOR_METRICS_INTERNAL, false);
+}

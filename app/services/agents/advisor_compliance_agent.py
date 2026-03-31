@@ -29,6 +29,14 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Literal
 
+from app.advisor.sensitive_topics import SensitiveTopicResult, check_sensitive_topic
+from app.advisor.templates import (
+    REFUSAL_OUT_OF_SCOPE,
+    REFUSAL_PROHIBITED_TOPIC,
+    format_escalation,
+    format_normal_answer,
+    format_sensitive_refusal,
+)
 from app.services.rag.corpus import RetrievalResponse
 from app.services.rag.hybrid_retriever import HybridRetriever
 from app.services.rag.llm import LlmCallable, LlmCallContext, LlmResponse, safe_llm_call_sync
@@ -56,6 +64,7 @@ class AdvisorState:
     escalation_reason: str = ""
     is_escalated: bool = False
     confidence_level: str = "low"
+    sensitive_topic: SensitiveTopicResult | None = None
     agent_trace: list[dict[str, Any]] = field(default_factory=list)
     """Ordered list of node executions + decisions for audit trail."""
 
@@ -113,6 +122,21 @@ def classify_intent(state: AdvisorState) -> AdvisorState:
     return state
 
 
+def check_sensitive_topics(state: AdvisorState) -> AdvisorState:
+    """Rule-based check for sensitive / prohibited AI Act topics."""
+    result = check_sensitive_topic(state.query)
+    state.sensitive_topic = result
+    state.agent_trace.append(
+        {
+            "node": "check_sensitive_topics",
+            "is_sensitive": result.is_sensitive,
+            "is_prohibited": result.is_prohibited,
+            "matched_rule_id": result.matched_rule_id,
+        }
+    )
+    return state
+
+
 def run_rag_query(
     state: AdvisorState,
     retriever: HybridRetriever,
@@ -149,10 +173,20 @@ def check_confidence(
     """Policy gate: decide whether to auto-answer or escalate.
 
     Forces escalation when:
+    - Sensitive topic + low or medium confidence
     - Tenant has guidance docs but retrieval returned only global law
     - confidence_level == "low"
-    Tenant guidance check runs first so the escalation reason is specific.
+    Sensitive topic check runs first (most conservative).
+    Tenant guidance check runs before general low-confidence.
     """
+    st = state.sensitive_topic
+    if st and st.is_sensitive and state.confidence_level in ("low", "medium"):
+        state.escalation_reason = (
+            f"Sensibles Thema erkannt (Regel: {st.matched_rule_id}) "
+            f"bei unzureichender Konfidenz ({state.confidence_level})."
+        )
+        return "escalate"
+
     if (
         tenant_has_guidance
         and state.retrieval_response
@@ -191,7 +225,7 @@ def synthesize_answer(
     )
 
     response: LlmResponse = safe_llm_call_sync(prompt, context, llm_fn=llm_fn)
-    state.answer = response.text
+    state.answer = format_normal_answer(response.text)
 
     log_rag_query_event(
         response=state.retrieval_response,
@@ -201,13 +235,20 @@ def synthesize_answer(
         persist_evidence=False,
     )
 
+    synth_status = "success" if not response.error else "fallback"
     state.agent_trace.append(
         {
             "node": "synthesize_answer",
-            "status": "success" if not response.error else "fallback",
+            "status": synth_status,
             "model_id": response.model_id,
             "latency_ms": response.latency_ms,
         }
+    )
+    log_advisor_agent_event(
+        tenant_id=state.tenant_id,
+        decision="answered",
+        intent=str(state.intent),
+        extra={"synthesis_status": synth_status},
     )
     return state
 
@@ -218,17 +259,29 @@ def escalate_to_human(state: AdvisorState) -> AdvisorState:
     if not state.escalation_reason:
         state.escalation_reason = "Thema außerhalb des automatisierten Beratungsbereichs."
 
-    state.answer = (
-        f"⚠️ Menschliche Prüfung empfohlen.\n\n"
-        f"Grund: {state.escalation_reason}\n\n"
-        f"Ihre Anfrage wurde zur Überprüfung durch einen Compliance-Berater markiert."
-    )
+    st = state.sensitive_topic
+    if st and st.is_prohibited:
+        state.answer = REFUSAL_PROHIBITED_TOPIC
+        policy_rule_id = "prohibited_topic"
+    elif st and st.is_sensitive:
+        state.answer = format_sensitive_refusal(state.escalation_reason)
+        policy_rule_id = f"sensitive_{st.matched_rule_id}"
+    elif state.intent == IntentType.out_of_scope:
+        state.answer = REFUSAL_OUT_OF_SCOPE
+        policy_rule_id = "out_of_scope"
+    else:
+        state.answer = format_escalation(state.escalation_reason)
+        policy_rule_id = "low_confidence"
 
-    log_entry = {
+    log_entry: dict[str, Any] = {
         "node": "escalate_to_human",
         "reason": state.escalation_reason,
         "confidence_level": state.confidence_level,
+        "policy_rule_id": policy_rule_id,
     }
+    if st and st.is_sensitive:
+        log_entry["sensitive_matched_term"] = st.matched_term
+        log_entry["sensitive_rule_id"] = st.matched_rule_id
     state.agent_trace.append(log_entry)
 
     logger.info(
@@ -240,6 +293,7 @@ def escalate_to_human(state: AdvisorState) -> AdvisorState:
         decision="escalate_to_human",
         reason=state.escalation_reason,
         intent=str(state.intent),
+        extra={"policy_rule_id": policy_rule_id},
     )
     return state
 
@@ -270,6 +324,15 @@ class AdvisorComplianceAgent:
 
         if state.intent == IntentType.out_of_scope:
             state.escalation_reason = "Anfrage liegt außerhalb des Compliance-Beratungsbereichs."
+            state = escalate_to_human(state)
+            return state
+
+        state = check_sensitive_topics(state)
+
+        if state.sensitive_topic and state.sensitive_topic.is_prohibited:
+            state.escalation_reason = (
+                f"Verbotenes Thema erkannt: {state.sensitive_topic.matched_term}"
+            )
             state = escalate_to_human(state)
             return state
 
