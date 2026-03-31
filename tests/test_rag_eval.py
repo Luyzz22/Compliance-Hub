@@ -6,6 +6,9 @@ BM25 retrieval returns meaningful results on known queries.
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import pytest
 
 from app.services.rag.bm25_retriever import BM25Index
@@ -13,6 +16,17 @@ from app.services.rag.confidence import compute_confidence
 from app.services.rag.config import RAGConfig
 from app.services.rag.corpus import Document, RetrievalResult
 from app.services.rag.hybrid_retriever import HybridRetriever
+
+
+def _load_rag_eval_script():
+    root = Path(__file__).resolve().parents[1]
+    path = root / "scripts" / "rag_eval_hybrid.py"
+    spec = importlib.util.spec_from_file_location("rag_eval_hybrid", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader
+    spec.loader.exec_module(mod)
+    return mod
+
 
 TINY_CORPUS = [
     Document(
@@ -196,28 +210,56 @@ class TestEvalMetrics:
     """Test the metric functions used by the evaluation script."""
 
     def test_recall_at_k(self) -> None:
-        from scripts.rag_eval_hybrid import recall_at_k
-
-        assert recall_at_k(["a", "b", "c"], ["a", "b"], k=3) == 1.0
-        assert recall_at_k(["a", "b", "c"], ["a", "d"], k=3) == 0.5
-        assert recall_at_k(["a", "b", "c"], ["d", "e"], k=3) == 0.0
+        m = _load_rag_eval_script()
+        assert m.recall_at_k(["a", "b", "c"], ["a", "b"], k=3) == 1.0
+        assert m.recall_at_k(["a", "b", "c"], ["a", "d"], k=3) == 0.5
+        assert m.recall_at_k(["a", "b", "c"], ["d", "e"], k=3) == 0.0
 
     def test_precision_at_k(self) -> None:
-        from scripts.rag_eval_hybrid import precision_at_k
-
-        assert precision_at_k(["a", "b", "c"], ["a", "b"], k=3) == pytest.approx(2 / 3)
-        assert precision_at_k(["a", "b", "c"], ["a"], k=3) == pytest.approx(1 / 3)
+        m = _load_rag_eval_script()
+        assert m.precision_at_k(["a", "b", "c"], ["a", "b"], k=3) == pytest.approx(2 / 3)
+        assert m.precision_at_k(["a", "b", "c"], ["a"], k=3) == pytest.approx(1 / 3)
 
     def test_ndcg_at_k(self) -> None:
-        from scripts.rag_eval_hybrid import ndcg_at_k
-
-        score = ndcg_at_k(["a", "b", "c"], ["a"], k=3)
+        m = _load_rag_eval_script()
+        score = m.ndcg_at_k(["a", "b", "c"], ["a"], k=3)
         assert score == pytest.approx(1.0)
 
-        score_bad = ndcg_at_k(["b", "c", "a"], ["a"], k=3)
+        score_bad = m.ndcg_at_k(["b", "c", "a"], ["a"], k=3)
         assert score_bad < 1.0
 
     def test_ndcg_no_relevant(self) -> None:
-        from scripts.rag_eval_hybrid import ndcg_at_k
+        m = _load_rag_eval_script()
+        assert m.ndcg_at_k(["a", "b"], [], k=2) == 0.0
 
-        assert ndcg_at_k(["a", "b"], [], k=2) == 0.0
+    def test_fusion_winner_prefers_hybrid(self) -> None:
+        m = _load_rag_eval_script()
+        summary = [
+            {"mode": "bm25", "avg_recall_at_k": 0.1, "avg_precision_at_k": 0.1, "avg_ndcg_at_k": 0.1},
+            {
+                "mode": "hybrid",
+                "alpha": 0.3,
+                "setting": "hybrid_alpha0.3",
+                "avg_recall_at_k": 0.5,
+                "avg_precision_at_k": 0.5,
+                "avg_ndcg_at_k": 0.5,
+            },
+        ]
+        w = m._fusion_winner(summary)
+        assert w["winner"] == "hybrid"
+        assert w.get("best_alpha") == 0.3
+
+
+def test_should_decline_weak_bm25_and_dense() -> None:
+    from app.services.rag.confidence import should_decline_answer
+
+    decline, reason = should_decline_answer(
+        "medium",
+        has_results=True,
+        top_bm25=0.02,
+        top_dense=0.05,
+        bm25_floor=0.10,
+        dense_threshold=0.25,
+    )
+    assert decline is True
+    assert reason == "weak_bm25_and_dense"

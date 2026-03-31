@@ -47,6 +47,7 @@ class HybridRetriever:
     ) -> RetrievalResponse:
         k = k or self.config.retrieval_k
         alpha = alpha if alpha is not None else self.config.hybrid_alpha
+        alpha = max(0.0, min(1.0, float(alpha)))
         mode = mode or self.config.retrieval_mode
 
         query_hash = hashlib.sha256(query.encode()).hexdigest()

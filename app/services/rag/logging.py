@@ -94,6 +94,7 @@ def log_rag_query_event(
     query_text: str | None = None,
     decline_reason: str | None = None,
     trace_id: str | None = None,
+    persist_evidence: bool = True,
 ) -> RAGQueryEvent:
     """Build and emit a structured RAG audit event (no PII).
 

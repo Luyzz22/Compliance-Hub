@@ -75,12 +75,32 @@ def should_decline_answer(
     tenant_expects_guidance: bool = False,
     has_tenant_guidance: bool = False,
     has_results: bool = True,
+    top_bm25: float | None = None,
+    top_dense: float | None = None,
+    bm25_floor: float | None = None,
+    dense_threshold: float | None = None,
 ) -> tuple[bool, str | None]:
-    """Conservative gate for retrieval-only API (no auto-answer when unsafe)."""
+    """Conservative gate for retrieval-only API (no auto-answer when unsafe).
+
+    Documented decline reasons for audits / AI Act evidence:
+    - ``no_hits``: no retrieval results.
+    - ``low_confidence``: confidence heuristic is ``low``.
+    - ``tenant_guidance_missing``: tenant expects mandanten guidance but top results lack it.
+    - ``weak_bm25_and_dense``: top hit is weak on *both* lexical (BM25) and dense channels.
+    """
     if not has_results:
         return True, "no_hits"
     if confidence_level == "low":
         return True, "low_confidence"
     if tenant_expects_guidance and not has_tenant_guidance:
         return True, "tenant_guidance_missing"
+    if (
+        top_bm25 is not None
+        and top_dense is not None
+        and has_results
+    ):
+        bf = bm25_floor if bm25_floor is not None else 0.10
+        dt = dense_threshold if dense_threshold is not None else 0.25
+        if top_bm25 < bf * 0.5 and top_dense < dt * 0.5:
+            return True, "weak_bm25_and_dense"
     return False, None

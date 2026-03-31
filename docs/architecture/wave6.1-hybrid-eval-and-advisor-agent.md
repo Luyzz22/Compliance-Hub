@@ -192,6 +192,15 @@ In-process ring buffer (`app/services/rag/evidence_store.py`): `log_rag_query_ev
 
 **Query hash:** Full SHA-256 hex (64 chars) on `RetrievalResponse.query_hash` for evidence alignment.
 
+**Fusion / rescue env (audit):** `HYBRID_ALPHA` (alias `COMPLIANCEHUB_HYBRID_ALPHA`, default 0.30), `HYBRID_DENSE_MIN_SCORE` (alias `COMPLIANCEHUB_DENSE_THRESHOLD`).
+
+**Dashboard-Ideen (SIEM / Evidence UI):**
+- Anteil der RAG-Anfragen mit `hybrid_differs_from_bm25_top == true`.
+- Anteil mit `top_doc_primary_source == "dense_rescue"` und `confidence_level == "low"`.
+- Zeitreihe `decline_reason` (`low_confidence`, `tenant_guidance_missing`, `weak_bm25_and_dense`, …).
+
+**LangGraph:** `app/services/agents/advisor_langgraph.py` — `build_advisor_compliance_langgraph()` (install `compliancehub[agents]`).
+
 ---
 
 ## File Map
@@ -210,7 +219,8 @@ In-process ring buffer (`app/services/rag/evidence_store.py`): `log_rag_query_ev
 | `app/services/rag/logging.py` | Structured RAG audit logging |
 | `app/services/rag/llm.py` | Guardrailed LLM call wrappers |
 | `app/services/rag/prompt_builder.py` | Prompt construction with guardrails |
-| `app/services/agents/advisor_compliance_agent.py` | Advisor agent graph |
+| `app/services/agents/advisor_compliance_agent.py` | Advisor agent (explicit control flow) |
+| `app/services/agents/advisor_langgraph.py` | Optional LangGraph `StateGraph` (same semantics) |
 | `app/services/agents/temporal_activity.py` | Temporal activity wrapper |
 | `data/eval/ground_truth.yaml` | Curated evaluation ground truth |
 | `scripts/rag_eval_hybrid.py` | Offline evaluation script |

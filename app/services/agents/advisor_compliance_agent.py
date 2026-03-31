@@ -225,10 +225,8 @@ def escalate_to_human(state: AdvisorState) -> AdvisorState:
 class AdvisorComplianceAgent:
     """Orchestrator that runs the advisor graph nodes in sequence.
 
-    Uses explicit control flow rather than LangGraph's StateGraph to avoid
-    the external dependency while maintaining the same graph semantics.
-    When langgraph is available, this can be replaced by a StateGraph
-    definition with identical node functions.
+    Same semantics as ``build_advisor_compliance_langgraph`` in
+    ``advisor_langgraph.py`` (optional ``langgraph`` dependency).
     """
 
     def __init__(
@@ -241,8 +239,10 @@ class AdvisorComplianceAgent:
         self.llm_fn = llm_fn
         self.tenant_has_guidance = tenant_has_guidance
 
-    def run(self, query: str, tenant_id: str = "") -> AdvisorState:
+    def run(self, query: str, tenant_id: str = "", trace_id: str | None = None) -> AdvisorState:
         state = AdvisorState(query=query, tenant_id=tenant_id)
+        if trace_id:
+            state.agent_trace.append({"node": "workflow_context", "trace_id": trace_id})
 
         state = classify_intent(state)
 

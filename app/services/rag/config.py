@@ -10,6 +10,27 @@ import os
 from dataclasses import dataclass, field
 
 
+def _read_hybrid_alpha() -> float:
+    for key in ("HYBRID_ALPHA", "COMPLIANCEHUB_HYBRID_ALPHA"):
+        raw = os.getenv(key, "").strip()
+        if raw:
+            try:
+                return max(0.0, min(1.0, float(raw)))
+            except ValueError:
+                return 0.30
+    return 0.30
+
+
+def _read_dense_threshold() -> float:
+    raw = os.getenv("HYBRID_DENSE_MIN_SCORE", "").strip() or os.getenv(
+        "COMPLIANCEHUB_DENSE_THRESHOLD", "0.25"
+    )
+    try:
+        return max(0.0, min(1.0, float(raw)))
+    except ValueError:
+        return 0.25
+
+
 @dataclass(frozen=True)
 class RAGConfig:
     """Immutable configuration for the RAG retrieval pipeline.
@@ -20,12 +41,11 @@ class RAGConfig:
     retrieval_k: int = 5
     """Number of documents to retrieve per query."""
 
-    hybrid_alpha: float = float(os.getenv("COMPLIANCEHUB_HYBRID_ALPHA", "0.30"))
-    """Weight of dense score in hybrid fusion: combined = (1-α)·BM25_norm + α·dense.
+    hybrid_alpha: float = field(default_factory=_read_hybrid_alpha)
+    """Weight of dense score in hybrid fusion: combined = (1-α)·BM25 + α·dense.
 
-    Chosen via offline evaluation (see scripts/rag_eval_hybrid.py).
-    α=0.0 → pure BM25, α=1.0 → pure dense.  Default 0.30 reflects
-    conservative bias toward exact-match BM25 to reduce hallucination risk.
+    Env: ``HYBRID_ALPHA`` (preferred) or ``COMPLIANCEHUB_HYBRID_ALPHA``. Clamped at runtime
+    in HybridRetriever if needed. Default 0.30 from offline eval (``scripts/rag_eval_hybrid.py``).
     """
 
     bm25_floor: float = float(os.getenv("COMPLIANCEHUB_BM25_FLOOR", "0.10"))
@@ -35,13 +55,10 @@ class RAGConfig:
     preventing dense-only hallucinations on out-of-corpus queries.
     """
 
-    dense_score_threshold: float = float(
-        os.getenv("COMPLIANCEHUB_DENSE_THRESHOLD", "0.25")
-    )
+    dense_score_threshold: float = field(default_factory=_read_dense_threshold)
     """Minimum dense cosine-similarity for a document to be a "rescue" candidate.
 
-    Only documents above this threshold are eligible to be promoted by
-    the dense retriever when BM25 ranks them lower.
+    Env: ``HYBRID_DENSE_MIN_SCORE`` or ``COMPLIANCEHUB_DENSE_THRESHOLD``.
     """
 
     confidence_high_combined: float = 0.65

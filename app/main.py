@@ -487,11 +487,17 @@ def advisor_rag_retrieve(
     corpus = load_advisor_corpus()
     cfg = RAGConfig(retrieval_mode=body.retrieval_mode)
     response = HybridRetriever(corpus, cfg).retrieve(body.query.strip(), k=body.k)
+    top_bm25 = response.results[0].bm25_score if response.results else None
+    top_dense = response.results[0].dense_score if response.results else None
     decline, decline_reason = should_decline_answer(
         response.confidence_level,
         tenant_expects_guidance=body.tenant_expects_guidance,
         has_tenant_guidance=response.has_tenant_guidance,
         has_results=bool(response.results),
+        top_bm25=top_bm25,
+        top_dense=top_dense,
+        bm25_floor=cfg.bm25_floor,
+        dense_threshold=cfg.dense_score_threshold,
     )
     top_ids = [hit.doc.doc_id for hit in response.results[:10]]
     hybrid_differs = False

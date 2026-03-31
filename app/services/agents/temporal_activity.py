@@ -65,6 +65,7 @@ def run_advisor_agent_activity(
     state: AdvisorState = agent.run(
         query=input_data.query,
         tenant_id=input_data.tenant_id,
+        trace_id=input_data.trace_id or None,
     )
 
     return AdvisorActivityOutput(
