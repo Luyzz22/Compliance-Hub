@@ -67,6 +67,33 @@ test_advisor_rag_eu_ai_act_nis2_query_allowed {
 	}
 }
 
+test_compliance_officer_view_ai_evidence_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "compliance_officer",
+		"action": "view_ai_evidence",
+		"risk_score": 0.3,
+	}
+}
+
+test_auditor_view_ai_evidence_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "auditor",
+		"action": "view_ai_evidence",
+		"risk_score": 0.3,
+	}
+}
+
+test_tenant_admin_view_ai_evidence_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "tenant_admin",
+		"action": "view_ai_evidence",
+		"risk_score": 0.3,
+	}
+}
+
 test_advisor_tenant_report_allowed {
 	compliancehub.allow_action with input as {
 		"tenant_id": "t1",

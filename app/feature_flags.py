@@ -37,6 +37,7 @@ class FeatureFlag(StrEnum):
     governance_maturity = "governance_maturity"
     demo_mode = "demo_mode"
     compliance_rag_knowledge_hub = "compliance_rag_knowledge_hub"
+    ai_act_evidence_views = "ai_act_evidence_views"
 
 
 _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
@@ -67,6 +68,7 @@ _FLAG_ENV_KEYS: dict[FeatureFlag, str] = {
     FeatureFlag.governance_maturity: "COMPLIANCEHUB_FEATURE_GOVERNANCE_MATURITY",
     FeatureFlag.demo_mode: "COMPLIANCEHUB_FEATURE_DEMO_MODE",
     FeatureFlag.compliance_rag_knowledge_hub: "COMPLIANCEHUB_FEATURE_COMPLIANCE_RAG_KNOWLEDGE_HUB",
+    FeatureFlag.ai_act_evidence_views: "COMPLIANCEHUB_FEATURE_AI_ACT_EVIDENCE_VIEWS",
 }
 
 # LLM master switch defaults off until keys and policies are configured.
@@ -78,6 +80,7 @@ _FLAG_DEFAULTS: dict[FeatureFlag, bool] = {
     FeatureFlag.demo_mode: False,
     FeatureFlag.governance_maturity: True,
     FeatureFlag.compliance_rag_knowledge_hub: False,
+    FeatureFlag.ai_act_evidence_views: True,
 }
 
 

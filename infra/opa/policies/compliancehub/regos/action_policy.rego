@@ -71,3 +71,24 @@ allow_action {
 	input.user_role == "advisor"
 	input.action == "advisor_rag_eu_ai_act_nis2_query"
 }
+
+allow_action {
+	not denylisted
+	input.risk_score < 0.85
+	input.user_role == "compliance_officer"
+	input.action == "view_ai_evidence"
+}
+
+allow_action {
+	not denylisted
+	input.risk_score < 0.85
+	input.user_role == "auditor"
+	input.action == "view_ai_evidence"
+}
+
+allow_action {
+	not denylisted
+	input.risk_score < 0.85
+	input.user_role == "tenant_admin"
+	input.action == "view_ai_evidence"
+}
