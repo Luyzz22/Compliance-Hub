@@ -26,19 +26,14 @@ class AiEvidenceEventListItem(BaseModel):
     event_type: str
     tenant_id: str
     user_role: str = Field(
-        description=(
-            "OPA-Rolle oder technischer Actor-Typ "
-            "(z. B. advisor, api_key)."
-        ),
+        description=("OPA-Rolle oder technischer Actor-Typ (z. B. advisor, api_key)."),
     )
     source: AiEvidenceSource
     summary_de: str = Field(description="Kurzbeschreibung für Compliance/Revision (Deutsch).")
     confidence_level: str | None = None
     purpose: str | None = Field(
         default=None,
-        description=(
-            "Zweck der KI-Nutzung (Transparenz), z. B. regulatory_qa, board_reporting."
-        ),
+        description=("Zweck der KI-Nutzung (Transparenz), z. B. regulatory_qa, board_reporting."),
     )
     system_id: str | None = Field(
         default=None,
@@ -84,9 +79,7 @@ class AiEvidenceBoardReportCompletedDetailSection(BaseModel):
     audience_type: str
     activities_executed: list[str] = Field(
         default_factory=list,
-        description=(
-            "Aus Payload abgeleitete Aktivitätsreihenfolge (ohne Roh-Inhalt)."
-        ),
+        description=("Aus Payload abgeleitete Aktivitätsreihenfolge (ohne Roh-Inhalt)."),
     )
     title: str
 
