@@ -12,6 +12,7 @@ from typing import Any
 
 from app.grc.models import (
     AiRiskAssessment,
+    AiSystem,
     Iso42001GapRecord,
     Nis2ObligationRecord,
     _now_iso,
@@ -24,6 +25,9 @@ _risks: dict[str, AiRiskAssessment] = {}
 _nis2: dict[str, Nis2ObligationRecord] = {}
 _gaps: dict[str, Iso42001GapRecord] = {}
 _idem_index: dict[str, str] = {}
+
+_ai_systems: dict[str, AiSystem] = {}
+_system_id_index: dict[str, str] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +94,88 @@ def upsert_gap(record: Iso42001GapRecord) -> Iso42001GapRecord:
         _idem_index[key] = record.id
         logger.info("grc_gap_created", extra={"id": record.id, "key": key})
         return record
+
+
+# ---------------------------------------------------------------------------
+# AI System Inventory (Wave 11)
+# ---------------------------------------------------------------------------
+
+
+def upsert_ai_system(system: AiSystem) -> AiSystem:
+    """Create or update an AI system record.  Keyed by tenant_id:system_id."""
+    key = f"{system.tenant_id}:{system.system_id}"
+    with _lock:
+        existing_id = _system_id_index.get(key)
+        if existing_id and existing_id in _ai_systems:
+            existing = _ai_systems[existing_id]
+            system.id = existing.id
+            system.created_at = existing.created_at
+            system.updated_at = _now_iso()
+            _ai_systems[existing.id] = system
+            logger.info("ai_system_updated", extra={"id": system.id, "key": key})
+            return system
+        _ai_systems[system.id] = system
+        _system_id_index[key] = system.id
+        logger.info("ai_system_created", extra={"id": system.id, "key": key})
+        return system
+
+
+def get_or_create_ai_system(
+    *,
+    tenant_id: str,
+    system_id: str,
+    client_id: str = "",
+) -> AiSystem:
+    """Return the AiSystem for ``tenant_id:system_id``, auto-creating a
+    minimal stub if none exists.  This ensures every GRC record that
+    references a system_id has a corresponding inventory entry."""
+    key = f"{tenant_id}:{system_id}"
+    with _lock:
+        existing_id = _system_id_index.get(key)
+        if existing_id and existing_id in _ai_systems:
+            return _ai_systems[existing_id]
+    stub = AiSystem(
+        tenant_id=tenant_id,
+        system_id=system_id,
+        client_id=client_id,
+        name=system_id,
+        auto_created=True,
+    )
+    return upsert_ai_system(stub)
+
+
+def get_ai_system(*, tenant_id: str, system_id: str) -> AiSystem | None:
+    key = f"{tenant_id}:{system_id}"
+    with _lock:
+        sid = _system_id_index.get(key)
+        if sid:
+            return _ai_systems.get(sid)
+    return None
+
+
+def get_ai_system_by_id(record_id: str) -> AiSystem | None:
+    with _lock:
+        return _ai_systems.get(record_id)
+
+
+def list_ai_systems(
+    *,
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    classification: str | None = None,
+    nis2_relevant: bool | None = None,
+) -> list[AiSystem]:
+    with _lock:
+        out = list(_ai_systems.values())
+    if tenant_id:
+        out = [s for s in out if s.tenant_id == tenant_id]
+    if client_id:
+        out = [s for s in out if s.client_id == client_id]
+    if classification:
+        out = [s for s in out if s.ai_act_classification == classification]
+    if nis2_relevant is not None:
+        out = [s for s in out if s.nis2_relevant == nis2_relevant]
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -177,3 +263,5 @@ def clear_for_tests() -> None:
         _nis2.clear()
         _gaps.clear()
         _idem_index.clear()
+        _ai_systems.clear()
+        _system_id_index.clear()

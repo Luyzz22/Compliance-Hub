@@ -49,6 +49,53 @@ class GapStatus(StrEnum):
     closed = "closed"
 
 
+class AiSystemClassification(StrEnum):
+    not_in_scope = "not_in_scope"
+    minimal = "minimal"
+    limited = "limited"
+    high_risk_candidate = "high_risk_candidate"
+    high_risk = "high_risk"
+
+
+# ---------------------------------------------------------------------------
+# AI System Inventory entity (Wave 11)
+# ---------------------------------------------------------------------------
+
+
+class AiSystem(BaseModel):
+    """Represents a registered AI system within a tenant.
+
+    Links GRC records (risk assessments, NIS2 obligations, ISO 42001 gaps)
+    to a single coherent system view.  When a GRC record references a
+    ``system_id`` that has no AiSystem yet, a minimal stub is auto-created.
+
+    ``ai_act_classification`` may start as ``high_risk_candidate`` when a
+    risk assessment flags it, but MUST NOT be auto-upgraded to ``high_risk``
+    without explicit human confirmation.
+    """
+
+    id: str = Field(default_factory=lambda: _new_id("SYS"))
+    system_id: str = ""
+    tenant_id: str = ""
+    client_id: str = ""
+
+    name: str = ""
+    description: str = ""
+    business_owner: str = ""
+    technical_owner: str = ""
+
+    ai_act_classification: AiSystemClassification = AiSystemClassification.not_in_scope
+    nis2_relevant: bool = False
+    iso42001_in_scope: bool = False
+
+    auto_created: bool = False
+    created_at: str = Field(default_factory=_now_iso)
+    updated_at: str = Field(default_factory=_now_iso)
+
+    tags: list[str] = Field(default_factory=list)
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+
 # ---------------------------------------------------------------------------
 # Entity 1: AI Risk Assessment
 # ---------------------------------------------------------------------------
