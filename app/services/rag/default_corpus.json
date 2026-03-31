@@ -1,0 +1,33 @@
+{
+  "corpus": [
+    {
+      "doc_id": "eu-ai-act-high-risk",
+      "title": "Hochrisiko",
+      "content": "Anlage III EU AI Act nennt Hochrisiko-KI-Systeme in acht Bereichen. Biometrie, kritische Infrastruktur, Bildung und Beschäftigung zählen zu den Hochrisiko-Kontexten.",
+      "source": "EU AI Act",
+      "section": "Anlage III"
+    },
+    {
+      "doc_id": "eu-ai-act-general",
+      "title": "Einordnung",
+      "content": "Artikel 6 EU AI Act regelt die Einordnung von KI-Systemen als Hochrisiko nach Anhang I und Anhang III.",
+      "source": "EU AI Act",
+      "section": "Art. 6"
+    },
+    {
+      "doc_id": "nis2-incident-deadline",
+      "title": "Meldefristen",
+      "content": "NIS2: Erhebliche Vorfälle sind ohne schuldhaftes Verzögern zu melden. Frühzeitige Warnung oft binnen 24 Stunden, Erstmeldung binnen 72 Stunden.",
+      "source": "NIS2",
+      "section": "Art. 23"
+    },
+    {
+      "doc_id": "tenant-playbook-ai-act",
+      "title": "Mandanten-Leitlinie",
+      "content": "Mandantenspezifische Leitlinie: Hochrisiko-KI vor Produktivgang mit DPIA und menschlicher Freigabe dokumentieren.",
+      "source": "Tenant",
+      "section": "",
+      "is_tenant_guidance": true
+    }
+  ]
+}
