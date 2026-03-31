@@ -5414,8 +5414,7 @@ def seed_demo_plan_api(
     profile: str = Query(
         ...,
         description=(
-            "Demo profile: industrie_mittelstand_demo, kanzlei_demo, "
-            "sap_enterprise_demo, sme_demo"
+            "Demo profile: industrie_mittelstand_demo, kanzlei_demo, sap_enterprise_demo, sme_demo"
         ),
     ),
     seed_data: bool = Query(
