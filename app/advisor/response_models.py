@@ -23,6 +23,7 @@ class AdvisorResponseMeta(BaseModel):
     trace_id: str | None = None
     latency_ms: float | None = None
     is_cached: bool = False
+    flow_type: str | None = None
 
 
 class AdvisorStructuredResponse(BaseModel):

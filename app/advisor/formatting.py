@@ -8,17 +8,36 @@ from __future__ import annotations
 
 import re
 
-from app.advisor.channels import AdvisorChannel, include_disclaimer, max_answer_length
+from app.advisor.channels import (
+    AdvisorChannel,
+    include_disclaimer,
+    is_kanzlei_channel,
+    max_answer_length,
+    use_structured_format,
+)
 from app.advisor.templates import DISCLAIMER_KEINE_RECHTSBERATUNG
 
 
 def format_answer_for_channel(
     answer: str,
     channel: AdvisorChannel,
+    *,
+    tags: list[str] | None = None,
+    next_steps: list[str] | None = None,
 ) -> str:
-    limit = max_answer_length(channel)
-    if not include_disclaimer(channel):
+    if use_structured_format(channel) and tags is not None:
+        from app.advisor.templates import format_structured_answer
+
+        answer = format_structured_answer(
+            _strip_disclaimer(answer),
+            tags or [],
+            next_steps or [],
+            kanzlei=is_kanzlei_channel(channel),
+        )
+    elif not include_disclaimer(channel):
         answer = _strip_disclaimer(answer)
+
+    limit = max_answer_length(channel)
     if limit and len(answer) > limit:
         answer = answer[: limit - 3] + "..."
     return answer

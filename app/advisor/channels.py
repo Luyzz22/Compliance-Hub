@@ -46,3 +46,13 @@ def max_answer_length(channel: AdvisorChannel) -> int | None:
 def include_disclaimer(channel: AdvisorChannel) -> bool:
     """Whether the channel should include the legal disclaimer in answers."""
     return channel in (AdvisorChannel.web, AdvisorChannel.api_partner)
+
+
+def use_structured_format(channel: AdvisorChannel) -> bool:
+    """Whether the channel prefers structured answer format with tags/steps."""
+    return channel in (AdvisorChannel.sap, AdvisorChannel.datev)
+
+
+def is_kanzlei_channel(channel: AdvisorChannel) -> bool:
+    """Whether the channel targets Kanzlei users (stronger disclaimers)."""
+    return channel == AdvisorChannel.datev
