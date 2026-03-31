@@ -60,14 +60,31 @@ class AdvisorState:
     """Ordered list of node executions + decisions for audit trail."""
 
 
-_INTENT_KEYWORDS_OUT_OF_SCOPE = frozenset({
-    "wetter", "fussball", "rezept", "urlaub", "sport", "kino", "musik",
-})
+_INTENT_KEYWORDS_OUT_OF_SCOPE = frozenset(
+    {
+        "wetter",
+        "fussball",
+        "rezept",
+        "urlaub",
+        "sport",
+        "kino",
+        "musik",
+    }
+)
 
-_INTENT_KEYWORDS_ACTION = frozenset({
-    "erstelle", "generiere", "berechne", "aktualisiere", "sende", "melde",
-    "exportiere", "registriere", "lösche",
-})
+_INTENT_KEYWORDS_ACTION = frozenset(
+    {
+        "erstelle",
+        "generiere",
+        "berechne",
+        "aktualisiere",
+        "sende",
+        "melde",
+        "exportiere",
+        "registriere",
+        "lösche",
+    }
+)
 
 
 def classify_intent(state: AdvisorState) -> AdvisorState:
@@ -87,10 +104,12 @@ def classify_intent(state: AdvisorState) -> AdvisorState:
     else:
         state.intent = IntentType.informational
 
-    state.agent_trace.append({
-        "node": "classify_intent",
-        "intent": state.intent.value,
-    })
+    state.agent_trace.append(
+        {
+            "node": "classify_intent",
+            "intent": state.intent.value,
+        }
+    )
     return state
 
 
@@ -110,14 +129,16 @@ def run_rag_query(
         persist_evidence=True,
     )
 
-    state.agent_trace.append({
-        "node": "run_rag_query",
-        "retrieval_mode": response.retrieval_mode,
-        "confidence_level": response.confidence_level,
-        "confidence_score": response.confidence_score,
-        "result_count": len(response.results),
-        "has_tenant_guidance": response.has_tenant_guidance,
-    })
+    state.agent_trace.append(
+        {
+            "node": "run_rag_query",
+            "retrieval_mode": response.retrieval_mode,
+            "confidence_level": response.confidence_level,
+            "confidence_score": response.confidence_score,
+            "result_count": len(response.results),
+            "has_tenant_guidance": response.has_tenant_guidance,
+        }
+    )
     return state
 
 
@@ -145,8 +166,7 @@ def check_confidence(
 
     if state.confidence_level == "low":
         state.escalation_reason = (
-            "Geringe Konfidenz der Quellenübereinstimmung — "
-            "menschliche Prüfung empfohlen."
+            "Geringe Konfidenz der Quellenübereinstimmung — menschliche Prüfung empfohlen."
         )
         return "escalate"
 
@@ -181,12 +201,14 @@ def synthesize_answer(
         persist_evidence=False,
     )
 
-    state.agent_trace.append({
-        "node": "synthesize_answer",
-        "status": "success" if not response.error else "fallback",
-        "model_id": response.model_id,
-        "latency_ms": response.latency_ms,
-    })
+    state.agent_trace.append(
+        {
+            "node": "synthesize_answer",
+            "status": "success" if not response.error else "fallback",
+            "model_id": response.model_id,
+            "latency_ms": response.latency_ms,
+        }
+    )
     return state
 
 
@@ -247,9 +269,7 @@ class AdvisorComplianceAgent:
         state = classify_intent(state)
 
         if state.intent == IntentType.out_of_scope:
-            state.escalation_reason = (
-                "Anfrage liegt außerhalb des Compliance-Beratungsbereichs."
-            )
+            state.escalation_reason = "Anfrage liegt außerhalb des Compliance-Beratungsbereichs."
             state = escalate_to_human(state)
             return state
 

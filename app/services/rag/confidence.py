@@ -56,9 +56,7 @@ def _base_level(combined: float, bm25: float, config: RAGConfig) -> str:
     return "low"
 
 
-def _compute_score(
-    combined: float, bm25: float, topk_gap: float, config: RAGConfig
-) -> float:
+def _compute_score(combined: float, bm25: float, topk_gap: float, config: RAGConfig) -> float:
     """Weighted blend of signals into a single 0–1 score."""
     bm25_weight = 0.4
     combined_weight = 0.4

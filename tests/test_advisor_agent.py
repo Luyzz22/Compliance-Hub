@@ -92,8 +92,12 @@ class TestConfidencePolicy:
     def test_high_confidence_routes_to_synthesize(self) -> None:
         state = AdvisorState(confidence_level="high")
         state.retrieval_response = RetrievalResponse(
-            results=[], retrieval_mode="bm25", alpha_used=0.0,
-            query_hash="abc", confidence_level="high", has_tenant_guidance=False,
+            results=[],
+            retrieval_mode="bm25",
+            alpha_used=0.0,
+            query_hash="abc",
+            confidence_level="high",
+            has_tenant_guidance=False,
         )
         result = check_confidence(state)
         assert result == "synthesize"
@@ -107,8 +111,12 @@ class TestConfidencePolicy:
     def test_missing_tenant_guidance_escalates(self) -> None:
         state = AdvisorState(confidence_level="medium")
         state.retrieval_response = RetrievalResponse(
-            results=[], retrieval_mode="hybrid", alpha_used=0.3,
-            query_hash="def", confidence_level="medium", has_tenant_guidance=False,
+            results=[],
+            retrieval_mode="hybrid",
+            alpha_used=0.3,
+            query_hash="def",
+            confidence_level="medium",
+            has_tenant_guidance=False,
         )
         result = check_confidence(state, tenant_has_guidance=True)
         assert result == "escalate"
@@ -224,6 +232,7 @@ class TestAdvisorComplianceAgentIntegration:
 
     def test_llm_failure_returns_safe_fallback(self) -> None:
         """LLM failure → safe fallback response, not a crash."""
+
         def _failing_llm(prompt: str, context: LlmCallContext) -> LlmResponse:
             raise RuntimeError("LLM unavailable")
 

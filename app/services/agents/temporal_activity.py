@@ -80,6 +80,7 @@ def run_advisor_agent_activity(
 def _check_temporal_available() -> bool:
     try:
         import temporalio  # noqa: F401
+
         return True
     except ImportError:
         return False

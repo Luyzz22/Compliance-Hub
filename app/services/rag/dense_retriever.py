@@ -31,6 +31,7 @@ class DenseIndex:
 
         try:
             from sentence_transformers import SentenceTransformer
+
             self._model = SentenceTransformer(self.model_name)
             texts = [doc.content for doc in self.documents]
             self._embeddings = self._model.encode(texts, normalize_embeddings=True)

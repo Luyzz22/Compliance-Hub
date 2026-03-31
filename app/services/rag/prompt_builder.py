@@ -45,9 +45,7 @@ def build_rag_prompt(
     context_blocks = []
     for r in response.results:
         block = (
-            f"--- Quelle [{r.doc.doc_id}] ---\n"
-            f"Titel: {r.doc.title}\n"
-            f"Regulierung: {r.doc.source}"
+            f"--- Quelle [{r.doc.doc_id}] ---\nTitel: {r.doc.title}\nRegulierung: {r.doc.source}"
         )
         if r.doc.section:
             block += f" – {r.doc.section}"

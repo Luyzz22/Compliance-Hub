@@ -14,12 +14,47 @@ from app.services.rag.corpus import Document, RetrievalResult
 
 logger = logging.getLogger(__name__)
 
-_STOP_WORDS_DE = frozenset({
-    "der", "die", "das", "ein", "eine", "und", "oder", "in", "von", "zu",
-    "für", "mit", "auf", "ist", "sind", "wird", "werden", "bei", "den",
-    "dem", "des", "als", "nach", "über", "unter", "an", "auch", "nicht",
-    "sich", "es", "im", "wie", "dass", "nur", "noch", "aus", "wenn",
-})
+_STOP_WORDS_DE = frozenset(
+    {
+        "der",
+        "die",
+        "das",
+        "ein",
+        "eine",
+        "und",
+        "oder",
+        "in",
+        "von",
+        "zu",
+        "für",
+        "mit",
+        "auf",
+        "ist",
+        "sind",
+        "wird",
+        "werden",
+        "bei",
+        "den",
+        "dem",
+        "des",
+        "als",
+        "nach",
+        "über",
+        "unter",
+        "an",
+        "auch",
+        "nicht",
+        "sich",
+        "es",
+        "im",
+        "wie",
+        "dass",
+        "nur",
+        "noch",
+        "aus",
+        "wenn",
+    }
+)
 
 
 def _tokenize(text: str) -> list[str]:
@@ -42,6 +77,7 @@ class BM25Index:
 
         try:
             from rank_bm25 import BM25Okapi
+
             self._index = BM25Okapi(tokenized)
         except ImportError:
             logger.warning(
