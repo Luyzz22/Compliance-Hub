@@ -19,6 +19,7 @@ import re
 from typing import Any
 
 from app.advisor.channels import ChannelMetadata
+from app.advisor.enterprise_context import EnterpriseContext
 from app.advisor.errors import ADVISOR_SLA_TIMEOUT_SECONDS
 from app.advisor.preset_models import (
     RESPONSE_CONTRACT_VERSION,
@@ -88,12 +89,19 @@ def run_eu_ai_act_risk_preset(
     )
 
     grc = _derive_ai_act_risk_grc(raw, inp)
-    return _build_preset_result(
+    result = _build_preset_result(
         raw,
         inp,
         FlowType.eu_ai_act_risk_assessment,
         grc.model_dump(),
     )
+    _maybe_create_grc_record(
+        FlowType.eu_ai_act_risk_assessment,
+        result,
+        inp.context,
+        input_summary=inp.use_case_description,
+    )
+    return result
 
 
 def run_nis2_obligations_preset(
@@ -119,12 +127,19 @@ def run_nis2_obligations_preset(
     )
 
     grc = _derive_nis2_grc(raw, inp)
-    return _build_preset_result(
+    result = _build_preset_result(
         raw,
         inp,
         FlowType.nis2_obligations,
         grc.model_dump(),
     )
+    _maybe_create_grc_record(
+        FlowType.nis2_obligations,
+        result,
+        inp.context,
+        input_summary=inp.entity_role,
+    )
+    return result
 
 
 def run_iso42001_gap_preset(
@@ -149,12 +164,19 @@ def run_iso42001_gap_preset(
     )
 
     grc = _derive_iso42001_grc(raw, inp)
-    return _build_preset_result(
+    result = _build_preset_result(
         raw,
         inp,
         FlowType.iso42001_gap_check,
         grc.model_dump(),
     )
+    _maybe_create_grc_record(
+        FlowType.iso42001_gap_check,
+        result,
+        inp.context,
+        input_summary=inp.current_measures[:500],
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +274,29 @@ def _build_preset_result(
         needs_manual_followup=raw.needs_manual_followup,
         agent_trace=raw.agent_trace,
     )
+
+
+def _maybe_create_grc_record(
+    flow_type: FlowType,
+    result: PresetResult,
+    context: EnterpriseContext,
+    *,
+    input_summary: str = "",
+) -> None:
+    """Create a GRC record from the preset result (if appropriate)."""
+    try:
+        from app.grc.ai_presets_mapper import map_preset_to_grc
+
+        grc_id = map_preset_to_grc(
+            flow_type,
+            result,
+            context,
+            input_summary=input_summary,
+        )
+        if grc_id:
+            result.machine.ref_ids["grc_record_id"] = grc_id
+    except Exception:
+        logger.exception("grc_record_creation_failed")
 
 
 # ---------------------------------------------------------------------------

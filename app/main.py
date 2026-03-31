@@ -4745,3 +4745,93 @@ def preset_iso42001_gap_check(
     if not body.context.tenant_id and not body.tenant_id:
         body.context.tenant_id = auth.tenant_id
     return run_iso42001_gap_preset(body)
+
+
+# ---------------------------------------------------------------------------
+# GRC Read-Only APIs (Wave 10)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/grc/ai-risks",
+    tags=["grc"],
+)
+def list_grc_ai_risks(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    system_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """List AI risk assessment records (read-only)."""
+    from app.grc.store import list_risks
+
+    _enforce_grc_opa("view_grc_records", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+    records = list_risks(tenant_id=tid, client_id=client_id, system_id=system_id)
+    return [r.model_dump() for r in records]
+
+
+@app.get(
+    "/api/v1/grc/nis2-obligations",
+    tags=["grc"],
+)
+def list_grc_nis2_obligations(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    entity_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """List NIS2 obligation records (read-only)."""
+    from app.grc.store import list_nis2_obligations
+
+    _enforce_grc_opa("view_grc_records", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+    records = list_nis2_obligations(
+        tenant_id=tid,
+        client_id=client_id,
+        entity_type=entity_type,
+    )
+    return [r.model_dump() for r in records]
+
+
+@app.get(
+    "/api/v1/grc/iso42001-gaps",
+    tags=["grc"],
+)
+def list_grc_iso42001_gaps(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    control_family: str | None = None,
+) -> list[dict[str, Any]]:
+    """List ISO 42001 gap records (read-only)."""
+    from app.grc.store import list_iso42001_gaps
+
+    _enforce_grc_opa("view_grc_records", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+    records = list_iso42001_gaps(
+        tenant_id=tid,
+        client_id=client_id,
+        control_family=control_family,
+    )
+    return [r.model_dump() for r in records]
+
+
+def _enforce_grc_opa(
+    action: str,
+    auth: AuthContext,
+    opa_role_header: str | None,
+) -> None:
+    opa_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name="COMPLIANCEHUB_OPA_ROLE_GRC",
+        default="platform_admin",
+    )
+    enforce_action_policy(
+        action,
+        UserPolicyContext(tenant_id=auth.tenant_id, user_role=opa_role),
+        risk_score=0.3,
+    )
