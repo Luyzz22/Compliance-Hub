@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "version": "1",
+    "language": "de",
+    "disclaimer": "Argumente für Readiness, Governance und Evidence — keine Garantie auf Rechtskonformität. Individuelle Prüfung und ggf. Rechtsberatung bleiben erforderlich."
+  },
+  "SKU_AI_ACT_STARTER": {
+    "kmu_industrie_mittelstand": {
+      "arguments_de": [
+        "Schneller Überblick, welche KI-Anwendungen im Unternehmen die EU-KI-Verordnung berühren — ohne zuerst externe Tagessätze zu binden.",
+        "Strukturierte Ersteinschätzung (Advisor) und nachvollziehbare Dokumentation (Evidence) für interne Audits und Management-Reports.",
+        "Unterstützung bei der Vorbereitung auf ISO-42001- und NIS2-Themen, bevor ein volles GRC-Programm ansteht.",
+        "Geringerer Einstiegsaufwand für CISO/Leiter Informationssicherheit und Fachbereichsverantwortliche.",
+        "Skalierbar später hin zu Inventar und GRC, wenn die KI-Landschaft wächst."
+      ]
+    },
+    "kanzlei": {
+      "arguments_de": [
+        "Einstiegspaket für Mandanten mit wenigen KI-Tools: Risiko-Scan und Evidence als Baustein für die Beratungsdokumentation.",
+        "Wiederkehrende, standardisierte AI-Act-Readiness-Checks statt jedes Mal neue Excel-Vorlagen.",
+        "Grundlage für Honorar-Pakete („AI-Act-Check“, „Ersteinschätzung pro Mandant“) ohne sofort die volle Governance-Suite zu verkaufen.",
+        "GoBD-taugliche Spuren: Nachweise und Entscheidungen dokumentieren, ohne Voll-Dossier zu versprechen.",
+        "Klare Upgrade-Perspektive zu Mandanten-Board-Reports und Dossiers, wenn der Mandant reift."
+      ]
+    },
+    "enterprise_sap": {
+      "arguments_de": [
+        "Pilotierbar für einzelne Geschäftseinheiten oder Tochtergesellschaften vor Konzern-Rollout.",
+        "Abgestimmt auf spätere Anbindung an SAP/DATEV über Enterprise Connectors — ohne Big-Bang.",
+        "Gleiche Begriffswelt wie in späteren Integrationen (KI-System, Evidence, Mandant), damit Playbooks übertragbar sind.",
+        "Readiness-Nachweise für interne Revision und Konzern-Governance vorbereiten.",
+        "Typischerweise Zwischenstufe: Zielbild bleibt Governance-Pro oder Enterprise mit Integration."
+      ]
+    }
+  },
+  "SKU_GOVERNANCE_PRO": {
+    "kmu_industrie_mittelstand": {
+      "arguments_de": [
+        "Zentrales AI-System-Inventar mit Lifecycle und Bezug zu AI Act, NIS2 und ISO 42001 — eine Quelle für IT, Security und Fachbereiche.",
+        "GRC-Einträge (Risiken, Pflichten, Gaps) unterstützen Nachweise gegenüber Aufsicht, Auditoren und Konzernmutter.",
+        "Weniger Streuverlust zwischen Werkzeugen: Board-Reports und Evidence hängen an denselben Systemdaten.",
+        "Unterstützung bei NIS2- und Kritis-Themen, wo KI-Systeme die Lieferkette oder kritische Prozesse berühren.",
+        "Positionierung als „Betriebssystem“ für KI-Governance im Mittelstand — vor Enterprise-Integration."
+      ]
+    },
+    "kanzlei": {
+      "arguments_de": [
+        "Mandanten-Board-Reports und Compliance-Dossiers als verkaufbare Leistung: strukturierte KI-Compliance-Darstellung für Geschäftsführung oder Beirat.",
+        "AI-Evidence und GRC-Daten als Grundlage für Honorarmodelle (Pakete pro Mandant, Jahresbetreuung, Vorstands-Updates).",
+        "Differenzierung gegenüber reinen Checklisten: Mandanten sehen Inventar, Risiko und Maßnahmen an einem Ort.",
+        "Anknüpfung an Verfahrensdokumentation und DATEV-nahe Exporte (ohne rechtliche Vollständigkeit zu behaupten).",
+        "Skalierung über viele Mandanten mit wiederkehrenden Workflows statt Einzelprojekte."
+      ]
+    },
+    "enterprise_sap": {
+      "arguments_de": [
+        "Einheitliche Governance-Sicht vor SAP-BTP- und Event-Mesh-Anbindung: erst Datenqualität, dann Automation.",
+        "Vorbereitung auf konzernweite Reporting-Linien (Risk, Compliance, AI-Office).",
+        "Nachvollziehbare Entscheidungs- und Prüfpfade für interne und externe Prüfer.",
+        "Klare Trennung: Governance & Evidence als Kern; Connectors als darauf aufsetzendes Zusatzpaket.",
+        "Reduziert Doppelarbeit zwischen Fachbereich und IT bei Hochrisiko-KI (z. B. Scoring, Personalauswahl)."
+      ]
+    }
+  },
+  "SKU_ENTERPRISE_CONNECT": {
+    "kmu_industrie_mittelstand": {
+      "arguments_de": [
+        "Automatisierte Übergabe von Dossiers und Jobs in DATEV-nahe Prozesse — weniger Copy-Paste, mehr Wiederholbarkeit.",
+        "Vorbereitung auf SAP-S/4- und BTP-Landschaften, wenn KI-Events aus dem ERP kommen sollen.",
+        "Auditierbare Integrationsjobs statt manueller Schnittstellen.",
+        "Passt zu Unternehmen, die bereits ERP-zentriert denken und KI-Governance dort verankern wollen.",
+        "Premium-Add-on: nur sinnvoll, wenn Governance-Pro im Einsatz ist oder gleichzeitig beschlossen wird."
+      ]
+    },
+    "kanzlei": {
+      "arguments_de": [
+        "DATEV-Ökosystem: strukturierte Mandanten-Dossiers als Anhang zu bestehenden Kanzlei-Workflows.",
+        "Weniger Medienbruch zwischen ComplianceHub und Kanzlei-Dokumentation.",
+        "Argument für Premium-Mandate oder Konzernmandanten mit eigener SAP-Welt.",
+        "Professioneller Auftritt: „wir liefern nicht nur Beratung, sondern auch maschinenlesbare Nachweise“.",
+        "Typischerweise Zusatz zu Governance & Evidence, nicht allein verkauft."
+      ]
+    },
+    "enterprise_sap": {
+      "arguments_de": [
+        "CloudEvents-fähige Anbindung (Referenz: BTP Event Mesh) — KI-Systeme aus SAP-Landschaft werden erkannt und im Inventar geführt.",
+        "Konzernweite Skalierung: gleiche Integrationsmuster für mehrere Werke oder Regionen.",
+        "Reduziert manuelle Abstimmung zwischen SAP-Team und AI-Governance-Team.",
+        "Grundlage für Betrieb und Monitoring von Schnittstellen-Jobs (Outbox-Pattern, Wiederholung).",
+        "Positionierung als strategisches Add-on für SAP-Bestandskunden mit KI in kritischen Prozessen."
+      ]
+    }
+  }
+}

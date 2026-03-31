@@ -67,36 +67,51 @@ BUNDLE_DESCRIPTIONS_DE: dict[str, str] = {
 VALUE_HINTS_DE: dict[str, str] = {
     "ai_advisor": (
         "Teil Ihres Pakets: Der AI Act Advisor unterstützt Sie bei der "
-        "strukturierten Einschätzung Ihrer KI-Systeme gemäß EU-KI-Verordnung."
+        "strukturierten Einschätzung Ihrer KI-Systeme gemäß EU-KI-Verordnung. "
+        "Dieses Modul ist typischerweise Bestandteil von „AI Act Readiness“ "
+        "(Starter-Tier)."
     ),
     "evidence_views": (
         "Teil Ihres Pakets: AI-Evidence & Audit-Trail — dokumentieren Sie "
-        "Nachweise, Prüfschritte und Entscheidungen nachvollziehbar."
+        "Nachweise, Prüfschritte und Entscheidungen nachvollziehbar. "
+        "Typischerweise Teil von „AI Act Readiness“ (Starter-Tier) oder "
+        "erweitert in „AI Governance & Evidence“ (Professional-Tier)."
     ),
     "grc_records": (
-        "Teil Ihres Pakets 'AI Governance & Evidence': Risikobewertungen, "
-        "NIS2-Pflichten und ISO 42001-Gaps zentral verwalten."
+        "Teil Ihres Pakets „AI Governance & Evidence“: Risikobewertungen, "
+        "NIS2-Pflichten und ISO 42001-Gaps zentral verwalten. "
+        "Dieses Modul ist typischerweise Teil des Professional-Tiers "
+        "(Paket „AI Governance & Evidence“), nicht des reinen Starter-Pakets."
     ),
     "ai_system_inventory": (
-        "Teil Ihres Pakets 'AI Governance & Evidence': Übersicht aller "
-        "KI-Systeme mit AI-Act-/NIS2-/ISO-42001-Bezug und Lifecycle-Status."
+        "Teil Ihres Pakets „AI Governance & Evidence“: Übersicht aller "
+        "KI-Systeme mit AI-Act-/NIS2-/ISO-42001-Bezug und Lifecycle-Status. "
+        "Typischerweise Professional-Tier; für Kanzleien und Mittelstand der "
+        "Kern vor optionalen Enterprise-Connectors."
     ),
     "kanzlei_reports": (
         "Teil Ihres Kanzlei-Pakets: Mandanten-Board-Reports fassen den "
-        "KI-Compliance-Status eines Mandanten für Beirat oder Vorstand zusammen."
+        "KI-Compliance-Status eines Mandanten für Beirat oder Vorstand zusammen. "
+        "Typischerweise Paket „AI Governance & Evidence“ (Professional-Tier)."
     ),
     "kanzlei_dossier": (
         "Teil Ihres Kanzlei-Pakets: Mandanten-Compliance-Dossiers eignen sich "
         "als Anlage zur Verfahrensdokumentation oder als strukturierter "
-        "Compliance-Nachweis im DATEV-Umfeld."
+        "Compliance-Nachweis im DATEV-Umfeld. "
+        "Ebenfalls typischerweise „AI Governance & Evidence“ (Professional-Tier); "
+        "DATEV-nahe Exporte stärker mit Enterprise Connectors kombinierbar."
     ),
     "enterprise_integrations": (
         "Teil Ihres Enterprise-Pakets: Nahtlose Integration in SAP- und "
-        "DATEV-Ökosysteme für automatisierte Compliance-Synchronisation."
+        "DATEV-Ökosysteme für automatisierte Compliance-Synchronisation. "
+        "Enterprise Connectors sind als Zusatzpaket im Enterprise-Tier für "
+        "SAP-/DATEV-Integrationen vorgesehen — sinnvoll auf Basis von "
+        "Governance & Evidence."
     ),
     "deployment_check": (
         "Deployment-Prüfung: Automatische Prüfung der Compliance-Readiness "
-        "eines KI-Systems vor dem Go-live."
+        "eines KI-Systems vor dem Go-live. "
+        "Häufig im Umfeld von Governance & Evidence (Professional-Tier) im Einsatz."
     ),
 }
 
@@ -121,12 +136,14 @@ FEATURE_NOT_ENABLED_DISCLAIMER_DE = (
 )
 
 CAPABILITY_UPGRADE_HINTS_DE: dict[Capability, str] = {
-    Capability.ai_advisor_basic: "AI Act Readiness (Starter)",
-    Capability.ai_evidence_basic: "AI Act Readiness (Starter)",
-    Capability.grc_records: "AI Governance & Evidence (Professional)",
-    Capability.ai_system_inventory: "AI Governance & Evidence (Professional)",
-    Capability.kanzlei_reports: "AI Governance & Evidence (Professional)",
-    Capability.enterprise_integrations: "Enterprise Connectors",
+    Capability.ai_advisor_basic: "AI Act Readiness (Starter-Tier)",
+    Capability.ai_evidence_basic: "AI Act Readiness (Starter-Tier)",
+    Capability.grc_records: "AI Governance & Evidence (Professional-Tier)",
+    Capability.ai_system_inventory: "AI Governance & Evidence (Professional-Tier)",
+    Capability.kanzlei_reports: "AI Governance & Evidence (Professional-Tier)",
+    Capability.enterprise_integrations: (
+        "Enterprise Connectors (Zusatzpaket, Enterprise-Tier; SAP-/DATEV-Integrationen)"
+    ),
 }
 
 # ---------------------------------------------------------------------------

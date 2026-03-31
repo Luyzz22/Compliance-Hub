@@ -1,0 +1,83 @@
+# ComplianceHub — interne Preis- & Lizenzstruktur (Wave 19)
+#
+# HINWEIS: Arbeitsdokument. Keine EUR-Beträge. Nur relative Positionierung
+# und Abrechnungslogik-Hinweise für Sales/Finance vor Go-Live abstimmen.
+#
+# Felder:
+#   sku: interne SKU-ID (siehe app/product/offerings.py)
+#   segment: kmu_industrie_mittelstand | kanzlei | enterprise_sap
+#   positioning: entry | core | premium_addon
+#   relative_price: Vergleichsfaktor zum Basispaket (1x = Referenz)
+#   price_band_hint: qualitative Spanne (low / mid / high) je Segment
+#   billing_model_hint: typische Abrechnungsdimension (ohne konkrete Staffel)
+
+version: "1"
+reference_sku: SKU_AI_ACT_STARTER
+reference_relative_price: "1x"
+
+entries:
+  # --- AI Act Readiness (Starter-SKU) ---
+  - sku: SKU_AI_ACT_STARTER
+    segment: kmu_industrie_mittelstand
+    positioning: entry
+    relative_price: "1x"
+    price_band_hint: low_to_mid
+    billing_model_hint: "pro Mandant/Tenant; Nutzerpool nach Vereinbarung; optional nach registrierten KI-Systemen staffelbar"
+
+  - sku: SKU_AI_ACT_STARTER
+    segment: kanzlei
+    positioning: entry
+    relative_price: "1x"
+    price_band_hint: low_to_mid
+    billing_model_hint: "pro Kanzlei-Mandant (Tenant oder Mandanten-Workspace); Staffel nach Mandantenanzahl üblich"
+
+  - sku: SKU_AI_ACT_STARTER
+    segment: enterprise_sap
+    positioning: entry
+    relative_price: "1x"
+    price_band_hint: mid
+    billing_model_hint: "selten allein; eher Pilot- oder Tochtergesellschaft; pro Geschäftseinheit/Tenant"
+
+  # --- AI Governance & Evidence (Pro-SKU) ---
+  - sku: SKU_GOVERNANCE_PRO
+    segment: kmu_industrie_mittelstand
+    positioning: core
+    relative_price: "2x bis 3x"
+    price_band_hint: mid_to_high
+    billing_model_hint: "pro Tenant; häufig Jahreslizenz; optionale Staffel nach KI-Systemen für Inventar/GRC-Umfang"
+
+  - sku: SKU_GOVERNANCE_PRO
+    segment: kanzlei
+    positioning: core
+    relative_price: "2x bis 4x"
+    price_band_hint: mid_to_high
+    billing_model_hint: "pro Mandant oder Mandantenpaket; Honorar-/Beratungspakete kombinierbar; Staffel nach Mandanten"
+
+  - sku: SKU_GOVERNANCE_PRO
+    segment: enterprise_sap
+    positioning: core
+    relative_price: "2x bis 3x"
+    price_band_hint: high
+    billing_model_hint: "pro Tenant/Konzernbereich; oft Rahmenvertrag; Zusatz nach KI-Systemen oder Nutzergruppen"
+
+  # --- Enterprise Connectors ---
+  - sku: SKU_ENTERPRISE_CONNECT
+    segment: kmu_industrie_mittelstand
+    positioning: premium_addon
+    relative_price: "+1x bis +2x auf Governance-Pro-Basis"
+    price_band_hint: high
+    billing_model_hint: "Zusatzmodul zum Pro-/Enterprise-Tier; oft Setup-Fee + laufende Anbindung; pro Tenant"
+
+  - sku: SKU_ENTERPRISE_CONNECT
+    segment: kanzlei
+    positioning: premium_addon
+    relative_price: "+1x bis +2x"
+    price_band_hint: high
+    billing_model_hint: "Zusatz zu Governance & Evidence; DATEV-/Export-Pfade; pro Kanzlei oder Mandantencluster"
+
+  - sku: SKU_ENTERPRISE_CONNECT
+    segment: enterprise_sap
+    positioning: premium_addon
+    relative_price: "+2x bis +4x auf Governance-Pro-Basis"
+    price_band_hint: high
+    billing_model_hint: "Zusatzpaket; SAP BTP/Event Mesh; oft Projektlizenz + Betrieb; pro Tenant oder Integrationsumfang"
