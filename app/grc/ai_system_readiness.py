@@ -306,3 +306,153 @@ def _log_readiness_evidence(
     }
     record_event(payload)
     logger.info("readiness_evaluation_logged", extra=payload)
+
+
+# ---------------------------------------------------------------------------
+# Deployment-check (Wave 14)
+# ---------------------------------------------------------------------------
+
+REPORT_FRESHNESS_DAYS = 90
+
+
+def deployment_check(
+    *,
+    tenant_id: str,
+    system_id: str,
+    caller_type: str = "manual",
+    trace_id: str = "",
+) -> dict[str, Any]:
+    """Lightweight deployment-check for CI/Temporal integration.
+
+    Returns a clear, action-oriented result dict indicating whether a
+    system is ready for deployment review.  Always advisory — never
+    auto-blocks.
+    """
+    ai_sys = get_ai_system(tenant_id=tenant_id, system_id=system_id)
+    if ai_sys is None:
+        return {"error": f"AiSystem not found: {tenant_id}:{system_id}"}
+
+    readiness = compute_readiness(ai_sys)
+
+    classification = ai_sys.ai_act_classification.value
+    is_hrc = classification in (
+        AiSystemClassification.high_risk_candidate.value,
+        AiSystemClassification.high_risk.value,
+    )
+
+    blocking: list[str] = list(readiness.get("blocking_items", []))
+
+    if not ai_sys.business_owner and not ai_sys.technical_owner:
+        blocking.append("Kein Business- oder Technical-Owner hinterlegt")
+
+    has_recent_report = _has_recent_board_report(tenant_id, system_id, REPORT_FRESHNESS_DAYS)
+    report_note = ""
+    if has_recent_report:
+        report_note = "Aktueller Board-Report vorhanden, der dieses System abdeckt."
+    elif is_hrc:
+        blocking.append(
+            "Kein aktueller Board-Report für dieses High-Risk-Candidate-System vorhanden"
+        )
+
+    advisory = _build_advisory_message(ai_sys, readiness, blocking, report_note)
+
+    result: dict[str, Any] = {
+        "system_id": system_id,
+        "lifecycle_stage": ai_sys.lifecycle_stage.value,
+        "classification": classification,
+        "readiness_level": readiness["readiness_level"],
+        "is_high_risk_candidate": is_hrc,
+        "blocking_items": blocking,
+        "advisory_message_de": advisory,
+        "has_recent_board_report": has_recent_report,
+    }
+
+    _log_deployment_check_evidence(ai_sys, result, caller_type, trace_id)
+    return result
+
+
+def _has_recent_board_report(
+    tenant_id: str,
+    system_id: str,
+    max_age_days: int,
+) -> bool:
+    """Check if a board report covering this system was generated recently."""
+    try:
+        from app.grc.client_board_report_service import _reports
+
+        cutoff = datetime.now(UTC).timestamp() - (max_age_days * 86400)
+        for r in _reports.values():
+            if r.tenant_id != tenant_id:
+                continue
+            if system_id not in r.system_ids:
+                continue
+            try:
+                created = datetime.fromisoformat(r.created_at).timestamp()
+                if created >= cutoff:
+                    return True
+            except (ValueError, TypeError):
+                continue
+    except ImportError:
+        pass
+    return False
+
+
+def _build_advisory_message(
+    ai_sys: AiSystem,
+    readiness: dict[str, Any],
+    blocking: list[str],
+    report_note: str,
+) -> str:
+    level = readiness["readiness_level"]
+    cls = ai_sys.ai_act_classification.value
+    stage = ai_sys.lifecycle_stage.value
+    name = ai_sys.name or ai_sys.system_id
+
+    parts: list[str] = [
+        f"System \u201e{name}\u201c (Klassifizierung: {cls}, "
+        f"Lifecycle: {stage}, Readiness: {level})."
+    ]
+
+    if level == "ready_for_review":
+        parts.append(
+            "Alle wesentlichen Evidenzen vorhanden — bereit für menschliche Freigabeprüfung."
+        )
+    elif level == "partially_covered":
+        parts.append("Teilweise abgedeckt — einige offene Punkte vor Freigabe klären.")
+    elif level == "insufficient_evidence":
+        parts.append("Unzureichende Evidenzlage — wesentliche Nachweise fehlen.")
+    else:
+        parts.append("Keine Evidenz vorhanden.")
+
+    if blocking:
+        parts.append("Offene Punkte:")
+        for item in blocking:
+            parts.append(f"  • {item}")
+
+    if report_note:
+        parts.append(report_note)
+
+    return "\n".join(parts)
+
+
+def _log_deployment_check_evidence(
+    ai_sys: AiSystem,
+    result: dict[str, Any],
+    caller_type: str,
+    trace_id: str,
+) -> None:
+    payload: dict[str, Any] = {
+        "event_type": "deployment_check",
+        "tenant_id": ai_sys.tenant_id,
+        "system_id": ai_sys.system_id,
+        "ai_system_id": ai_sys.id,
+        "caller_type": caller_type,
+        "lifecycle_stage": result["lifecycle_stage"],
+        "classification": result["classification"],
+        "readiness_level": result["readiness_level"],
+        "is_high_risk_candidate": result["is_high_risk_candidate"],
+        "blocking_items_count": len(result["blocking_items"]),
+        "trace_id": trace_id or f"deploy-check-{uuid.uuid4().hex[:8]}",
+    }
+    record_event(payload)
+    logger.info("deployment_check_logged", extra=payload)
