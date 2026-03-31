@@ -9,6 +9,8 @@ import re
 import time
 from typing import Any, Literal
 
+from app.telemetry.tracing import get_trace_context_for_log_fields
+
 logger = logging.getLogger(__name__)
 
 RagQueryPhase = Literal["retrieval_complete", "response_complete"]
@@ -74,6 +76,11 @@ def log_rag_query_event(
         record["confidence_level"] = confidence_level
     if extra:
         record["extra"] = extra
+    otel = get_trace_context_for_log_fields()
+    if otel.get("trace_id"):
+        record["trace_id"] = otel["trace_id"]
+    if otel.get("span_id"):
+        record["span_id"] = otel["span_id"]
     logger.info("rag_query_event %s", json.dumps(record, ensure_ascii=False))
 
 

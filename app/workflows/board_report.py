@@ -22,6 +22,8 @@ class BoardReportWorkflowInput:
     include_ai_act_only: bool = False
     language: str = "de"
     user_role_for_opa: str = ""
+    # W3C trace context (traceparent / tracestate) from API for worker span stitching.
+    otel_trace_carrier: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -50,6 +52,7 @@ class BoardReportWorkflow:
                     "tenant_id": inp.tenant_id,
                     "ai_system_id": str(primary_id),
                     "user_role": inp.user_role_for_opa or "",
+                    "otel_trace_carrier": dict(inp.otel_trace_carrier or {}),
                 },
                 start_to_close_timeout=timedelta(minutes=15),
             )

@@ -373,6 +373,8 @@ from app.supplier_risk_models import (
     AISupplierRiskBySystemEntry,
     AISupplierRiskOverview,
 )
+from app.telemetry.middleware import TelemetryMiddleware
+from app.telemetry.tracing import configure_telemetry, inject_trace_carrier, start_span
 from app.temporal_client import get_temporal_client
 from app.tenant_ai_governance_setup_models import (
     TenantAIGovernanceSetupPatch,
@@ -413,6 +415,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup phase
     Base.metadata.create_all(bind=engine)
     run_all_db_migrations(engine)
+    configure_telemetry()
     with Session(engine) as seed_session:
         ensure_cross_regulation_catalog_seeded(seed_session)
         ensure_ai_kpi_definitions_seeded(seed_session)
@@ -425,6 +428,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.add_middleware(TelemetryMiddleware)
 
 logger = logging.getLogger(__name__)
 
@@ -3920,22 +3924,30 @@ async def post_start_board_report_workflow(
     safe = _sanitize_tenant_id_for_temporal_workflow_id(tenant_id)
     workflow_id = f"board-report-{safe}-{uuid.uuid4()}"
     client = await get_temporal_client()
-    handle = await client.start_workflow(
-        BoardReportWorkflow.run,
-        BoardReportWorkflowInput(
-            tenant_id=tenant_id,
-            snapshot_reference=body.snapshot_reference,
-            audience_type=body.audience_type,
-            primary_ai_system_id=body.primary_ai_system_id,
-            focus_frameworks=list(body.focus_frameworks or []),
-            include_ai_act_only=body.include_ai_act_only,
-            language=body.language,
-            user_role_for_opa=wf_role,
-        ),
-        id=workflow_id,
-        task_queue=temporal_task_queue(),
-    )
-    desc = await handle.describe()
+    otel_carrier: dict[str, str] = {}
+    inject_trace_carrier(otel_carrier)
+    with start_span(
+        "temporal.board_report.enqueue",
+        tenant_id=tenant_id,
+        workflow_id=workflow_id,
+    ):
+        handle = await client.start_workflow(
+            BoardReportWorkflow.run,
+            BoardReportWorkflowInput(
+                tenant_id=tenant_id,
+                snapshot_reference=body.snapshot_reference,
+                audience_type=body.audience_type,
+                primary_ai_system_id=body.primary_ai_system_id,
+                focus_frameworks=list(body.focus_frameworks or []),
+                include_ai_act_only=body.include_ai_act_only,
+                language=body.language,
+                user_role_for_opa=wf_role,
+                otel_trace_carrier=otel_carrier,
+            ),
+            id=workflow_id,
+            task_queue=temporal_task_queue(),
+        )
+        desc = await handle.describe()
     audit_repo.log_event(
         tenant_id=tenant_id,
         actor_type="api_key",
