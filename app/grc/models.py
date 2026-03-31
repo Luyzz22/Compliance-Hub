@@ -57,6 +57,23 @@ class AiSystemClassification(StrEnum):
     high_risk = "high_risk"
 
 
+class LifecycleStage(StrEnum):
+    idea = "idea"
+    design = "design"
+    development = "development"
+    testing = "testing"
+    pilot = "pilot"
+    production = "production"
+    retired = "retired"
+
+
+class ReadinessLevel(StrEnum):
+    unknown = "unknown"
+    insufficient_evidence = "insufficient_evidence"
+    partially_covered = "partially_covered"
+    ready_for_review = "ready_for_review"
+
+
 # ---------------------------------------------------------------------------
 # AI System Inventory entity (Wave 11)
 # ---------------------------------------------------------------------------
@@ -87,6 +104,11 @@ class AiSystem(BaseModel):
     ai_act_classification: AiSystemClassification = AiSystemClassification.not_in_scope
     nis2_relevant: bool = False
     iso42001_in_scope: bool = False
+
+    lifecycle_stage: LifecycleStage = LifecycleStage.idea
+    readiness_level: ReadinessLevel = ReadinessLevel.unknown
+    go_live_target_date: str = ""
+    last_reviewed_at: str = ""
 
     auto_created: bool = False
     created_at: str = Field(default_factory=_now_iso)

@@ -4916,3 +4916,29 @@ def get_ai_system_overview(
         "iso42001_gaps": [g.model_dump() for g in gaps_for_sys],
         "framework_coverage": framework_hints,
     }
+
+
+@app.get(
+    "/api/v1/ai-systems/{system_id}/readiness",
+    tags=["ai-systems"],
+)
+def get_ai_system_readiness(
+    system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    trace_id: str | None = None,
+) -> dict[str, Any]:
+    """Release-gate readiness check for an AI system (advisory only)."""
+    from app.grc.ai_system_readiness import evaluate_and_update
+
+    _enforce_grc_opa("view_ai_systems", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+    result = evaluate_and_update(
+        tenant_id=tid,
+        system_id=system_id,
+        trace_id=trace_id or "",
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
