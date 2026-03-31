@@ -14,12 +14,27 @@ dependencies = [
   "pydantic[email]>=2.0",
   "uvicorn[standard]>=0.30",
   "httpx>=0.27",
+  "numpy>=1.26",
+  "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0.0",
   "ruff>=0.15.0",
+]
+rag = [
+  "rank-bm25>=0.2.2",
+  "sentence-transformers>=3.0",
+]
+agents = [
+  "langgraph>=0.2",
+]
+temporal = [
+  "temporalio>=1.7",
+]
+all = [
+  "compliancehub[rag,agents,temporal]",
 ]
 api = []
 
@@ -45,5 +60,5 @@ ignore = []
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app"]
+include = ["app", "app.*"]
 exclude = ["frontend"]
