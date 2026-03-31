@@ -220,6 +220,7 @@ from app.policy.role_resolution import (
 from app.policy.user_context import UserPolicyContext
 from app.policy_models import Violation
 from app.policy_service import evaluate_policies_for_ai_system
+from app.product.models import Capability
 from app.provisioning_models import (
     ProvisionTenantRequest,
     ProvisionTenantResponse,
@@ -3230,6 +3231,9 @@ def get_workspace_tenant_meta(
             "risk_score": 0.4,
         },
     )
+    from app.product.plan_store import get_tenant_plan
+
+    plan = get_tenant_plan(tid)
     return TenantWorkspaceMetaResponse(
         tenant_id=row.id,
         display_name=row.display_name,
@@ -3242,6 +3246,9 @@ def get_workspace_tenant_meta(
         demo_mode_feature_enabled=is_feature_enabled(FeatureFlag.demo_mode),
         feature_ai_act_evidence_views=ai_evidence_ff,
         can_view_ai_evidence=bool(evidence_decision.allowed),
+        plan_tier=plan.tier.value,
+        plan_display=plan.plan_display(),
+        plan_capabilities=sorted(c.value for c in plan.capabilities()),
     )
 
 
@@ -4765,8 +4772,10 @@ def list_grc_ai_risks(
 ) -> list[dict[str, Any]]:
     """List AI risk assessment records (read-only)."""
     from app.grc.store import list_risks
+    from app.product.plan_store import require_capability
 
     _enforce_grc_opa("view_grc_records", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.grc_records)
     tid = tenant_id or auth.tenant_id
     records = list_risks(tenant_id=tid, client_id=client_id, system_id=system_id)
     return [r.model_dump() for r in records]
@@ -4785,8 +4794,10 @@ def list_grc_nis2_obligations(
 ) -> list[dict[str, Any]]:
     """List NIS2 obligation records (read-only)."""
     from app.grc.store import list_nis2_obligations
+    from app.product.plan_store import require_capability
 
     _enforce_grc_opa("view_grc_records", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.grc_records)
     tid = tenant_id or auth.tenant_id
     records = list_nis2_obligations(
         tenant_id=tid,
@@ -4809,8 +4820,10 @@ def list_grc_iso42001_gaps(
 ) -> list[dict[str, Any]]:
     """List ISO 42001 gap records (read-only)."""
     from app.grc.store import list_iso42001_gaps
+    from app.product.plan_store import require_capability
 
     _enforce_grc_opa("view_grc_records", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.grc_records)
     tid = tenant_id or auth.tenant_id
     records = list_iso42001_gaps(
         tenant_id=tid,
@@ -4856,8 +4869,10 @@ def list_ai_systems_endpoint(
 ) -> list[dict[str, Any]]:
     """List AI systems registered for a tenant."""
     from app.grc.store import list_ai_systems
+    from app.product.plan_store import require_capability
 
     _enforce_grc_opa("view_ai_systems", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.ai_system_inventory)
     tid = tenant_id or auth.tenant_id
     systems = list_ai_systems(
         tenant_id=tid,
@@ -4996,8 +5011,10 @@ def start_client_board_report(
 ) -> dict[str, Any]:
     """Start a Mandant-level AI compliance board report workflow."""
     from app.grc.client_board_report_service import run_client_board_report
+    from app.product.plan_store import require_capability
 
     _enforce_grc_opa("start_client_board_report", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.kanzlei_reports)
     tid = auth.tenant_id
 
     sf = [s.strip() for s in system_filter.split(",") if s.strip()] if system_filter else None
@@ -5104,8 +5121,10 @@ def list_integration_jobs(
 ) -> list[dict[str, Any]]:
     """List outbox integration jobs (internal/admin)."""
     from app.integrations.store import list_jobs
+    from app.product.plan_store import require_capability
 
     _enforce_grc_opa("view_integration_jobs", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.enterprise_integrations)
     tid = tenant_id or auth.tenant_id
     jobs = list_jobs(
         tenant_id=tid,
@@ -5140,8 +5159,10 @@ def create_integration_job(
     """Manually enqueue an integration job for a source entity."""
     from app.integrations.models import IntegrationTarget
     from app.integrations.outbox import enqueue_for_entity
+    from app.product.plan_store import require_capability
 
     _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.enterprise_integrations)
     try:
         tgt = IntegrationTarget(body.target)
     except ValueError:
@@ -5250,8 +5271,10 @@ def create_mandant_export(
 ) -> dict[str, Any]:
     """Enqueue a Mandanten-Compliance-Dossier export job."""
     from app.integrations.outbox import enqueue_mandant_dossier
+    from app.product.plan_store import require_capability
 
     _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.kanzlei_reports)
     job = enqueue_mandant_dossier(
         tenant_id=auth.tenant_id,
         client_id=body.client_id,
@@ -5292,6 +5315,9 @@ def receive_sap_ai_system_event(
         process_sap_ai_system_event,
         validate_sap_envelope,
     )
+    from app.product.plan_store import require_capability
+
+    require_capability(auth.tenant_id, Capability.enterprise_integrations)
 
     if not body.get("tenantid"):
         body["tenantid"] = auth.tenant_id
@@ -5304,3 +5330,96 @@ def receive_sap_ai_system_event(
         )
     result = process_sap_ai_system_event(body)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Product Packaging APIs (Wave 17)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/internal/product/plan",
+    tags=["product"],
+)
+def get_tenant_plan_api(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, Any]:
+    """Return the product plan for the authenticated tenant."""
+    from app.product.plan_store import get_tenant_plan
+
+    plan = get_tenant_plan(auth.tenant_id)
+    return {
+        "tenant_id": auth.tenant_id,
+        "tier": plan.tier.value,
+        "bundles": sorted(b.value for b in plan.effective_bundles()),
+        "capabilities": sorted(c.value for c in plan.capabilities()),
+        "plan_display": plan.plan_display(),
+        "label": plan.label,
+    }
+
+
+class SetTenantPlanRequest(BaseModel):
+    tier: str = "starter"
+    bundles: list[str] = []
+    label: str = ""
+
+
+@app.put(
+    "/api/internal/product/plan/{tenant_id}",
+    tags=["product"],
+)
+def set_tenant_plan_api(
+    tenant_id: str,
+    body: SetTenantPlanRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Set the product plan for a tenant (admin-only)."""
+    from app.product.models import ProductTier, TenantPlanConfig
+    from app.product.plan_store import set_tenant_plan
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    try:
+        tier = ProductTier(body.tier)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Unknown tier: {body.tier}")
+    plan = TenantPlanConfig(
+        tenant_id=tenant_id,
+        tier=tier,
+        bundles=set(body.bundles),
+        label=body.label,
+    )
+    saved = set_tenant_plan(plan)
+    return {
+        "tenant_id": tenant_id,
+        "tier": saved.tier.value,
+        "bundles": sorted(b.value for b in saved.effective_bundles()),
+        "capabilities": sorted(c.value for c in saved.capabilities()),
+        "plan_display": saved.plan_display(),
+    }
+
+
+@app.post(
+    "/api/internal/product/demo-seed/{tenant_id}",
+    tags=["product"],
+)
+def seed_demo_plan_api(
+    tenant_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    profile: str = Query(..., description="Demo profile: kanzlei_demo, sap_demo, sme_demo"),
+) -> dict[str, Any]:
+    """Apply a demo plan profile to a tenant."""
+    from app.product.demo_plans import seed_demo_plan
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    plan = seed_demo_plan(tenant_id, profile)
+    if plan is None:
+        raise HTTPException(status_code=400, detail=f"Unknown profile: {profile}")
+    return {
+        "tenant_id": tenant_id,
+        "profile": profile,
+        "tier": plan.tier.value,
+        "bundles": sorted(b.value for b in plan.effective_bundles()),
+        "capabilities": sorted(c.value for c in plan.capabilities()),
+    }
