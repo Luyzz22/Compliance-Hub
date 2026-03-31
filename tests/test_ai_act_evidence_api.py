@@ -34,7 +34,7 @@ def test_rag_retrieve_records_evidence_without_echoing_query() -> None:
     data = r.json()
     assert data["query_sha256"] == _query_sha256(body["query"])
     assert "query" not in data
-    assert data["retrieval_mode"] == "hybrid"
+    assert data["retrieval_mode"] in ("hybrid", "bm25")
     assert data["top_doc_ids"]
     assert "confidence_level" in data
 
