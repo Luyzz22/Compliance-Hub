@@ -634,6 +634,10 @@ function DetailBody({ detail }: { detail: AiEvidenceEventDetailDto }) {
           <p className="text-xs font-semibold uppercase text-slate-500">RAG (ohne Frage/Antwort)</p>
           <ul className="mt-2 list-inside list-disc space-y-1 text-slate-700">
             <li>
+              retrieval_mode:{" "}
+              <span className="font-mono">{detail.rag.retrieval_mode ?? "bm25"}</span>
+            </li>
+            <li>
               Konfidenz: <span className="font-mono">{detail.rag.confidence_level ?? "—"}</span>
             </li>
             <li>Zitate gesamt: {detail.rag.citation_count}</li>
@@ -642,6 +646,37 @@ function DetailBody({ detail }: { detail: AiEvidenceEventDetailDto }) {
               Normenkorpus-Referenzen (doc_id): {detail.rag.citation_doc_ids.length}
             </li>
           </ul>
+          {detail.rag.score_audit && detail.rag.score_audit.length > 0 ? (
+            <div className="mt-3 overflow-x-auto">
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                Score-Audit (BM25 / Embedding / kombiniert)
+              </p>
+              <table className="mt-2 w-full min-w-[28rem] border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500">
+                    <th className="py-1 pr-2 font-medium">doc_id</th>
+                    <th className="py-1 pr-2 font-medium">bm25</th>
+                    <th className="py-1 pr-2 font-medium">embedding</th>
+                    <th className="py-1 pr-2 font-medium">combined</th>
+                    <th className="py-1 font-medium">scope</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.rag.score_audit.map((row) => (
+                    <tr key={row.doc_id} className="border-b border-slate-100 font-mono text-slate-700">
+                      <td className="py-1 pr-2 break-all">{row.doc_id}</td>
+                      <td className="py-1 pr-2 tabular-nums">{row.bm25_score.toFixed(4)}</td>
+                      <td className="py-1 pr-2 tabular-nums">{row.embedding_score.toFixed(4)}</td>
+                      <td className="py-1 pr-2 tabular-nums">{row.combined_score.toFixed(4)}</td>
+                      <td className="py-1">
+                        {row.is_tenant_guidance ? "tenant_guidance" : row.rag_scope || "global"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
           {detail.rag.citation_doc_ids.length > 0 ? (
             <ul className="mt-2 max-h-40 overflow-y-auto rounded border border-slate-200 bg-white p-2 font-mono text-xs text-slate-700">
               {detail.rag.citation_doc_ids.map((id) => (

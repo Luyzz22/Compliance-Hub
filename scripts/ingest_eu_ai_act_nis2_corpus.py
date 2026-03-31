@@ -7,7 +7,9 @@ For a custom directory::
 
   python scripts/ingest_eu_ai_act_nis2_corpus.py --corpus-dir /path/to/md
 
-Future: extend with pgvector / FAISS persistence (see docs/architecture/wave3-haystack-rag.md).
+Optional dense index: ``--with-embeddings`` (downloads sentence-transformers model once).
+
+See docs/architecture/wave6-hybrid-retrieval.md.
 """
 
 from __future__ import annotations
@@ -20,8 +22,10 @@ from pathlib import Path
 # Repo root on PYTHONPATH when run as script from project root
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
+from app.rag.haystack_config import rag_embedding_model_id
 from app.rag.ingestion import load_corpus_from_directory, load_default_corpus_documents
 
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +40,11 @@ def main() -> int:
         default=None,
         help="Directory containing .md files (default: app/rag/corpus)",
     )
+    parser.add_argument(
+        "--with-embeddings",
+        action="store_true",
+        help="Compute multilingual embeddings (same model as hybrid RAG runtime).",
+    )
     args = parser.parse_args()
     if args.corpus_dir is not None:
         docs = load_corpus_from_directory(args.corpus_dir.resolve())
@@ -46,6 +55,13 @@ def main() -> int:
         return 1
     store = InMemoryDocumentStore()
     store.write_documents(docs)
+    if args.with_embeddings:
+        mid = rag_embedding_model_id()
+        logger.info("embedding_documents model_id=%s count=%s", mid, len(docs))
+        embedder = SentenceTransformersDocumentEmbedder(model=mid)
+        embedded = list(embedder.run(documents=docs)["documents"])
+        store.delete_all_documents()
+        store.write_documents(embedded)
     logger.info("ingested_documents count=%s store_type=in_memory", len(docs))
     for d in docs[:10]:
         logger.info("doc id=%s source=%s", d.id, (d.meta or {}).get("source"))

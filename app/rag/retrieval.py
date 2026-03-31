@@ -6,7 +6,7 @@ import logging
 from dataclasses import replace
 
 from haystack import Document
-from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 from app.rag.haystack_config import rag_global_top_k, rag_merged_top_k, rag_tenant_overlay_top_k
@@ -36,6 +36,7 @@ def merged_bm25_retrieve(
     *,
     query: str,
     tenant_id: str,
+    merged_cap: int | None = None,
 ) -> list[Document]:
     """
     Retrieve global law snippets always; add tenant-specific guidance when present.
@@ -46,7 +47,7 @@ def merged_bm25_retrieve(
     q = query.strip()
     kg = rag_global_top_k()
     kt = rag_tenant_overlay_top_k()
-    cap = rag_merged_top_k()
+    cap = merged_cap if merged_cap is not None else rag_merged_top_k()
 
     gr = InMemoryBM25Retriever(document_store=document_store, top_k=kg)
     g_out = gr.run(query=q, filters=_filter_global())
@@ -80,6 +81,59 @@ def merged_bm25_retrieve(
         len(merged),
     )
     return merged
+
+
+def merged_embedding_retrieve(
+    document_store: InMemoryDocumentStore,
+    query_embedding: list[float],
+    *,
+    tenant_id: str,
+    merged_cap: int | None = None,
+) -> list[Document]:
+    """
+    Dense retrieval mirroring ``merged_bm25_retrieve`` (global + tenant guidance).
+
+    Requires document embeddings in the store. Scores are **raw cosine similarity** in typical
+    ``[-1, 1]`` (often ``[0, 1]`` for same-half-space vectors). ``scale_score=False`` keeps
+    dynamic range so hybrid fusion and ``rescue_embedding_min`` thresholds stay interpretable;
+    Haystack's scaled scores cluster near 0.5 and collapse after max-normalization.
+    """
+    kg = rag_global_top_k()
+    kt = rag_tenant_overlay_top_k()
+    cap = merged_cap if merged_cap is not None else rag_merged_top_k()
+
+    gr = InMemoryEmbeddingRetriever(
+        document_store=document_store,
+        top_k=kg,
+        filters=_filter_global(),
+        scale_score=False,
+    )
+    g_docs = list(gr.run(query_embedding=query_embedding).get("documents") or [])
+
+    tr = InMemoryEmbeddingRetriever(
+        document_store=document_store,
+        top_k=kt,
+        filters=_filter_tenant(tenant_id.strip()),
+        scale_score=False,
+    )
+    t_docs = list(tr.run(query_embedding=query_embedding).get("documents") or [])
+
+    by_id: dict[str, Document] = {}
+    for d in g_docs + t_docs:
+        did = str(d.id or "")
+        if not did:
+            continue
+        score = float(getattr(d, "score", 0.0) or 0.0)
+        prev = by_id.get(did)
+        if prev is None or float(getattr(prev, "score", 0.0) or 0.0) < score:
+            by_id[did] = replace(d, score=score)
+
+    merged = sorted(
+        by_id.values(),
+        key=lambda x: float(getattr(x, "score", 0.0) or 0.0),
+        reverse=True,
+    )
+    return merged[:cap]
 
 
 def documents_scores_and_ids(documents: list[Document]) -> tuple[list[float], list[str]]:

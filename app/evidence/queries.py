@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import ValidationError
 from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,7 @@ from app.evidence.models import (
     AiEvidenceEventListResponse,
     AiEvidenceLlmDetailSection,
     AiEvidenceRagDetailSection,
+    AiEvidenceRagScoreAuditRow,
 )
 from app.models_db import AiComplianceBoardReportDB
 from app.repositories.ai_compliance_board_reports import AiComplianceBoardReportRepository
@@ -305,6 +307,15 @@ def get_ai_event_detail(
         )
         if et == ENTITY_RAG:
             tg = int(meta.get("tenant_guidance_citation_count") or 0)
+            raw_audit = meta.get("retrieval_hit_audit") or []
+            score_rows: list[AiEvidenceRagScoreAuditRow] = []
+            if isinstance(raw_audit, list):
+                for row in raw_audit[:20]:
+                    if isinstance(row, dict):
+                        try:
+                            score_rows.append(AiEvidenceRagScoreAuditRow.model_validate(row))
+                        except ValidationError:
+                            continue
             detail.rag = AiEvidenceRagDetailSection(
                 query_sha256=meta.get("query_sha256"),
                 citation_doc_ids=list(meta.get("citation_doc_ids") or []),
@@ -313,6 +324,8 @@ def get_ai_event_detail(
                 trace_id=meta.get("trace_id"),
                 span_id=meta.get("span_id"),
                 citation_count=int(meta.get("citation_count") or 0),
+                retrieval_mode=meta.get("retrieval_mode"),
+                score_audit=score_rows,
             )
         elif et == ENTITY_WORKFLOW_START:
             detail.board_report_workflow = AiEvidenceBoardReportWorkflowDetailSection(

@@ -1,4 +1,7 @@
-"""Heuristic confidence for BM25-based regulatory RAG (advisory, not legal certainty)."""
+"""Heuristic confidence for regulatory RAG (BM25 or hybrid combined scores).
+
+Advisory only; not legal certainty.
+"""
 
 from __future__ import annotations
 
