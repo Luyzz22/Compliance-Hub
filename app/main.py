@@ -32,15 +32,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.advisor.metrics import AdvisorMetricsResponse, aggregate_advisor_metrics
-from app.advisor.presets import (
-    PRESET_REGISTRY,
-    EuAiActRiskAssessmentInput,
-    FlowType,
-    Iso42001GapCheckInput,
-    Nis2ObligationsInput,
+from app.advisor.preset_models import (
+    AiActRiskPresetInput,
+    Iso42001GapCheckPresetInput,
+    Nis2ObligationsPresetInput,
+    PresetResult,
 )
-from app.advisor.response_models import AdvisorStructuredResponse
-from app.advisor.service import AdvisorRequest, run_advisor
+from app.advisor.presets import FlowType
 from app.advisor_client_snapshot_models import (
     AdvisorClientGovernanceSnapshotResponse,
     AdvisorGovernanceSnapshotMarkdownResponse,
@@ -4652,28 +4650,16 @@ def get_advisor_metrics(
 
 
 # ---------------------------------------------------------------------------
-# Advisor Preset Micro-Flows (Wave 9)
+# Advisor Preset Micro-Flows (Wave 9 / 9.1 enterprise)
 # ---------------------------------------------------------------------------
 
 
-def _make_advisor_agent() -> Any:
-    """Create a default AdvisorComplianceAgent from the global corpus."""
-    from app.services.agents.advisor_compliance_agent import AdvisorComplianceAgent
-
-    corpus = load_advisor_corpus()
-    config = RAGConfig()
-    retriever = HybridRetriever(corpus, config)
-    return AdvisorComplianceAgent(retriever=retriever)
-
-
-def _run_preset(
+def _enforce_preset_opa(
     flow_type: FlowType,
-    query: str,
-    body: EuAiActRiskAssessmentInput | Nis2ObligationsInput | Iso42001GapCheckInput,
+    tenant_id: str,
     auth: AuthContext,
     opa_role_header: str | None,
-) -> AdvisorStructuredResponse:
-    """Shared logic for all preset endpoints."""
+) -> None:
     opa_role = resolve_opa_role_for_policy(
         header_value=opa_role_header,
         env_var_name="COMPLIANCEHUB_OPA_ROLE_ADVISOR_PRESET",
@@ -4682,92 +4668,80 @@ def _run_preset(
     enforce_action_policy(
         f"advisor_preset_{flow_type.value}",
         UserPolicyContext(
-            tenant_id=body.tenant_id or auth.tenant_id,
+            tenant_id=tenant_id or auth.tenant_id,
             user_role=opa_role,
         ),
         risk_score=0.6,
     )
 
-    preset_info = PRESET_REGISTRY[flow_type]
-    request = AdvisorRequest(
-        query=query,
-        tenant_id=body.tenant_id or auth.tenant_id,
-        channel=body.channel,
-        channel_metadata=body.channel_metadata,
-        request_id=body.request_id,
-        trace_id=body.trace_id,
-        flow_type=flow_type.value,
-        extra_tags=preset_info["extra_tags"],
-    )
-
-    agent = _make_advisor_agent()
-    return run_advisor(request, agent)
-
 
 @app.post(
     "/api/v1/advisor/presets/eu-ai-act-risk-assessment",
-    response_model=AdvisorStructuredResponse,
+    response_model=PresetResult,
     tags=["advisor", "presets"],
 )
 def preset_eu_ai_act_risk_assessment(
-    body: EuAiActRiskAssessmentInput,
+    body: AiActRiskPresetInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
-) -> AdvisorStructuredResponse:
-    """Preset: Is my planned AI use case likely high-risk under EU AI Act?"""
-    from app.advisor.presets import build_eu_ai_act_risk_query
+) -> PresetResult:
+    """Preset: EU AI Act high-risk classification assessment."""
+    from app.advisor.preset_service import run_eu_ai_act_risk_preset
 
-    query = build_eu_ai_act_risk_query(body)
-    return _run_preset(
+    _enforce_preset_opa(
         FlowType.eu_ai_act_risk_assessment,
-        query,
-        body,
+        body.effective_tenant_id(),
         auth,
         opa_role_header,
     )
+    if not body.context.tenant_id and not body.tenant_id:
+        body.context.tenant_id = auth.tenant_id
+    return run_eu_ai_act_risk_preset(body)
 
 
 @app.post(
     "/api/v1/advisor/presets/nis2-obligations",
-    response_model=AdvisorStructuredResponse,
+    response_model=PresetResult,
     tags=["advisor", "presets"],
 )
 def preset_nis2_obligations(
-    body: Nis2ObligationsInput,
+    body: Nis2ObligationsPresetInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
-) -> AdvisorStructuredResponse:
-    """Preset: What NIS2 obligations apply to an entity with a given role?"""
-    from app.advisor.presets import build_nis2_obligations_query
+) -> PresetResult:
+    """Preset: NIS2 obligation mapping for a given entity role."""
+    from app.advisor.preset_service import run_nis2_obligations_preset
 
-    query = build_nis2_obligations_query(body)
-    return _run_preset(
+    _enforce_preset_opa(
         FlowType.nis2_obligations,
-        query,
-        body,
+        body.effective_tenant_id(),
         auth,
         opa_role_header,
     )
+    if not body.context.tenant_id and not body.tenant_id:
+        body.context.tenant_id = auth.tenant_id
+    return run_nis2_obligations_preset(body)
 
 
 @app.post(
     "/api/v1/advisor/presets/iso42001-gap-check",
-    response_model=AdvisorStructuredResponse,
+    response_model=PresetResult,
     tags=["advisor", "presets"],
 )
 def preset_iso42001_gap_check(
-    body: Iso42001GapCheckInput,
+    body: Iso42001GapCheckPresetInput,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
-) -> AdvisorStructuredResponse:
-    """Preset: ISO 42001 gap check for current AI governance measures."""
-    from app.advisor.presets import build_iso42001_gap_query
+) -> PresetResult:
+    """Preset: ISO 42001 gap analysis for current governance measures."""
+    from app.advisor.preset_service import run_iso42001_gap_preset
 
-    query = build_iso42001_gap_query(body)
-    return _run_preset(
+    _enforce_preset_opa(
         FlowType.iso42001_gap_check,
-        query,
-        body,
+        body.effective_tenant_id(),
         auth,
         opa_role_header,
     )
+    if not body.context.tenant_id and not body.tenant_id:
+        body.context.tenant_id = auth.tenant_id
+    return run_iso42001_gap_preset(body)

@@ -59,6 +59,8 @@ class AdvisorRequest:
         "trace_id",
         "flow_type",
         "extra_tags",
+        "client_id",
+        "system_id",
     )
 
     def __init__(
@@ -71,6 +73,8 @@ class AdvisorRequest:
         trace_id: str | None = None,
         flow_type: str | None = None,
         extra_tags: list[str] | None = None,
+        client_id: str = "",
+        system_id: str = "",
     ) -> None:
         self.query = query
         self.tenant_id = tenant_id
@@ -80,6 +84,8 @@ class AdvisorRequest:
         self.trace_id = trace_id
         self.flow_type = flow_type
         self.extra_tags = extra_tags
+        self.client_id = client_id
+        self.system_id = system_id
 
 
 def run_advisor(
@@ -233,6 +239,10 @@ def _log_invocation(
     }
     if request.flow_type:
         extra["flow_type"] = request.flow_type
+    if request.client_id:
+        extra["client_id"] = request.client_id
+    if request.system_id:
+        extra["system_id"] = request.system_id
     if response.error:
         extra["error_category"] = response.error.category.value
 

@@ -44,6 +44,7 @@ class AdvisorMetricsResponse(BaseModel):
     agent_decision_distribution: dict[str, int] = Field(default_factory=dict)
     channel_distribution: dict[str, int] = Field(default_factory=dict)
     flow_type_distribution: dict[str, int] = Field(default_factory=dict)
+    client_id_distribution: dict[str, int] = Field(default_factory=dict)
     latency_p50_ms: float | None = None
     latency_p95_ms: float | None = None
     daily: list[AdvisorDailyMetrics] = Field(default_factory=list)
@@ -83,6 +84,7 @@ def aggregate_advisor_metrics(
     daily_map: dict[tuple[str, str], AdvisorDailyMetrics] = {}
     channel_counts: dict[str, int] = defaultdict(int)
     flow_type_counts: dict[str, int] = defaultdict(int)
+    client_id_counts: dict[str, int] = defaultdict(int)
     latencies: list[float] = []
 
     for tid in tenants:
@@ -95,6 +97,7 @@ def aggregate_advisor_metrics(
             limit,
             channel_counts=channel_counts,
             flow_type_counts=flow_type_counts,
+            client_id_counts=client_id_counts,
             latencies=latencies,
         )
 
@@ -103,6 +106,7 @@ def aggregate_advisor_metrics(
     totals = _compute_totals(daily)
     totals["channel_distribution"] = dict(channel_counts)
     totals["flow_type_distribution"] = dict(flow_type_counts)
+    totals["client_id_distribution"] = dict(client_id_counts)
 
     if latencies:
         latencies.sort()
@@ -176,6 +180,7 @@ def _aggregate_agent_events(
     *,
     channel_counts: dict[str, int] | None = None,
     flow_type_counts: dict[str, int] | None = None,
+    client_id_counts: dict[str, int] | None = None,
     latencies: list[float] | None = None,
 ) -> None:
     events = list_advisor_agent_events(tenant_id, limit=limit)
@@ -207,6 +212,10 @@ def _aggregate_agent_events(
         ft = extra.get("flow_type")
         if ft and flow_type_counts is not None:
             flow_type_counts[ft] = flow_type_counts.get(ft, 0) + 1
+
+        cid = extra.get("client_id")
+        if cid and client_id_counts is not None:
+            client_id_counts[cid] = client_id_counts.get(cid, 0) + 1
 
         lat = extra.get("latency_ms")
         if lat is not None and latencies is not None:
