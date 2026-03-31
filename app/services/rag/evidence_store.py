@@ -43,6 +43,13 @@ def list_advisor_agent_events(tenant_id: str, *, limit: int = 100) -> list[dict[
     return out[:limit]
 
 
+def list_all_events(*, limit: int = 500) -> list[dict[str, Any]]:
+    """Return all events (most recent first). For internal/test use."""
+    with _lock:
+        snap = list(_events)
+    return list(reversed(snap))[:limit]
+
+
 def clear_for_tests() -> None:
     with _lock:
         _events.clear()

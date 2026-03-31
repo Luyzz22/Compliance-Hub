@@ -5082,3 +5082,140 @@ def list_client_board_reports(
         }
         for r in reports
     ]
+
+
+# ---------------------------------------------------------------------------
+# Integration Jobs — Internal APIs (Wave 15)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/internal/integrations/jobs",
+    tags=["integrations"],
+)
+def list_integration_jobs(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    status_filter: str | None = Query(None, alias="status"),
+    target: str | None = None,
+    payload_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """List outbox integration jobs (internal/admin)."""
+    from app.integrations.store import list_jobs
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+    jobs = list_jobs(
+        tenant_id=tid,
+        client_id=client_id,
+        status=status_filter,
+        target=target,
+        payload_type=payload_type,
+    )
+    return [j.model_dump() for j in jobs]
+
+
+class CreateIntegrationJobRequest(BaseModel):
+    source_entity_type: str
+    source_entity_id: str
+    target: str = "generic_partner_api"
+    client_id: str = ""
+    system_id: str = ""
+    trace_id: str = ""
+
+
+@app.post(
+    "/api/internal/integrations/jobs",
+    tags=["integrations"],
+    status_code=201,
+)
+def create_integration_job(
+    body: CreateIntegrationJobRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Manually enqueue an integration job for a source entity."""
+    from app.integrations.models import IntegrationTarget
+    from app.integrations.outbox import enqueue_for_entity
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    try:
+        tgt = IntegrationTarget(body.target)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown target: {body.target}",
+        )
+    job = enqueue_for_entity(
+        entity_type=body.source_entity_type,
+        entity_id=body.source_entity_id,
+        tenant_id=auth.tenant_id,
+        client_id=body.client_id,
+        system_id=body.system_id,
+        target=tgt,
+        trace_id=body.trace_id,
+    )
+    if job is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Entity type not mappable or payload type not enabled",
+        )
+    return job.model_dump()
+
+
+@app.post(
+    "/api/internal/integrations/jobs/{job_id}/retry",
+    tags=["integrations"],
+)
+def retry_integration_job(
+    job_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Retry a failed / dead-lettered integration job."""
+    from app.integrations.store import mark_for_retry
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    job = mark_for_retry(job_id)
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found or not in a retryable state",
+        )
+    return job.model_dump()
+
+
+@app.get(
+    "/api/internal/integrations/jobs/{job_id}",
+    tags=["integrations"],
+)
+def get_integration_job(
+    job_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Get integration job detail including dispatch result."""
+    from app.integrations.store import get_job
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job.model_dump()
+
+
+@app.post(
+    "/api/internal/integrations/dispatch",
+    tags=["integrations"],
+)
+def trigger_integration_dispatch(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Trigger dispatch of all pending integration jobs."""
+    from app.integrations.dispatcher import dispatch_pending
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    return dispatch_pending()
