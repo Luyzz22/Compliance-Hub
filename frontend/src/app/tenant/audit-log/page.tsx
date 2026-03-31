@@ -1,45 +1,114 @@
+import Link from "next/link";
 import React from "react";
 
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import {
+  TenantAuditLogTableClient,
+  type AuditLogDemoRow,
+} from "@/components/tenant/TenantAuditLogTableClient";
+import {
+  CH_BTN_SECONDARY,
+  CH_CARD,
+  CH_PAGE_NAV_LINK,
+  CH_SHELL,
+} from "@/lib/boardLayout";
+
+const TENANT_ID =
+  process.env.NEXT_PUBLIC_TENANT_ID ||
+  process.env.COMPLIANCEHUB_TENANT_ID ||
+  "tenant-overview-001";
+
+const DEMO_AUDIT_ROWS: AuditLogDemoRow[] = [
+  {
+    id: "1",
+    ts: "2025-03-18T09:15:00.000Z",
+    actor: "isa@tenant.example",
+    entityType: "AI-System",
+    action: "UPDATE",
+    tenant: TENANT_ID,
+    detail: "risk_level → high",
+  },
+  {
+    id: "2",
+    ts: "2025-03-19T14:22:00.000Z",
+    actor: "system",
+    entityType: "Evidence",
+    action: "CREATE",
+    tenant: TENANT_ID,
+    detail: "Upload DPIA (KI-Chatbot Vertrieb)",
+  },
+  {
+    id: "3",
+    ts: "2025-03-20T11:03:00.000Z",
+    actor: "compliance@tenant.example",
+    entityType: "Policy",
+    action: "PUBLISH",
+    tenant: TENANT_ID,
+    detail: "policy-eu-ai-act-v3",
+  },
+  {
+    id: "4",
+    ts: "2025-03-21T08:40:00.000Z",
+    actor: "auditor@external.example",
+    entityType: "Action",
+    action: "READ",
+    tenant: TENANT_ID,
+    detail: "Governance-Maßnahme #12",
+  },
+  {
+    id: "5",
+    ts: "2025-03-22T16:55:00.000Z",
+    actor: "api-key:ingest",
+    entityType: "AI-System",
+    action: "IMPORT",
+    tenant: TENANT_ID,
+    detail: "CSV Import 12 Zeilen",
+  },
+];
+
 export default async function TenantAuditLogPage() {
-  // Später: fetch aus /api/v1/audit-events & /api/v1/audit-logs
-  const events: any[] = [];
-
   return (
-    <>
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Audit & Evidence
-        </h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Nachvollziehbare Audit‑Spur für AI‑Systeme, Policy‑Entscheidungen und
-          Tenant‑Aktionen.
-        </p>
-      </header>
-
-      <section className="rounded-xl border border-slate-800 bg-slate-900/60 mb-6">
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-          <h2 className="text-sm font-semibold">Chronologischer Audit‑Log</h2>
-          <button className="rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:border-slate-500 hover:bg-slate-800">
+    <div className={CH_SHELL}>
+      <EnterprisePageHeader
+        eyebrow="Tenant"
+        title="Audit & Evidence"
+        description={
+          <>
+            Unveränderliche Audit-Spur für KI-Systeme, Policy-Entscheidungen und Mandanten-Aktionen –
+            exportierbar für Prüfer und interne Revision. Evidence-Bundles bündeln Nachweise für NIS2,
+            ISO 27001 und EU AI Act.
+          </>
+        }
+        actions={
+          <button type="button" className={`${CH_BTN_SECONDARY} text-sm`}>
             Export als CSV
           </button>
-        </div>
-        <div className="px-5 py-4 text-xs text-slate-500">
-          Audit‑Einträge werden angezeigt, sobald die Audit‑APIs angebunden
-          sind.
-        </div>
-      </section>
+        }
+        below={
+          <>
+            <Link href="/tenant/policies" className={CH_PAGE_NAV_LINK}>
+              Policy Engine
+            </Link>
+            <Link href="/tenant/compliance-overview" className={CH_PAGE_NAV_LINK}>
+              Compliance-Übersicht
+            </Link>
+          </>
+        }
+      />
 
-      <section className="rounded-xl border border-slate-800 bg-slate-900/60">
-        <div className="border-b border-slate-800 px-5 py-3">
-          <h2 className="text-sm font-semibold">
-            Evidence Bundles für Prüfungen
-          </h2>
+      <TenantAuditLogTableClient tenantId={TENANT_ID} rows={DEMO_AUDIT_ROWS} />
+
+      <section className={`${CH_CARD} overflow-hidden p-0`}>
+        <div className="border-b border-slate-200/80 px-5 py-4">
+          <h2 className="text-sm font-semibold text-slate-900">Evidence Bundles für Prüfungen</h2>
         </div>
-        <div className="px-5 py-4 text-xs text-slate-500">
-          Hier können später prüfbare Evidence‑Pakete (z.B. für NIS2 / ISO
-          27001‑Audits) bereitgestellt werden.
+        <div className="px-5 py-5 text-sm text-slate-600">
+          <p>
+            Hier können später prüfbare Evidence-Pakete (Screenshots, Logs, Policy-Snapshots,
+            Klassifizierungsstände) für NIS2- und ISO-Audits bereitgestellt und versioniert werden.
+          </p>
         </div>
       </section>
-    </>
+    </div>
   );
 }

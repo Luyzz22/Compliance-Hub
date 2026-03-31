@@ -1,0 +1,27 @@
+{
+  "tenant_id": "e2e-golden-safety-tenant",
+  "computed_at": "2025-06-01T12:00:00+00:00",
+  "readiness": {
+    "score": 72,
+    "level": "managed",
+    "interpretation": "Etablierte Registerbasis; fokussiert Lücken schließen."
+  },
+  "governance_activity": {
+    "index": 52,
+    "level": "medium",
+    "window_days": 90,
+    "last_computed_at": "2025-06-01T12:00:00+00:00",
+    "components": null
+  },
+  "operational_ai_monitoring": {
+    "status": "active",
+    "index": 58,
+    "level": "medium",
+    "window_days": 90,
+    "message_de": "Operatives Monitoring mit Schwerpunkt sicherheitsnaher Laufzeitereignisse.",
+    "drivers_de": ["Safety-Subtype-Incidents", "KPI-Stabilität"],
+    "safety_related_runtime_incident_count": 6,
+    "availability_runtime_incident_count": 2,
+    "operational_subtype_hint_de": "Sicherheitsnahe Signale prägen den Index stärker als Verfügbarkeit."
+  }
+}

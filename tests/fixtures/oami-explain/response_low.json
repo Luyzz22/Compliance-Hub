@@ -1,0 +1,27 @@
+{
+  "readiness_explanation": {
+    "score": 44,
+    "level": "basic",
+    "short_reason": "Der Score liegt unter der Schwelle für etablierte Strukturen: Setup und Framework-Abdeckung sind noch ausbaufähig; KPI-Register und Board-Reports sind nur teilweise gefüllt.",
+    "drivers_positive": ["Erste Schritte im AI-Governance-Setup sind dokumentiert."],
+    "drivers_negative": [
+      "Cross-Regulation-Coverage und kritische Gaps priorisieren.",
+      "Mindestens zwei KPI-Zeitreihen pro High-Risk-System anlegen.",
+      "Regelmäßige Board- oder Advisor-Reports etablieren."
+    ],
+    "regulatory_focus": "Fokus EU AI Act Nachweise und ISO/IEC 42001/27001-Abdeckung im Tool; NIS2 über Steuerungs- und Incident-Prozesse adressieren."
+  },
+  "operational_monitoring_explanation": {
+    "index": 28,
+    "level": "low",
+    "recent_incidents_summary": "Kaum belastbare Laufzeitdaten; mehrere Vorfälle sind noch ohne klaren Abschluss oder dokumentierte Root-Cause.",
+    "monitoring_gaps": [
+      "Kontinuierliche Erfassung von Runtime-Signalen fehlt weitgehend.",
+      "Incident-Status und Eskalationspfade sind heterogen oder unvollständig."
+    ],
+    "improvement_suggestions": [
+      "Wöchentliche Monitoring-Snapshots für High-Risk-Systeme etablieren.",
+      "Offene Vorfälle triagieren und SLA für Erstreaktion festlegen."
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "tenant_id": "e2e-golden-benign-tenant",
+  "window_days": 90,
+  "systems_with_runtime_events": 1,
+  "systems_with_incidents": 1,
+  "items": [
+    {
+      "ai_system_id": "sys-quiet-001",
+      "ai_system_name": "QuietSvc",
+      "supplier_label_de": "Manuell / Custom",
+      "event_source": "manual_import",
+      "incident_total_90d": 2,
+      "incident_count_by_category": {
+        "safety": 0,
+        "availability": 1,
+        "other": 1
+      },
+      "weighted_incident_share_safety": 0.34,
+      "weighted_incident_share_availability": 0.33,
+      "weighted_incident_share_other": 0.33,
+      "oami_local_hint_de": "Wenige klassifizierte Incidents; Einordnung mit Vorsicht nutzen."
+    }
+  ]
+}

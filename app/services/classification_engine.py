@@ -15,6 +15,9 @@ def classify_ai_system(
 ) -> RiskClassification:
     """Decision-tree classification per EU AI Act Art. 6.
 
+    Optional LLM-gestützte Freitext-Hinweise (ohne Ersetzung dieser Logik):
+    ``app.services.llm_compliance_tasks.draft_classification_assist``.
+
     Order:
     1. Prohibited check
     2. Annex I (safety component) path

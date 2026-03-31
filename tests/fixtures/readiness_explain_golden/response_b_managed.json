@@ -1,0 +1,16 @@
+{
+  "readiness_explanation": {
+    "score": 68,
+    "level": "managed",
+    "short_reason": "Solide strukturelle Basis: Wizard und Coverage sind überwiegend vorhanden; verbleibende Lücken betreffen vor allem KPI-Tiefen und konsistente Reporting-Historie.",
+    "drivers_positive": [
+      "Framework-Scopes sind gesetzt; kritische Gaps sind sichtbar und adressierbar."
+    ],
+    "drivers_negative": [
+      "KPI-Zeitreihen für alle relevanten High-Risk-Systeme vervollständigen.",
+      "Board-Reporting-Rhythmus formalisieren."
+    ],
+    "regulatory_focus": "EU AI Act und ISO 42001: Nachweise zur Steuerung; ISO 27001-Bezug über ISMS-Aktivitäten; NIS2-relevante Incident-Prozesse koppeln."
+  },
+  "operational_monitoring_explanation": null
+}

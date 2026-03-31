@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.compliance_gap_models import (
-    REQUIREMENTS,
+    GAP_REQUIREMENTS,
     ComplianceStatus,
     ComplianceStatusEntry,
     ComplianceStatusUpdate,
@@ -21,11 +21,10 @@ class ComplianceGapRepository:
     @staticmethod
     def _to_domain(row: ComplianceStatusTable) -> ComplianceStatusEntry:
         return ComplianceStatusEntry(
+            tenant_id=row.tenant_id,
             ai_system_id=row.ai_system_id,
             requirement_id=row.requirement_id,
             status=row.status,
-            evidence_notes=row.evidence_notes,
-            last_updated=row.last_updated,
             updated_by=row.updated_by,
         )
 
@@ -51,15 +50,13 @@ class ComplianceGapRepository:
         )
         existing_ids = set(self._session.execute(existing_stmt).scalars().all())
 
-        for req in REQUIREMENTS:
+        for req in GAP_REQUIREMENTS:
             if risk_level in req.applies_to and req.id not in existing_ids:
                 row = ComplianceStatusTable(
                     tenant_id=tenant_id,
                     ai_system_id=ai_system_id,
                     requirement_id=req.id,
                     status=ComplianceStatus.not_started,
-                    evidence_notes=None,
-                    last_updated=datetime.now(UTC),
                     updated_by="system",
                 )
                 self._session.add(row)
@@ -83,9 +80,7 @@ class ComplianceGapRepository:
         if row is None:
             return None
         row.status = update.status
-        if update.evidence_notes is not None:
-            row.evidence_notes = update.evidence_notes
-        row.last_updated = datetime.now(UTC)
+        row.updated_at_utc = datetime.now(UTC)
         row.updated_by = user_id
         self._session.commit()
         self._session.refresh(row)

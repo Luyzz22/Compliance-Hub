@@ -1,0 +1,26 @@
+{
+  "brief_after_alignment": {
+    "governance_maturity_summary_overall_level": "medium",
+    "recommended_focus_areas_0": "Sicherheitsrelevante Incidents und Post-Market-Monitoring (OAMI, Eskalation, Nachweise).",
+    "client_ready_paragraph_de": "Im Fokus stehen aktuell vor allem die Systeme „Acme Claims Assistant“ und „Batch Scoring API“ (Safety-Signalen)."
+  },
+  "full_markdown_must_contain": [
+    "## Governance-Reife – Kurzüberblick",
+    "Post-Market-Monitoring",
+    "Acme Claims Assistant",
+    "Laststufe **hoch**",
+    "### System- und Lieferanten-Drilldown",
+    "Governance-Kurzbriefs wider",
+    "**Batch Scoring API**",
+    "Verfügbarkeits-/Performance-Incidents",
+    "## Profil",
+    "## EU AI Act"
+  ],
+  "section_order": [
+    "## Governance-Reife – Kurzüberblick",
+    "## Risiko- und Incident-Lage (NIS2/KRITIS)",
+    "### System- und Lieferanten-Drilldown",
+    "## Profil",
+    "## EU AI Act"
+  ]
+}

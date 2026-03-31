@@ -1,0 +1,21 @@
+{
+  "_comment": "Beispiel: Metadaten für DMS-/Archiv-Anbindung (Board-Report). Blueprint – keine echten personenbezogenen Daten.",
+  "compliancehub_payload": {
+    "tenant_id": "beispiel-mandant-001",
+    "report_period": "last_12_months",
+    "report_metadata": {
+      "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "generated_at": "2026-03-14T10:00:00+00:00",
+      "period": "last_12_months"
+    }
+  },
+  "dms_metadata": {
+    "aktenzeichen": "AI-GOV-BR-2026-001",
+    "mandant": "beispiel-mandant-001",
+    "berichtszeitraum_von": "2025-03-14",
+    "berichtszeitraum_bis": "2026-03-14",
+    "normbezug": ["EU AI Act", "NIS2", "ISO 42001", "ISO 27001", "DSGVO"],
+    "dokumenttyp": "AI-Governance-Board-Report",
+    "version": "1.0"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "governance_maturity_summary": {
+    "readiness": {
+      "score": 0,
+      "level": "basic",
+      "short_reason": "Readiness ist auf hohem Niveau etabliert; strukturelle Voraussetzungen für EU AI Act und interne Vorgaben sind weitgehend erfüllt."
+    },
+    "activity": {
+      "index": 0,
+      "level": "low",
+      "short_reason": "Die Nutzung der Plattform für Steuerung ist solide; es gibt noch Potenzial, Artefakte breiter in Fachbereiche zu tragen."
+    },
+    "operational_monitoring": {
+      "index": 0,
+      "level": "low",
+      "short_reason": "Operatives Monitoring ist vorhanden; Tiefe und Abdeckung aller relevanten Systeme können noch wachsen."
+    },
+    "overall_assessment": {
+      "level": "low",
+      "short_summary": "In Summe ein ausgewogenes mittleres Reifebild: Grundlagen stehen, Nutzung und Monitoring sind weiterzuentwickeln, ohne dass akute Grundsatzrisiken im Vordergrund stehen. Fokus auf Breite und Vertiefung.",
+      "key_risks": ["Uneinheitliche Tiefe bei Monitoring je Geschäftsbereich"],
+      "key_strengths": ["Hohe strukturelle Readiness", "Stabile Steuerungsnutzung"]
+    }
+  },
+  "recommended_focus_areas": [
+    "Nutzung verbreitern: weitere Fachbereiche an Reviews und Evidenzen anbinden.",
+    "Monitoring vereinheitlichen: Kennzahlen und Schwellen über das High-Risk-Portfolio harmonisieren."
+  ],
+  "suggested_next_steps_window": "nächste 90 Tage",
+  "client_ready_paragraph_de": "Ihre KI-Governance ist insgesamt auf einem guten mittleren Niveau. Für die nächsten Monate empfiehlt sich, Nutzung und Monitoring über das Portfolio hinweg zu vereinheitlichen; wir unterstützen bei Workshops und Priorisierung."
+}

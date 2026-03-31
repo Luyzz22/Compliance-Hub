@@ -1,0 +1,31 @@
+{
+  "governance_maturity_summary": {
+    "readiness": {
+      "score": 99,
+      "level": "embedded",
+      "short_reason": "LLM sagt embedded — wird an Snapshot angeglichen."
+    },
+    "activity": {
+      "index": 99,
+      "level": "high",
+      "short_reason": "LLM sagt high — wird an Snapshot angeglichen."
+    },
+    "operational_monitoring": {
+      "index": 99,
+      "level": "high",
+      "short_reason": "LLM — wird an Snapshot angeglichen."
+    },
+    "overall_assessment": {
+      "level": "high",
+      "short_summary": "Berater-Perspektive: Fokus auf strukturelle Lücken.",
+      "key_risks": ["Nachweise"],
+      "key_strengths": []
+    }
+  },
+  "recommended_focus_areas": [
+    "OAMI niedrig – Monitoring und Laufzeit-Signale ausbauen",
+    "Readiness – Register und Rollen priorisieren"
+  ],
+  "suggested_next_steps_window": "nächste 90 Tage",
+  "client_ready_paragraph_de": "Aus Sicht der KI-Governance sollten Sie Monitoring und Nachweise in den nächsten Wochen priorisieren; wir unterstützen gern bei der Umsetzung."
+}

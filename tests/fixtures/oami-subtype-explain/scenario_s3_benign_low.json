@@ -1,0 +1,65 @@
+{
+  "id": "S3",
+  "title_de": "Benigne Subtypes, schwache Sichtbarkeit: OAMI niedrig",
+  "presenter_script_de": "Hier wirkt weniger der Einzelfall-Typ als die Kombination aus alter Datenlage, dünner Aktivität und vielen kleinen Metrik-Alarmen: der Index ist niedrig, obwohl die Incident-Subtypes überwiegend other oder leichte Performance-Signale sind.",
+  "window_days": 90,
+  "oami_aggregate": {
+    "last_event_age_days": 15,
+    "event_count": 80,
+    "distinct_days": 1,
+    "incident_high": 0,
+    "breach_count": 10,
+    "incident_count": 2,
+    "incident_count_by_subtype": {
+      "other_incident": 2
+    },
+    "metric_breach_count_by_subtype": {
+      "performance_degradation": 10
+    },
+    "incident_weighted_penalty_sum": 0.104,
+    "weighted_breach_units": 10.0
+  },
+  "expected": {
+    "operational_monitoring_index": 37,
+    "level": "low"
+  },
+  "readiness_explain_llm_json": {
+    "readiness_explanation": {
+      "score": 48,
+      "level": "managed",
+      "short_reason": "Struktur mittel; operative Transparenz ist eingeschränkt – viele kleine Metrikalarme bei gleichzeitig veralteter Datenaktualität.",
+      "drivers_positive": [
+        "Technische IDs und Subtypes sind grundsätzlich erfasst."
+      ],
+      "drivers_negative": [
+        "Monitoring-Kontinuität und Schwellenkalibrierung verbessern."
+      ],
+      "regulatory_focus": "ISO 42001 Messung und Überwachung: belastbare, aktuelle Laufzeitspur für Hochrisiko-Systeme."
+    },
+    "operational_monitoring_explanation": {
+      "index": 37,
+      "level": "low",
+      "recent_incidents_summary": "Kaum klassische Incidents (other_incident, geringe Schwere), aber zahlreiche performance_degradation-Schwellenverletzungen und schwache Freshness – der Index ist insgesamt niedrig.",
+      "monitoring_gaps": [
+        "Regelmäßige Heartbeats und konsolidierte Metrik-Fenster fehlen teilweise."
+      ],
+      "improvement_suggestions": [
+        "Schwellenwerte entrauschen und Alarm-Storms reduzieren.",
+        "Distinct-Active-Days im Fenster erhöhen."
+      ]
+    }
+  },
+  "oami_enrichment": {
+    "safety_related_incidents_90d": 0,
+    "availability_incidents_90d": 0,
+    "oami_subtype_hint_de": null
+  },
+  "assert_explain_drivers_contain": [
+    "Schwellenverletzungen",
+    "Freshness"
+  ],
+  "assert_llm_oami_text_contains": [
+    "performance_degradation",
+    "niedrig"
+  ]
+}

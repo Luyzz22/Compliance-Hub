@@ -325,3 +325,4 @@ class PolicyRepository:
                         active=True,
                     )
                 )
+        self._session.commit()

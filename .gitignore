@@ -8,3 +8,4 @@ __pycache__/
 .venv_ci/
 .tmp/
 .DS_Store
+data/evidence/

@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Governance-Maturity-Copy (Readiness, GAI, OAMI)
+
+Board- und Berater-Texte zu **AI & Compliance Readiness**, **Governance-Aktivitätsindex (GAI)** und **Operativem KI-Monitoring (OAMI)** liegen zentral in [`src/lib/governanceMaturityDeCopy.ts`](src/lib/governanceMaturityDeCopy.ts) (Level-Typen: [`src/lib/governanceMaturityTypes.ts`](src/lib/governanceMaturityTypes.ts)). Neue oder geänderte UI-Strings dort pflegen, nicht in Komponenten duplizieren. Abgleich mit dem gesprochenen Demo-Flow: [`../docs/demo-board-ready-walkthrough.md`](../docs/demo-board-ready-walkthrough.md). Backend-Enums und KI-Erklärungen: [`../docs/governance-maturity-copy-contract.md`](../docs/governance-maturity-copy-contract.md).
+
 ## Getting Started
 
 First, run the development server:

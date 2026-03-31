@@ -45,6 +45,21 @@ class AISystemRepository:
             return None
         return self._to_domain(row)
 
+    def get_by_name(self, tenant_id: str, name: str) -> AISystem | None:
+        stmt = (
+            select(AISystemTable)
+            .where(
+                AISystemTable.tenant_id == tenant_id,
+                AISystemTable.name == name,
+            )
+            .order_by(AISystemTable.created_at_utc.desc())
+            .limit(1)
+        )
+        row = self._session.execute(stmt).scalar_one_or_none()
+        if row is None:
+            return None
+        return self._to_domain(row)
+
     def list_for_tenant(self, tenant_id: str) -> list[AISystem]:
         stmt = (
             select(AISystemTable)
