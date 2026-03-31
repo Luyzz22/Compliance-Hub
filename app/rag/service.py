@@ -12,6 +12,7 @@ from app.rag.models import EuAiActNis2RagCitation, EuAiActNis2RagResponse, EuReg
 from app.rag.pipelines.eu_ai_act_nis2_pipeline import run_eu_ai_act_nis2_pipeline
 from app.rag.retrieval import is_tenant_guidance_document
 from app.rag.store import get_eu_reg_document_store
+from app.telemetry.tracing import start_span
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -54,14 +55,20 @@ def run_advisor_eu_reg_rag(
     document_store: InMemoryDocumentStore | None = None,
 ) -> EuAiActNis2RagResponse:
     store = document_store or get_eu_reg_document_store()
-    pr = run_eu_ai_act_nis2_pipeline(
-        question_de=question_de,
+    with start_span(
+        "rag.query_received",
         tenant_id=tenant_id,
         user_role=user_role,
-        document_store=store,
-        session=session,
         advisor_id=advisor_id,
-    )
+    ):
+        pr = run_eu_ai_act_nis2_pipeline(
+            question_de=question_de,
+            tenant_id=tenant_id,
+            user_role=user_role,
+            document_store=store,
+            session=session,
+            advisor_id=advisor_id,
+        )
     parsed = EuRegRagLlmOutput.model_validate(pr.structured)
     citations = _build_api_citations(parsed, pr.documents_for_prompt)
     logger.info(

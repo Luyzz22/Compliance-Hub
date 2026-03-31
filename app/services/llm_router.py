@@ -8,6 +8,8 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from opentelemetry import trace
+
 from app.llm_models import (
     CostSensitivity,
     DataResidencyPolicy,
@@ -225,6 +227,15 @@ class LLMRouter:
                     in_tok=resp.input_tokens_est,
                     out_tok=resp.output_tokens_est,
                 )
+                span = trace.get_current_span()
+                if span.is_recording():
+                    span.set_attribute("llm_provider", resp.provider.value)
+                    span.set_attribute("llm_model_id", resp.model_id)
+                    span.set_attribute(
+                        "llm_tokens_used_est",
+                        resp.input_tokens_est + resp.output_tokens_est,
+                    )
+                    span.set_attribute("llm_response_length_chars", len(resp.text))
                 return resp
             except Exception as exc:
                 last_err = exc
