@@ -9,6 +9,10 @@ from typing import TYPE_CHECKING, TypeVar
 
 from pydantic import BaseModel
 
+from app.evidence.llm_audit import (
+    log_llm_contract_violation_audit,
+    log_llm_guardrail_block_audit,
+)
 from app.llm.context import LlmCallContext
 from app.llm.exceptions import LLMContractViolation
 from app.llm.guardrails import (
@@ -108,18 +112,46 @@ async def safe_llm_call(
         except LLMContractViolation:
             if span.is_recording():
                 span.set_attribute("llm_result", "contract_violation")
+            log_llm_contract_violation_audit(
+                session,
+                tenant_id=context.tenant_id,
+                action_name=context.action_name,
+                task_type=task_type.value,
+                contract_schema=schema.__name__,
+            )
             raise
         except PermissionError:
             if span.is_recording():
                 span.set_attribute("llm_result", "guardrail_blocked")
+            log_llm_guardrail_block_audit(
+                session,
+                tenant_id=context.tenant_id,
+                action_name=context.action_name,
+                error_class="PermissionError",
+                task_type=task_type.value,
+            )
             raise
         except llm_client.LLMConfigurationError:
             if span.is_recording():
                 span.set_attribute("llm_result", "configuration_error")
+            log_llm_guardrail_block_audit(
+                session,
+                tenant_id=context.tenant_id,
+                action_name=context.action_name,
+                error_class="LLMConfigurationError",
+                task_type=task_type.value,
+            )
             raise
         except llm_client.LLMProviderHTTPError:
             if span.is_recording():
                 span.set_attribute("llm_result", "provider_error")
+            log_llm_guardrail_block_audit(
+                session,
+                tenant_id=context.tenant_id,
+                action_name=context.action_name,
+                error_class="LLMProviderHTTPError",
+                task_type=task_type.value,
+            )
             raise
 
 
@@ -162,18 +194,46 @@ def safe_llm_call_sync(
         except LLMContractViolation:
             if span.is_recording():
                 span.set_attribute("llm_result", "contract_violation")
+            log_llm_contract_violation_audit(
+                session,
+                tenant_id=context.tenant_id,
+                action_name=context.action_name,
+                task_type=task_type.value,
+                contract_schema=schema.__name__,
+            )
             raise
         except PermissionError:
             if span.is_recording():
                 span.set_attribute("llm_result", "guardrail_blocked")
+            log_llm_guardrail_block_audit(
+                session,
+                tenant_id=context.tenant_id,
+                action_name=context.action_name,
+                error_class="PermissionError",
+                task_type=task_type.value,
+            )
             raise
         except llm_client.LLMConfigurationError:
             if span.is_recording():
                 span.set_attribute("llm_result", "configuration_error")
+            log_llm_guardrail_block_audit(
+                session,
+                tenant_id=context.tenant_id,
+                action_name=context.action_name,
+                error_class="LLMConfigurationError",
+                task_type=task_type.value,
+            )
             raise
         except llm_client.LLMProviderHTTPError:
             if span.is_recording():
                 span.set_attribute("llm_result", "provider_error")
+            log_llm_guardrail_block_audit(
+                session,
+                tenant_id=context.tenant_id,
+                action_name=context.action_name,
+                error_class="LLMProviderHTTPError",
+                task_type=task_type.value,
+            )
             raise
 
 
@@ -216,18 +276,46 @@ def guardrailed_route_and_call_sync(
         except LLMContractViolation:
             if span.is_recording():
                 span.set_attribute("llm_result", "contract_violation")
+            log_llm_contract_violation_audit(
+                session,
+                tenant_id=tenant_id,
+                action_name=context.action_name,
+                task_type=task_type.value,
+                contract_schema="freeform_markdown",
+            )
             raise
         except PermissionError:
             if span.is_recording():
                 span.set_attribute("llm_result", "guardrail_blocked")
+            log_llm_guardrail_block_audit(
+                session,
+                tenant_id=tenant_id,
+                action_name=context.action_name,
+                error_class="PermissionError",
+                task_type=task_type.value,
+            )
             raise
         except llm_client.LLMConfigurationError:
             if span.is_recording():
                 span.set_attribute("llm_result", "configuration_error")
+            log_llm_guardrail_block_audit(
+                session,
+                tenant_id=tenant_id,
+                action_name=context.action_name,
+                error_class="LLMConfigurationError",
+                task_type=task_type.value,
+            )
             raise
         except llm_client.LLMProviderHTTPError:
             if span.is_recording():
                 span.set_attribute("llm_result", "provider_error")
+            log_llm_guardrail_block_audit(
+                session,
+                tenant_id=tenant_id,
+                action_name=context.action_name,
+                error_class="LLMProviderHTTPError",
+                task_type=task_type.value,
+            )
             raise
 
 

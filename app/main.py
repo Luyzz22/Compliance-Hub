@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import json
 import logging
@@ -26,6 +27,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -146,6 +148,15 @@ from app.demo_tenant_guard import (
     workspace_mode_for_telemetry,
 )
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
+from app.evidence.models import AiEvidenceEventDetail, AiEvidenceEventListResponse
+from app.evidence.queries import (
+    EvidenceQueryParams,
+    export_csv_chunks,
+    export_json_bytes,
+    get_ai_event_detail,
+    list_ai_events,
+    list_ai_events_for_export,
+)
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
 from app.explain_models import ExplainRequest, ExplainResponse
 from app.feature_flags import (
@@ -187,6 +198,7 @@ from app.policy.policy_guard import enforce_action_policy
 from app.policy.role_resolution import (
     ENV_ROLE_ADVISOR_RAG,
     ENV_ROLE_ADVISOR_TENANT_REPORT,
+    ENV_ROLE_AI_EVIDENCE,
     ENV_ROLE_BOARD_REPORT,
     ENV_ROLE_LANGGRAPH_OAMI_POC,
     ENV_ROLE_READINESS_EXPLAIN,
@@ -374,7 +386,12 @@ from app.supplier_risk_models import (
     AISupplierRiskOverview,
 )
 from app.telemetry.middleware import TelemetryMiddleware
-from app.telemetry.tracing import configure_telemetry, inject_trace_carrier, start_span
+from app.telemetry.tracing import (
+    configure_telemetry,
+    get_trace_context_for_log_fields,
+    inject_trace_carrier,
+    start_span,
+)
 from app.temporal_client import get_temporal_client
 from app.tenant_ai_governance_setup_models import (
     TenantAIGovernanceSetupPatch,
@@ -3123,6 +3140,8 @@ def post_advisor_eu_ai_act_nis2_rag_query(
             detail=str(exc),
         ) from exc
 
+    trace_fields = get_trace_context_for_log_fields()
+    tg_count = sum(1 for c in out.citations if c.is_tenant_specific)
     audit_repo.log_event(
         tenant_id=body.tenant_id,
         actor_type="advisor",
@@ -3132,7 +3151,13 @@ def post_advisor_eu_ai_act_nis2_rag_query(
         action="query",
         metadata={
             "citation_count": len(out.citations),
-            "question_preview": body.question_de[:240],
+            "query_sha256": hashlib.sha256(body.question_de.strip().encode("utf-8")).hexdigest(),
+            "confidence_level": out.confidence_level,
+            "tenant_guidance_citation_count": tg_count,
+            "citation_doc_ids": [c.doc_id for c in out.citations[:20]],
+            "trace_id": trace_fields.get("trace_id"),
+            "span_id": trace_fields.get("span_id"),
+            "opa_user_role": rag_role,
         },
     )
     return out
@@ -3955,7 +3980,10 @@ async def post_start_board_report_workflow(
         entity_type="temporal_board_report_workflow",
         entity_id=workflow_id,
         action="started",
-        metadata={"task_queue": temporal_task_queue()},
+        metadata={
+            "task_queue": temporal_task_queue(),
+            "opa_user_role": wf_role,
+        },
     )
     return BoardReportWorkflowStartResponse(workflow_id=workflow_id, run_id=desc.run_id)
 
@@ -3994,6 +4022,162 @@ async def get_board_report_workflow_status(
         workflow_id=workflow_id,
         status=status_name,
         report_id=report_id,
+    )
+
+
+_AI_EVIDENCE_EVENT_TYPES = frozenset(
+    {
+        "rag_query",
+        "board_report_workflow_started",
+        "board_report_completed",
+        "llm_contract_violation",
+        "llm_guardrail_block",
+    },
+)
+
+
+def _parse_ai_evidence_event_types(raw: str | None) -> frozenset[str] | None:
+    if raw is None or not str(raw).strip():
+        return None
+    parts = frozenset(p.strip() for p in raw.split(",") if p.strip())
+    if not parts:
+        return None
+    unknown = parts - _AI_EVIDENCE_EVENT_TYPES
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Unknown event_types: {', '.join(sorted(unknown))}",
+        )
+    return parts
+
+
+@app.get(
+    "/api/v1/evidence/ai-act/events",
+    response_model=AiEvidenceEventListResponse,
+    tags=["evidence", "ai-act"],
+)
+def get_ai_act_evidence_events(
+    tenant_id: Annotated[str, Query(min_length=1)],
+    session: Annotated[Session, Depends(get_session)],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_act_evidence_views))],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    from_ts: Annotated[datetime | None, Query()] = None,
+    to_ts: Annotated[datetime | None, Query()] = None,
+    event_types: Annotated[str | None, Query()] = None,
+    confidence_level: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> AiEvidenceEventListResponse:
+    """
+    Read-only AI Act evidence index (metadata only; keine Prompts/Antworten).
+    """
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    ev_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_AI_EVIDENCE,
+        default="tenant_admin",
+    )
+    enforce_action_policy(
+        "view_ai_evidence",
+        UserPolicyContext(tenant_id=tenant_id, user_role=ev_role),
+        risk_score=0.4,
+    )
+    et = _parse_ai_evidence_event_types(event_types)
+    params = EvidenceQueryParams(
+        tenant_id=tenant_id,
+        from_ts=from_ts,
+        to_ts=to_ts,
+        event_types=et,
+        confidence_level=confidence_level.lower() if confidence_level else None,
+        limit=limit,
+        offset=offset,
+    )
+    return list_ai_events(session, params)
+
+
+@app.get(
+    "/api/v1/evidence/ai-act/events/{event_id}",
+    response_model=AiEvidenceEventDetail,
+    tags=["evidence", "ai-act"],
+)
+def get_ai_act_evidence_event_detail(
+    event_id: str,
+    tenant_id: Annotated[str, Query(min_length=1)],
+    session: Annotated[Session, Depends(get_session)],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_act_evidence_views))],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> AiEvidenceEventDetail:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    ev_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_AI_EVIDENCE,
+        default="tenant_admin",
+    )
+    enforce_action_policy(
+        "view_ai_evidence",
+        UserPolicyContext(tenant_id=tenant_id, user_role=ev_role),
+        risk_score=0.4,
+    )
+    detail = get_ai_event_detail(session, tenant_id, event_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    return detail
+
+
+@app.get(
+    "/api/v1/evidence/ai-act/export",
+    tags=["evidence", "ai-act"],
+)
+def export_ai_act_evidence(
+    tenant_id: Annotated[str, Query(min_length=1)],
+    session: Annotated[Session, Depends(get_session)],
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_act_evidence_views))],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    export_format: Annotated[Literal["csv", "json"], Query(alias="format")] = "csv",
+    from_ts: Annotated[datetime | None, Query()] = None,
+    to_ts: Annotated[datetime | None, Query()] = None,
+    event_types: Annotated[str | None, Query()] = None,
+    confidence_level: Annotated[str | None, Query()] = None,
+) -> Response:
+    require_path_tenant_matches_auth(tenant_id, auth_context)
+    ev_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_AI_EVIDENCE,
+        default="tenant_admin",
+    )
+    enforce_action_policy(
+        "view_ai_evidence",
+        UserPolicyContext(tenant_id=tenant_id, user_role=ev_role),
+        risk_score=0.4,
+    )
+    et = _parse_ai_evidence_event_types(event_types)
+    params = EvidenceQueryParams(
+        tenant_id=tenant_id,
+        from_ts=from_ts,
+        to_ts=to_ts,
+        event_types=et,
+        confidence_level=confidence_level.lower() if confidence_level else None,
+        limit=10_000,
+        offset=0,
+    )
+    rows = list_ai_events_for_export(session, params)
+    if export_format == "json":
+        return Response(
+            content=export_json_bytes(rows),
+            media_type="application/json; charset=utf-8",
+            headers={
+                "Content-Disposition": 'attachment; filename="ai_act_evidence.json"',
+            },
+        )
+    return StreamingResponse(
+        export_csv_chunks(rows),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="ai_act_evidence.csv"',
+        },
     )
 
 
