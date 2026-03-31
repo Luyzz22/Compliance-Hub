@@ -31,6 +31,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.advisor.metrics import AdvisorMetricsResponse, aggregate_advisor_metrics
 from app.advisor_client_snapshot_models import (
     AdvisorClientGovernanceSnapshotResponse,
     AdvisorGovernanceSnapshotMarkdownResponse,
@@ -4601,4 +4602,41 @@ def post_what_if_board_impact(
         gap_repo=gap_repo,
         violation_repo=violation_repo,
         nis2_repo=nis2_repo,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Internal: Advisor Metrics (feature-flagged + OPA-guarded)
+# ---------------------------------------------------------------------------
+
+_advisor_metrics_guard = create_feature_guard(FeatureFlag.advisor_metrics_internal)
+
+
+@app.get(
+    "/api/internal/advisor/metrics",
+    response_model=AdvisorMetricsResponse,
+    tags=["internal"],
+    dependencies=[Depends(_advisor_metrics_guard)],
+)
+def get_advisor_metrics(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    from_date: str | None = Query(None, alias="from"),
+    to_date: str | None = Query(None, alias="to"),
+) -> AdvisorMetricsResponse:
+    role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name="COMPLIANCEHUB_OPA_ROLE_ADVISOR_METRICS",
+        default="platform_admin",
+    )
+    enforce_action_policy(
+        "view_advisor_metrics",
+        UserPolicyContext(tenant_id=auth.tenant_id, user_role=role),
+        risk_score=0.2,
+    )
+    return aggregate_advisor_metrics(
+        tenant_id=tenant_id,
+        from_date=from_date,
+        to_date=to_date,
     )
