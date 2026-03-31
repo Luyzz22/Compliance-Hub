@@ -67,7 +67,9 @@ class EuAiActNis2RagResponse(BaseModel):
     )
     retrieval_hit_audit: list[RagRetrievalHitAuditRow] | None = Field(
         default=None,
-        description="Top-Treffer mit BM25-, Embedding- und kombiniertem Score (nur hybrid, Metadaten).",
+        description=(
+            "Top-Treffer mit BM25-, Embedding- und kombiniertem Score (nur hybrid, Metadaten)."
+        ),
     )
 
 

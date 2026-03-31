@@ -30,7 +30,8 @@ def _store_semantic_rescue() -> InMemoryDocumentStore:
             Document(
                 id="lexical-noise-chunk",
                 content=(
-                    "Was ist bei einer erheblichen IT-Störung bei wesentlichen Einrichtungen zu melden "
+                    "Was ist bei einer erheblichen IT-Störung bei wesentlichen "
+                    "Einrichtungen zu melden "
                     "NIS2 Behörden Vorfall unverzüglich Stichwortliste"
                 ),
                 meta={"source": "noise", "section": "Lexikal", "rag_scope": "global"},
@@ -156,7 +157,9 @@ def test_bm25_only_misses_semantic_doc_without_lexical_overlap(
     assert pr.confidence_level == "low"
 
 
-def test_ingest_script_embeds_with_mocked_sentence_transformer(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ingest_corpus_embeds_with_mock_transformer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from scripts.ingest_eu_ai_act_nis2_corpus import main
 
     calls: list[int] = []

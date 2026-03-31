@@ -2,10 +2,14 @@
 Haystack / RAG configuration (pilot: in-memory BM25; optional hybrid BM25 + dense).
 
 Environment:
-- COMPLIANCEHUB_ADVISOR_RAG_RETRIEVAL_MODE: ``bm25`` (default) or ``hybrid`` (BM25 + dense merge).
-- COMPLIANCEHUB_RAG_RETRIEVER: legacy alias; ``embedding`` maps to ``hybrid`` for backward compatibility.
-- COMPLIANCEHUB_RAG_EMBEDDING_MODEL: Hugging Face id for dense retriever (e.g. multilingual MPNet).
-- COMPLIANCEHUB_RAG_HYBRID_* : convex combination (1-alpha)*norm_bm25 + alpha*norm_dense, score audit fields.
+- COMPLIANCEHUB_ADVISOR_RAG_RETRIEVAL_MODE: ``bm25`` (default) or ``hybrid``
+  (BM25 + dense merge).
+- COMPLIANCEHUB_RAG_RETRIEVER: legacy alias; ``embedding`` maps to ``hybrid``
+  for backward compatibility.
+- COMPLIANCEHUB_RAG_EMBEDDING_MODEL: Hugging Face id for dense retriever
+  (e.g. multilingual MPNet).
+- COMPLIANCEHUB_RAG_HYBRID_* : convex mix (1-alpha)*norm_bm25 + alpha*norm_dense;
+  score audit fields.
 """
 
 from __future__ import annotations
