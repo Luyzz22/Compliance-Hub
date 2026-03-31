@@ -181,6 +181,11 @@ class TestPlanStore:
         assert "message_en" in detail
         assert "Paket" in detail["message_de"]
         assert "ComplianceHub" in detail["message_en"]
+        assert "upgrade_hint_de" in detail
+        assert "contact_cta_de" in detail
+        assert "contact_url" in detail
+        assert "disclaimer_de" in detail
+        assert "current_plan" in detail
 
     def test_require_capability_includes_capability_name(self) -> None:
         _cleanup()
@@ -198,8 +203,9 @@ class TestDemoProfiles:
     def test_list_profiles(self) -> None:
         profiles = list_profiles()
         assert "kanzlei_demo" in profiles
-        assert "sap_demo" in profiles
+        assert "sap_enterprise_demo" in profiles
         assert "sme_demo" in profiles
+        assert "industrie_mittelstand_demo" in profiles
 
     def test_seed_kanzlei_demo(self) -> None:
         _cleanup()
@@ -210,14 +216,23 @@ class TestDemoProfiles:
         assert has_capability("t-kanzlei", Capability.grc_records)
         assert not has_capability("t-kanzlei", Capability.enterprise_integrations)
 
-    def test_seed_sap_demo(self) -> None:
+    def test_seed_sap_enterprise_demo(self) -> None:
         _cleanup()
-        plan = seed_demo_plan("t-sap", "sap_demo")
+        plan = seed_demo_plan("t-sap", "sap_enterprise_demo")
         assert plan is not None
         assert plan.tier == ProductTier.enterprise
         assert has_capability("t-sap", Capability.enterprise_integrations)
         assert has_capability("t-sap", Capability.grc_records)
         assert has_capability("t-sap", Capability.ai_advisor_basic)
+
+    def test_seed_industrie_mittelstand_demo(self) -> None:
+        _cleanup()
+        plan = seed_demo_plan("t-ind", "industrie_mittelstand_demo")
+        assert plan is not None
+        assert plan.tier == ProductTier.pro
+        assert has_capability("t-ind", Capability.grc_records)
+        assert has_capability("t-ind", Capability.ai_system_inventory)
+        assert not has_capability("t-ind", Capability.enterprise_integrations)
 
     def test_seed_sme_demo(self) -> None:
         _cleanup()

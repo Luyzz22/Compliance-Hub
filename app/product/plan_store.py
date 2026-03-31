@@ -76,9 +76,20 @@ def require_capability(tenant_id: str, cap: Capability) -> None:
     """Raise 403 if the tenant lacks the required capability."""
     if has_capability(tenant_id, cap):
         return
+
+    from app.product.copy_de import (
+        CAPABILITY_UPGRADE_HINTS_DE,
+        CONTACT_URL,
+        FEATURE_NOT_ENABLED_DISCLAIMER_DE,
+    )
+
+    plan = get_tenant_plan(tenant_id)
     labels = CAPABILITY_LABELS.get(cap, {})
     label_de = labels.get("de", cap.value)
     label_en = labels.get("en", cap.value)
+    plan_label = plan.plan_display()
+    upgrade_hint = CAPABILITY_UPGRADE_HINTS_DE.get(cap, "")
+
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail={
@@ -88,10 +99,21 @@ def require_capability(tenant_id: str, cap: Capability) -> None:
                 f"Contact your ComplianceHub representative to upgrade."
             ),
             "message_de": (
-                f"Diese Funktion ({label_de}) ist in Ihrem aktuellen Paket nicht enthalten. "
-                f"Kontaktieren Sie Ihren ComplianceHub-Ansprechpartner für ein Upgrade."
+                f"Diese Funktion ({label_de}) ist in Ihrem aktuellen Paket "
+                f"({plan_label}) nicht enthalten."
             ),
+            "upgrade_hint_de": (
+                f"Diese Funktion ist typischerweise im Paket '{upgrade_hint}' verfügbar."
+                if upgrade_hint
+                else ""
+            ),
+            "contact_cta_de": (
+                "Für ein Upgrade oder weitere Informationen: kontakt@compliancehub.de"
+            ),
+            "contact_url": CONTACT_URL,
+            "disclaimer_de": FEATURE_NOT_ENABLED_DISCLAIMER_DE,
             "capability": cap.value,
+            "current_plan": plan_label,
         },
     )
 

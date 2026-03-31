@@ -106,19 +106,13 @@ class TenantPlanConfig(BaseModel):
         return cap in self.capabilities()
 
     def plan_display(self) -> str:
-        """Human-readable plan string for UI."""
-        tier_labels = {
-            ProductTier.starter: "Starter",
-            ProductTier.pro: "Professional",
-            ProductTier.enterprise: "Enterprise",
-        }
-        bundle_labels = {
-            ProductBundle.ai_act_readiness: "AI Act Readiness",
-            ProductBundle.ai_governance_evidence: "AI Governance & Evidence",
-            ProductBundle.enterprise_integrations: "Enterprise Connectors",
-        }
-        tier_label = tier_labels.get(self.tier, self.tier.value)
-        bundle_names = sorted(bundle_labels.get(b, b.value) for b in self.effective_bundles())
+        """Human-readable plan string for UI (German-friendly)."""
+        from app.product.copy_de import BUNDLE_LABELS_DE, TIER_LABELS_DE
+
+        tier_label = TIER_LABELS_DE.get(self.tier.value, self.tier.value)
+        bundle_names = sorted(
+            BUNDLE_LABELS_DE.get(b.value, b.value) for b in self.effective_bundles()
+        )
         return f"{tier_label} – {', '.join(bundle_names)}"
 
 
