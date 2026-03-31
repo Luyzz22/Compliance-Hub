@@ -27,11 +27,19 @@ _idem_index: dict[str, str] = {}
 
 ENABLED_PAYLOAD_TYPES: set[str] = set()
 
+ENABLE_DOSSIER_ON_BOARD_REPORT: bool = False
+
 
 def configure_enabled_types(types: set[str]) -> None:
     """Opt-in feature flag: only these payload types create outbox jobs."""
     ENABLED_PAYLOAD_TYPES.clear()
     ENABLED_PAYLOAD_TYPES.update(types)
+
+
+def set_dossier_on_board_report(enabled: bool) -> None:
+    """Feature flag: auto-enqueue Kanzlei-Export after board report."""
+    global ENABLE_DOSSIER_ON_BOARD_REPORT
+    ENABLE_DOSSIER_ON_BOARD_REPORT = enabled
 
 
 # ---------------------------------------------------------------------------
@@ -211,10 +219,12 @@ def pending_jobs(
 
 
 def clear_for_tests() -> None:
+    global ENABLE_DOSSIER_ON_BOARD_REPORT
     with _lock:
         _jobs.clear()
         _idem_index.clear()
     ENABLED_PAYLOAD_TYPES.clear()
+    ENABLE_DOSSIER_ON_BOARD_REPORT = False
 
 
 # ---------------------------------------------------------------------------

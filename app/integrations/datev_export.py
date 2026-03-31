@@ -135,6 +135,9 @@ def store_artifact(
     client_id: str = "",
     job_id: str = "",
     fmt: str = "json",
+    period: str = "",
+    export_version: int = 0,
+    schema_version: str = "v1",
 ) -> dict[str, Any]:
     """Persist an export artifact and return its metadata."""
     meta: dict[str, Any] = {
@@ -145,6 +148,9 @@ def store_artifact(
         "format": fmt,
         "size_bytes": len(content.encode("utf-8")),
         "stored_at": datetime.now(UTC).isoformat(),
+        "period": period,
+        "export_version": export_version,
+        "schema_version": schema_version,
     }
     with _lock:
         _artifacts[name] = {"meta": meta, "content": content}

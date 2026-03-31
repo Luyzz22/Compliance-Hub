@@ -46,19 +46,53 @@ class DatevExportConnector(BaseConnector):
     """Writes a DATEV-friendly JSON export artefact to the artifact store."""
 
     def dispatch(self, job: IntegrationJob, payload: dict[str, Any]) -> DispatchResult:
-        artifact_name = build_artifact_name(
-            tenant_id=job.tenant_id,
-            client_id=job.client_id,
-            version=job.payload_version,
-        )
-        content = render_json([payload])
-        store_artifact(
-            artifact_name,
-            content,
-            tenant_id=job.tenant_id,
-            client_id=job.client_id,
-            job_id=job.job_id,
-        )
+        is_dossier = payload.get("export_type") == "mandant_compliance_dossier"
+
+        if is_dossier:
+            from app.integrations.mandant_dossier import (
+                log_dossier_evidence,
+                render_dossier_json,
+            )
+
+            artifact_name = build_artifact_name(
+                tenant_id=job.tenant_id,
+                client_id=job.client_id,
+                period=job.period or payload.get("period", ""),
+                version=f"v{job.export_version}",
+            )
+            content = render_dossier_json(payload)
+            store_artifact(
+                artifact_name,
+                content,
+                tenant_id=job.tenant_id,
+                client_id=job.client_id,
+                job_id=job.job_id,
+                fmt="json",
+            )
+            log_dossier_evidence(
+                tenant_id=job.tenant_id,
+                client_id=job.client_id,
+                period=job.period,
+                export_version=job.export_version,
+                schema_version=job.schema_version,
+                artifact_name=artifact_name,
+                job_id=job.job_id,
+                trace_id=job.trace_id,
+            )
+        else:
+            artifact_name = build_artifact_name(
+                tenant_id=job.tenant_id,
+                client_id=job.client_id,
+                version=job.payload_version,
+            )
+            content = render_json([payload])
+            store_artifact(
+                artifact_name,
+                content,
+                tenant_id=job.tenant_id,
+                client_id=job.client_id,
+                job_id=job.job_id,
+            )
 
         entry = {
             "connector": "datev_export",
@@ -67,6 +101,9 @@ class DatevExportConnector(BaseConnector):
             "client_id": job.client_id,
             "format": "json",
             "artifact_name": artifact_name,
+            "payload_type": job.payload_type.value,
+            "period": job.period,
+            "export_version": job.export_version,
             "payload": payload,
         }
         _dispatch_log.append(entry)

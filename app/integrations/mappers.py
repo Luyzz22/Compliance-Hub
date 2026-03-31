@@ -266,6 +266,14 @@ def map_readiness_sap(sys: AiSystem) -> dict[str, Any]:
 
 # ── Dispatcher helper ────────────────────────────────────────────────
 
+
+def _passthrough(entity: Any) -> Any:
+    """Identity mapper for payload types that build their own payloads."""
+    if hasattr(entity, "model_dump"):
+        return entity.model_dump()
+    return entity
+
+
 _MAPPER_REGISTRY: dict[
     tuple[str, str],
     Any,
@@ -285,6 +293,9 @@ _MAPPER_REGISTRY: dict[
     ("ai_system_readiness_snapshot", "datev_export"): map_readiness_datev,
     ("ai_system_readiness_snapshot", "sap_btp"): map_readiness_sap,
     ("ai_system_readiness_snapshot", "generic_partner_api"): (map_readiness_sap),
+    ("mandant_compliance_dossier", "datev_export"): _passthrough,
+    ("mandant_compliance_dossier", "sap_btp"): _passthrough,
+    ("mandant_compliance_dossier", "generic_partner_api"): _passthrough,
 }
 
 

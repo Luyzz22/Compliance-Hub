@@ -29,6 +29,7 @@ from app.integrations.models import (
     MAX_DISPATCH_ATTEMPTS,
     IntegrationJob,
     IntegrationJobStatus,
+    IntegrationPayloadType,
     JobWeight,
 )
 from app.integrations.store import (
@@ -128,6 +129,9 @@ def _resolve_source_entity(job: IntegrationJob) -> Any | None:
 
 def _build_payload(job: IntegrationJob) -> dict[str, Any] | None:
     """Build the outbound payload for the job."""
+    if job.payload_type == IntegrationPayloadType.mandant_compliance_dossier:
+        return _build_dossier_payload(job)
+
     if job.payload:
         return job.payload
 
@@ -150,6 +154,20 @@ def _build_payload(job: IntegrationJob) -> dict[str, Any] | None:
     if isinstance(entity, dict):
         return mapper(entity)
     return None
+
+
+def _build_dossier_payload(job: IntegrationJob) -> dict[str, Any]:
+    from app.integrations.mandant_dossier import build_dossier
+
+    extra = job.payload or {}
+    return build_dossier(
+        tenant_id=job.tenant_id,
+        client_id=job.client_id,
+        period=job.period,
+        export_version=job.export_version,
+        mandant_kurzname=extra.get("mandant_kurzname", ""),
+        branche=extra.get("branche", ""),
+    )
 
 
 # ---------------------------------------------------------------------------
