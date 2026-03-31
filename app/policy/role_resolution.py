@@ -7,6 +7,8 @@ import os
 ALLOWED_OPA_ROLES = frozenset(
     {
         "advisor",
+        "auditor",
+        "compliance_officer",
         "tenant_admin",
         "tenant_user",
         "viewer",

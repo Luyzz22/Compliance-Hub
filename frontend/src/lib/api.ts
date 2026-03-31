@@ -13,16 +13,43 @@ export const TENANT_ID =
   process.env.COMPLIANCEHUB_TENANT_ID ||
   "tenant-overview-001";
 
+function tenantRequestHeaders(
+  tenantId: string,
+  initHeaders?: HeadersInit,
+  options?: { json?: boolean },
+): Record<string, string> {
+  const h: Record<string, string> = {
+    "x-api-key": API_KEY,
+    "x-tenant-id": tenantId,
+  };
+  const opa = process.env.NEXT_PUBLIC_OPA_USER_ROLE?.trim();
+  if (opa) {
+    h["x-opa-user-role"] = opa;
+  }
+  if (options?.json !== false) {
+    h["Content-Type"] = "application/json";
+  }
+  if (initHeaders) {
+    if (initHeaders instanceof Headers) {
+      initHeaders.forEach((v, k) => {
+        h[k] = v;
+      });
+    } else if (Array.isArray(initHeaders)) {
+      for (const [k, v] of initHeaders) {
+        h[k] = v;
+      }
+    } else {
+      Object.assign(h, initHeaders);
+    }
+  }
+  return h;
+}
+
 async function tenantApiFetch(path: string, tenantId: string, init?: RequestInit) {
   const url = `${API_BASE_URL}${path}`;
   const res = await fetch(url, {
     ...init,
-    headers: {
-      "x-api-key": API_KEY,
-      "x-tenant-id": tenantId,
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
+    headers: tenantRequestHeaders(tenantId, init?.headers, { json: true }),
     cache: "no-store",
   });
 
@@ -39,6 +66,29 @@ async function tenantApiFetch(path: string, tenantId: string, init?: RequestInit
   return res.json();
 }
 
+/** Tenant-authenticated GET/POST ohne JSON-Body (z. B. Export-Download). */
+export async function tenantApiFetchResponse(
+  path: string,
+  tenantId: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const url = `${API_BASE_URL}${path}`;
+  const res = await fetch(url, {
+    ...init,
+    headers: tenantRequestHeaders(tenantId, init?.headers, { json: false }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    if (res.status === 403) {
+      throw new Error(
+        "Zugriff verweigert (HTTP 403). Evidence-Export erfordert Berechtigung view_ai_evidence und aktiviertes Feature.",
+      );
+    }
+    throw new Error(`API ${path} failed with ${res.status}`);
+  }
+  return res;
+}
+
 export type WorkspaceModeDto = "production" | "demo" | "playground";
 
 export interface TenantWorkspaceMetaDto {
@@ -51,6 +101,10 @@ export interface TenantWorkspaceMetaDto {
   mode_label: string;
   mode_hint: string;
   demo_mode_feature_enabled: boolean;
+  /** Backend COMPLIANCEHUB_FEATURE_AI_ACT_EVIDENCE_VIEWS. */
+  feature_ai_act_evidence_views?: boolean;
+  /** OPA view_ai_evidence (gleiche Rollenauflösung wie Evidence-API). */
+  can_view_ai_evidence?: boolean;
 }
 
 export async function fetchTenantWorkspaceMeta(tenantId: string): Promise<TenantWorkspaceMetaDto> {
@@ -61,6 +115,160 @@ export async function fetchTenantWorkspaceMeta(tenantId: string): Promise<Tenant
 export async function logDemoFeatureUsed(tenantId: string, featureKey: string): Promise<void> {
   const k = encodeURIComponent(featureKey);
   await tenantApiFetch(`/api/v1/workspace/feature-used?feature_key=${k}`, tenantId);
+}
+
+// —— AI Act Evidence (read-only, Metadaten) ————————————————————————————————
+
+export interface AiEvidenceEventListItemDto {
+  event_id: string;
+  timestamp: string;
+  event_type: string;
+  tenant_id: string;
+  user_role: string;
+  source: string;
+  summary_de: string;
+  confidence_level?: string | null;
+  purpose?: string | null;
+  system_id?: string | null;
+  risk_category?: string | null;
+  input_source?: string | null;
+  output_target?: string | null;
+}
+
+export interface AiEvidenceEventListResponseDto {
+  items: AiEvidenceEventListItemDto[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export type AiEvidenceExportFormat = "csv" | "json";
+
+export interface AiActEvidenceListQuery {
+  from_ts?: string;
+  to_ts?: string;
+  /** Komma-separierte Backend-event_types */
+  event_types?: string;
+  confidence_level?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export type AiActEvidenceFilterQuery = Omit<AiActEvidenceListQuery, "limit" | "offset">;
+
+function buildAiActEvidenceFilterParams(
+  tenantId: string,
+  q: AiActEvidenceFilterQuery,
+): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("tenant_id", tenantId);
+  if (q.from_ts) {
+    params.set("from_ts", q.from_ts);
+  }
+  if (q.to_ts) {
+    params.set("to_ts", q.to_ts);
+  }
+  if (q.event_types) {
+    params.set("event_types", q.event_types);
+  }
+  if (q.confidence_level) {
+    params.set("confidence_level", q.confidence_level);
+  }
+  return params;
+}
+
+function buildAiActEvidenceQuery(tenantId: string, q: AiActEvidenceListQuery): string {
+  const params = buildAiActEvidenceFilterParams(tenantId, q);
+  params.set("limit", String(q.limit ?? 50));
+  params.set("offset", String(q.offset ?? 0));
+  return params.toString();
+}
+
+export async function fetchAiActEvidenceEvents(
+  tenantId: string,
+  q: AiActEvidenceListQuery,
+): Promise<AiEvidenceEventListResponseDto> {
+  const qs = buildAiActEvidenceQuery(tenantId, q);
+  return tenantApiFetch(`/api/v1/evidence/ai-act/events?${qs}`, tenantId) as Promise<AiEvidenceEventListResponseDto>;
+}
+
+export interface AiEvidenceRagDetailSectionDto {
+  query_sha256?: string | null;
+  citation_doc_ids: string[];
+  tenant_guidance_citation_count: number;
+  confidence_level?: string | null;
+  trace_id?: string | null;
+  span_id?: string | null;
+  citation_count: number;
+}
+
+export interface AiEvidenceBoardReportWorkflowDetailSectionDto {
+  workflow_id: string;
+  task_queue?: string | null;
+  status_hint?: string | null;
+}
+
+export interface AiEvidenceBoardReportCompletedDetailSectionDto {
+  report_id: string;
+  temporal_workflow_id?: string | null;
+  temporal_run_id?: string | null;
+  audience_type: string;
+  activities_executed: string[];
+  title: string;
+}
+
+export interface AiEvidenceLlmDetailSectionDto {
+  action_name?: string | null;
+  task_type?: string | null;
+  contract_schema?: string | null;
+  error_class?: string | null;
+  guardrail_flags?: Record<string, string> | null;
+}
+
+export interface AiEvidenceEventDetailDto {
+  event_id: string;
+  timestamp: string;
+  event_type: string;
+  tenant_id: string;
+  user_role: string;
+  source: string;
+  summary_de: string;
+  purpose?: string | null;
+  system_id?: string | null;
+  risk_category?: string | null;
+  input_source?: string | null;
+  output_target?: string | null;
+  rag?: AiEvidenceRagDetailSectionDto | null;
+  board_report_workflow?: AiEvidenceBoardReportWorkflowDetailSectionDto | null;
+  board_report_completed?: AiEvidenceBoardReportCompletedDetailSectionDto | null;
+  llm?: AiEvidenceLlmDetailSectionDto | null;
+}
+
+export async function fetchAiActEvidenceEventDetail(
+  tenantId: string,
+  eventId: string,
+): Promise<AiEvidenceEventDetailDto> {
+  const params = new URLSearchParams({ tenant_id: tenantId });
+  const enc = encodeURIComponent(eventId);
+  return tenantApiFetch(
+    `/api/v1/evidence/ai-act/events/${enc}?${params.toString()}`,
+    tenantId,
+  ) as Promise<AiEvidenceEventDetailDto>;
+}
+
+export async function downloadAiActEvidenceExport(
+  tenantId: string,
+  format: AiEvidenceExportFormat,
+  filters: AiActEvidenceFilterQuery,
+): Promise<Blob> {
+  const params = buildAiActEvidenceFilterParams(tenantId, filters);
+  params.set("format", format);
+  const res = await tenantApiFetchResponse(
+    `/api/v1/evidence/ai-act/export?${params.toString()}`,
+    tenantId,
+    { method: "GET" },
+  );
+  return res.blob();
 }
 
 async function apiFetch(path: string, init?: RequestInit) {

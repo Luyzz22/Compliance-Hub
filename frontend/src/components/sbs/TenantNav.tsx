@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 
+import { useAiActEvidenceNav } from "@/hooks/useAiActEvidenceNav";
 import {
   featureAiGovernancePlaybook,
   featureAiGovernanceSetupWizard,
@@ -37,8 +38,13 @@ const items = [
   ...baseItems.slice(1),
 ];
 
-export function TenantNav() {
+type TenantNavProps = {
+  workspaceTenantId: string;
+};
+
+export function TenantNav({ workspaceTenantId }: TenantNavProps) {
   const pathname = usePathname();
+  const { visible, href: evidenceHref } = useAiActEvidenceNav(workspaceTenantId);
   return (
     <nav
       className="space-y-1 px-3 py-4 text-sm"
@@ -70,6 +76,31 @@ export function TenantNav() {
           </Link>
         );
       })}
+      {visible ? (
+        <>
+          <div className="mt-4 px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Compliance / Evidence
+          </div>
+          <Link
+            href={evidenceHref}
+            className={`flex items-center gap-2 rounded-lg px-2 py-2 no-underline transition ${
+              pathname === evidenceHref || pathname.startsWith(`${evidenceHref}/`)
+                ? "bg-cyan-50 font-semibold text-cyan-900"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                pathname === evidenceHref || pathname.startsWith(`${evidenceHref}/`)
+                  ? "bg-cyan-500"
+                  : "bg-slate-300"
+              }`}
+              aria-hidden
+            />
+            EU AI Act Evidenz
+          </Link>
+        </>
+      ) : null}
     </nav>
   );
 }

@@ -85,3 +85,14 @@ class TenantWorkspaceMetaResponse(BaseModel):
         default=False,
         description="COMPLIANCEHUB_FEATURE_DEMO_MODE – spiegelt Server-ENV für UI-Kohärenz.",
     )
+    feature_ai_act_evidence_views: bool = Field(
+        default=False,
+        description="COMPLIANCEHUB_FEATURE_AI_ACT_EVIDENCE_VIEWS für diesen Mandanten aktiv.",
+    )
+    can_view_ai_evidence: bool = Field(
+        default=False,
+        description=(
+            "OPA-Erlaubnis für Aktion view_ai_evidence; nutzt x-opa-user-role / "
+            "COMPLIANCEHUB_OPA_ROLE_AI_EVIDENCE wie die Evidence-API."
+        ),
+    )

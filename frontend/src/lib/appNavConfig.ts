@@ -1,4 +1,5 @@
 /** Zentrale Navigations-Definition (Single Source für Header + Secondary Nav). */
+/** Hinweis: EU-AI-Act-Evidenz ist mandantenspezifisch unter `/tenants/{tenantId}/evidence/ai-act` und erscheint nur bei Feature + OPA (siehe TenantNav / GlobalWorkspaceEvidenceNavBlock). */
 
 export const BOARD_NAV_ITEMS = [
   { href: "/board/kpis", label: "Board KPIs" },

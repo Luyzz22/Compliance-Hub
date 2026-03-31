@@ -194,6 +194,7 @@ from app.operational_monitoring_models import (
     SystemMonitoringIndexOut,
     TenantOperationalMonitoringIndexOut,
 )
+from app.policy.opa_client import evaluate_action_policy
 from app.policy.policy_guard import enforce_action_policy
 from app.policy.role_resolution import (
     ENV_ROLE_ADVISOR_RAG,
@@ -3396,6 +3397,7 @@ def get_workspace_tenant_meta(
     request: Request,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
 ) -> TenantWorkspaceMetaResponse:
     row = TenantRegistryRepository(session).get_by_id(auth_context.tenant_id)
     if row is None:
@@ -3417,6 +3419,20 @@ def get_workspace_tenant_meta(
         request_path=request.url.path,
         dedupe_same_type_hours=24,
     )
+    ev_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name=ENV_ROLE_AI_EVIDENCE,
+        default="tenant_admin",
+    )
+    ai_evidence_ff = is_feature_enabled(FeatureFlag.ai_act_evidence_views, tid, session=session)
+    evidence_decision = evaluate_action_policy(
+        {
+            "tenant_id": tid,
+            "user_role": ev_role,
+            "action": "view_ai_evidence",
+            "risk_score": 0.4,
+        },
+    )
     return TenantWorkspaceMetaResponse(
         tenant_id=row.id,
         display_name=row.display_name,
@@ -3427,6 +3443,8 @@ def get_workspace_tenant_meta(
         mode_label=mode_label,
         mode_hint=mode_hint,
         demo_mode_feature_enabled=is_feature_enabled(FeatureFlag.demo_mode),
+        feature_ai_act_evidence_views=ai_evidence_ff,
+        can_view_ai_evidence=bool(evidence_decision.allowed),
     )
 
 
