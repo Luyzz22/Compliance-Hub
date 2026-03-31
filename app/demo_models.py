@@ -108,3 +108,11 @@ class TenantWorkspaceMetaResponse(BaseModel):
         default_factory=list,
         description="List of capability flags enabled for this tenant.",
     )
+    sku_name_de: str = Field(
+        default="",
+        description="German SKU name for the current plan (e.g. 'AI Act Readiness').",
+    )
+    sku_tagline_de: str = Field(
+        default="",
+        description="German tagline for the current plan.",
+    )

@@ -3231,9 +3231,11 @@ def get_workspace_tenant_meta(
             "risk_score": 0.4,
         },
     )
+    from app.product.offerings import sku_for_tier
     from app.product.plan_store import get_tenant_plan
 
     plan = get_tenant_plan(tid)
+    sku = sku_for_tier(plan.tier)
     return TenantWorkspaceMetaResponse(
         tenant_id=row.id,
         display_name=row.display_name,
@@ -3249,6 +3251,8 @@ def get_workspace_tenant_meta(
         plan_tier=plan.tier.value,
         plan_display=plan.plan_display(),
         plan_capabilities=sorted(c.value for c in plan.capabilities()),
+        sku_name_de=sku.name_de if sku else "",
+        sku_tagline_de=sku.tagline_de if sku else "",
     )
 
 
@@ -5407,19 +5411,111 @@ def seed_demo_plan_api(
     tenant_id: str,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
-    profile: str = Query(..., description="Demo profile: kanzlei_demo, sap_demo, sme_demo"),
+    profile: str = Query(
+        ...,
+        description=(
+            "Demo profile: industrie_mittelstand_demo, kanzlei_demo, sap_enterprise_demo, sme_demo"
+        ),
+    ),
+    seed_data: bool = Query(
+        default=True,
+        description="Also seed sample AiSystems, GRC records, etc.",
+    ),
 ) -> dict[str, Any]:
-    """Apply a demo plan profile to a tenant."""
-    from app.product.demo_plans import seed_demo_plan
+    """Apply a demo plan profile to a tenant and optionally seed sample data."""
+    from app.product.demo_plans import seed_demo_data, seed_demo_plan
 
     _enforce_grc_opa("manage_integrations", auth, opa_role_header)
     plan = seed_demo_plan(tenant_id, profile)
     if plan is None:
         raise HTTPException(status_code=400, detail=f"Unknown profile: {profile}")
-    return {
+    result: dict[str, Any] = {
         "tenant_id": tenant_id,
         "profile": profile,
         "tier": plan.tier.value,
         "bundles": sorted(b.value for b in plan.effective_bundles()),
         "capabilities": sorted(c.value for c in plan.capabilities()),
     }
+    if seed_data:
+        result["seeded_data"] = seed_demo_data(tenant_id, profile)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# GTM: Offerings, Value Hints & Telemetry (Wave 18)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/internal/product/offerings",
+    tags=["product"],
+)
+def list_offerings_api(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, Any]:
+    """List all defined SKU offerings (internal)."""
+    from app.product.offerings import list_skus
+
+    return {"offerings": [s.model_dump() for s in list_skus()]}
+
+
+@app.get(
+    "/api/internal/product/value-hints",
+    tags=["product"],
+)
+def get_value_hints_api(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, Any]:
+    """Return German value hints keyed by screen/feature, filtered by plan."""
+    from app.product.copy_de import VALUE_HINTS_DE
+    from app.product.plan_store import get_tenant_plan
+
+    plan = get_tenant_plan(auth.tenant_id)
+    caps = plan.capabilities()
+
+    from app.product.models import Capability
+
+    cap_to_hints = {
+        Capability.ai_advisor_basic: ["ai_advisor"],
+        Capability.ai_evidence_basic: ["evidence_views"],
+        Capability.grc_records: ["grc_records"],
+        Capability.ai_system_inventory: ["ai_system_inventory"],
+        Capability.kanzlei_reports: ["kanzlei_reports", "kanzlei_dossier"],
+        Capability.enterprise_integrations: ["enterprise_integrations"],
+    }
+    enabled_hints: dict[str, str] = {}
+    for cap, hint_keys in cap_to_hints.items():
+        if cap in caps:
+            for key in hint_keys:
+                if key in VALUE_HINTS_DE:
+                    enabled_hints[key] = VALUE_HINTS_DE[key]
+    return {
+        "tenant_id": auth.tenant_id,
+        "plan_tier": plan.tier.value,
+        "hints": enabled_hints,
+    }
+
+
+@app.post(
+    "/api/internal/product/telemetry/screen-view",
+    tags=["product"],
+)
+def record_screen_view_api(
+    body: dict[str, Any],
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, str]:
+    """Record a screen view event for GTM analytics (no PII)."""
+    from app.product.plan_store import get_tenant_plan as _get_plan
+    from app.services.rag.evidence_store import record_event as _record_ev
+
+    plan = _get_plan(auth.tenant_id)
+    _record_ev(
+        {
+            "event_type": "gtm_screen_view",
+            "tenant_id": auth.tenant_id,
+            "screen": body.get("screen", "unknown"),
+            "demo_profile": body.get("demo_profile", ""),
+            "plan_tier": plan.tier.value,
+        }
+    )
+    return {"status": "recorded"}
