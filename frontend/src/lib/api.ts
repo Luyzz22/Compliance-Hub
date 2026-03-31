@@ -192,6 +192,15 @@ export async function fetchAiActEvidenceEvents(
   return tenantApiFetch(`/api/v1/evidence/ai-act/events?${qs}`, tenantId) as Promise<AiEvidenceEventListResponseDto>;
 }
 
+export interface AiEvidenceRagScoreAuditRowDto {
+  doc_id: string;
+  bm25_score: number;
+  embedding_score: number;
+  combined_score: number;
+  rag_scope: string;
+  is_tenant_guidance: boolean;
+}
+
 export interface AiEvidenceRagDetailSectionDto {
   query_sha256?: string | null;
   citation_doc_ids: string[];
@@ -200,6 +209,8 @@ export interface AiEvidenceRagDetailSectionDto {
   trace_id?: string | null;
   span_id?: string | null;
   citation_count: number;
+  retrieval_mode?: string | null;
+  score_audit?: AiEvidenceRagScoreAuditRowDto[];
 }
 
 export interface AiEvidenceBoardReportWorkflowDetailSectionDto {

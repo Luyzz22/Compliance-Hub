@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING, Literal, cast
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-from app.rag.models import EuAiActNis2RagCitation, EuAiActNis2RagResponse, EuRegRagLlmOutput
+from app.rag.models import (
+    EuAiActNis2RagCitation,
+    EuAiActNis2RagResponse,
+    EuRegRagLlmOutput,
+    RagRetrievalHitAuditRow,
+)
 from app.rag.pipelines.eu_ai_act_nis2_pipeline import run_eu_ai_act_nis2_pipeline
 from app.rag.retrieval import is_tenant_guidance_document
 from app.rag.store import get_eu_reg_document_store
@@ -80,9 +85,19 @@ def run_advisor_eu_reg_rag(
         pr.used_llm,
     )
     conf = cast(Literal["high", "medium", "low"], pr.confidence_level)
+    hit_audit = (
+        [RagRetrievalHitAuditRow.model_validate(row) for row in pr.retrieval_hit_audit]
+        if pr.retrieval_hit_audit
+        else None
+    )
+    rm: Literal["bm25", "hybrid"] | None = None
+    if pr.retrieval_mode in ("bm25", "hybrid"):
+        rm = cast(Literal["bm25", "hybrid"], pr.retrieval_mode)
     return EuAiActNis2RagResponse(
         answer_de=parsed.answer_de,
         citations=citations,
         confidence_level=conf,
         notes_de=pr.notes_de,
+        retrieval_mode=rm,
+        retrieval_hit_audit=hit_audit,
     )

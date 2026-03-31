@@ -57,6 +57,10 @@ Raw `question_de` is **not** logged.
 
 `scripts/ingest_eu_ai_act_nis2_corpus.py` loads `.md` files; chunks get `rag_scope=global` unless extended for tenant uploads.
 
+## Hybrid retrieval (Wave 6)
+
+Optional **BM25 + dense** mode is documented in [wave6-hybrid-retrieval.md](./wave6-hybrid-retrieval.md) (`COMPLIANCEHUB_ADVISOR_RAG_RETRIEVAL_MODE=hybrid`).
+
 ## Integration outlook
 
 - **Temporal (Wave 2):** RAG can run inside an activity with the same guardrails and logging hooks.

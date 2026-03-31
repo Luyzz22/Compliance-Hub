@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.db import engine
+from app.db import SessionLocal, engine
 from app.main import app
 from app.models_db import Base
 from app.policy.opa_client import PolicyDecision
@@ -262,3 +262,56 @@ def test_evidence_unknown_event_type_422(
             headers=_headers(evidence_tenant_id),
         )
     assert r.status_code == 422
+
+
+def test_evidence_rag_detail_includes_hybrid_audit_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+    evidence_tenant_id: str,
+) -> None:
+    Base.metadata.create_all(bind=engine)
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_AI_ACT_EVIDENCE_VIEWS", "true")
+    with SessionLocal() as session:
+        audit = AuditRepository(session)
+        row = audit.log_event(
+            tenant_id=evidence_tenant_id,
+            actor_type="advisor",
+            actor_id="adv-audit",
+            entity_type="advisor_regulatory_rag",
+            entity_id=evidence_tenant_id,
+            action="query",
+            metadata={
+                "citation_count": 1,
+                "query_sha256": "aa" * 32,
+                "confidence_level": "medium",
+                "tenant_guidance_citation_count": 0,
+                "citation_doc_ids": ["d1"],
+                "trace_id": None,
+                "span_id": None,
+                "opa_user_role": "advisor",
+                "retrieval_mode": "hybrid",
+                "retrieval_hit_audit": [
+                    {
+                        "doc_id": "d1",
+                        "bm25_score": 0.1,
+                        "embedding_score": 0.95,
+                        "combined_score": 0.52,
+                        "rag_scope": "global",
+                        "is_tenant_guidance": False,
+                    },
+                ],
+            },
+        )
+        rag_audit_id = row.id
+
+    with patch_policy_allow():
+        client = TestClient(app)
+        r = client.get(
+            f"/api/v1/evidence/ai-act/events/audit:{rag_audit_id}",
+            params={"tenant_id": evidence_tenant_id},
+            headers=_headers(evidence_tenant_id),
+        )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["rag"]["retrieval_mode"] == "hybrid"
+    assert body["rag"]["score_audit"][0]["doc_id"] == "d1"
+    assert abs(body["rag"]["score_audit"][0]["combined_score"] - 0.52) < 1e-6

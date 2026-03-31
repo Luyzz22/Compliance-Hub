@@ -37,6 +37,17 @@ class EuAiActNis2RagCitation(BaseModel):
     )
 
 
+class RagRetrievalHitAuditRow(BaseModel):
+    """Per-document retrieval scores for audits (hybrid mode); no raw text."""
+
+    doc_id: str
+    bm25_score: float = 0.0
+    embedding_score: float = 0.0
+    combined_score: float = 0.0
+    rag_scope: str = ""
+    is_tenant_guidance: bool = False
+
+
 class EuAiActNis2RagResponse(BaseModel):
     answer_de: str
     citations: list[EuAiActNis2RagCitation] = Field(
@@ -44,11 +55,19 @@ class EuAiActNis2RagResponse(BaseModel):
         description="Bis zu drei wichtigste Belege aus dem Kurpus.",
     )
     confidence_level: Literal["high", "medium", "low"] = Field(
-        description="Heuristik aus BM25-Scores (keine Rechtssicherheit).",
+        description="Heuristik aus BM25- bzw. kombinierten Hybrid-Scores (keine Rechtssicherheit).",
     )
     notes_de: str | None = Field(
         default=None,
         description="Hinweis bei niedriger/mittlerer Konfidenz oder fehlenden Treffern.",
+    )
+    retrieval_mode: Literal["bm25", "hybrid"] | None = Field(
+        default=None,
+        description="Aktiver Retriever: bm25 oder hybrid (BM25 + Embeddings).",
+    )
+    retrieval_hit_audit: list[RagRetrievalHitAuditRow] | None = Field(
+        default=None,
+        description="Top-Treffer mit BM25-, Embedding- und kombiniertem Score (nur hybrid, Metadaten).",
     )
 
 

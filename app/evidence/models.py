@@ -53,6 +53,15 @@ class AiEvidenceEventListItem(BaseModel):
     )
 
 
+class AiEvidenceRagScoreAuditRow(BaseModel):
+    doc_id: str
+    bm25_score: float = 0.0
+    embedding_score: float = 0.0
+    combined_score: float = 0.0
+    rag_scope: str = ""
+    is_tenant_guidance: bool = False
+
+
 class AiEvidenceRagDetailSection(BaseModel):
     query_sha256: str | None = None
     citation_doc_ids: list[str] = Field(default_factory=list)
@@ -61,6 +70,14 @@ class AiEvidenceRagDetailSection(BaseModel):
     trace_id: str | None = None
     span_id: str | None = None
     citation_count: int = 0
+    retrieval_mode: str | None = Field(
+        default=None,
+        description="bm25 oder hybrid (aus Audit-Metadaten).",
+    )
+    score_audit: list[AiEvidenceRagScoreAuditRow] = Field(
+        default_factory=list,
+        description="BM25-, Embedding- und kombinierte Scores je Treffer (Hybrid).",
+    )
 
 
 class AiEvidenceBoardReportWorkflowDetailSection(BaseModel):

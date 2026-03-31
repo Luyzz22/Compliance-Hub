@@ -3105,7 +3105,7 @@ def post_advisor_eu_ai_act_nis2_rag_query(
     opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
 ) -> EuAiActNis2RagResponse:
     """
-    Berater: RAG über den kuratierten EU AI Act / NIS2 / ISO 42001 Pilot-Kurpus (Haystack BM25).
+    Berater: RAG über den kuratierten EU AI Act / NIS2 / ISO 42001 Pilot-Korpus (BM25 oder optional Hybrid mit Embeddings).
     """
     rag_role = resolve_opa_role_for_policy(
         header_value=opa_role_header,
@@ -3159,6 +3159,10 @@ def post_advisor_eu_ai_act_nis2_rag_query(
             "trace_id": trace_fields.get("trace_id"),
             "span_id": trace_fields.get("span_id"),
             "opa_user_role": rag_role,
+            "retrieval_mode": out.retrieval_mode or "bm25",
+            "retrieval_hit_audit": [
+                h.model_dump(mode="json") for h in (out.retrieval_hit_audit or [])[:20]
+            ],
         },
     )
     return out
