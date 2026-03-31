@@ -5085,7 +5085,7 @@ def list_client_board_reports(
 
 
 # ---------------------------------------------------------------------------
-# Integration Jobs — Internal APIs (Wave 15)
+# Integration Jobs — Internal APIs (Wave 15 / 15.1)
 # ---------------------------------------------------------------------------
 
 
@@ -5105,7 +5105,7 @@ def list_integration_jobs(
     """List outbox integration jobs (internal/admin)."""
     from app.integrations.store import list_jobs
 
-    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    _enforce_grc_opa("view_integration_jobs", auth, opa_role_header)
     tid = tenant_id or auth.tenant_id
     jobs = list_jobs(
         tenant_id=tid,
@@ -5124,6 +5124,7 @@ class CreateIntegrationJobRequest(BaseModel):
     client_id: str = ""
     system_id: str = ""
     trace_id: str = ""
+    priority: int = 0
 
 
 @app.post(
@@ -5160,8 +5161,10 @@ def create_integration_job(
     if job is None:
         raise HTTPException(
             status_code=422,
-            detail="Entity type not mappable or payload type not enabled",
+            detail=("Entity type not mappable or payload type not enabled"),
         )
+    if body.priority:
+        job.priority = body.priority
     return job.model_dump()
 
 
@@ -5178,7 +5181,7 @@ def retry_integration_job(
     from app.integrations.store import mark_for_retry
 
     _enforce_grc_opa("manage_integrations", auth, opa_role_header)
-    job = mark_for_retry(job_id)
+    job = mark_for_retry(job_id, tenant_id=auth.tenant_id)
     if job is None:
         raise HTTPException(
             status_code=404,
@@ -5199,8 +5202,8 @@ def get_integration_job(
     """Get integration job detail including dispatch result."""
     from app.integrations.store import get_job
 
-    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
-    job = get_job(job_id)
+    _enforce_grc_opa("view_integration_jobs", auth, opa_role_header)
+    job = get_job(job_id, tenant_id=auth.tenant_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return job.model_dump()

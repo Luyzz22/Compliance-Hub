@@ -44,6 +44,11 @@ class IntegrationPayloadType(StrEnum):
     ai_system_readiness_snapshot = "ai_system_readiness_snapshot"
 
 
+class JobWeight(StrEnum):
+    light = "light"
+    heavy = "heavy"
+
+
 MAX_DISPATCH_ATTEMPTS = 3
 
 
@@ -71,8 +76,30 @@ class IntegrationJob(BaseModel):
 
     last_dispatch_result: str = ""
 
+    weight: JobWeight = JobWeight.light
+    priority: int = 0
+
+    connector_artifact_name: str = ""
+    connector_envelope_id: str = ""
+
+
+HEAVY_PAYLOAD_TYPES: frozenset[str] = frozenset(
+    {
+        IntegrationPayloadType.board_report_summary,
+        IntegrationPayloadType.ai_system_readiness_snapshot,
+    }
+)
+
+
+def classify_weight(payload_type: IntegrationPayloadType) -> JobWeight:
+    if payload_type.value in HEAVY_PAYLOAD_TYPES:
+        return JobWeight.heavy
+    return JobWeight.light
+
 
 class DispatchResult(BaseModel):
     success: bool = False
     message: str = ""
     connector_ref: str = ""
+    artifact_name: str = ""
+    envelope_id: str = ""
