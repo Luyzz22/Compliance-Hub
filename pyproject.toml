@@ -62,3 +62,6 @@ ignore = []
 where = ["."]
 include = ["app", "app.*"]
 exclude = ["frontend"]
+
+[tool.setuptools.package-data]
+"app.services.rag" = ["default_corpus.json"]

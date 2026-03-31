@@ -49,7 +49,7 @@ class HybridRetriever:
         alpha = alpha if alpha is not None else self.config.hybrid_alpha
         mode = mode or self.config.retrieval_mode
 
-        query_hash = hashlib.sha256(query.encode()).hexdigest()[:16]
+        query_hash = hashlib.sha256(query.encode()).hexdigest()
 
         if mode == "bm25" or not self.dense_index.is_available:
             results = self.bm25_index.query(query, k=k)

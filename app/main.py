@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from collections.abc import AsyncGenerator
@@ -11,6 +12,13 @@ from fastapi import Depends, FastAPI, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.ai_act_evidence_models import (
+    AdvisorAgentEvidenceStoredEvent,
+    RagEvidenceStatsResponse,
+    RagEvidenceStoredEvent,
+    RagRetrieveRequest,
+    RagRetrieveResponse,
+)
 from app.ai_governance_models import AIBoardKpiSummary, AIGovernanceKpiSummary
 from app.ai_system_models import (
     AISystem,
@@ -57,6 +65,12 @@ from app.security import AuthContext, get_api_key_and_tenant, get_auth_context
 from app.services.ai_governance_kpis import compute_ai_board_kpis, compute_ai_governance_kpis
 from app.services.classification_engine import classify_ai_system
 from app.services.compliance_engine import build_audit_hash, derive_actions
+from app.services.rag.confidence import should_decline_answer
+from app.services.rag.config import RAGConfig
+from app.services.rag.corpus_loader import load_advisor_corpus
+from app.services.rag.evidence_store import aggregate_rag_hybrid_stats, list_advisor_agent_events, list_rag_events
+from app.services.rag.hybrid_retriever import HybridRetriever
+from app.services.rag.logging import log_rag_query_event
 from app.services.tenant_compliance_overview import (
     TenantComplianceOverview,
     compute_tenant_compliance_overview,
@@ -421,6 +435,106 @@ def list_ai_system_audit_events(
     )
 
 
+@app.get(
+    "/api/v1/ai-act-evidence/rag-events",
+    response_model=list[RagEvidenceStoredEvent],
+    tags=["ai-act-evidence"],
+)
+def list_ai_act_rag_evidence(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[RagEvidenceStoredEvent]:
+    raw = list_rag_events(auth_context.tenant_id, limit=limit)
+    return [RagEvidenceStoredEvent.model_validate(row) for row in raw]
+
+
+@app.get(
+    "/api/v1/ai-act-evidence/advisor-agent-events",
+    response_model=list[AdvisorAgentEvidenceStoredEvent],
+    tags=["ai-act-evidence"],
+)
+def list_ai_act_advisor_agent_evidence(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[AdvisorAgentEvidenceStoredEvent]:
+    raw = list_advisor_agent_events(auth_context.tenant_id, limit=limit)
+    return [AdvisorAgentEvidenceStoredEvent.model_validate(row) for row in raw]
+
+
+@app.get(
+    "/api/v1/ai-act-evidence/rag-stats",
+    response_model=RagEvidenceStatsResponse,
+    tags=["ai-act-evidence"],
+)
+def get_ai_act_rag_evidence_stats(
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    limit: int = Query(default=500, ge=1, le=2000),
+) -> RagEvidenceStatsResponse:
+    agg = aggregate_rag_hybrid_stats(auth_context.tenant_id, limit=limit)
+    return RagEvidenceStatsResponse.model_validate(agg)
+
+
+@app.post(
+    "/api/v1/advisor/rag-retrieve",
+    response_model=RagRetrieveResponse,
+    tags=["advisor"],
+)
+def advisor_rag_retrieve(
+    body: RagRetrieveRequest,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> RagRetrieveResponse:
+    """Retrieval-only advisor call (no LLM). Records metadata-only RAG evidence (SHA-256 of query)."""
+    corpus = load_advisor_corpus()
+    cfg = RAGConfig(retrieval_mode=body.retrieval_mode)
+    response = HybridRetriever(corpus, cfg).retrieve(body.query.strip(), k=body.k)
+    decline, decline_reason = should_decline_answer(
+        response.confidence_level,
+        tenant_expects_guidance=body.tenant_expects_guidance,
+        has_tenant_guidance=response.has_tenant_guidance,
+        has_results=bool(response.results),
+    )
+    top_ids = [hit.doc.doc_id for hit in response.results[:10]]
+    hybrid_differs = False
+    if response.results:
+        bm25_top_id = max(response.results, key=lambda h: h.bm25_score).doc.doc_id
+        hybrid_differs = response.results[0].doc.doc_id != bm25_top_id
+    scores_summary: dict[str, float] = {}
+    if response.results:
+        top = response.results[0]
+        scores_summary = {
+            "top_combined": round(top.score, 4),
+            "top_bm25": round(top.bm25_score, 4),
+            "top_dense": round(top.dense_score, 4),
+        }
+    log_rag_query_event(
+        response,
+        tenant_id=auth_context.tenant_id,
+        query_text=body.query,
+        decline_reason=decline_reason if decline else None,
+        trace_id=body.trace_id,
+        persist_evidence=True,
+    )
+    top_primary = "bm25"
+    if response.retrieval_mode == "hybrid" and hybrid_differs:
+        top_primary = "dense_rescue"
+    qsha = hashlib.sha256(body.query.encode()).hexdigest()
+    return RagRetrieveResponse(
+        query_sha256=qsha,
+        retrieval_mode=response.retrieval_mode,
+        top_doc_ids=top_ids,
+        top_doc_primary_source=top_primary,
+        hybrid_alpha=response.alpha_used if response.retrieval_mode == "hybrid" else None,
+        hybrid_differs_from_bm25_top=hybrid_differs,
+        confidence_level=response.confidence_level,
+        confidence_score=response.confidence_score,
+        decline_answer=decline,
+        decline_reason=decline_reason if decline else None,
+        tenant_guidance_matched=response.has_tenant_guidance,
+        scores_summary=scores_summary,
+        citations=[{"doc_id": hit.doc.doc_id} for hit in response.results[:5]],
+    )
+
+
 def _enterprise_status_payload() -> dict[str, object]:
     return {
         "status": "ok",
@@ -432,6 +546,8 @@ def _enterprise_status_payload() -> dict[str, object]:
             "document_intake",
             "ai_system_registry",
             "audit_logging",
+            "ai_act_evidence",
+            "advisor_rag_retrieve",
         ],
         "compliance_profiles": [
             "EU_AI_ACT_FOUNDATION",

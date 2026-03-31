@@ -67,3 +67,20 @@ def _compute_score(
 
     raw = bm25_weight * bm25 + combined_weight * combined + gap_weight * gap_norm
     return min(max(raw, 0.0), 1.0)
+
+
+def should_decline_answer(
+    confidence_level: str,
+    *,
+    tenant_expects_guidance: bool = False,
+    has_tenant_guidance: bool = False,
+    has_results: bool = True,
+) -> tuple[bool, str | None]:
+    """Conservative gate for retrieval-only API (no auto-answer when unsafe)."""
+    if not has_results:
+        return True, "no_hits"
+    if confidence_level == "low":
+        return True, "low_confidence"
+    if tenant_expects_guidance and not has_tenant_guidance:
+        return True, "tenant_guidance_missing"
+    return False, None

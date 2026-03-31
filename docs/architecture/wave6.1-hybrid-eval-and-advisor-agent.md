@@ -177,12 +177,32 @@ The `AdvisorActivityInput`/`AdvisorActivityOutput` pair wraps the agent for Temp
 
 ---
 
+## FastAPI — AI Act Evidence & Advisor retrieval
+
+In-process ring buffer (`app/services/rag/evidence_store.py`): `log_rag_query_event` persists metadata-only rows when `persist_evidence=True` (default). The advisor agent passes `persist_evidence=False` on the post-synthesis log to avoid duplicate RAG rows for the same query. `log_advisor_agent_event` records escalations.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/ai-act-evidence/rag-events` | Tenant-scoped RAG evidence (`query_sha256`, hybrid fields). |
+| `GET` | `/api/v1/ai-act-evidence/advisor-agent-events` | Agent decisions (e.g. escalation). |
+| `GET` | `/api/v1/ai-act-evidence/rag-stats` | `hybrid_differs_ratio`, `dense_rescue_top_ratio`. |
+| `POST` | `/api/v1/advisor/rag-retrieve` | Retrieval-only; response has no query echo (SHA-256 only). |
+
+**Default corpus:** `app/services/rag/default_corpus.json`. Override with **`ADVISOR_RAG_CORPUS_PATH`**.
+
+**Query hash:** Full SHA-256 hex (64 chars) on `RetrievalResponse.query_hash` for evidence alignment.
+
+---
+
 ## File Map
 
 | File | Purpose |
 |------|---------|
 | `app/services/rag/config.py` | RAG configuration (alpha, thresholds, model) |
 | `app/services/rag/corpus.py` | Document and RetrievalResult models |
+| `app/services/rag/corpus_loader.py` | Load advisor corpus JSON (+ fallback) |
+| `app/services/rag/default_corpus.json` | Shipped default regulatory snippets |
+| `app/services/rag/evidence_store.py` | In-memory AI Act evidence ring buffer |
 | `app/services/rag/bm25_retriever.py` | BM25 in-memory index |
 | `app/services/rag/dense_retriever.py` | Optional dense (embedding) retriever |
 | `app/services/rag/hybrid_retriever.py` | Hybrid fusion retriever |
@@ -196,3 +216,5 @@ The `AdvisorActivityInput`/`AdvisorActivityOutput` pair wraps the agent for Temp
 | `scripts/rag_eval_hybrid.py` | Offline evaluation script |
 | `tests/test_rag_eval.py` | Tests for retrieval + evaluation metrics |
 | `tests/test_advisor_agent.py` | Tests for advisor agent graph paths |
+| `app/ai_act_evidence_models.py` | Pydantic schemas for evidence API |
+| `tests/test_ai_act_evidence_api.py` | Evidence + rag-retrieve API tests |

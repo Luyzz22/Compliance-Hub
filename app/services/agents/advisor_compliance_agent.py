@@ -32,7 +32,7 @@ from typing import Any, Literal
 from app.services.rag.corpus import RetrievalResponse
 from app.services.rag.hybrid_retriever import HybridRetriever
 from app.services.rag.llm import LlmCallable, LlmCallContext, LlmResponse, safe_llm_call_sync
-from app.services.rag.logging import log_rag_query_event
+from app.services.rag.logging import log_advisor_agent_event, log_rag_query_event
 from app.services.rag.prompt_builder import build_rag_prompt
 
 logger = logging.getLogger(__name__)
@@ -106,6 +106,8 @@ def run_rag_query(
     log_rag_query_event(
         response=response,
         tenant_id=state.tenant_id,
+        query_text=state.query,
+        persist_evidence=True,
     )
 
     state.agent_trace.append({
@@ -175,6 +177,8 @@ def synthesize_answer(
         response=state.retrieval_response,
         tenant_id=state.tenant_id,
         agent_action="synthesize_answer",
+        query_text=state.query,
+        persist_evidence=False,
     )
 
     state.agent_trace.append({
@@ -208,6 +212,12 @@ def escalate_to_human(state: AdvisorState) -> AdvisorState:
     logger.info(
         "agent_escalation",
         extra={"escalation": log_entry, "tenant_id": state.tenant_id},
+    )
+    log_advisor_agent_event(
+        tenant_id=state.tenant_id,
+        decision="escalate_to_human",
+        reason=state.escalation_reason,
+        intent=str(state.intent),
     )
     return state
 

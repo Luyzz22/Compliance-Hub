@@ -7,12 +7,14 @@ and observability dashboards.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from app.services.rag.corpus import RetrievalResponse
+from app.services.rag.evidence_store import record_event
 
 logger = logging.getLogger("compliancehub.rag.audit")
 
@@ -41,11 +43,57 @@ class RAGQueryEvent:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
+def _top_doc_primary_source(retrieval_mode: str, hybrid_changed: bool) -> str:
+    if retrieval_mode == "bm25" or not hybrid_changed:
+        return "bm25"
+    return "dense_rescue"
+
+
+def _evidence_payload_from_event(
+    event: RAGQueryEvent,
+    *,
+    query_sha256: str,
+    decline_reason: str | None,
+    trace_id: str | None,
+) -> dict[str, Any]:
+    scores_summary: dict[str, float] = {}
+    if event.top_scores:
+        scores_summary = {
+            "top_combined": event.top_scores[0],
+            "top_bm25": event.top_bm25_scores[0] if event.top_bm25_scores else 0.0,
+            "top_dense": event.top_dense_scores[0] if event.top_dense_scores else 0.0,
+        }
+    citations = [{"doc_id": doc_id} for doc_id in event.top_doc_ids[:5]]
+    return {
+        "event_type": "rag_query",
+        "tenant_id": event.tenant_id,
+        "query_sha256": query_sha256,
+        "retrieval_mode": event.retrieval_mode,
+        "top_doc_ids": event.top_doc_ids,
+        "scores_summary": scores_summary,
+        "confidence_level": event.confidence_level or None,
+        "confidence_score": event.confidence_score,
+        "citations": citations,
+        "tenant_guidance_matched": event.has_tenant_guidance,
+        "hybrid_alpha": event.alpha_used if event.retrieval_mode == "hybrid" else None,
+        "top_doc_primary_source": _top_doc_primary_source(
+            event.retrieval_mode, event.hybrid_changed_top_doc
+        ),
+        "hybrid_differs_from_bm25_top": event.hybrid_changed_top_doc,
+        "decline_reason": decline_reason,
+        "trace_id": trace_id,
+    }
+
+
 def log_rag_query_event(
     response: RetrievalResponse,
     tenant_id: str = "",
     agent_action: str = "",
     extra: dict[str, Any] | None = None,
+    *,
+    query_text: str | None = None,
+    decline_reason: str | None = None,
+    trace_id: str | None = None,
 ) -> RAGQueryEvent:
     """Build and emit a structured RAG audit event (no PII).
 
@@ -85,4 +133,46 @@ def log_rag_query_event(
         "rag_query_event",
         extra={"rag_event": asdict(event)},
     )
+
+    if persist_evidence:
+        qsha = (
+            hashlib.sha256(query_text.encode()).hexdigest()
+            if query_text
+            else response.query_hash
+        )
+        record_event(
+            _evidence_payload_from_event(
+                event,
+                query_sha256=qsha,
+                decline_reason=decline_reason,
+                trace_id=trace_id,
+            )
+        )
     return event
+
+
+def log_advisor_agent_event(
+    *,
+    tenant_id: str,
+    decision: str,
+    reason: str | None = None,
+    intent: str | None = None,
+    trace_id: str | None = None,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "event_type": "advisor_agent",
+        "tenant_id": tenant_id,
+        "decision": decision,
+        "reason": reason,
+        "intent": intent,
+        "trace_id": trace_id,
+    }
+    if extra:
+        payload["extra"] = extra
+    logger.info(
+        "advisor_agent_event",
+        extra={"advisor_agent": payload},
+    )
+    record_event(payload)
+    return payload
