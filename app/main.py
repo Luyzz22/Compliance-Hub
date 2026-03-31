@@ -4942,3 +4942,110 @@ def get_ai_system_readiness(
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
+
+
+# ---------------------------------------------------------------------------
+# Client/Mandant Board Report APIs (Wave 13)
+# ---------------------------------------------------------------------------
+
+
+@app.post(
+    "/api/v1/clients/{client_id}/ai-board-report/workflows/start",
+    tags=["client-board-reports"],
+    status_code=202,
+)
+def start_client_board_report(
+    client_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    reporting_period: str | None = None,
+    system_filter: str | None = None,
+) -> dict[str, Any]:
+    """Start a Mandant-level AI compliance board report workflow."""
+    from app.grc.client_board_report_service import run_client_board_report
+
+    _enforce_grc_opa("start_client_board_report", auth, opa_role_header)
+    tid = auth.tenant_id
+
+    sf = [s.strip() for s in system_filter.split(",") if s.strip()] if system_filter else None
+
+    result = run_client_board_report(
+        tenant_id=tid,
+        client_id=client_id,
+        reporting_period=reporting_period or "",
+        system_filter=sf,
+    )
+    return result
+
+
+@app.get(
+    "/api/v1/clients/{client_id}/ai-board-report/workflows/{workflow_id}",
+    tags=["client-board-reports"],
+)
+def get_client_board_report_workflow(
+    client_id: str,
+    workflow_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Get status/result of a client board report workflow."""
+    from app.grc.client_board_report_service import (
+        get_report,
+        get_workflow_status,
+    )
+
+    _enforce_grc_opa("view_client_board_report", auth, opa_role_header)
+
+    wf = get_workflow_status(workflow_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    if wf.get("client_id") != client_id:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    report_data: dict[str, Any] | None = None
+    if wf.get("report_id"):
+        rpt = get_report(wf["report_id"])
+        if rpt:
+            report_data = {
+                "report_id": rpt.id,
+                "report_markdown": rpt.report_markdown,
+                "highlights": rpt.highlights,
+                "systems_included": rpt.systems_included,
+                "system_ids": rpt.system_ids,
+                "created_at": rpt.created_at,
+            }
+
+    return {
+        "workflow_id": workflow_id,
+        "status": wf.get("status", "UNKNOWN"),
+        "tenant_id": wf.get("tenant_id"),
+        "client_id": client_id,
+        "reporting_period": wf.get("reporting_period"),
+        "report": report_data,
+    }
+
+
+@app.get(
+    "/api/v1/clients/{client_id}/ai-board-reports",
+    tags=["client-board-reports"],
+)
+def list_client_board_reports(
+    client_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> list[dict[str, Any]]:
+    """List past AI board reports for a Mandant."""
+    from app.grc.client_board_report_service import list_reports
+
+    _enforce_grc_opa("view_client_board_report", auth, opa_role_header)
+    reports = list_reports(tenant_id=auth.tenant_id, client_id=client_id)
+    return [
+        {
+            "report_id": r.id,
+            "reporting_period": r.reporting_period,
+            "systems_included": r.systems_included,
+            "highlights": r.highlights,
+            "created_at": r.created_at,
+        }
+        for r in reports
+    ]
