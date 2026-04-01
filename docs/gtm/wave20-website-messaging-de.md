@@ -143,3 +143,4 @@ Die konkrete rechtliche Bewertung verbleibt bei Ihnen und Ihren Beauftragten; Co
 - **Claims / Disclaimers (Wave 21):** `docs/gtm/compliance-statement-library-de.md`, `docs/gtm/statements/statements.v1.json`
 - **Wave 22 (statisches Artefakt):** `website/compliancehub-landing.html` · [`wave22-landingpage-notes.md`](./wave22-landingpage-notes.md) · **Kanonische Homepage:** [complywithai.de](https://complywithai.de/)
 - **Wave 23 (Homepage-Copy & CTA-Plan):** [`wave23-homepage-content-and-assets.md`](./wave23-homepage-content-and-assets.md)
+- **Wave 24 (Kontaktformular & Lead-Capture):** [`wave24-contact-and-lead-capture.md`](./wave24-contact-and-lead-capture.md)
