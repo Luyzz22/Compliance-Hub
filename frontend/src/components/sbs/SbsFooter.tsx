@@ -1,6 +1,8 @@
 import Link from "next/link";
 import React from "react";
 
+import { PUBLIC_CONTACT_MAILTO } from "@/lib/publicContact";
+
 export function SbsFooter() {
   const y = new Date().getFullYear();
   return (
@@ -25,6 +27,12 @@ export function SbsFooter() {
           <Link href="/board/suppliers" className="font-medium text-slate-600 hover:text-slate-900">
             Supplier
           </Link>
+          <a
+            href={PUBLIC_CONTACT_MAILTO}
+            className="font-medium text-slate-600 hover:text-slate-900"
+          >
+            Kontakt
+          </a>
         </div>
       </div>
     </footer>

@@ -7,7 +7,7 @@ const tabs = [
     id: "ai",
     label: "EU AI Act, ISO 42001",
     title: "AI-Governance ohne Excel-Chaos.",
-    body: "KI-System-Register, Risikoklassifizierung und Technical File in einer gemeinsamen Oberfläche.",
+    body: "KI-System-Register, Risikoklassifizierung und Technical File in einer gemeinsamen Oberfläche – zur Dokumentation und zum Review, abhängig von Ihrem Einsatzszenario.",
   },
   {
     id: "nis2",
@@ -19,7 +19,7 @@ const tabs = [
     id: "berater",
     label: "Berater-first",
     title: "Skalierbare Mandantenprojekte.",
-    body: "Exportfähige Reports, Evidence-Pfade und Board-Ansichten für Kanzlei und Enterprise.",
+    body: "Exportfähige Reports, Evidence-Pfade und Board-Ansichten für Kanzlei und Enterprise (DATEV-taugliche Strukturen projektabhängig, keine Produktzertifizierung).",
   },
 ] as const;
 

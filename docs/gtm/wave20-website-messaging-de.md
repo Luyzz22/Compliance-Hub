@@ -142,3 +142,4 @@ Die konkrete rechtliche Bewertung verbleibt bei Ihnen und Ihren Beauftragten; Co
 - Sales-Deck-Struktur: `docs/gtm/wave20-sales-deck-outline.md`
 - **Claims / Disclaimers (Wave 21):** `docs/gtm/compliance-statement-library-de.md`, `docs/gtm/statements/statements.v1.json`
 - **Wave 22 (statisches Artefakt):** `website/compliancehub-landing.html` · [`wave22-landingpage-notes.md`](./wave22-landingpage-notes.md) · **Kanonische Homepage:** [complywithai.de](https://complywithai.de/)
+- **Wave 23 (Homepage-Copy & CTA-Plan):** [`wave23-homepage-content-and-assets.md`](./wave23-homepage-content-and-assets.md)
