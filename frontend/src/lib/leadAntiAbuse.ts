@@ -13,6 +13,10 @@ const CONSUMER_DOMAINS = new Set([
   "t-online.de",
 ]);
 
+export function isConsumerEmailDomain(domain: string): boolean {
+  return CONSUMER_DOMAINS.has(domain.toLowerCase().trim());
+}
+
 /**
  * Optional: Nur geschäftliche Domains (Env `LEAD_REQUIRE_BUSINESS_EMAIL=1`).
  */

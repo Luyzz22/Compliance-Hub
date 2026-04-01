@@ -4,11 +4,12 @@ import { dirname, join } from "path";
 import "server-only";
 
 import type {
+  LeadDuplicateReviewStatus,
   LeadOpsActivityAction,
   LeadOpsEntry,
   LeadOpsFile,
 } from "@/lib/leadOpsTypes";
-import { defaultLeadOpsEntry } from "@/lib/leadOpsSelectors";
+import { coerceOpsEntry } from "@/lib/leadOpsSelectors";
 import type { LeadTriageStatus } from "@/lib/leadTriage";
 
 const MAX_ACTIVITIES_PER_LEAD = 120;
@@ -50,19 +51,25 @@ function pushActivity(entry: LeadOpsEntry, action: LeadOpsActivityAction, detail
   entry.updated_at = at;
 }
 
+function sortedIds(ids: string[]): string {
+  return JSON.stringify([...ids].sort());
+}
+
 export async function mutateLeadOps(
   leadId: string,
   patch: {
     triage_status?: LeadTriageStatus;
     owner?: string;
     internal_note?: string;
+    manual_related_lead_ids?: string[];
+    duplicate_review?: LeadDuplicateReviewStatus;
   },
 ): Promise<{ entry: LeadOpsEntry; path: string; changed: boolean }> {
   const path = resolveOpsPath();
   await mkdir(dirname(path), { recursive: true });
 
   const state = await readLeadOpsState();
-  const prev = state.entries[leadId] ?? defaultLeadOpsEntry();
+  const prev = coerceOpsEntry(state.entries[leadId]);
   const nextOwner =
     patch.owner !== undefined ? patch.owner.trim().slice(0, 120) : prev.owner;
   const nextNote =
@@ -70,12 +77,19 @@ export async function mutateLeadOps(
       ? patch.internal_note.trim().slice(0, 4000)
       : prev.internal_note;
   const nextTriage = patch.triage_status ?? prev.triage_status;
+  const nextRelated =
+    patch.manual_related_lead_ids !== undefined
+      ? [...new Set(patch.manual_related_lead_ids.map((x) => x.trim()).filter(Boolean))].slice(0, 20)
+      : prev.manual_related_lead_ids;
+  const nextDupReview = patch.duplicate_review ?? prev.duplicate_review;
 
   const entry: LeadOpsEntry = {
     ...prev,
     triage_status: nextTriage,
     owner: nextOwner,
     internal_note: nextNote,
+    manual_related_lead_ids: nextRelated,
+    duplicate_review: nextDupReview,
     updated_at: prev.updated_at,
     activities: [...prev.activities],
   };
@@ -95,6 +109,25 @@ export async function mutateLeadOps(
   }
   if (patch.internal_note !== undefined && nextNote !== prev.internal_note) {
     pushActivity(entry, "internal_note_updated", "Notiz aktualisiert");
+    changed = true;
+  }
+  if (
+    patch.manual_related_lead_ids !== undefined &&
+    sortedIds(nextRelated) !== sortedIds(prev.manual_related_lead_ids)
+  ) {
+    pushActivity(
+      entry,
+      "manual_related_leads_updated",
+      nextRelated.length ? nextRelated.join(", ") : "(leer)",
+    );
+    changed = true;
+  }
+  if (patch.duplicate_review !== undefined && patch.duplicate_review !== prev.duplicate_review) {
+    pushActivity(
+      entry,
+      "duplicate_review_updated",
+      `${prev.duplicate_review} → ${patch.duplicate_review}`,
+    );
     changed = true;
   }
 
@@ -118,7 +151,7 @@ export async function appendLeadOpsActivity(
   const path = resolveOpsPath();
   await mkdir(dirname(path), { recursive: true });
   const state = await readLeadOpsState();
-  const prev = state.entries[leadId] ?? defaultLeadOpsEntry();
+  const prev = coerceOpsEntry(state.entries[leadId]);
   pushActivity(prev, action, detail);
   state.entries[leadId] = prev;
   const tmp = `${path}.tmp`;

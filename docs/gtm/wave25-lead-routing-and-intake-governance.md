@@ -36,13 +36,13 @@
 
 ---
 
-## 3. Webhook-Payload (Contract v1.0)
+## 3. Webhook-Payload (Contract v1.0 / v1.1)
 
 Feldname im JSON (snake_case, stabil):
 
 | Feld | Typ | Beschreibung |
 | ---- | --- | ------------ |
-| `schema_version` | `"1.0"` | Version des Vertrags |
+| `schema_version` | `"1.0"` oder `"1.1"` | Version des Vertrags (neue Anfragen: **1.1**) |
 | `lead_id` | UUID | Primärschlüssel der Anfrage |
 | `trace_id` | UUID | Korrelation Logs / Webhook / Support |
 | `timestamp` | ISO-8601 | Erzeugung des Payloads |
@@ -53,6 +53,17 @@ Feldname im JSON (snake_case, stabil):
 | `company` | string | Unternehmen / Kanzlei |
 | `message` | string | Freitext (kann leer sein) |
 | `route` | object | `route_key`, `queue_label`, `priority`, `sla_bucket` |
+
+**Zusatz ab v1.1** (CRM-/Dedup-Vorbereitung, siehe [Wave 27](./wave27-lead-dedup-and-history.md)):
+
+| Feld | Typ | Beschreibung |
+| ---- | --- | ------------ |
+| `lead_contact_key` | string | Stabiler Kontakt-Schlüssel (Hash der normalisierten E-Mail) |
+| `lead_account_key` | string \| null | Optionale Firmen-/Domain-Gruppe |
+| `contact_inquiry_sequence` | number | n-te Anfrage dieses Kontakts |
+| `contact_first_seen_at` | ISO-8601 | Erste bekannte Anfrage |
+| `contact_latest_seen_at` | ISO-8601 | Diese Anfrage |
+| `duplicate_hint` | `none` \| `same_email_repeat` | Nur Hinweis, kein Merge |
 
 Implementierung: `buildLeadOutboundPayload` in `frontend/src/lib/leadOutbound.ts`.
 

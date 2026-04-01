@@ -8,9 +8,24 @@ export function defaultLeadOpsEntry(): LeadOpsEntry {
     internal_note: "",
     updated_at: now,
     activities: [],
+    manual_related_lead_ids: [],
+    duplicate_review: "none",
+  };
+}
+
+/** Liest rohe Ops-Zeile aus Datei (ohne Defaults bei fehlenden Wave-27-Feldern). */
+export function coerceOpsEntry(raw: LeadOpsEntry | undefined): LeadOpsEntry {
+  if (!raw) return defaultLeadOpsEntry();
+  const d = defaultLeadOpsEntry();
+  return {
+    ...d,
+    ...raw,
+    manual_related_lead_ids: raw.manual_related_lead_ids ?? d.manual_related_lead_ids,
+    duplicate_review: raw.duplicate_review ?? d.duplicate_review,
+    activities: raw.activities ?? d.activities,
   };
 }
 
 export function getOpsEntryForLead(state: LeadOpsFile, leadId: string): LeadOpsEntry {
-  return state.entries[leadId] ?? defaultLeadOpsEntry();
+  return coerceOpsEntry(state.entries[leadId]);
 }
