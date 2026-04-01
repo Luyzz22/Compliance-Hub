@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server";
 
+import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { mergeLeadsWithOps, sortInboxItems } from "@/lib/leadInboxMerge";
+import type { LeadForwardingStatus } from "@/lib/leadInboxTypes";
+import { readLeadOpsState } from "@/lib/leadOpsState";
 import { readRecentLeadRecordsMerged } from "@/lib/leadPersistence";
 
 export const runtime = "nodejs";
 
+function isForwardingFilter(v: string): v is LeadForwardingStatus {
+  return v === "ok" || v === "failed" || v === "not_sent";
+}
+
 /**
- * Interne Übersicht gespeicherter Leads (JSON).
- * Schutz: `Authorization: Bearer <LEAD_ADMIN_SECRET>` oder Query `?secret=` (nur falls nötig).
+ * Interne Lead-Übersicht (JSON) + Inbox-Daten für `/admin/leads`.
+ * Auth: `Authorization: Bearer <LEAD_ADMIN_SECRET>`, `?secret=`, oder Session-Cookie (POST /api/admin/session).
  */
 export async function GET(req: Request) {
   const secret = process.env.LEAD_ADMIN_SECRET?.trim();
@@ -14,41 +22,41 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
 
-  const auth = req.headers.get("authorization");
-  const url = new URL(req.url);
-  const qSecret = url.searchParams.get("secret");
-  const token =
-    auth?.startsWith("Bearer ") ? auth.slice(7).trim() : qSecret?.trim() ?? "";
-  if (token !== secret) {
+  if (!isLeadAdminAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(req.url);
   const limit = Math.min(
-    100,
-    Math.max(1, parseInt(url.searchParams.get("limit") ?? "40", 10) || 40),
+    2000,
+    Math.max(1, parseInt(url.searchParams.get("limit") ?? "200", 10) || 200),
   );
 
   const rows = await readRecentLeadRecordsMerged(limit);
+  const ops = await readLeadOpsState();
+  let items = sortInboxItems(mergeLeadsWithOps(rows, ops));
+
+  const triage = url.searchParams.get("triage_status")?.trim();
+  const segment = url.searchParams.get("segment")?.trim();
+  const sourcePage = url.searchParams.get("source_page")?.trim();
+  const forwarding = url.searchParams.get("forwarding_status")?.trim();
+
+  if (triage) {
+    items = items.filter((i) => i.triage_status === triage);
+  }
+  if (segment) {
+    items = items.filter((i) => i.segment === segment);
+  }
+  if (sourcePage) {
+    items = items.filter((i) => i.source_page.includes(sourcePage));
+  }
+  if (forwarding && isForwardingFilter(forwarding)) {
+    items = items.filter((i) => i.forwarding_status === forwarding);
+  }
 
   return NextResponse.json({
     ok: true,
-    count: rows.length,
-    items: rows.map((r) => ({
-      lead_id: r.lead_id,
-      trace_id: r.trace_id,
-      status: r.status,
-      webhook_ok: r.webhook_ok,
-      webhook_at: r.webhook_at,
-      webhook_error: r.webhook_error,
-      created_at: r.created_at,
-      segment: r.outbound.segment,
-      route_key: r.outbound.route.route_key,
-      queue_label: r.outbound.route.queue_label,
-      source_page: r.outbound.source_page,
-      company: r.outbound.company,
-      business_email: r.outbound.business_email,
-      name: r.outbound.name,
-      message_preview: r.outbound.message.slice(0, 280),
-    })),
+    count: items.length,
+    items,
   });
 }

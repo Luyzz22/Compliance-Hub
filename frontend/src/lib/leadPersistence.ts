@@ -91,6 +91,59 @@ export async function readRecentLeadRecordsMerged(maxRecords: number): Promise<L
   }
 }
 
+/** Liest die gesamte JSONL und liefert die erste passende `lead_inquiry`-Zeile (Outbound inkl.). */
+export async function findLeadInquiryRecord(leadId: string): Promise<LeadStoreRecord | null> {
+  const path = resolveStorePath();
+  try {
+    const raw = await readFile(path, "utf8");
+    const lines = raw.trim().split("\n").filter(Boolean);
+    let found: LeadStoreRecord | null = null;
+    for (const line of lines) {
+      try {
+        const row = JSON.parse(line) as { _kind?: string; lead_id?: string };
+        if (row._kind === "lead_inquiry" && row.lead_id === leadId) {
+          found = row as LeadStoreRecord;
+        }
+      } catch {
+        /* skip */
+      }
+    }
+    return found;
+  } catch {
+    return null;
+  }
+}
+
+/** Einzelnen Lead inkl. Webhook-Zeilen zusammenführen (unabhängig vom List-Limit). */
+export async function getMergedLeadAdminRow(leadId: string): Promise<LeadAdminRow | null> {
+  const base = await findLeadInquiryRecord(leadId);
+  if (!base) return null;
+  const row: LeadAdminRow = { ...base };
+  const path = resolveStorePath();
+  try {
+    const raw = await readFile(path, "utf8");
+    const lines = raw.trim().split("\n").filter(Boolean);
+    for (const line of lines) {
+      try {
+        const o = JSON.parse(line) as { _kind?: string; lead_id?: string };
+        if (o._kind === "webhook_result" && o.lead_id === leadId) {
+          const wr = o as LeadWebhookResultLine;
+          row.webhook_ok = wr.ok;
+          row.webhook_at = wr.at;
+          row.webhook_error = wr.error;
+          row.status = wr.ok ? "forwarded" : "failed";
+          row.forwarded_at = wr.ok ? wr.at : row.forwarded_at;
+        }
+      } catch {
+        /* skip */
+      }
+    }
+  } catch {
+    /* keep base row */
+  }
+  return row;
+}
+
 export async function dispatchLeadWebhook(
   url: string,
   body: LeadOutboundPayloadV1,
