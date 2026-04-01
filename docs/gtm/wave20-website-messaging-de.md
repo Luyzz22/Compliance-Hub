@@ -140,3 +140,4 @@ Die konkrete rechtliche Bewertung verbleibt bei Ihnen und Ihren Beauftragten; Co
 - Tone of Voice: `docs/gtm/tone_of_voice_de.md`
 - Sales-Deck-Struktur: `docs/gtm/wave20-sales-deck-outline.md`
 - **Claims / Disclaimers (Wave 21):** `docs/gtm/compliance-statement-library-de.md`, `docs/gtm/statements/statements.v1.json`
+- **Umsetzung Landingpage (Wave 22):** `website/compliancehub-landing.html` · Notizen: [`wave22-landingpage-notes.md`](./wave22-landingpage-notes.md)
