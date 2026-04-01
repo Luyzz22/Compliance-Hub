@@ -3,6 +3,7 @@ import React from "react";
 
 import { HomeProductPreview } from "@/components/home/HomeProductPreview";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY } from "@/lib/boardLayout";
+import { PUBLIC_CONTACT_MAILTO } from "@/lib/publicContact";
 
 function SectionTitle({
   title,
@@ -55,22 +56,23 @@ export default function HomePage() {
               .
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
-              Eine Plattform für Beratungen und Enterprise-Teams, um EU AI Act, NIS2 und
-              ISO-Standards nachvollziehbar umzusetzen – mit Board-KPIs, Evidence und
-              Mandantenfähigkeit.
+              Eine Plattform für Beratungen und Enterprise-Teams: Unterstützung bei Vorbereitung
+              und strukturierter Dokumentation im Kontext von EU AI Act, NIS2 und ISO-Standards –
+              mit Board-KPIs, Evidence und Mandantenfähigkeit. Keine Rechtsberatung; konkrete
+              Bewertungen verbleiben bei Ihnen und Ihren Beauftragten.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                href="/board/kpis"
+              <a
+                href={PUBLIC_CONTACT_MAILTO}
                 className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-900/15 transition hover:from-emerald-700 hover:to-emerald-600"
               >
-                Live im Board starten
-              </Link>
+                Demo anfragen
+              </a>
               <Link
-                href="/board/eu-ai-act-readiness"
+                href="/board/kpis"
                 className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
               >
-                5-Minuten Produkt-Tour
+                Board öffnen
               </Link>
             </div>
             <p className="mt-6 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs">
@@ -110,9 +112,9 @@ export default function HomePage() {
               {
                 accent: "bg-emerald-500",
                 icon: "📄",
-                title: "Evidence auf Knopfdruck",
+                title: "Evidence strukturiert bereitstellen",
                 tag: "Evidence Engine",
-                text: "Gap-Analysen, KI-Register und Board-Reports aus einem zentralen Datenmodell.",
+                text: "Gap-Analysen, KI-Register und Board-Reports aus einem gemeinsamen Datenmodell – zur Prüfung und zum Review vorbereitet.",
               },
             ].map((c) => (
               <article
@@ -176,7 +178,7 @@ export default function HomePage() {
                 n: "3",
                 t: "Engine",
                 sub: "Policy & Risiko",
-                d: "Violations, Empfehlungen und Prioritäten berechnen.",
+                d: "Violations, Empfehlungen und Prioritäten zusammenführen (unterstützend, keine automatische Rechtsbewertung).",
                 icon: "🤖",
                 ring: "border-cyan-500",
               },
@@ -245,9 +247,13 @@ export default function HomePage() {
           </div>
           <p className="mt-6 text-center text-xs text-slate-500">
             Ihre Plattform fehlt?{" "}
-            <span className="font-medium text-cyan-700">
-              Kontakt über Ihr Compliance-Team oder Partner
-            </span>
+            <a
+              href={PUBLIC_CONTACT_MAILTO}
+              className="font-medium text-cyan-700 underline-offset-2 hover:underline"
+            >
+              Kontakt aufnehmen
+            </a>{" "}
+            oder über Ihr Compliance-Team.
           </p>
         </div>
       </section>
@@ -262,14 +268,18 @@ export default function HomePage() {
           </h2>
           <p className="mt-2 text-sm text-slate-600">
             Wir zeigen, wie Compliance Hub in GRC-Tools, Ticketing, DMS und SIEM passt – und wo
-            der größte Hebel liegt.
+            der größte Hebel liegt. Pakete von AI Act Readiness bis Enterprise Connectors besprechen
+            wir gern im Gespräch.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/tenant/compliance-overview"
+            <a
+              href={PUBLIC_CONTACT_MAILTO}
               className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:from-emerald-700 hover:to-emerald-600"
             >
-              Mandant öffnen →
+              Demo anfragen
+            </a>
+            <Link href="/tenant/compliance-overview" className={`${CH_BTN_SECONDARY} px-6 py-3`}>
+              Mandant öffnen
             </Link>
             <Link href="/board/kpis" className={CH_BTN_SECONDARY}>
               Board-Ansicht
@@ -292,8 +302,8 @@ export default function HomePage() {
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-600">
               Für Industrie, Mittelstand und Kanzleien im DACH-Raum: EU-Hosting, klare
-              Trennung der Umgebungen und ein Setup, das NIS2, EU AI Act, DSGVO sowie
-              ISO 27001/42001 adressiert.
+              Trennung der Umgebungen und ein Setup, das bei der Einordnung von NIS2, EU AI Act,
+              DSGVO sowie ISO 27001/42001 unterstützt.
             </p>
             <ul className="mt-6 flex list-none flex-col gap-3 p-0">
               {[

@@ -14,7 +14,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Compliance Hub · Enterprise GRC & AI Governance",
   description:
-    "Mandantenfähige GRC-Plattform: EU AI Act, NIS2, ISO 42001, Board-KPIs und DATEV-ready Exporte – DSGVO-orientiert für den DACH-Markt.",
+    "Mandantenfähige GRC-Plattform: EU AI Act, NIS2, ISO 42001, Board-KPIs und Exportpfade für Kanzlei-DMS – DSGVO-orientiert für den DACH-Markt. Unterstützung bei Dokumentation und Governance, keine Rechtsberatung.",
 };
 
 export default async function RootLayout({
