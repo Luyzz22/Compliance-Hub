@@ -144,3 +144,4 @@ Die konkrete rechtliche Bewertung verbleibt bei Ihnen und Ihren Beauftragten; Co
 - **Wave 22 (statisches Artefakt):** `website/compliancehub-landing.html` · [`wave22-landingpage-notes.md`](./wave22-landingpage-notes.md) · **Kanonische Homepage:** [complywithai.de](https://complywithai.de/)
 - **Wave 23 (Homepage-Copy & CTA-Plan):** [`wave23-homepage-content-and-assets.md`](./wave23-homepage-content-and-assets.md)
 - **Wave 24 (Kontaktformular & Lead-Capture):** [`wave24-contact-and-lead-capture.md`](./wave24-contact-and-lead-capture.md)
+- **Wave 25 (Routing, Webhook-Vertrag, Persistenz, Governance):** [`wave25-lead-routing-and-intake-governance.md`](./wave25-lead-routing-and-intake-governance.md)

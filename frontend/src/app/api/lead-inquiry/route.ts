@@ -1,10 +1,23 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 
+import { validateBusinessEmailDomain, validateFormTiming } from "@/lib/leadAntiAbuse";
 import {
-  isLeadSegment,
-  LEAD_FIELD_LIMITS,
-  type LeadInquiryPayload,
-} from "@/lib/leadCapture";
+  checkLeadEmailCooldown,
+  rollbackLeadEmailCooldown,
+} from "@/lib/leadDuplicateGuard";
+import { isLeadSegment, LEAD_FIELD_LIMITS } from "@/lib/leadCapture";
+import { buildLeadOutboundPayload } from "@/lib/leadOutbound";
+import {
+  appendLeadWebhookResult,
+  dispatchLeadWebhook,
+  persistLeadReceived,
+  type LeadStoreRecord,
+} from "@/lib/leadPersistence";
+import { getClientIp, checkLeadIpRateLimit } from "@/lib/leadRateLimit";
+import { determineLeadRoute } from "@/lib/leadRouting";
+
+export const runtime = "nodejs";
 
 type Incoming = {
   name?: string;
@@ -13,8 +26,9 @@ type Incoming = {
   segment?: string;
   message?: string;
   source_page?: string;
-  /** Honeypot – Bots füllen oft versteckte Felder */
   company_website?: string;
+  /** ms seit Epoch – Formular geöffnet (Client) */
+  form_opened_at?: number;
 };
 
 function trimStr(v: unknown, max: number): string {
@@ -24,11 +38,21 @@ function trimStr(v: unknown, max: number): string {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/**
- * Öffentlicher Lead-Endpunkt (ohne Auth).
- * Produktion: optional `LEAD_INBOUND_WEBHOOK_URL` für CRM/Slack; sonst strukturierte Logs.
- */
 export async function POST(req: Request) {
+  const clientIp = getClientIp(req);
+  const rl = checkLeadIpRateLimit(clientIp);
+  if (!rl.ok) {
+    console.warn("[lead-inquiry] rate_limited_ip", clientIp.slice(0, 20));
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "rate_limited",
+        retry_after_sec: rl.retry_after_sec,
+      },
+      { status: 429 },
+    );
+  }
+
   let body: Incoming;
   try {
     body = (await req.json()) as Incoming;
@@ -37,7 +61,15 @@ export async function POST(req: Request) {
   }
 
   if (body.company_website && String(body.company_website).trim() !== "") {
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, honeypot: true });
+  }
+
+  const timing = validateFormTiming(
+    typeof body.form_opened_at === "number" ? body.form_opened_at : undefined,
+  );
+  if (!timing.ok) {
+    console.warn("[lead-inquiry] timing_reject", { clientIp: clientIp.slice(0, 20) });
+    return NextResponse.json({ ok: false, error: "too_fast" }, { status: 400 });
   }
 
   const name = trimStr(body.name, LEAD_FIELD_LIMITS.name);
@@ -54,46 +86,112 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 400 });
   }
 
+  const requireBiz = process.env.LEAD_REQUIRE_BUSINESS_EMAIL === "1";
+  const biz = validateBusinessEmailDomain(work_email, requireBiz);
+  if (!biz.ok) {
+    return NextResponse.json({ ok: false, error: "business_email_required" }, { status: 400 });
+  }
+
+  const dup = checkLeadEmailCooldown(work_email);
+  if (!dup.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "duplicate_cooldown",
+        retry_after_sec: dup.retry_after_sec,
+      },
+      { status: 429 },
+    );
+  }
+
   const segRaw = typeof body.segment === "string" ? body.segment.trim() : "";
   if (!isLeadSegment(segRaw)) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 400 });
   }
 
-  const payload: LeadInquiryPayload = {
+  const lead_id = randomUUID();
+  const trace_id = randomUUID();
+  const route = determineLeadRoute(segRaw, company, message, source_page);
+  const outbound = buildLeadOutboundPayload({
+    lead_id,
+    trace_id,
+    source_page,
+    segment: segRaw,
     name,
     work_email,
     company,
-    segment: segRaw,
     message,
-    source_page,
+    route,
+  });
+
+  const created_at = new Date().toISOString();
+  const storeRecord: LeadStoreRecord = {
+    _kind: "lead_inquiry",
+    lead_id,
+    trace_id,
+    status: "received",
+    created_at,
+    outbound,
   };
 
-  const webhook = process.env.LEAD_INBOUND_WEBHOOK_URL?.trim();
-  if (webhook) {
-    try {
-      const r = await fetch(webhook, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...payload,
-          received_at: new Date().toISOString(),
-        }),
-      });
-      if (!r.ok) {
-        console.warn("[lead-inquiry] webhook_non_ok", r.status);
-      }
-    } catch (e) {
-      console.warn("[lead-inquiry] webhook_error", e);
-    }
+  try {
+    await persistLeadReceived(storeRecord);
+  } catch (e) {
+    rollbackLeadEmailCooldown(work_email);
+    console.error("[lead-inquiry] persist_error", e);
+    return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 
   console.info(
     "[lead-inquiry]",
     JSON.stringify({
-      ...payload,
-      received_at: new Date().toISOString(),
+      lead_id,
+      trace_id,
+      segment: segRaw,
+      route_key: route.route_key,
+      source_page,
+      client_ip_prefix: clientIp.slice(0, 12),
     }),
   );
 
-  return NextResponse.json({ ok: true });
+  const webhook = process.env.LEAD_INBOUND_WEBHOOK_URL?.trim();
+  let delivery: "forwarded" | "stored" | "stored_forward_failed" = "stored";
+  let delivery_note_de: string | undefined;
+
+  if (webhook) {
+    const wh = await dispatchLeadWebhook(webhook, outbound, 3);
+    const at = new Date().toISOString();
+    if (wh.ok) {
+      delivery = "forwarded";
+      await appendLeadWebhookResult({
+        _kind: "webhook_result",
+        lead_id,
+        trace_id,
+        ok: true,
+        at,
+      });
+      console.info("[lead-webhook]", JSON.stringify({ trace_id, lead_id, ok: true }));
+    } else {
+      delivery = "stored_forward_failed";
+      delivery_note_de =
+        "Ihre Anfrage ist bei uns eingegangen. Die automatische Weiterleitung ist vorübergehend fehlgeschlagen – wir bearbeiten die Anfrage dennoch manuell.";
+      await appendLeadWebhookResult({
+        _kind: "webhook_result",
+        lead_id,
+        trace_id,
+        ok: false,
+        at,
+        error: wh.error,
+      });
+      console.warn("[lead-webhook]", JSON.stringify({ trace_id, lead_id, ok: false, err: wh.error }));
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    lead_id,
+    trace_id,
+    delivery,
+    ...(delivery_note_de ? { delivery_note_de } : {}),
+  });
 }

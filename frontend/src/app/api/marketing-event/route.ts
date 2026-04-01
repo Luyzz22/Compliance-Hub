@@ -5,6 +5,8 @@ type Body = {
   cta_id?: string;
   quelle?: string;
   t?: number;
+  /** z. B. forwarded | stored | stored_forward_failed (keine PII) */
+  delivery?: string;
 };
 
 /**
@@ -28,6 +30,8 @@ export async function POST(req: Request) {
     typeof parsed.cta_id === "string" ? parsed.cta_id.slice(0, 120) : undefined;
   const quelle =
     typeof parsed.quelle === "string" ? parsed.quelle.slice(0, 120) : undefined;
+  const delivery =
+    typeof parsed.delivery === "string" ? parsed.delivery.slice(0, 48) : undefined;
 
   console.info(
     "[marketing-event]",
@@ -35,6 +39,7 @@ export async function POST(req: Request) {
       event,
       cta_id: ctaId,
       quelle,
+      delivery,
       t: typeof parsed.t === "number" ? parsed.t : Date.now(),
     }),
   );
