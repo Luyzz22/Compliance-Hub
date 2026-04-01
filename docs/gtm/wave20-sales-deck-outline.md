@@ -5,6 +5,8 @@
 **Preise:** bewusst nicht enthalten (nur Paket-Fit).  
 **Regulatorik:** vorsichtige Formulierungen („Unterstützung bei Readiness“, „Nachweise dokumentieren“) – finale Zusagen nur nach Legal/Compliance-Review.
 
+**Bezug Wave 21 (Statement Library):** Kanonische Claims, Proof Points und Disclaimers aus [`compliance-statement-library-de.md`](./compliance-statement-library-de.md) und [`statements/statements.v1.json`](./statements/statements.v1.json) verwenden; Kanal `sales_deck`, Familien siehe [`statements/sku_channel_family_mapping.md`](./statements/sku_channel_family_mapping.md). Bullets im Deck idealerweise mit `statement_id` in Sprecher-Notizen oder CMS referenzieren.
+
 **Bezug Wave 19:** Baut auf dem **Pricing & Sales-Playbook (Wave 19)** auf – SKU-Definition und Repo-Anker: [`wave19-pricing-sales-playbook-stub.md`](./wave19-pricing-sales-playbook-stub.md). Dieselbe **SKU-/Paketbezeichnung** und Tier-Logik wie dort (ohne hier Beträge zu nennen):
 
 | SKU (Paket)            | Kurzbezeichnung im Deck |
@@ -205,6 +207,8 @@ Jede Folie: **Titel** + **Kernaussagen** (Bullets) + **Platzhalter** `[ … ]` f
 {
   "wave": 20,
   "references_wave_19_doc": "docs/gtm/wave19-pricing-sales-playbook-stub.md",
+  "references_wave_21_statement_library": "docs/gtm/compliance-statement-library-de.md",
+  "references_wave_21_statements_json": "docs/gtm/statements/statements.v1.json",
   "skus": [
     "AI Act Readiness",
     "Governance & Evidence",

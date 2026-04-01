@@ -4,6 +4,8 @@
 **Bezug Wave 19:** Gleiche **SKU-Bezeichnungen** wie im [Wave-19-Stub](./wave19-pricing-sales-playbook-stub.md): *AI Act Readiness*, *Governance & Evidence*, *Enterprise Connectors*.  
 **Rechtliches:** Formulierungen sind bewusst vorsichtig; vor Go-Live **Legal/Compliance-Review**.
 
+**Bezug Wave 21:** Öffentliche Website-Copy an die [**Compliance Statement Library**](compliance-statement-library-de.md) ausrichten (z. B. `CSL-DE-WEB-HERO-001`, `CSL-DE-WEB-SUB-001`, `CSL-DE-CORE-*`). Kanal `website` im Index [`statements/statement_index_by_channel.json`](./statements/statement_index_by_channel.json).
+
 ---
 
 ## Hero-Section
@@ -137,3 +139,4 @@ Die konkrete rechtliche Bewertung verbleibt bei Ihnen und Ihren Beauftragten; Co
 - Norm-Mapping und vorsichtige Formulierungen: `docs/compliance/ai-governance-norm-evidence-mapping.md`
 - Tone of Voice: `docs/gtm/tone_of_voice_de.md`
 - Sales-Deck-Struktur: `docs/gtm/wave20-sales-deck-outline.md`
+- **Claims / Disclaimers (Wave 21):** `docs/gtm/compliance-statement-library-de.md`, `docs/gtm/statements/statements.v1.json`
