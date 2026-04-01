@@ -7,6 +7,22 @@
 
 ---
 
+## Kanonische Live-Mainpage (Produktion)
+
+| Umgebung | URL | Rolle |
+| -------- | --- | ----- |
+| **Öffentliche Mainpage** | [https://complywithai.de/](https://complywithai.de/) | Board/Workspace, Produkt-Tour, Mandant-Demo – **kanonische** Marketing- und Einstiegs-URL |
+
+**Verhältnis zur statischen Wave-22-Datei:** `compliancehub-landing.html` ist ein **Repo-Artefakt** (GTM-treue, statement-basierte Variante). Sie wird **nicht automatisch** unter complywithai.de ausgeliefert. Mögliche nächste Schritte (Produktentscheid):
+
+- Inhaltliche **Angleichung**: Copy und Claims der Live-Seite an Statement Library + Wave 20/22 ziehen.
+- **Ersetzen / Ergänzen**: Statische Seite als Unterpfad deployen oder Abschnitte ins bestehende Frontend (z. B. Next.js) übernehmen.
+- **Intern**: Wave-22-HTML für **Pitches, PDF-Export oder A/B-Rohfassung** beibehalten; CTAs dann auf [complywithai.de](https://complywithai.de/) verweisen.
+
+**CTAs:** Sobald konsolidiert, Platzhalter `mailto:kontakt@example.com` und Footer-Links an die **echten** Kontakt- und Rechtstexte der Live-Site angleichen.
+
+---
+
 ## Verwendete GTM- und Compliance-Quellen
 
 | Quelle | Verwendung auf der Seite |
@@ -38,8 +54,8 @@
 - **Screenshots** oder kurze Produkt-Visuals (Register, Board-Report) – sobald freigegeben.
 - **Case Studies** mit mandantenfreigegebenen Namen.
 - Optionale **Pricing**-Seite (verweist auf Wave 19 intern, nicht öffentliche Preise ohne Freigabe).
-- Hosting (z. B. statisch hinter CDN, oder Einbindung ins Next.js-Frontend der Anwendung).
-- **Canonical URL** und ggf. `hreflang`, wenn mehrsprachig.
+- **Deployment-Entscheid** für `website/compliancehub-landing.html`: separater Host, Unterpfad unter [complywithai.de](https://complywithai.de/), oder nur intern – Live-**Canonical** für die Marke bleibt die Mainpage (siehe oben).
+- **Canonical / SEO** auf der Live-Site und ggf. `hreflang`, wenn mehrsprachig.
 
 ---
 
