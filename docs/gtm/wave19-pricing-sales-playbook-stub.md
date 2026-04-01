@@ -30,9 +30,21 @@
 
 ---
 
+## Bezug zu Wave 21 (Claims & Disclaimers)
+
+| Wave | Dokument | Inhalt |
+| ---- | -------- | ------ |
+| **21** | [`compliance-statement-library-de.md`](./compliance-statement-library-de.md) | **Quelle der Wahrheit** für wiederverwendbare, reviewfähige Formulierungen (DE) |
+| **21** | [`statements/statements.v1.json`](./statements/statements.v1.json) | Maschinenlesbare Statements inkl. `review_status` |
+| **21** | [`statement-review-process.md`](./statement-review-process.md) | Freigabe-Flow und Versionierung |
+
+**Regel:** Claims, Disclaimers und SKU-Claims für externe Kanäle bevorzugt aus der Statement Library übernehmen oder dort zuerst anlegen.
+
+---
+
 ## Pflege
 
-- Bei Umbenennung einer SKU: zuerst **Wave-19-Master**, dann **diesen Stub** und **alle Wave-20-Dateien** anpassen.
+- Bei Umbenennung einer SKU: zuerst **Wave-19-Master**, dann **diesen Stub**, **Wave-20-Dateien** und **Statement-Indizes** ([`statement_index_by_sku.json`](./statements/statement_index_by_sku.json)) anpassen.
 - Versionierung: im Commit oder im internen Playbook festhalten; dieser Stub braucht keine eigene Versionsnummer, solange das Datum im Changelog/PR genügt.
 
 ---

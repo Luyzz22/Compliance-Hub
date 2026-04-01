@@ -1,0 +1,408 @@
+{
+  "schema_version": "1.0",
+  "library_id": "compliancehub-statements-de",
+  "description": "Interne, reviewfähige Formulierungsbibliothek (DE). Keine Rechtsberatung; Freigaben siehe review_status.",
+  "statements": [
+    {
+      "statement_id": "CSL-DE-CORE-001",
+      "channels": ["website", "sales_deck", "one_pager", "email"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "eu_ai_act",
+      "language": "de",
+      "tone_variant": "medium",
+      "family": "product_claim_safe",
+      "approved_text": "ComplianceHub unterstützt Sie bei der Vorbereitung und Dokumentation im Kontext des EU AI Act – abhängig von Risikoklasse und Einsatzszenario.",
+      "disallowed_alternatives": [
+        "Garantiert EU-AI-Act-konform.",
+        "Vollständige AI-Act-Compliance out of the box.",
+        "Automatisch rechtskonform nach EU AI Act."
+      ],
+      "review_status": "approved",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": "Kern-Claim; kein Konformitätsversprechen.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-CORE-002",
+      "channels": ["website", "sales_deck", "in_app", "one_pager"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "short",
+      "family": "product_claim_safe",
+      "approved_text": "Schafft Nachvollziehbarkeit und prüfbare Audit-Trails für Ihre KI-Governance-Dokumentation.",
+      "disallowed_alternatives": [
+        "Revisionssicher im Sinne jeder Behörde ohne Ausnahme.",
+        "Ersetzt interne Revision und Wirtschaftsprüfung."
+      ],
+      "review_status": "approved",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": "Audit-Trail als Produktprinzip; keine Garantie gegenüber Dritten.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-CORE-003",
+      "channels": ["website", "sales_deck", "email"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "medium",
+      "family": "product_claim_safe",
+      "approved_text": "Hilft bei der strukturierten Erfassung und Dokumentation von KI-Systemen, Verantwortlichkeiten und Nachweisen.",
+      "disallowed_alternatives": [
+        "Registriert und genehmigt alle KI-Systeme automatisch.",
+        "Keine manuelle Prüfung mehr nötig."
+      ],
+      "review_status": "approved",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": null,
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-DIS-001",
+      "channels": ["website", "one_pager", "email", "in_app"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "short",
+      "family": "disclaimer",
+      "approved_text": "Keine Rechtsberatung. ComplianceHub liefert unterstützende Einordnung und Dokumentationshilfen; rechtliche Bewertungen verbleiben bei Ihnen und Ihren Beauftragten.",
+      "disallowed_alternatives": [
+        "Unsere Texte sind rechtsverbindlich.",
+        "Ersetzt Anwalt, Steuerberater oder Datenschutzbeauftragten."
+      ],
+      "review_status": "needs_legal_review",
+      "owner": "compliance_ops",
+      "last_reviewed_at": null,
+      "notes": "Kurzdisclaimer; Länge für Footer/Tooltip prüfen.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-DIS-002",
+      "channels": ["website", "one_pager"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "formal",
+      "family": "disclaimer",
+      "approved_text": "Die Plattform begründet weder eine Zertifizierung noch eine rechtsverbindliche Konformitätsfeststellung gegenüber Behörden oder Dritten.",
+      "disallowed_alternatives": [
+        "Zertifiziert nach ISO 42001.",
+        "Behördenanerkannte Compliance-Software."
+      ],
+      "review_status": "needs_legal_review",
+      "owner": "compliance_ops",
+      "last_reviewed_at": null,
+      "notes": "Für AGB/Marketing-Seite; Legal-Formulierung finalisieren.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-SKU-AAR-001",
+      "channels": ["website", "sales_deck"],
+      "audience": "generic",
+      "sku": "AI Act Readiness",
+      "regulation_context": "eu_ai_act",
+      "language": "de",
+      "tone_variant": "short",
+      "family": "sku_value_prop",
+      "approved_text": "Paket AI Act Readiness: schneller Überblick über KI-Systeme, Readiness und Board-taugliche KPIs.",
+      "disallowed_alternatives": [
+        "AI Act in 30 Tagen erledigt.",
+        "Garantierte High-Risk-Compliance."
+      ],
+      "review_status": "approved",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": null,
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-SKU-AAR-002",
+      "channels": ["sales_deck", "one_pager"],
+      "audience": "industrie_mittelstand",
+      "sku": "AI Act Readiness",
+      "regulation_context": "eu_ai_act",
+      "language": "de",
+      "tone_variant": "medium",
+      "family": "sales_proof_point",
+      "approved_text": "Geeignet für Mittelstandsteams, die zuerst Transparenz und Prioritätenliste schaffen wollen, bevor tiefe Integrationsprojekte budgetiert werden.",
+      "disallowed_alternatives": [
+        "Ersetzt jedes Beratungsmandat.",
+        "Ohne IT-Ressourcen vollständig umsetzbar – garantiert."
+      ],
+      "review_status": "draft",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": "Persona-Feintuning mit Sales.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-SKU-GEV-001",
+      "channels": ["website", "sales_deck"],
+      "audience": "generic",
+      "sku": "Governance & Evidence",
+      "regulation_context": "iso42001",
+      "language": "de",
+      "tone_variant": "medium",
+      "family": "sku_value_prop",
+      "approved_text": "Paket Governance & Evidence: Evidenz und GRC-Kontext für wiederholbare Reviews und Prüfpfade rund um KI-Systeme.",
+      "disallowed_alternatives": [
+        "ISO-42001-Zertifikat inklusive.",
+        "Automatischer ISO-Audit-Erfolg."
+      ],
+      "review_status": "approved",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": "ISO als Kontext, nicht als Zertifizierungsversprechen.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-SKU-GEV-002",
+      "channels": ["sales_deck", "email"],
+      "audience": "generic",
+      "sku": "Governance & Evidence",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "formal",
+      "family": "sales_proof_point",
+      "approved_text": "Unterstützt die Bündelung von Nachweisen für interne Revision und externe Prüfer – ohne deren Bewertung vorwegzunehmen.",
+      "disallowed_alternatives": [
+        "Revisionssicher ohne Rückfragen.",
+        "WP-stempelt das System ab."
+      ],
+      "review_status": "needs_legal_review",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": null,
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-SKU-ENT-001",
+      "channels": ["website", "sales_deck", "one_pager"],
+      "audience": "enterprise_sap",
+      "sku": "Enterprise Connectors",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "medium",
+      "family": "integration_careful",
+      "approved_text": "Paket Enterprise Connectors: Vorbereitung technischer Anbindungen an Enterprise-Landschaften (z. B. SAP BTP) – Umfang und Schnittstellen werden im Projekt definiert.",
+      "disallowed_alternatives": [
+        "Zertifizierte SAP-Integration.",
+        "Offiziell von SAP freigegeben.",
+        "Plug-and-play ohne IT-Projekt."
+      ],
+      "review_status": "needs_legal_review",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": "Keine Partner-Zertifizierung implizieren.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-SKU-ENT-002",
+      "channels": ["sales_deck", "email"],
+      "audience": "enterprise_sap",
+      "sku": "Enterprise Connectors",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "short",
+      "family": "integration_careful",
+      "approved_text": "DATEV-taugliche Exportstrukturen können je nach Paket vorbereitet werden – keine behördliche oder DATEV-Produktzertifizierung.",
+      "disallowed_alternatives": [
+        "Offizieller DATEV-Connector.",
+        "GoBD-zertifiziert durch DATEV."
+      ],
+      "review_status": "needs_legal_review",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": "Kanzlei/SAP-Kontext; mit Legal abstimmen.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-NIS2-001",
+      "channels": ["website", "sales_deck"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "nis2",
+      "language": "de",
+      "tone_variant": "medium",
+      "family": "regulatory_context",
+      "approved_text": "NIS2-relevante Themen (z. B. Incidents, Lieferanten) können in Übersichten und Reports sichtbar gemacht werden – im Abgleich mit Ihrer Meldepflicht und Ihrem ISMS.",
+      "disallowed_alternatives": [
+        "Vollständige NIS2-Erfüllung ohne manuelle Prüfung.",
+        "NIS2-konform garantiert."
+      ],
+      "review_status": "approved",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": null,
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-GoBD-001",
+      "channels": ["website", "sales_deck", "one_pager"],
+      "audience": "kanzlei",
+      "sku": "generic",
+      "regulation_context": "gobd",
+      "language": "de",
+      "tone_variant": "medium",
+      "family": "regulatory_context",
+      "approved_text": "GoBD-relevante Dokumentationsfragen können Sie strukturiert vorbereiten und mit Mandant und Steuerberater abstimmen.",
+      "disallowed_alternatives": [
+        "GoBD-konform out of the box.",
+        "Ersetzt Prüfung durch Finanzamt."
+      ],
+      "review_status": "approved",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": null,
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-UI-001",
+      "channels": ["in_app"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "short",
+      "family": "feature_not_enabled",
+      "approved_text": "Diese Funktion ist in Ihrem Paket nicht enthalten. Sie erhalten damit erweiterte Governance- und Integrationsmöglichkeiten.",
+      "disallowed_alternatives": [
+        "Ohne Upgrade sind Sie nicht compliant.",
+        "Pflicht zur sofortigen Buchung."
+      ],
+      "review_status": "draft",
+      "owner": "product",
+      "last_reviewed_at": null,
+      "notes": "Upgrade-CTA; Dringlichkeit ohne Angst-Marketing.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-UI-002",
+      "channels": ["in_app"],
+      "audience": "generic",
+      "sku": "Enterprise Connectors",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "short",
+      "family": "feature_not_enabled",
+      "approved_text": "Enterprise-Anbindungen erfordern Paket Enterprise Connectors. Wir klären Schnittstellen und Datenflüsse im Onboarding.",
+      "disallowed_alternatives": [
+        "SAP-Anbindung in Sekunden.",
+        "Vollautomatische Konzernintegration."
+      ],
+      "review_status": "draft",
+      "owner": "product",
+      "last_reviewed_at": null,
+      "notes": null,
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-WEB-HERO-001",
+      "channels": ["website"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "eu_ai_act",
+      "language": "de",
+      "tone_variant": "short",
+      "family": "website_headline_support",
+      "approved_text": "KI-Governance und AI-Act-Readiness für den DACH-Mittelstand – dokumentiert und prüfungsvorbereitet.",
+      "disallowed_alternatives": [
+        "Garantiert konform mit allen EU-Vorschriften.",
+        "Die einzige Software, die Sie für AI Act brauchen."
+      ],
+      "review_status": "draft",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": "Alternative Hero-Zeile; Abgleich mit wave20-website-messaging-de.md.",
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-WEB-SUB-001",
+      "channels": ["website"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "medium",
+      "family": "website_headline_support",
+      "approved_text": "Mandantenfähige Plattform für Register, Nachweise und Reports – Unterstützung bei Vorbereitung und Dokumentation, keine Garantie für vollständige Konformität.",
+      "disallowed_alternatives": [
+        "Vollständige Konformität inklusive.",
+        "Rechtssicher in jedem Mandantenfall."
+      ],
+      "review_status": "approved",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": null,
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-SD-PROOF-001",
+      "channels": ["sales_deck"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "formal",
+      "family": "sales_proof_point",
+      "approved_text": "Einheitliche Datenbasis für Vorstand, Fachbereich und Berater reduziert Medienbrüche vor Audit und Management-Reviews.",
+      "disallowed_alternatives": [
+        "Eliminiert jedes Risiko.",
+        "Zero-Failure-Governance."
+      ],
+      "review_status": "approved",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": null,
+      "deprecated": false,
+      "supersedes": null
+    },
+    {
+      "statement_id": "CSL-DE-EMAIL-001",
+      "channels": ["email"],
+      "audience": "generic",
+      "sku": "generic",
+      "regulation_context": "generic",
+      "language": "de",
+      "tone_variant": "short",
+      "family": "outbound_safe",
+      "approved_text": "Wir zeigen Ihnen, wie Teams KI-Register und Nachweise in einem Tool bündeln – ohne Konformitätsversprechen, mit klarem Pilotfokus.",
+      "disallowed_alternatives": [
+        "Sichern Sie sich jetzt vollständige AI-Act-Compliance.",
+        "Letzte Chance vor Bußgeldern."
+      ],
+      "review_status": "draft",
+      "owner": "product_marketing",
+      "last_reviewed_at": null,
+      "notes": "Outbound; keine Angst- oder Bußgeld-Claims ohne Legal.",
+      "deprecated": false,
+      "supersedes": null
+    }
+  ]
+}

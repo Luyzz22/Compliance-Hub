@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "source": "docs/gtm/statements/statements.v1.json",
+  "description": "Lookup: statement_id direkt der SKU zugeordnet (Feld sku im Datensatz). Generische Statements (sku=generic) gelten kanal- und kontextabhängig zusätzlich; siehe sku_channel_family_mapping.md.",
+  "by_sku": {
+    "generic": [
+      "CSL-DE-CORE-001",
+      "CSL-DE-CORE-002",
+      "CSL-DE-CORE-003",
+      "CSL-DE-DIS-001",
+      "CSL-DE-DIS-002",
+      "CSL-DE-NIS2-001",
+      "CSL-DE-GoBD-001",
+      "CSL-DE-UI-001",
+      "CSL-DE-WEB-HERO-001",
+      "CSL-DE-WEB-SUB-001",
+      "CSL-DE-SD-PROOF-001",
+      "CSL-DE-EMAIL-001"
+    ],
+    "AI Act Readiness": [
+      "CSL-DE-SKU-AAR-001",
+      "CSL-DE-SKU-AAR-002"
+    ],
+    "Governance & Evidence": [
+      "CSL-DE-SKU-GEV-001",
+      "CSL-DE-SKU-GEV-002"
+    ],
+    "Enterprise Connectors": [
+      "CSL-DE-SKU-ENT-001",
+      "CSL-DE-SKU-ENT-002",
+      "CSL-DE-UI-002"
+    ]
+  }
+}

@@ -2,7 +2,8 @@
 
 **Gültigkeit:** Website, Sales-Material, Kampagnen, In-App-Hilfetexte (soweit nicht bereits durch UI-Glossar festgelegt).  
 **Abgleich:** Mit Legal/Compliance bei allen Aussagen zu Regulierung, Zertifizierung und Produktfähigkeiten.  
-**SKU-Quelle:** [`wave19-pricing-sales-playbook-stub.md`](./wave19-pricing-sales-playbook-stub.md) (Wave 19 → Wave 20).
+**SKU-Quelle:** [`wave19-pricing-sales-playbook-stub.md`](./wave19-pricing-sales-playbook-stub.md) (Wave 19 → Wave 20).  
+**Claims & kanonische Formulierungen (Wave 21):** [`compliance-statement-library-de.md`](./compliance-statement-library-de.md) und [`statements/statements.v1.json`](./statements/statements.v1.json) – Stil hier, **Satzgut** dort nach Freigabe.
 
 ---
 
@@ -85,8 +86,9 @@
 
 - [ ] Keine Garantie- oder Zertifizierungsansprüche ohne Freigabe  
 - [ ] AI Act / NIS2 / ISO / GoBD mit Kontext und „Unterstützung bei …“ formuliert  
-- [ ] SKUs identisch zu [Wave-19-Stub](wave19-pricing-sales-playbook-stub.md): *AI Act Readiness*, *Governance & Evidence*, *Enterprise Connectors*  
-- [ ] Keine erfundenen Kunden, Zahlen oder Awards  
+- [ ] SKUs identisch zu [Wave-19-Stub](wave19-pricing-sales-playbook-stub.md): *AI Act Readiness*, *Governance & Evidence*, *Enterprise Connectors*
+- [ ] Sensible Claims mit passender `statement_id` aus der [Statement Library](compliance-statement-library-de.md) oder nach Review neu angelegt
+- [ ] Keine erfundenen Kunden, Zahlen oder Awards
 - [ ] Abgleich mit `docs/gtm/wave20-website-messaging-de.md` und `wave20-sales-deck-outline.md`
 
 ---
