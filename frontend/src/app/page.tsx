@@ -1,9 +1,10 @@
 import Link from "next/link";
 import React from "react";
 
+import { TrackedContactLink } from "@/components/contact/TrackedContactLink";
 import { HomeProductPreview } from "@/components/home/HomeProductPreview";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY } from "@/lib/boardLayout";
-import { PUBLIC_CONTACT_MAILTO } from "@/lib/publicContact";
+import { contactPageHref } from "@/lib/publicContact";
 
 function SectionTitle({
   title,
@@ -62,12 +63,14 @@ export default function HomePage() {
               Bewertungen verbleiben bei Ihnen und Ihren Beauftragten.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <a
-                href={PUBLIC_CONTACT_MAILTO}
+              <TrackedContactLink
+                href={contactPageHref("home-hero")}
+                ctaId="home-hero-demo"
+                quelle="home-hero"
                 className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-900/15 transition hover:from-emerald-700 hover:to-emerald-600"
               >
                 Demo anfragen
-              </a>
+              </TrackedContactLink>
               <Link
                 href="/board/kpis"
                 className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
@@ -247,12 +250,14 @@ export default function HomePage() {
           </div>
           <p className="mt-6 text-center text-xs text-slate-500">
             Ihre Plattform fehlt?{" "}
-            <a
-              href={PUBLIC_CONTACT_MAILTO}
+            <TrackedContactLink
+              href={contactPageHref("home-integrations")}
+              ctaId="home-integrations-kontakt"
+              quelle="home-integrations"
               className="font-medium text-cyan-700 underline-offset-2 hover:underline"
             >
               Kontakt aufnehmen
-            </a>{" "}
+            </TrackedContactLink>{" "}
             oder über Ihr Compliance-Team.
           </p>
         </div>
@@ -272,12 +277,14 @@ export default function HomePage() {
             wir gern im Gespräch.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <a
-              href={PUBLIC_CONTACT_MAILTO}
+            <TrackedContactLink
+              href={contactPageHref("home-mid-cta")}
+              ctaId="home-mid-cta-demo"
+              quelle="home-mid-cta"
               className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:from-emerald-700 hover:to-emerald-600"
             >
               Demo anfragen
-            </a>
+            </TrackedContactLink>
             <Link href="/tenant/compliance-overview" className={`${CH_BTN_SECONDARY} px-6 py-3`}>
               Mandant öffnen
             </Link>

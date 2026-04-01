@@ -7,7 +7,7 @@
 - Startseite: `frontend/src/app/page.tsx`
 - Produktvorschau (Hero rechts): `frontend/src/components/home/HomeProductPreview.tsx`
 - Globale Meta-Beschreibung: `frontend/src/app/layout.tsx`
-- Öffentlicher Kontakt (eine Quelle): `frontend/src/lib/publicContact.ts` → `PUBLIC_CONTACT_MAILTO`
+- Öffentlicher Kontakt: **`/kontakt`** (Wave 24) + Fallback `PUBLIC_CONTACT_MAILTO` in `frontend/src/lib/publicContact.ts`
 - Footer-Link „Kontakt“: `frontend/src/components/sbs/SbsFooter.tsx`
 - Optionaler Sales-One-Pager (statisch, gleiche Tokens wie Wave 22): `website/sales-one-pager.html` (CSS: `website/css/compliancehub-landing.css`)
 
@@ -44,14 +44,16 @@ Bestehende Slots beibehalten; folgende **Dateien/Konzepte** für spätere Produk
 
 ## 3. CTAs – stabil vs. temporär
 
+*Aktualisiert in Wave 24 – siehe [`wave24-contact-and-lead-capture.md`](./wave24-contact-and-lead-capture.md).*
+
 | CTA / Link | Ziel | Status |
 | ---------- | ---- | ------ |
-| **Demo anfragen** (Hero, Mid-CTA, One-Pager, statische Wave-22-Seite) | `mailto:kontakt@complywithai.de` via `PUBLIC_CONTACT_MAILTO` | **Temporär stabil**, bis Postfach/Formular/CRM final ist |
+| **Demo anfragen** / **Kontakt** (Next.js) | **`/kontakt?quelle=…`** (Formular) | **Stabil** (Primärpfad) |
+| **Demo anfragen** (statische HTML unter `website/`) | `https://complywithai.de/kontakt?quelle=…` | **Stabil** |
+| **Fallback** | `mailto:kontakt@complywithai.de` | Sekundär (Formular + Fehlerfall) |
 | **Board öffnen** | `/board/kpis` | **Stabil** (Produkteintritt) |
 | **Board-Ansicht** (Mid-CTA) | `/board/kpis` | **Stabil** |
 | **Mandant öffnen** | `/tenant/compliance-overview` | **Stabil** (Workspace-Einstieg) |
-| **Kontakt** (Footer) | gleiches `mailto:` | **Temporär stabil** |
-| **Kontakt aufnehmen** (Integrationen) | gleiches `mailto:` | **Temporär stabil** |
 | **5-Minuten Produkt-Tour** | *entfernt aus Hero zugunsten zweier klarer CTAs*; Tour weiter über **Board/Navigation** erreichbar | Bewusst **vereinfacht**; optional später wieder als dritter Link oder Header-Link |
 
 **SKU-Bezug:** Mid-CTA-Text nennt explizit **AI Act Readiness**, **Governance & Evidence**, **Enterprise Connectors** (Abgleich Wave 19/20).
