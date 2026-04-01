@@ -7,13 +7,22 @@ import {
   rollbackLeadEmailCooldown,
 } from "@/lib/leadDuplicateGuard";
 import { isLeadSegment, LEAD_FIELD_LIMITS } from "@/lib/leadCapture";
+import {
+  buildLeadAccountKey,
+  buildLeadContactKey,
+  normalizeLeadEmail,
+} from "@/lib/leadIdentity";
 import { buildLeadOutboundPayload } from "@/lib/leadOutbound";
 import {
   appendLeadWebhookResult,
+  computeContactKeyStatsFromRows,
+  countOtherContactKeysOnAccount,
   dispatchLeadWebhook,
   persistLeadReceived,
+  readAllLeadRecordsMerged,
   type LeadStoreRecord,
 } from "@/lib/leadPersistence";
+import { appendLeadOpsActivity } from "@/lib/leadOpsState";
 import { getClientIp, checkLeadIpRateLimit } from "@/lib/leadRateLimit";
 import { determineLeadRoute } from "@/lib/leadRouting";
 
@@ -112,6 +121,25 @@ export async function POST(req: Request) {
   const lead_id = randomUUID();
   const trace_id = randomUUID();
   const route = determineLeadRoute(segRaw, company, message, source_page);
+
+  const normEmail = normalizeLeadEmail(work_email);
+  const lead_contact_key = buildLeadContactKey(normEmail);
+  const lead_account_key = buildLeadAccountKey(company, work_email);
+
+  const allRows = await readAllLeadRecordsMerged();
+  const contactStats = computeContactKeyStatsFromRows(allRows, lead_contact_key);
+  const sequence = contactStats.prior_count + 1;
+  const created_at = new Date().toISOString();
+  const contact_first_seen_at = contactStats.first_seen_at ?? created_at;
+  const contact_latest_seen_at = created_at;
+  const duplicate_hint = sequence > 1 ? ("same_email_repeat" as const) : ("none" as const);
+
+  const otherContactsOnAccount = countOtherContactKeysOnAccount(
+    allRows,
+    lead_account_key,
+    lead_contact_key,
+  );
+
   const outbound = buildLeadOutboundPayload({
     lead_id,
     trace_id,
@@ -122,9 +150,17 @@ export async function POST(req: Request) {
     company,
     message,
     route,
+    timestamp: created_at,
+    identity: {
+      lead_contact_key,
+      lead_account_key,
+      contact_inquiry_sequence: sequence,
+      contact_first_seen_at,
+      contact_latest_seen_at,
+      duplicate_hint,
+    },
   });
 
-  const created_at = new Date().toISOString();
   const storeRecord: LeadStoreRecord = {
     _kind: "lead_inquiry",
     lead_id,
@@ -132,6 +168,12 @@ export async function POST(req: Request) {
     status: "received",
     created_at,
     outbound,
+    lead_contact_key,
+    lead_account_key,
+    contact_inquiry_sequence: sequence,
+    contact_first_seen_at,
+    contact_latest_seen_at,
+    duplicate_hint,
   };
 
   try {
@@ -142,6 +184,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "server" }, { status: 500 });
   }
 
+  try {
+    if (sequence > 1) {
+      await appendLeadOpsActivity(
+        lead_id,
+        "contact_repeat_detected",
+        `Wiederholte Anfrage (#${sequence}) für denselben Kontakt-Schlüssel`,
+      );
+    }
+    if (otherContactsOnAccount > 0) {
+      await appendLeadOpsActivity(
+        lead_id,
+        "possible_duplicate_noted",
+        `Account-Gruppe: ${otherContactsOnAccount} weiterer Kontext (anderer E-Mail-Kontakt)`,
+      );
+    }
+  } catch (e) {
+    console.warn("[lead-inquiry] ops_activity_append_failed", e);
+  }
+
   console.info(
     "[lead-inquiry]",
     JSON.stringify({
@@ -150,6 +211,8 @@ export async function POST(req: Request) {
       segment: segRaw,
       route_key: route.route_key,
       source_page,
+      lead_contact_key,
+      contact_inquiry_sequence: sequence,
       client_ip_prefix: clientIp.slice(0, 12),
     }),
   );

@@ -1,6 +1,11 @@
 import { appendFile, mkdir, readFile } from "fs/promises";
 import { dirname, join } from "path";
 
+import {
+  deriveLeadAccountKeyFromStoredRecord,
+  deriveLeadContactKeyFromStoredRecord,
+} from "@/lib/leadIdentity";
+import type { LeadDuplicateHint } from "@/lib/leadIdentity";
 import type { LeadOutboundPayloadV1 } from "@/lib/leadOutbound";
 
 export type LeadStoreStatus = "received" | "forwarded" | "failed" | "reviewed";
@@ -14,6 +19,13 @@ export type LeadStoreRecord = {
   forwarded_at?: string;
   webhook_error?: string;
   outbound: LeadOutboundPayloadV1;
+  /** Wave 27 – gespiegelt für schnelle JSONL-Scans (auch in outbound 1.1). */
+  lead_contact_key?: string;
+  lead_account_key?: string | null;
+  contact_inquiry_sequence?: number;
+  contact_first_seen_at?: string;
+  contact_latest_seen_at?: string;
+  duplicate_hint?: LeadDuplicateHint;
 };
 
 export type LeadWebhookResultLine = {
@@ -52,9 +64,7 @@ export type LeadAdminRow = LeadStoreRecord & {
   webhook_error?: string;
 };
 
-/** Liest JSONL und führt Basis-Events pro lead_id zusammen (Admin-Ansicht). */
-export async function readRecentLeadRecordsMerged(maxRecords: number): Promise<LeadAdminRow[]> {
-  const path = resolveStorePath();
+async function mergeAllLeadAdminRowsFromPath(path: string): Promise<LeadAdminRow[]> {
   try {
     const raw = await readFile(path, "utf8");
     const lines = raw.trim().split("\n").filter(Boolean);
@@ -82,13 +92,47 @@ export async function readRecentLeadRecordsMerged(maxRecords: number): Promise<L
         }
       }
     }
-    const list = Array.from(byId.values()).sort(
+    return Array.from(byId.values()).sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
-    return list.slice(0, maxRecords);
   } catch {
     return [];
   }
+}
+
+/** Alle Anfragen (für Kontakt-Rollups / Historie). */
+export async function readAllLeadRecordsMerged(): Promise<LeadAdminRow[]> {
+  return mergeAllLeadAdminRowsFromPath(resolveStorePath());
+}
+
+export function computeContactKeyStatsFromRows(
+  all: LeadAdminRow[],
+  contactKey: string,
+): { prior_count: number; first_seen_at: string | null; prior_lead_ids: string[] } {
+  const matching = all
+    .filter((r) => deriveLeadContactKeyFromStoredRecord(r) === contactKey)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  return {
+    prior_count: matching.length,
+    first_seen_at: matching[0]?.created_at ?? null,
+    prior_lead_ids: matching.map((m) => m.lead_id),
+  };
+}
+
+/** Andere Kontakt-Keys unter derselben Account-Gruppe (Firma/Domain) – nur Hinweis, kein Merge. */
+export function countOtherContactKeysOnAccount(
+  all: LeadAdminRow[],
+  accountKey: string | null,
+  excludeContactKey: string,
+): number {
+  if (!accountKey) return 0;
+  const set = new Set<string>();
+  for (const r of all) {
+    if (deriveLeadAccountKeyFromStoredRecord(r) !== accountKey) continue;
+    set.add(deriveLeadContactKeyFromStoredRecord(r));
+  }
+  set.delete(excludeContactKey);
+  return set.size;
 }
 
 /** Liest die gesamte JSONL und liefert die erste passende `lead_inquiry`-Zeile (Outbound inkl.). */

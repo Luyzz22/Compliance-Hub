@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
-import { mergeLeadsWithOps } from "@/lib/leadInboxMerge";
+import { attachContactRollups, mergeLeadsWithOps } from "@/lib/leadInboxMerge";
 import { appendLeadOpsActivity, readLeadOpsState } from "@/lib/leadOpsState";
 import {
   appendLeadWebhookResult,
   dispatchLeadWebhook,
   findLeadInquiryRecord,
   getMergedLeadAdminRow,
+  readAllLeadRecordsMerged,
 } from "@/lib/leadPersistence";
 
 export const runtime = "nodejs";
@@ -60,8 +61,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ leadId: string
   }
 
   const row = await getMergedLeadAdminRow(leadId);
+  const allRows = await readAllLeadRecordsMerged();
   const ops = await readLeadOpsState();
-  const item = row ? mergeLeadsWithOps([row], ops)[0] : null;
+  const merged = row ? mergeLeadsWithOps([row], ops) : [];
+  const item = row ? (attachContactRollups(merged, allRows, ops)[0] ?? null) : null;
 
   return NextResponse.json({
     ok: true,

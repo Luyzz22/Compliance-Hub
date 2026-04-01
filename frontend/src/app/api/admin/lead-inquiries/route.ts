@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
-import { mergeLeadsWithOps, sortInboxItems } from "@/lib/leadInboxMerge";
+import {
+  attachContactRollups,
+  mergeLeadsWithOps,
+  sortInboxItems,
+} from "@/lib/leadInboxMerge";
 import type { LeadForwardingStatus } from "@/lib/leadInboxTypes";
 import { readLeadOpsState } from "@/lib/leadOpsState";
-import { readRecentLeadRecordsMerged } from "@/lib/leadPersistence";
+import { readAllLeadRecordsMerged } from "@/lib/leadPersistence";
 
 export const runtime = "nodejs";
 
@@ -32,14 +36,19 @@ export async function GET(req: Request) {
     Math.max(1, parseInt(url.searchParams.get("limit") ?? "200", 10) || 200),
   );
 
-  const rows = await readRecentLeadRecordsMerged(limit);
+  const allRows = await readAllLeadRecordsMerged();
+  const pageRows = allRows.slice(0, limit);
   const ops = await readLeadOpsState();
-  let items = sortInboxItems(mergeLeadsWithOps(rows, ops));
+  let items = sortInboxItems(
+    attachContactRollups(mergeLeadsWithOps(pageRows, ops), allRows, ops),
+  );
 
   const triage = url.searchParams.get("triage_status")?.trim();
   const segment = url.searchParams.get("segment")?.trim();
   const sourcePage = url.searchParams.get("source_page")?.trim();
   const forwarding = url.searchParams.get("forwarding_status")?.trim();
+  const repeated = url.searchParams.get("repeated_contacts")?.trim();
+  const unresolvedRep = url.searchParams.get("unresolved_repeated")?.trim();
 
   if (triage) {
     items = items.filter((i) => i.triage_status === triage);
@@ -52,6 +61,12 @@ export async function GET(req: Request) {
   }
   if (forwarding && isForwardingFilter(forwarding)) {
     items = items.filter((i) => i.forwarding_status === forwarding);
+  }
+  if (repeated === "1" || repeated === "true") {
+    items = items.filter((i) => i.contact_submission_count > 1);
+  }
+  if (unresolvedRep === "1" || unresolvedRep === "true") {
+    items = items.filter((i) => i.contact_has_unresolved_repeat);
   }
 
   return NextResponse.json({

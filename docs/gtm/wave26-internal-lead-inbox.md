@@ -108,4 +108,8 @@ Append-only Logik auf Dateiebene: bei Änderungen werden Einträge wie `triage_s
 
 ---
 
+**Nachfolger:** [Wave 27 – Lead-Dedup & Kontakt-Historie](./wave27-lead-dedup-and-history.md) (`lead_contact_key`, Historie in der Inbox, Webhook 1.1).
+
+---
+
 *Wave 26 – operative Lead-Triage für DACH-B2B, bewusst klein gehalten.*

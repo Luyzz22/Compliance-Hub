@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LEAD_SEGMENTS } from "@/lib/leadCapture";
-import type { LeadInboxItem } from "@/lib/leadInboxTypes";
+import type { LeadContactHistoryEntry, LeadInboxItem } from "@/lib/leadInboxTypes";
 import { LEAD_TRIAGE_LABELS_DE, LEAD_TRIAGE_STATUSES } from "@/lib/leadTriage";
 
 type Props = {
@@ -17,6 +17,20 @@ function forwardingLabel(s: LeadInboxItem["forwarding_status"]): string {
   return "Kein Webhook / nicht gesendet";
 }
 
+const DUPLICATE_REVIEW_LABELS: Record<LeadInboxItem["duplicate_review"], string> = {
+  none: "Keine Markierung",
+  suggested: "Zur Prüfung (mögliche Dublette)",
+  confirmed: "Zusammenhang bestätigt (manuell)",
+};
+
+type PatchBody = {
+  triage_status?: string;
+  owner?: string;
+  internal_note?: string;
+  manual_related_lead_ids?: string[];
+  duplicate_review?: LeadInboxItem["duplicate_review"];
+};
+
 export function AdminLeadInboxClient({ adminConfigured }: Props) {
   const [secretInput, setSecretInput] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -25,14 +39,22 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailItem, setDetailItem] = useState<LeadInboxItem | null>(null);
+  const [contactHistory, setContactHistory] = useState<LeadContactHistoryEntry[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [filters, setFilters] = useState({
     triage_status: "",
     segment: "",
     source_page: "",
     forwarding_status: "",
+    repeated_contacts: false,
+    unresolved_repeated: false,
   });
   const [draftOwner, setDraftOwner] = useState("");
   const [draftNote, setDraftNote] = useState("");
+  const [draftDuplicateReview, setDraftDuplicateReview] =
+    useState<LeadInboxItem["duplicate_review"]>("none");
+  const [draftRelatedRaw, setDraftRelatedRaw] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
@@ -41,15 +63,21 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     [items, selectedId],
   );
 
+  const displayLead = detailItem ?? selected;
+
   useEffect(() => {
-    if (!selected) {
+    if (!displayLead) {
       setDraftOwner("");
       setDraftNote("");
+      setDraftDuplicateReview("none");
+      setDraftRelatedRaw("");
       return;
     }
-    setDraftOwner(selected.owner);
-    setDraftNote(selected.internal_note);
-  }, [selected]);
+    setDraftOwner(displayLead.owner);
+    setDraftNote(displayLead.internal_note);
+    setDraftDuplicateReview(displayLead.duplicate_review);
+    setDraftRelatedRaw(displayLead.manual_related_lead_ids.join(", "));
+  }, [displayLead]);
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
@@ -57,9 +85,10 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     if (filters.segment) p.set("segment", filters.segment);
     if (filters.source_page) p.set("source_page", filters.source_page);
     if (filters.forwarding_status) p.set("forwarding_status", filters.forwarding_status);
+    if (filters.repeated_contacts) p.set("repeated_contacts", "1");
+    if (filters.unresolved_repeated) p.set("unresolved_repeated", "1");
     p.set("limit", "500");
-    const q = p.toString();
-    return q ? `?${q}` : "?limit=500";
+    return `?${p.toString()}`;
   }, [filters]);
 
   const fetchLeads = useCallback(async () => {
@@ -95,6 +124,35 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     void fetchLeads();
   }, [adminConfigured, fetchLeads]);
 
+  useEffect(() => {
+    if (!selectedId || authed !== true) {
+      setDetailItem(null);
+      setContactHistory([]);
+      return;
+    }
+    let cancelled = false;
+    setDetailLoading(true);
+    void fetch(`/api/admin/lead-inquiries/${selectedId}`, { credentials: "include" })
+      .then(async (r) => {
+        if (!r.ok) return null;
+        return (await r.json()) as {
+          item?: LeadInboxItem;
+          contact_history?: LeadContactHistoryEntry[];
+        };
+      })
+      .then((data) => {
+        if (cancelled || !data) return;
+        if (data.item) setDetailItem(data.item);
+        if (data.contact_history) setContactHistory(data.contact_history);
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, authed]);
+
   async function login(e: React.FormEvent) {
     e.preventDefault();
     setLoginError(null);
@@ -126,12 +184,19 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     setAuthed(false);
     setItems([]);
     setSelectedId(null);
+    setDetailItem(null);
+    setContactHistory([]);
   }
 
-  async function patchLead(
-    leadId: string,
-    body: { triage_status?: string; owner?: string; internal_note?: string },
-  ) {
+  function parseRelatedIds(raw: string): string[] {
+    return raw
+      .split(/[\s,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 20);
+  }
+
+  async function patchLead(leadId: string, body: PatchBody) {
     setSaving(true);
     setActionMsg(null);
     try {
@@ -141,15 +206,23 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
         credentials: "include",
         body: JSON.stringify(body),
       });
-      const data = (await r.json()) as { ok?: boolean; item?: LeadInboxItem | null };
+      const data = (await r.json()) as {
+        ok?: boolean;
+        item?: LeadInboxItem | null;
+        contact_history?: LeadContactHistoryEntry[];
+      };
       if (!r.ok) {
         setActionMsg("Speichern fehlgeschlagen.");
         return;
       }
       if (data.item) {
         setItems((prev) => prev.map((x) => (x.lead_id === data.item!.lead_id ? data.item! : x)));
+        if (selectedId === leadId) setDetailItem(data.item);
       } else {
         await fetchLeads();
+      }
+      if (data.contact_history && selectedId === leadId) {
+        setContactHistory(data.contact_history);
       }
       setActionMsg("Gespeichert.");
     } catch {
@@ -184,6 +257,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
       }
       if (data.item) {
         setItems((prev) => prev.map((x) => (x.lead_id === data.item!.lead_id ? data.item! : x)));
+        if (selectedId === leadId) setDetailItem(data.item);
       }
       setActionMsg(
         data.webhook_ok ? "Webhook erneut erfolgreich." : `Webhook-Fehler: ${data.webhook_error ?? "?"}`,
@@ -249,8 +323,9 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Lead-Inbox</h1>
           <p className="text-sm text-slate-600">
-            Triage und Nachverfolgung – nicht öffentlich, kein CRM. Sortierung: zuerst Aufmerksamkeit
-            (fehlgeschlagene Weiterleitung oder Status &quot;Neu&quot;), dann neueste zuerst.
+            Triage und Nachverfolgung – nicht öffentlich, kein CRM. Kontakt-Historie gruppiert nach
+            E-Mail-Schlüssel; jede Einreichung bleibt eigener Datensatz. Sortierung: zuerst
+            Aufmerksamkeit, dann neueste zuerst.
           </p>
         </div>
         <button
@@ -315,6 +390,22 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
             <option value="not_sent">Nicht gesendet</option>
           </select>
         </label>
+        <label className="flex items-center gap-2 self-end pb-1">
+          <input
+            type="checkbox"
+            checked={filters.repeated_contacts}
+            onChange={(e) => setFilters((f) => ({ ...f, repeated_contacts: e.target.checked }))}
+          />
+          <span className="text-slate-700">Wiederholte Kontakte</span>
+        </label>
+        <label className="flex items-center gap-2 self-end pb-1">
+          <input
+            type="checkbox"
+            checked={filters.unresolved_repeated}
+            onChange={(e) => setFilters((f) => ({ ...f, unresolved_repeated: e.target.checked }))}
+          />
+          <span className="text-slate-700">Offen &amp; mehrfach</span>
+        </label>
         <button
           type="button"
           onClick={() => void fetchLeads()}
@@ -328,10 +419,11 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
       {loadError ? <p className="text-sm text-red-600">{loadError}</p> : null}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-[900px] w-full border-collapse text-left text-sm">
+        <table className="min-w-[980px] w-full border-collapse text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
             <tr>
               <th className="px-3 py-2 font-medium">Eingang</th>
+              <th className="px-3 py-2 font-medium">Kontext</th>
               <th className="px-3 py-2 font-medium">Triage</th>
               <th className="px-3 py-2 font-medium">Weiterleitung</th>
               <th className="px-3 py-2 font-medium">Segment</th>
@@ -354,22 +446,52 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 <td className="whitespace-nowrap px-3 py-2 text-slate-800">
                   {new Date(row.created_at).toLocaleString("de-DE")}
                 </td>
+                <td className="px-3 py-2">
+                  <div className="flex flex-wrap gap-1">
+                    {row.contact_submission_count > 1 ? (
+                      <span
+                        className="rounded bg-violet-100 px-1.5 py-0.5 text-xs text-violet-900"
+                        title="Mehrfach eingereicht (gleiche E-Mail)"
+                      >
+                        ×{row.contact_submission_count}
+                      </span>
+                    ) : null}
+                    {row.duplicate_hint === "same_email_repeat" ? (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">
+                        Wdh.
+                      </span>
+                    ) : null}
+                    {row.other_contacts_on_same_account > 0 ? (
+                      <span
+                        className="rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-900"
+                        title="Weitere Kontakte unter gleicher Firmen-/Domain-Gruppe"
+                      >
+                        Firma+
+                      </span>
+                    ) : null}
+                    {row.duplicate_review !== "none" ? (
+                      <span className="rounded border border-slate-300 px-1.5 py-0.5 text-xs text-slate-700">
+                        {row.duplicate_review === "confirmed" ? "OK manuell" : "Prüfen"}
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
                 <td className="px-3 py-2">{LEAD_TRIAGE_LABELS_DE[row.triage_status]}</td>
                 <td className="px-3 py-2 text-slate-700">{forwardingLabel(row.forwarding_status)}</td>
                 <td className="px-3 py-2 text-slate-700">{row.segment}</td>
-                <td className="max-w-[140px] truncate px-3 py-2" title={row.company}>
+                <td className="max-w-[120px] truncate px-3 py-2" title={row.company}>
                   {row.company}
                 </td>
-                <td className="max-w-[120px] truncate px-3 py-2" title={row.name}>
+                <td className="max-w-[100px] truncate px-3 py-2" title={row.name}>
                   {row.name}
                 </td>
-                <td className="max-w-[160px] truncate px-3 py-2" title={row.business_email}>
+                <td className="max-w-[140px] truncate px-3 py-2" title={row.business_email}>
                   {row.business_email}
                 </td>
-                <td className="max-w-[100px] truncate px-3 py-2" title={row.source_page}>
+                <td className="max-w-[90px] truncate px-3 py-2" title={row.source_page}>
                   {row.source_page}
                 </td>
-                <td className="max-w-[160px] truncate px-3 py-2 text-slate-600" title={row.queue_label}>
+                <td className="max-w-[140px] truncate px-3 py-2 text-slate-600" title={row.queue_label}>
                   {row.route_key}
                 </td>
               </tr>
@@ -381,13 +503,20 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
         ) : null}
       </div>
 
-      {selected ? (
+      {displayLead ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          {detailLoading ? (
+            <p className="mb-4 text-sm text-slate-500">Detail &amp; Historie werden geladen …</p>
+          ) : null}
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Detail</h2>
               <p className="text-xs text-slate-500">
-                lead_id: {selected.lead_id} · trace_id: {selected.trace_id}
+                lead_id: {displayLead.lead_id} · trace_id: {displayLead.trace_id}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Kontakt #{displayLead.contact_inquiry_sequence} von {displayLead.contact_submission_count}{" "}
+                (Schlüssel: <span className="font-mono">{displayLead.lead_contact_key.slice(0, 18)}…</span>)
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -395,7 +524,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 type="button"
                 disabled={saving}
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
-                onClick={() => void patchLead(selected.lead_id, { triage_status: "triaged" })}
+                onClick={() => void patchLead(displayLead.lead_id, { triage_status: "triaged" })}
               >
                 Triage erledigt
               </button>
@@ -403,7 +532,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 type="button"
                 disabled={saving}
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
-                onClick={() => void patchLead(selected.lead_id, { triage_status: "contacted" })}
+                onClick={() => void patchLead(displayLead.lead_id, { triage_status: "contacted" })}
               >
                 Kontaktiert
               </button>
@@ -411,16 +540,16 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 type="button"
                 disabled={saving}
                 className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm text-red-800 hover:bg-red-100 disabled:opacity-50"
-                onClick={() => void patchLead(selected.lead_id, { triage_status: "spam" })}
+                onClick={() => void patchLead(displayLead.lead_id, { triage_status: "spam" })}
               >
                 Spam
               </button>
-              {selected.forwarding_status === "failed" ? (
+              {displayLead.forwarding_status === "failed" ? (
                 <button
                   type="button"
                   disabled={saving}
                   className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-100 disabled:opacity-50"
-                  onClick={() => void retryWebhook(selected.lead_id)}
+                  onClick={() => void retryWebhook(displayLead.lead_id)}
                 >
                   Webhook erneut senden
                 </button>
@@ -428,32 +557,75 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
             </div>
           </div>
 
+          <div className="mt-6 border-t border-slate-100 pt-4">
+            <h3 className="text-sm font-medium text-slate-800">Kontakt-Historie (gleiche E-Mail)</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Chronologisch; jede Zeile ist eine eigene Formular-Einreichung (unverändert gespeichert).
+            </p>
+            <ul className="mt-3 max-h-56 space-y-2 overflow-auto text-sm">
+              {contactHistory.map((h) => (
+                <li
+                  key={h.lead_id}
+                  className={`rounded-lg border px-3 py-2 ${
+                    h.lead_id === displayLead.lead_id ? "border-violet-300 bg-violet-50" : "border-slate-200"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-mono text-xs text-slate-600">
+                      #{h.contact_inquiry_sequence} · {new Date(h.created_at).toLocaleString("de-DE")}
+                    </span>
+                    {h.lead_id !== displayLead.lead_id ? (
+                      <button
+                        type="button"
+                        className="text-xs text-cyan-700 underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedId(h.lead_id);
+                        }}
+                      >
+                        öffnen
+                      </button>
+                    ) : (
+                      <span className="text-xs text-violet-700">aktuell</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {forwardingLabel(h.forwarding_status)} · {LEAD_TRIAGE_LABELS_DE[h.triage_status]}
+                    {h.owner ? ` · Owner: ${h.owner}` : ""}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-xs text-slate-700">{h.message_preview}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
               <h3 className="text-sm font-medium text-slate-700">Nachricht</h3>
               <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-800">
-                {selected.message || "(leer)"}
+                {displayLead.message || "(leer)"}
               </pre>
             </div>
             <div className="space-y-3 text-sm">
               <div>
                 <span className="text-slate-600">Pipeline (Speicher):</span>{" "}
-                <span className="font-mono text-slate-900">{selected.pipeline_status}</span>
+                <span className="font-mono text-slate-900">{displayLead.pipeline_status}</span>
               </div>
               <div>
-                <span className="text-slate-600">Weiterleitung:</span> {forwardingLabel(selected.forwarding_status)}
-                {selected.webhook_at ? (
-                  <span className="ml-2 text-slate-500">({selected.webhook_at})</span>
+                <span className="text-slate-600">Weiterleitung:</span>{" "}
+                {forwardingLabel(displayLead.forwarding_status)}
+                {displayLead.webhook_at ? (
+                  <span className="ml-2 text-slate-500">({displayLead.webhook_at})</span>
                 ) : null}
               </div>
-              {selected.webhook_error ? (
+              {displayLead.webhook_error ? (
                 <div className="rounded-lg bg-red-50 p-2 text-red-800">
-                  Fehler: {selected.webhook_error}
+                  Fehler: {displayLead.webhook_error}
                 </div>
               ) : null}
               <div>
-                <span className="text-slate-600">Priorität / SLA-Bucket:</span> {selected.priority} /{" "}
-                {selected.sla_bucket}
+                <span className="text-slate-600">Priorität / SLA-Bucket:</span> {displayLead.priority} /{" "}
+                {displayLead.sla_bucket}
               </div>
             </div>
           </div>
@@ -467,6 +639,36 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 onChange={(e) => setDraftOwner(e.target.value)}
               />
             </label>
+            <label className="block text-sm">
+              <span className="font-medium text-slate-700">Dubletten-Review</span>
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                value={draftDuplicateReview}
+                onChange={(e) =>
+                  setDraftDuplicateReview(e.target.value as LeadInboxItem["duplicate_review"])
+                }
+              >
+                {(Object.keys(DUPLICATE_REVIEW_LABELS) as LeadInboxItem["duplicate_review"][]).map((k) => (
+                  <option key={k} value={k}>
+                    {DUPLICATE_REVIEW_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="md:col-span-2">
+              <label className="block text-sm">
+                <span className="font-medium text-slate-700">
+                  Verknüpfte Anfrage-IDs (UUID, kommagetrennt, max. 20)
+                </span>
+                <textarea
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs"
+                  rows={2}
+                  placeholder="z. B. manuell zusammenhängende Leads"
+                  value={draftRelatedRaw}
+                  onChange={(e) => setDraftRelatedRaw(e.target.value)}
+                />
+              </label>
+            </div>
             <div className="md:col-span-2">
               <label className="block text-sm">
                 <span className="font-medium text-slate-700">Interne Notiz</span>
@@ -483,10 +685,15 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
               disabled={saving}
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
               onClick={() =>
-                void patchLead(selected.lead_id, { owner: draftOwner, internal_note: draftNote })
+                void patchLead(displayLead.lead_id, {
+                  owner: draftOwner,
+                  internal_note: draftNote,
+                  duplicate_review: draftDuplicateReview,
+                  manual_related_lead_ids: parseRelatedIds(draftRelatedRaw),
+                })
               }
             >
-              Notiz &amp; Owner speichern
+              Ops-Felder speichern
             </button>
             {actionMsg ? <p className="text-sm text-slate-600">{actionMsg}</p> : null}
           </div>
@@ -494,13 +701,13 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
           <div className="mt-6 border-t border-slate-100 pt-4">
             <h3 className="text-sm font-medium text-slate-700">Aktivität (intern)</h3>
             <ul className="mt-2 max-h-48 space-y-2 overflow-auto text-xs text-slate-600">
-              {[...selected.activities].reverse().map((a, i) => (
+              {[...displayLead.activities].reverse().map((a, i) => (
                 <li key={`${a.at}-${i}`} className="border-b border-slate-100 pb-2">
                   <span className="font-mono text-slate-500">{a.at}</span> · {a.action}
                   {a.detail ? <span className="text-slate-700"> — {a.detail}</span> : null}
                 </li>
               ))}
-              {selected.activities.length === 0 ? <li>Keine Einträge.</li> : null}
+              {displayLead.activities.length === 0 ? <li>Keine Einträge.</li> : null}
             </ul>
           </div>
         </div>
