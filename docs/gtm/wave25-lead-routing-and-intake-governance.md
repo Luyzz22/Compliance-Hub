@@ -76,6 +76,8 @@ Format: Append-only JSON Lines; Admin-API führt `lead_inquiry` + nachfolgende `
 
 Antwort enthält gekürzte `message_preview` und volle Kontaktdaten – **nur intern**, nicht öffentlich verlinken.
 
+**Weiterführung:** [Wave 26 – Internes Lead-Inbox](./wave26-internal-lead-inbox.md) (`/admin/leads`, Triage-Status, Session-Cookie, `ops-state.json`).
+
 ---
 
 ## 6. Spam / Missbrauch
@@ -126,7 +128,8 @@ Vollständige **Datenschutzerklärung** gehört auf die öffentliche Website; di
 | `LEAD_INBOUND_WEBHOOK_URL` | Ziel-URL für Outbound-Payload |
 | `LEAD_INBOUND_WEBHOOK_SECRET` | Optional: `Authorization: Bearer …` |
 | `LEAD_INQUIRY_STORE_PATH` | Optional: Pfad zur JSONL-Datei |
-| `LEAD_ADMIN_SECRET` | Bearer für Admin-API |
+| `LEAD_ADMIN_SECRET` | Bearer / Session-Login für Admin-API und `/admin/leads` |
+| `LEAD_INQUIRY_OPS_PATH` | Optional: Pfad zu `ops-state.json` (Triage, Wave 26) |
 | `LEAD_REQUIRE_BUSINESS_EMAIL` | `1` = Freemail-Domains ablehnen |
 
 ---

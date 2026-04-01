@@ -42,3 +42,4 @@ next-env.d.ts
 
 # Lead store (JSONL, lokal / tmp – Ordner via .gitkeep)
 /data/lead-inquiries/*.jsonl
+/data/lead-inquiries/ops-state.json
