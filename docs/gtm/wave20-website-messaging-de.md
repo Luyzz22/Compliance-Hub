@@ -1,6 +1,7 @@
 # Wave 20 – Website-Landingpage (Messaging, DE)
 
 **Zweck:** Copy-Rohbau für Hero, Paket-Sektionen und Ablauf – **ohne Layout/Design**.  
+**Produkt-Website:** [https://complywithai.de/](https://complywithai.de/) ist die **kanonische Mainpage** des Compliance-AI-Projekts (primäre produktionsnahe Homepage). Wave-20-Messaging richtet sich daran aus; die statische `website/compliancehub-landing.html` ist ein separates Quell-Artefakt (Wave 22, siehe [`wave22-landingpage-notes.md`](./wave22-landingpage-notes.md)).  
 **Bezug Wave 19:** Gleiche **SKU-Bezeichnungen** wie im [Wave-19-Stub](./wave19-pricing-sales-playbook-stub.md): *AI Act Readiness*, *Governance & Evidence*, *Enterprise Connectors*.  
 **Rechtliches:** Formulierungen sind bewusst vorsichtig; vor Go-Live **Legal/Compliance-Review**.
 
@@ -140,4 +141,4 @@ Die konkrete rechtliche Bewertung verbleibt bei Ihnen und Ihren Beauftragten; Co
 - Tone of Voice: `docs/gtm/tone_of_voice_de.md`
 - Sales-Deck-Struktur: `docs/gtm/wave20-sales-deck-outline.md`
 - **Claims / Disclaimers (Wave 21):** `docs/gtm/compliance-statement-library-de.md`, `docs/gtm/statements/statements.v1.json`
-- **Umsetzung Landingpage (Wave 22):** `website/compliancehub-landing.html` · Notizen: [`wave22-landingpage-notes.md`](./wave22-landingpage-notes.md) · **Live-Mainpage:** [complywithai.de](https://complywithai.de/)
+- **Wave 22 (statisches Artefakt):** `website/compliancehub-landing.html` · [`wave22-landingpage-notes.md`](./wave22-landingpage-notes.md) · **Kanonische Homepage:** [complywithai.de](https://complywithai.de/)
