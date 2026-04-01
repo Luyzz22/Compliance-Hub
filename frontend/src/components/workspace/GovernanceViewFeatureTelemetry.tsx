@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import { useWorkspaceMode } from "@/hooks/useWorkspaceMode";
 import {

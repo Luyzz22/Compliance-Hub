@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Lead store (JSONL, lokal / tmp – Ordner via .gitkeep)
+/data/lead-inquiries/*.jsonl

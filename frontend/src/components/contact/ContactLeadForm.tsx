@@ -10,15 +10,19 @@ import { PUBLIC_CONTACT_EMAIL, PUBLIC_CONTACT_MAILTO } from "@/lib/publicContact
 
 type Status = "idle" | "submitting" | "success" | "error";
 
+type Delivery = "forwarded" | "stored" | "stored_forward_failed";
+
 export function ContactLeadForm() {
   const sp = useSearchParams();
   const quelleRaw = sp.get("quelle");
   const quelle =
     quelleRaw && quelleRaw.trim() ? quelleRaw.trim().slice(0, 120) : "kontakt-direct";
 
+  const [formOpenedAt] = useState(() => Date.now());
   const startedRef = useRef(false);
   const [status, setStatus] = useState<Status>("idle");
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [successDeliveryNote, setSuccessDeliveryNote] = useState<string | null>(null);
 
   const markStarted = () => {
     if (startedRef.current) return;
@@ -39,6 +43,7 @@ export function ContactLeadForm() {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErrorDetail(null);
+    setSuccessDeliveryNote(null);
     sendMarketingEvent({ event: "lead_form_submit_attempt", quelle });
     setStatus("submitting");
 
@@ -52,6 +57,7 @@ export function ContactLeadForm() {
       message: (fd.get("message") as string) || "",
       source_page: quelle,
       company_website,
+      form_opened_at: formOpenedAt,
     };
 
     try {
@@ -60,15 +66,55 @@ export function ContactLeadForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        delivery?: Delivery;
+        delivery_note_de?: string;
+        retry_after_sec?: number;
+      };
+
+      if (res.status === 429) {
+        setStatus("error");
+        if (data.error === "duplicate_cooldown") {
+          setErrorDetail("duplicate");
+        } else {
+          setErrorDetail("rate_limited");
+        }
+        sendMarketingEvent({ event: "lead_form_rate_limited", quelle });
+        return;
+      }
+
       if (!res.ok) {
         setStatus("error");
-        setErrorDetail("validation");
+        if (data.error === "too_fast") {
+          setErrorDetail("too_fast");
+        } else if (data.error === "business_email_required") {
+          setErrorDetail("business_email");
+        } else {
+          setErrorDetail("validation");
+        }
         sendMarketingEvent({ event: "lead_form_submit_error", quelle });
         return;
       }
-      setStatus("success");
-      sendMarketingEvent({ event: "lead_form_submitted", quelle });
-      e.currentTarget.reset();
+
+      if (data.ok && data.delivery) {
+        setStatus("success");
+        if (data.delivery_note_de) {
+          setSuccessDeliveryNote(data.delivery_note_de);
+        }
+        sendMarketingEvent({
+          event: "lead_form_submitted",
+          quelle,
+          delivery: data.delivery,
+        });
+        e.currentTarget.reset();
+        return;
+      }
+
+      setStatus("error");
+      setErrorDetail("server");
+      sendMarketingEvent({ event: "lead_form_submit_error", quelle });
     } catch {
       setStatus("error");
       setErrorDetail("network");
@@ -88,8 +134,22 @@ export function ContactLeadForm() {
           Wir prüfen Ihre Angaben und melden uns in der Regel innerhalb weniger Werktage bei Ihnen.
           Die Anfrage ist unverbindlich und begründet keine rechtsverbindliche Zusage.
         </p>
+        {successDeliveryNote ? (
+          <p
+            className="mt-4 rounded-lg border border-amber-200/90 bg-amber-50/90 p-3 text-sm text-amber-950"
+            role="status"
+          >
+            {successDeliveryNote}
+          </p>
+        ) : null}
         <p className="mt-3 text-xs text-emerald-900/80">
           Hinweis: Erstkontakt ersetzt keine Rechts- oder Steuerberatung.
+        </p>
+        <p className="mt-4 text-xs text-emerald-900/70">
+          Alternativ bei Rückfragen:{" "}
+          <a className="font-semibold text-cyan-800 underline" href={PUBLIC_CONTACT_MAILTO}>
+            {PUBLIC_CONTACT_EMAIL}
+          </a>
         </p>
       </div>
     );
@@ -98,12 +158,23 @@ export function ContactLeadForm() {
   return (
     <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-md shadow-slate-200/40 sm:p-8">
       <p className="text-sm leading-relaxed text-slate-600">
-        Füllen Sie die Pflichtfelder aus. Wir nutzen Ihre geschäftliche E-Mail ausschließlich zur
-        Bearbeitung dieser Anfrage. Die Anfrage ist <strong>unverbindlich</strong>. Es entstehen
-        keine automatischen Verträge. Erstkontakt ersetzt <strong>keine Rechtsberatung</strong>.
+        Füllen Sie die Pflichtfelder aus. Wir verarbeiten die Angaben nur zur Bearbeitung Ihrer
+        Anfrage (Art. 6 Abs. 1 lit. b DSGVO, vorvertraglich). Empfänger: zuständiges Team bei
+        Compliance Hub; keine Weitergabe zu Werbezwecken ohne gesonderte Einwilligung. Die Anfrage
+        ist <strong>unverbindlich</strong>. Erstkontakt ersetzt <strong>keine Rechtsberatung</strong>.
+        Aufbewahrung und Löschung: siehe die Datenschutzerklärung auf{" "}
+        <a
+          className="font-medium text-cyan-700 underline-offset-2 hover:underline"
+          href="https://complywithai.de/"
+        >
+          complywithai.de
+        </a>
+        .
       </p>
 
       <form className="relative mt-6 space-y-4" onSubmit={onSubmit} noValidate>
+        <input type="hidden" name="form_opened_at" value={formOpenedAt} readOnly />
+
         {/* Honeypot */}
         <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
           <label htmlFor="company_website">Website</label>
@@ -145,6 +216,7 @@ export function ContactLeadForm() {
               autoComplete="email"
               maxLength={254}
               onFocus={markStarted}
+              onChange={clearError}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
             />
           </div>
@@ -213,14 +285,22 @@ export function ContactLeadForm() {
             role="alert"
             aria-live="assertive"
           >
-            <p className="font-medium">Senden fehlgeschlagen.</p>
+            <p className="font-medium">Senden fehlgeschlagen oder nicht möglich.</p>
             <p className="mt-1 text-amber-900/90">
               {errorDetail === "network"
                 ? "Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
-                : "Bitte prüfen Sie die Pflichtfelder und Ihre E-Mail-Adresse."}
+                : errorDetail === "too_fast"
+                  ? "Bitte warten Sie einen Moment und senden Sie das Formular erneut (Schutz vor automatisierten Eingaben)."
+                  : errorDetail === "duplicate"
+                    ? "Für diese E-Mail wurde kürzlich bereits eine Anfrage registriert. Bitte warten Sie einige Minuten oder nutzen Sie die E-Mail-Adresse unten."
+                    : errorDetail === "rate_limited"
+                      ? "Zu viele Anfragen von Ihrer Verbindung. Bitte versuchen Sie es später erneut."
+                      : errorDetail === "business_email"
+                        ? "Bitte nutzen Sie eine geschäftliche E-Mail-Adresse (keine Freemail-Anbieter)."
+                        : "Bitte prüfen Sie die Pflichtfelder und Ihre E-Mail-Adresse."}
             </p>
             <p className="mt-2 text-xs">
-              Alternativ erreichen Sie uns direkt per E-Mail:{" "}
+              Direkter Kontakt:{" "}
               <a className="font-semibold text-cyan-800 underline" href={PUBLIC_CONTACT_MAILTO}>
                 {PUBLIC_CONTACT_EMAIL}
               </a>

@@ -107,3 +107,5 @@ Abgleich: `docs/gtm/compliance-statement-library-de.md`, `docs/gtm/tone_of_voice
 ---
 
 *Wave 24 – form-first Kontakt, mailto sekundär.*
+
+**Nachfolger:** [Wave 25 – Lead-Routing & Intake-Governance](./wave25-lead-routing-and-intake-governance.md) (Routing, JSONL-Persistenz, Webhook-Retries, Admin-API, Anti-Abuse).
