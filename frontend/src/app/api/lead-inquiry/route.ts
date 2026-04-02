@@ -23,6 +23,11 @@ import {
   type LeadStoreRecord,
 } from "@/lib/leadPersistence";
 import { appendLeadOpsActivity } from "@/lib/leadOpsState";
+import type { LegacyInboundDelivery } from "@/lib/leadSyncPayload";
+import {
+  enqueueLeadSyncAfterIngest,
+  processLeadSyncJobById,
+} from "@/lib/leadSyncDispatcher";
 import { getClientIp, checkLeadIpRateLimit } from "@/lib/leadRateLimit";
 import { determineLeadRoute } from "@/lib/leadRouting";
 
@@ -220,6 +225,7 @@ export async function POST(req: Request) {
   const webhook = process.env.LEAD_INBOUND_WEBHOOK_URL?.trim();
   let delivery: "forwarded" | "stored" | "stored_forward_failed" = "stored";
   let delivery_note_de: string | undefined;
+  let legacyInboundDelivery: LegacyInboundDelivery = "not_configured";
 
   if (webhook) {
     const wh = await dispatchLeadWebhook(webhook, outbound, 3);
@@ -248,6 +254,24 @@ export async function POST(req: Request) {
       });
       console.warn("[lead-webhook]", JSON.stringify({ trace_id, lead_id, ok: false, err: wh.error }));
     }
+    legacyInboundDelivery =
+      delivery === "forwarded"
+        ? "forwarded"
+        : delivery === "stored_forward_failed"
+          ? "stored_forward_failed"
+          : "stored";
+  }
+
+  try {
+    const jobIds = await enqueueLeadSyncAfterIngest({
+      lead_id,
+      legacyInboundDelivery,
+    });
+    for (const jid of jobIds) {
+      await processLeadSyncJobById(jid);
+    }
+  } catch (e) {
+    console.warn("[lead-sync] enqueue_process_failed", e);
   }
 
   return NextResponse.json({
