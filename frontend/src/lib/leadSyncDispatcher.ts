@@ -24,6 +24,7 @@ export const LEAD_SYNC_MAX_ATTEMPTS = 6;
 export function getEnabledLeadSyncTargets(): LeadSyncTarget[] {
   const t: LeadSyncTarget[] = [];
   if (process.env.LEAD_SYNC_N8N_URL?.trim()) t.push("n8n_webhook");
+  if (process.env.HUBSPOT_ACCESS_TOKEN?.trim()) t.push("hubspot");
   if (process.env.LEAD_SYNC_HUBSPOT_STUB === "1") t.push("hubspot_stub");
   if (process.env.LEAD_SYNC_PIPEDRIVE_STUB === "1") t.push("pipedrive_stub");
   return t;
@@ -133,7 +134,7 @@ export async function processLeadSyncJobById(jobId: string): Promise<LeadSyncJob
     } catch {
       /* ignore */
     }
-  } else if (attempt >= LEAD_SYNC_MAX_ATTEMPTS) {
+  } else if (result.retryable === false || attempt >= LEAD_SYNC_MAX_ATTEMPTS) {
     await updateLeadSyncJob(jobId, (j) => ({
       ...j,
       status: "dead_letter",
@@ -144,7 +145,7 @@ export async function processLeadSyncJobById(jobId: string): Promise<LeadSyncJob
       await appendLeadOpsActivity(
         job.lead_id,
         "lead_sync_dead_letter",
-        `${job.target}: ${result.error ?? "?"}`,
+        `${job.target}: ${result.error ?? "?"}${result.retryable === false ? " (non-retryable)" : ""}`,
       );
     } catch {
       /* ignore */
