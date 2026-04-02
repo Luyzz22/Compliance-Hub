@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LEAD_SEGMENTS } from "@/lib/leadCapture";
 import type { LeadContactHistoryEntry, LeadInboxItem } from "@/lib/leadInboxTypes";
+import type { LeadSyncJobApi } from "@/lib/leadSyncTypes";
 import { LEAD_TRIAGE_LABELS_DE, LEAD_TRIAGE_STATUSES } from "@/lib/leadTriage";
 
 type Props = {
@@ -23,6 +24,20 @@ const DUPLICATE_REVIEW_LABELS: Record<LeadInboxItem["duplicate_review"], string>
   confirmed: "Zusammenhang bestätigt (manuell)",
 };
 
+const SYNC_TARGET_LABELS: Record<LeadSyncJobApi["target"], string> = {
+  n8n_webhook: "n8n (Webhook)",
+  hubspot_stub: "HubSpot (Stub)",
+  pipedrive_stub: "Pipedrive (Stub)",
+};
+
+function syncStatusLabel(s: LeadSyncJobApi["status"]): string {
+  if (s === "pending") return "Ausstehend";
+  if (s === "retrying") return "Wiederholung";
+  if (s === "sent") return "Gesendet";
+  if (s === "failed") return "Fehlgeschlagen";
+  return "Dead Letter";
+}
+
 type PatchBody = {
   triage_status?: string;
   owner?: string;
@@ -41,7 +56,9 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailItem, setDetailItem] = useState<LeadInboxItem | null>(null);
   const [contactHistory, setContactHistory] = useState<LeadContactHistoryEntry[]>([]);
+  const [syncJobs, setSyncJobs] = useState<LeadSyncJobApi[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [syncRetryingId, setSyncRetryingId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     triage_status: "",
     segment: "",
@@ -128,6 +145,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     if (!selectedId || authed !== true) {
       setDetailItem(null);
       setContactHistory([]);
+      setSyncJobs([]);
       return;
     }
     let cancelled = false;
@@ -138,12 +156,14 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
         return (await r.json()) as {
           item?: LeadInboxItem;
           contact_history?: LeadContactHistoryEntry[];
+          sync_jobs?: LeadSyncJobApi[];
         };
       })
       .then((data) => {
         if (cancelled || !data) return;
         if (data.item) setDetailItem(data.item);
         if (data.contact_history) setContactHistory(data.contact_history);
+        setSyncJobs(Array.isArray(data.sync_jobs) ? data.sync_jobs : []);
       })
       .finally(() => {
         if (!cancelled) setDetailLoading(false);
@@ -186,6 +206,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     setSelectedId(null);
     setDetailItem(null);
     setContactHistory([]);
+    setSyncJobs([]);
   }
 
   function parseRelatedIds(raw: string): string[] {
@@ -229,6 +250,41 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
       setActionMsg("Netzwerkfehler beim Speichern.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function retryLeadSyncJob(leadId: string, jobId: string) {
+    setSyncRetryingId(jobId);
+    setActionMsg(null);
+    try {
+      const r = await fetch(`/api/admin/lead-inquiries/${leadId}/sync-retry`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ job_id: jobId }),
+      });
+      const data = (await r.json()) as { ok?: boolean; job?: LeadSyncJobApi | null };
+      if (!r.ok) {
+        setActionMsg("Sync-Retry fehlgeschlagen.");
+        return;
+      }
+      if (data.job) {
+        setSyncJobs((prev) => {
+          const rest = prev.filter((j) => j.job_id !== data.job!.job_id);
+          return [...rest, data.job!].sort((a, b) => a.target.localeCompare(b.target));
+        });
+      }
+      const detailR = await fetch(`/api/admin/lead-inquiries/${leadId}`, { credentials: "include" });
+      if (detailR.ok) {
+        const d = (await detailR.json()) as { item?: LeadInboxItem; sync_jobs?: LeadSyncJobApi[] };
+        if (d.item && selectedId === leadId) setDetailItem(d.item);
+        if (Array.isArray(d.sync_jobs) && selectedId === leadId) setSyncJobs(d.sync_jobs);
+      }
+      setActionMsg("Sync-Job erneut ausgeführt.");
+    } catch {
+      setActionMsg("Netzwerkfehler beim Sync-Retry.");
+    } finally {
+      setSyncRetryingId(null);
     }
   }
 
@@ -597,6 +653,67 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 </li>
               ))}
             </ul>
+          </div>
+
+          <div className="mt-6 border-t border-slate-100 pt-4">
+            <h3 className="text-sm font-medium text-slate-800">GTM-Sync (Wave 28)</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Status pro Ziel (n8n / CRM-Stubs). Ohne konfigurierte Ziele entstehen keine Jobs.
+            </p>
+            {syncJobs.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-500">Keine Sync-Jobs für diesen Lead.</p>
+            ) : (
+              <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full min-w-[640px] border-collapse text-left text-xs">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                    <tr>
+                      <th className="px-2 py-2 font-medium">Ziel</th>
+                      <th className="px-2 py-2 font-medium">Status</th>
+                      <th className="px-2 py-2 font-medium">Versuche</th>
+                      <th className="px-2 py-2 font-medium">Letzter Versuch</th>
+                      <th className="px-2 py-2 font-medium">Nächster Retry</th>
+                      <th className="px-2 py-2 font-medium">Fehler</th>
+                      <th className="px-2 py-2 font-medium" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {syncJobs.map((j) => (
+                      <tr key={j.job_id} className="border-b border-slate-100">
+                        <td className="px-2 py-2 text-slate-800">{SYNC_TARGET_LABELS[j.target]}</td>
+                        <td className="px-2 py-2">{syncStatusLabel(j.status)}</td>
+                        <td className="px-2 py-2 font-mono">{j.attempt_count}</td>
+                        <td className="px-2 py-2 text-slate-600">
+                          {j.last_attempt_at
+                            ? new Date(j.last_attempt_at).toLocaleString("de-DE")
+                            : "—"}
+                        </td>
+                        <td className="px-2 py-2 text-slate-600">
+                          {j.next_retry_at ? new Date(j.next_retry_at).toLocaleString("de-DE") : "—"}
+                        </td>
+                        <td className="max-w-[200px] truncate px-2 py-2 text-red-700" title={j.last_error}>
+                          {j.last_error ?? "—"}
+                        </td>
+                        <td className="px-2 py-2">
+                          {j.status === "failed" ||
+                          j.status === "dead_letter" ||
+                          j.status === "pending" ||
+                          j.status === "retrying" ? (
+                            <button
+                              type="button"
+                              disabled={syncRetryingId === j.job_id}
+                              className="text-cyan-700 underline disabled:opacity-50"
+                              onClick={() => void retryLeadSyncJob(displayLead.lead_id, j.job_id)}
+                            >
+                              {syncRetryingId === j.job_id ? "…" : "Retry"}
+                            </button>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">

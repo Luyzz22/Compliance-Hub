@@ -12,7 +12,12 @@ export type LeadOpsActivityAction =
   | "contact_repeat_detected"
   | "manual_related_leads_updated"
   | "duplicate_review_updated"
-  | "possible_duplicate_noted";
+  | "possible_duplicate_noted"
+  | "lead_sync_job_created"
+  | "lead_sync_sent"
+  | "lead_sync_failed"
+  | "lead_sync_retried"
+  | "lead_sync_dead_letter";
 
 export type LeadOpsActivity = {
   at: string;

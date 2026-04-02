@@ -14,6 +14,8 @@ import {
   getMergedLeadAdminRow,
   readAllLeadRecordsMerged,
 } from "@/lib/leadPersistence";
+import { redactLeadSyncJobForApi } from "@/lib/leadSyncDispatcher";
+import { listLeadSyncJobsForLead } from "@/lib/leadSyncStore";
 
 export const runtime = "nodejs";
 
@@ -43,8 +45,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ leadId: string 
   const merged = mergeLeadsWithOps([row], ops);
   const item = attachContactRollups(merged, allRows, ops)[0] ?? merged[0]!;
   const contact_history = buildContactHistoryItems(leadId, allRows, ops);
+  const sync_jobs_raw = await listLeadSyncJobsForLead(leadId);
+  const sync_jobs = sync_jobs_raw.map(redactLeadSyncJobForApi);
 
-  return NextResponse.json({ ok: true, item, contact_history });
+  return NextResponse.json({ ok: true, item, contact_history, sync_jobs });
 }
 
 type PatchBody = {
