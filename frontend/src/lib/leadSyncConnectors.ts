@@ -1,13 +1,9 @@
 import "server-only";
 
-import type { LeadSyncPayloadV1, LeadSyncTarget } from "@/lib/leadSyncTypes";
+import { runHubspotLeadSyncConnector } from "@/lib/hubspotLeadSyncConnector";
+import type { LeadSyncConnectorResult, LeadSyncPayloadV1, LeadSyncTarget } from "@/lib/leadSyncTypes";
 
-export type ConnectorResult = {
-  ok: boolean;
-  http_status?: number;
-  error?: string;
-  mock_result?: unknown;
-};
+export type ConnectorResult = LeadSyncConnectorResult;
 
 const N8N_TIMEOUT_MS = 25_000;
 
@@ -18,6 +14,8 @@ export async function runLeadSyncConnector(
   switch (target) {
     case "n8n_webhook":
       return runN8nWebhookConnector(payload);
+    case "hubspot":
+      return runHubspotLeadSyncConnector(payload);
     case "hubspot_stub":
       return runHubspotStubConnector(payload);
     case "pipedrive_stub":

@@ -2,7 +2,7 @@
  * Wave 28 – Lead-Sync-Jobs (getrennt von Roh-Anfrage / JSONL lead_inquiry).
  */
 
-export type LeadSyncTarget = "n8n_webhook" | "hubspot_stub" | "pipedrive_stub";
+export type LeadSyncTarget = "n8n_webhook" | "hubspot" | "hubspot_stub" | "pipedrive_stub";
 
 export type LeadSyncJobStatus =
   | "pending"
@@ -65,7 +65,7 @@ export type LeadSyncJob = {
   last_error?: string;
   last_http_status?: number;
   next_retry_at?: string;
-  /** Stub-Ergebnis oder Metadaten (keine Secrets). */
+  /** Downstream-Ergebnis (Stub, n8n-Meta, HubSpot-IDs usw.; keine Secrets). */
   mock_result?: unknown;
   /** Fixierter Payload pro Job (Retries senden dasselbe Snapshot). */
   payload_snapshot?: LeadSyncPayloadV1;
@@ -73,3 +73,13 @@ export type LeadSyncJob = {
 
 /** API-/UI-Ansicht ohne großen Payload-Snapshot. */
 export type LeadSyncJobApi = Omit<LeadSyncJob, "payload_snapshot">;
+
+/** Rückgabe eines Downstream-Connectors (inkl. Retry-Hinweis für den Dispatcher). */
+export type LeadSyncConnectorResult = {
+  ok: boolean;
+  http_status?: number;
+  error?: string;
+  mock_result?: unknown;
+  /** `false` = sofort Dead Letter (z. B. Auth/Validation). */
+  retryable?: boolean;
+};

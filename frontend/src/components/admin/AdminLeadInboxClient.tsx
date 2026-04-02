@@ -26,9 +26,41 @@ const DUPLICATE_REVIEW_LABELS: Record<LeadInboxItem["duplicate_review"], string>
 
 const SYNC_TARGET_LABELS: Record<LeadSyncJobApi["target"], string> = {
   n8n_webhook: "n8n (Webhook)",
+  hubspot: "HubSpot",
   hubspot_stub: "HubSpot (Stub)",
   pipedrive_stub: "Pipedrive (Stub)",
 };
+
+const HUBSPOT_COMPANY_ASSOC_DE: Record<string, string> = {
+  linked: "Firma verknüpft",
+  skipped_no_match: "Firma: kein exakter Treffer (Anlegen nicht aktiv)",
+  skipped_ambiguous: "Firma: mehrere Treffer, Zuordnung übersprungen",
+  skipped_weak_name: "Firma: Name zu kurz oder Platzhalter",
+  skipped_create_disabled: "Firma: Anlegen deaktiviert",
+};
+
+/** Client-sichere Auswertung von `mock_result` (kein server-only Import). */
+function hubspotMockDetails(mock: unknown): {
+  contact_id: string;
+  company_id?: string;
+  note_id?: string;
+  note_action: string;
+  company_association: string;
+  synced_at?: string;
+} | null {
+  if (!mock || typeof mock !== "object") return null;
+  const m = mock as Record<string, unknown>;
+  if (m.system !== "hubspot" || typeof m.contact_id !== "string") return null;
+  return {
+    contact_id: m.contact_id,
+    company_id: typeof m.company_id === "string" ? m.company_id : undefined,
+    note_id: typeof m.note_id === "string" ? m.note_id : undefined,
+    note_action: typeof m.note_action === "string" ? m.note_action : "—",
+    company_association:
+      typeof m.company_association === "string" ? m.company_association : "—",
+    synced_at: typeof m.synced_at === "string" ? m.synced_at : undefined,
+  };
+}
 
 function syncStatusLabel(s: LeadSyncJobApi["status"]): string {
   if (s === "pending") return "Ausstehend";
@@ -658,13 +690,13 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
           <div className="mt-6 border-t border-slate-100 pt-4">
             <h3 className="text-sm font-medium text-slate-800">GTM-Sync (Wave 28)</h3>
             <p className="mt-1 text-xs text-slate-500">
-              Status pro Ziel (n8n / CRM-Stubs). Ohne konfigurierte Ziele entstehen keine Jobs.
+              Status pro Ziel (n8n, HubSpot, Stubs). Ohne konfigurierte Ziele entstehen keine Jobs.
             </p>
             {syncJobs.length === 0 ? (
               <p className="mt-2 text-sm text-slate-500">Keine Sync-Jobs für diesen Lead.</p>
             ) : (
               <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full min-w-[640px] border-collapse text-left text-xs">
+                <table className="w-full min-w-[880px] border-collapse text-left text-xs">
                   <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
                     <tr>
                       <th className="px-2 py-2 font-medium">Ziel</th>
@@ -673,43 +705,74 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                       <th className="px-2 py-2 font-medium">Letzter Versuch</th>
                       <th className="px-2 py-2 font-medium">Nächster Retry</th>
                       <th className="px-2 py-2 font-medium">Fehler</th>
+                      <th className="px-2 py-2 font-medium">HubSpot-Referenz</th>
                       <th className="px-2 py-2 font-medium" />
                     </tr>
                   </thead>
                   <tbody>
-                    {syncJobs.map((j) => (
-                      <tr key={j.job_id} className="border-b border-slate-100">
-                        <td className="px-2 py-2 text-slate-800">{SYNC_TARGET_LABELS[j.target]}</td>
-                        <td className="px-2 py-2">{syncStatusLabel(j.status)}</td>
-                        <td className="px-2 py-2 font-mono">{j.attempt_count}</td>
-                        <td className="px-2 py-2 text-slate-600">
-                          {j.last_attempt_at
-                            ? new Date(j.last_attempt_at).toLocaleString("de-DE")
-                            : "—"}
-                        </td>
-                        <td className="px-2 py-2 text-slate-600">
-                          {j.next_retry_at ? new Date(j.next_retry_at).toLocaleString("de-DE") : "—"}
-                        </td>
-                        <td className="max-w-[200px] truncate px-2 py-2 text-red-700" title={j.last_error}>
-                          {j.last_error ?? "—"}
-                        </td>
-                        <td className="px-2 py-2">
-                          {j.status === "failed" ||
-                          j.status === "dead_letter" ||
-                          j.status === "pending" ||
-                          j.status === "retrying" ? (
-                            <button
-                              type="button"
-                              disabled={syncRetryingId === j.job_id}
-                              className="text-cyan-700 underline disabled:opacity-50"
-                              onClick={() => void retryLeadSyncJob(displayLead.lead_id, j.job_id)}
+                    {syncJobs.map((j) => {
+                      const hs = hubspotMockDetails(j.mock_result);
+                      return (
+                          <tr key={j.job_id} className="border-b border-slate-100">
+                            <td className="px-2 py-2 text-slate-800">{SYNC_TARGET_LABELS[j.target]}</td>
+                            <td className="px-2 py-2">{syncStatusLabel(j.status)}</td>
+                            <td className="px-2 py-2 font-mono">{j.attempt_count}</td>
+                            <td className="px-2 py-2 text-slate-600">
+                              {j.last_attempt_at
+                                ? new Date(j.last_attempt_at).toLocaleString("de-DE")
+                                : "—"}
+                            </td>
+                            <td className="px-2 py-2 text-slate-600">
+                              {j.next_retry_at ? new Date(j.next_retry_at).toLocaleString("de-DE") : "—"}
+                            </td>
+                            <td
+                              className="max-w-[200px] truncate px-2 py-2 text-red-700"
+                              title={j.last_error}
                             >
-                              {syncRetryingId === j.job_id ? "…" : "Retry"}
-                            </button>
-                          ) : null}
-                        </td>
-                      </tr>
-                    ))}
+                              {j.last_error ?? "—"}
+                            </td>
+                            <td className="max-w-[220px] px-2 py-2 align-top text-[10px] text-slate-600">
+                              {hs ? (
+                                <ul className="list-inside list-disc space-y-0.5 font-mono">
+                                  <li>Kontakt {hs.contact_id}</li>
+                                  {hs.company_id ? <li>Firma {hs.company_id}</li> : null}
+                                  {hs.note_id ? (
+                                    <li>
+                                      Notiz {hs.note_id} ({hs.note_action})
+                                    </li>
+                                  ) : null}
+                                  <li className="list-none pl-0 font-sans text-slate-500">
+                                    {HUBSPOT_COMPANY_ASSOC_DE[hs.company_association] ??
+                                      hs.company_association}
+                                  </li>
+                                  {hs.synced_at ? (
+                                    <li className="list-none pl-0 font-sans text-slate-400">
+                                      Sync {new Date(hs.synced_at).toLocaleString("de-DE")}
+                                    </li>
+                                  ) : null}
+                                </ul>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td className="px-2 py-2">
+                              {j.status === "failed" ||
+                              j.status === "dead_letter" ||
+                              j.status === "pending" ||
+                              j.status === "retrying" ? (
+                                <button
+                                  type="button"
+                                  disabled={syncRetryingId === j.job_id}
+                                  className="text-cyan-700 underline disabled:opacity-50"
+                                  onClick={() => void retryLeadSyncJob(displayLead.lead_id, j.job_id)}
+                                >
+                                  {syncRetryingId === j.job_id ? "…" : "Retry"}
+                                </button>
+                              ) : null}
+                            </td>
+                          </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
