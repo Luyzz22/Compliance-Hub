@@ -36,6 +36,11 @@ export function defaultMaterialRevisionForIngest(createdAtIso: string): string {
   return `ingest:${createdAtIso}`;
 }
 
+/** Eine stabile Revision pro Lead für den Pipedrive-Deal-Job (nicht ingest-Zeit). */
+export function pipedriveDealMaterialRevision(leadId: string): string {
+  return `pipedrive_deal:${leadId}`;
+}
+
 export function buildLeadSyncPayloadV1(input: {
   row: LeadAdminRow;
   inboxItem: LeadInboxItem;
