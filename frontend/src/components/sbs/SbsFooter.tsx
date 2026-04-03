@@ -28,7 +28,11 @@ export function SbsFooter() {
             Supplier
           </Link>
           <Link
-            href={contactPageHref("footer")}
+            href={contactPageHref({
+              quelle: "footer",
+              ctaId: "footer-kontakt",
+              ctaLabel: "Kontakt",
+            })}
             className="font-medium text-slate-600 hover:text-slate-900"
           >
             Kontakt

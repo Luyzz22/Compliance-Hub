@@ -1,3 +1,4 @@
+import type { LeadAttributionSnapshot, LeadAttributionSource } from "@/lib/leadAttribution";
 import type { LeadSegment } from "@/lib/leadCapture";
 import type { LeadDuplicateHint } from "@/lib/leadIdentity";
 import type { LeadDuplicateReviewStatus, LeadOpsActivity } from "@/lib/leadOpsTypes";
@@ -21,6 +22,12 @@ export type LeadInboxItem = {
   priority: string;
   sla_bucket: string;
   source_page: string;
+  /** Wave 30 – kanonische Attribution (aus Outbound, gespiegelt). */
+  attribution_source: LeadAttributionSource;
+  attribution_medium: string;
+  attribution_campaign: string;
+  attribution_cta_id: string;
+  attribution_cta_label: string;
   company: string;
   business_email: string;
   name: string;
@@ -45,6 +52,8 @@ export type LeadInboxItem = {
   other_contacts_on_same_account: number;
   manual_related_lead_ids: string[];
   duplicate_review: LeadDuplicateReviewStatus;
+  /** Rohfelder für Detailansicht (optional leer bei alten Leads). */
+  attribution: LeadAttributionSnapshot;
 };
 
 /** Timeline-Eintrag für Kontakt-Historie (Detail). */
@@ -58,6 +67,10 @@ export type LeadContactHistoryEntry = {
   owner: string;
   internal_note: string;
   source_page: string;
+  attribution_source: LeadAttributionSource;
+  attribution_medium: string;
+  attribution_campaign: string;
+  attribution_cta_label: string;
   segment: LeadSegment;
   message_preview: string;
   contact_inquiry_sequence: number;

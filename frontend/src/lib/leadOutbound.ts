@@ -1,15 +1,16 @@
+import type { LeadAttributionSnapshot } from "@/lib/leadAttribution";
 import type { LeadSegment } from "@/lib/leadCapture";
 import type { LeadDuplicateHint } from "@/lib/leadIdentity";
 import type { LeadRoute } from "@/lib/leadRouting";
 
 /** Stabile Webhook-/CRM-Version – bei Breaking Changes hochzählen. */
-export const LEAD_OUTBOUND_SCHEMA_VERSION = "1.1" as const;
+export const LEAD_OUTBOUND_SCHEMA_VERSION = "1.2" as const;
 
-export type LeadOutboundSchemaVersion = "1.0" | "1.1";
+export type LeadOutboundSchemaVersion = "1.0" | "1.1" | "1.2";
 
 /**
- * n8n-/CRM-freundlicher Outbound-Vertrag (Wave 25, erweitert Wave 27).
- * Neue Anfragen nutzen `1.1` inkl. Identity-Feldern; ältere JSONL-Zeilen können `1.0` sein.
+ * n8n-/CRM-freundlicher Outbound-Vertrag (Wave 25, erweitert Wave 27/30).
+ * Neue Anfragen nutzen `1.2` inkl. Identity + Attribution; ältere JSONL-Zeilen können `1.0`/`1.1` sein.
  */
 export type LeadOutboundPayloadV1 = {
   schema_version: LeadOutboundSchemaVersion;
@@ -28,13 +29,15 @@ export type LeadOutboundPayloadV1 = {
     priority: LeadRoute["priority"];
     sla_bucket: LeadRoute["sla_bucket"];
   };
-  /** Wave 27 – nur bei schema_version 1.1 gesetzt (CRM/n8n Dedup-Vorbereitung). */
+  /** Wave 27 – ab schema_version 1.1 (CRM/n8n Dedup-Vorbereitung). */
   lead_contact_key?: string;
   lead_account_key?: string | null;
   contact_inquiry_sequence?: number;
   contact_first_seen_at?: string;
   contact_latest_seen_at?: string;
   duplicate_hint?: LeadDuplicateHint;
+  /** Wave 30 – Attribution (UTM, Referrer, CTA); nur ab 1.2. */
+  attribution?: LeadAttributionSnapshot;
 };
 
 export type LeadOutboundIdentitySnapshot = {
@@ -59,6 +62,7 @@ export function buildLeadOutboundPayload(input: {
   identity: LeadOutboundIdentitySnapshot;
   /** Optional: gleicher Zeitstempel wie JSONL-Zeile (Persistenz/Webhook konsistent). */
   timestamp?: string;
+  attribution?: LeadAttributionSnapshot;
 }): LeadOutboundPayloadV1 {
   const { identity } = input;
   return {
@@ -84,5 +88,6 @@ export function buildLeadOutboundPayload(input: {
     contact_first_seen_at: identity.contact_first_seen_at,
     contact_latest_seen_at: identity.contact_latest_seen_at,
     duplicate_hint: identity.duplicate_hint,
+    ...(input.attribution ? { attribution: input.attribution } : {}),
   };
 }

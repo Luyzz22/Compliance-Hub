@@ -49,6 +49,9 @@ export async function GET(req: Request) {
   const forwarding = url.searchParams.get("forwarding_status")?.trim();
   const repeated = url.searchParams.get("repeated_contacts")?.trim();
   const unresolvedRep = url.searchParams.get("unresolved_repeated")?.trim();
+  const attributionSource = url.searchParams.get("attribution_source")?.trim();
+  const attributionCampaign = url.searchParams.get("attribution_campaign")?.trim();
+  const attributionMedium = url.searchParams.get("attribution_medium")?.trim();
 
   if (triage) {
     items = items.filter((i) => i.triage_status === triage);
@@ -67,6 +70,25 @@ export async function GET(req: Request) {
   }
   if (unresolvedRep === "1" || unresolvedRep === "true") {
     items = items.filter((i) => i.contact_has_unresolved_repeat);
+  }
+  if (attributionSource) {
+    items = items.filter((i) => i.attribution_source === attributionSource);
+  }
+  if (attributionCampaign) {
+    const needle = attributionCampaign.toLowerCase();
+    items = items.filter(
+      (i) =>
+        i.attribution_campaign.toLowerCase().includes(needle) ||
+        i.attribution.utm_campaign_raw.toLowerCase().includes(needle),
+    );
+  }
+  if (attributionMedium) {
+    const needle = attributionMedium.toLowerCase();
+    items = items.filter(
+      (i) =>
+        i.attribution_medium.toLowerCase().includes(needle) ||
+        i.attribution.utm_medium_raw.toLowerCase().includes(needle),
+    );
   }
 
   return NextResponse.json({

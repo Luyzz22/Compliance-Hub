@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { readSessionAttribution } from "@/lib/attributionSessionClient";
+import { LEAD_ATTRIBUTION_LIMITS } from "@/lib/leadAttribution";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY } from "@/lib/boardLayout";
 import { LEAD_SEGMENTS } from "@/lib/leadCapture";
 import { sendMarketingEvent } from "@/lib/marketingTelemetryClient";
@@ -17,6 +19,11 @@ export function ContactLeadForm() {
   const quelleRaw = sp.get("quelle");
   const quelle =
     quelleRaw && quelleRaw.trim() ? quelleRaw.trim().slice(0, 120) : "kontakt-direct";
+  const ctaIdFromUrl = (sp.get("cta_id")?.trim() ?? "").slice(0, LEAD_ATTRIBUTION_LIMITS.cta_id);
+  const ctaLabelFromUrl = (sp.get("cta_label")?.trim() ?? "").slice(
+    0,
+    LEAD_ATTRIBUTION_LIMITS.cta_label,
+  );
 
   const [formOpenedAt] = useState(() => Date.now());
   const startedRef = useRef(false);
@@ -49,6 +56,21 @@ export function ContactLeadForm() {
 
     const fd = new FormData(e.currentTarget);
     const company_website = (fd.get("company_website") as string) || "";
+    const sessionAttr = readSessionAttribution();
+    const uSrc =
+      sessionAttr?.utm_source ||
+      (sp.get("utm_source")?.trim() ?? "").slice(0, LEAD_ATTRIBUTION_LIMITS.utm);
+    const uMed =
+      sessionAttr?.utm_medium ||
+      (sp.get("utm_medium")?.trim() ?? "").slice(0, LEAD_ATTRIBUTION_LIMITS.utm);
+    const uCamp =
+      sessionAttr?.utm_campaign ||
+      (sp.get("utm_campaign")?.trim() ?? "").slice(0, LEAD_ATTRIBUTION_LIMITS.utm);
+    const pageReferrer =
+      typeof document !== "undefined"
+        ? document.referrer.trim().slice(0, LEAD_ATTRIBUTION_LIMITS.referrer)
+        : "";
+
     const payload = {
       name: (fd.get("name") as string) || "",
       work_email: (fd.get("work_email") as string) || "",
@@ -58,6 +80,12 @@ export function ContactLeadForm() {
       source_page: quelle,
       company_website,
       form_opened_at: formOpenedAt,
+      ...(uSrc ? { utm_source: uSrc } : {}),
+      ...(uMed ? { utm_medium: uMed } : {}),
+      ...(uCamp ? { utm_campaign: uCamp } : {}),
+      ...(pageReferrer ? { page_referrer: pageReferrer } : {}),
+      ...(ctaIdFromUrl ? { cta_id: ctaIdFromUrl } : {}),
+      ...(ctaLabelFromUrl ? { cta_label: ctaLabelFromUrl } : {}),
     };
 
     try {

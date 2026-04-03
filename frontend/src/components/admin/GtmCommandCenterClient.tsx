@@ -231,6 +231,87 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-800">Attribution (30 Tage)</h2>
+            <p className="mt-1 text-xs text-slate-500">{snapshot.data_notes.attribution_note_de}</p>
+            <div className="mt-4 grid gap-6 lg:grid-cols-2">
+              <div>
+                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Nach Quelle (heuristisch)
+                </h3>
+                <div className="mt-2 overflow-x-auto">
+                  <table className="w-full min-w-[320px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-xs text-slate-500">
+                        <th className="py-2 pr-2">Quelle</th>
+                        <th className="py-2 pr-2">Anfr.</th>
+                        <th className="py-2 pr-2">Qual.</th>
+                        <th className="py-2">PD neu</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {snapshot.attribution_by_source_30d.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-3 text-xs text-slate-500">
+                            Keine Daten im Fenster.
+                          </td>
+                        </tr>
+                      ) : (
+                        snapshot.attribution_by_source_30d.map((row) => (
+                          <tr key={row.key} className="border-b border-slate-100">
+                            <td className="py-2 pr-2 text-slate-800">{row.label_de}</td>
+                            <td className="py-2 pr-2 font-mono">{row.inquiries_30d}</td>
+                            <td className="py-2 pr-2 font-mono">{row.qualified_30d}</td>
+                            <td className="py-2 font-mono text-slate-700">
+                              {row.pipedrive_deals_created_30d}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Nach Campaign (utm_campaign)
+                </h3>
+                <div className="mt-2 overflow-x-auto">
+                  <table className="w-full min-w-[320px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-xs text-slate-500">
+                        <th className="py-2 pr-2">Campaign</th>
+                        <th className="py-2 pr-2">Anfr.</th>
+                        <th className="py-2 pr-2">Qual.</th>
+                        <th className="py-2">PD neu</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {snapshot.attribution_by_campaign_30d.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-3 text-xs text-slate-500">
+                            Keine Daten im Fenster.
+                          </td>
+                        </tr>
+                      ) : (
+                        snapshot.attribution_by_campaign_30d.map((row) => (
+                          <tr key={row.key} className="border-b border-slate-100">
+                            <td className="py-2 pr-2 font-mono text-slate-800">{row.label_de}</td>
+                            <td className="py-2 pr-2 font-mono">{row.inquiries_30d}</td>
+                            <td className="py-2 pr-2 font-mono">{row.qualified_30d}</td>
+                            <td className="py-2 font-mono text-slate-700">
+                              {row.pipedrive_deals_created_30d}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-800">Trichter (absolute Zahlen)</h2>
             <p className="mt-1 text-xs text-slate-500">{snapshot.data_notes.funnel_note_de}</p>
             <p className="mt-2 text-xs text-amber-800">{snapshot.data_notes.cta_note_de}</p>

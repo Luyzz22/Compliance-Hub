@@ -3,6 +3,8 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { LEAD_ATTRIBUTION_SOURCES } from "@/lib/leadAttribution";
+import { LEAD_ATTRIBUTION_SOURCE_LABELS_DE } from "@/lib/leadAttributionLabels";
 import { LEAD_SEGMENTS } from "@/lib/leadCapture";
 import type { LeadContactHistoryEntry, LeadInboxItem } from "@/lib/leadInboxTypes";
 import { describePipedriveDealEligibility } from "@/lib/pipedriveDealEligibility";
@@ -133,6 +135,9 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     triage_status: "",
     segment: "",
     source_page: "",
+    attribution_source: "",
+    attribution_campaign: "",
+    attribution_medium: "",
     forwarding_status: "",
     repeated_contacts: false,
     unresolved_repeated: false,
@@ -176,6 +181,9 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     if (filters.triage_status) p.set("triage_status", filters.triage_status);
     if (filters.segment) p.set("segment", filters.segment);
     if (filters.source_page) p.set("source_page", filters.source_page);
+    if (filters.attribution_source) p.set("attribution_source", filters.attribution_source);
+    if (filters.attribution_campaign) p.set("attribution_campaign", filters.attribution_campaign);
+    if (filters.attribution_medium) p.set("attribution_medium", filters.attribution_medium);
     if (filters.forwarding_status) p.set("forwarding_status", filters.forwarding_status);
     if (filters.repeated_contacts) p.set("repeated_contacts", "1");
     if (filters.unresolved_repeated) p.set("unresolved_repeated", "1");
@@ -528,6 +536,39 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
           />
         </label>
         <label className="flex flex-col gap-1">
+          <span className="text-slate-600">Attr. Quelle</span>
+          <select
+            className="rounded-lg border border-slate-300 bg-white px-2 py-1.5"
+            value={filters.attribution_source}
+            onChange={(e) => setFilters((f) => ({ ...f, attribution_source: e.target.value }))}
+          >
+            <option value="">Alle</option>
+            {LEAD_ATTRIBUTION_SOURCES.map((s) => (
+              <option key={s} value={s}>
+                {LEAD_ATTRIBUTION_SOURCE_LABELS_DE[s]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-slate-600">Campaign (enthält)</span>
+          <input
+            className="rounded-lg border border-slate-300 bg-white px-2 py-1.5"
+            value={filters.attribution_campaign}
+            onChange={(e) => setFilters((f) => ({ ...f, attribution_campaign: e.target.value }))}
+            placeholder="utm_campaign"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-slate-600">Medium (enthält)</span>
+          <input
+            className="rounded-lg border border-slate-300 bg-white px-2 py-1.5"
+            value={filters.attribution_medium}
+            onChange={(e) => setFilters((f) => ({ ...f, attribution_medium: e.target.value }))}
+            placeholder="utm_medium"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
           <span className="text-slate-600">Weiterleitung</span>
           <select
             className="rounded-lg border border-slate-300 bg-white px-2 py-1.5"
@@ -641,6 +682,22 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 <td className="max-w-[90px] truncate px-3 py-2" title={row.source_page}>
                   {row.source_page}
                 </td>
+                <td
+                  className="max-w-[130px] px-3 py-2 text-xs text-slate-700"
+                  title={`${row.attribution_source} · ${row.attribution_medium || "—"} · ${row.attribution_campaign || "—"} · CTA ${row.attribution_cta_label || "—"}`}
+                >
+                  <div className="font-medium">
+                    {LEAD_ATTRIBUTION_SOURCE_LABELS_DE[row.attribution_source]}
+                  </div>
+                  {row.attribution_campaign ? (
+                    <div className="truncate font-mono text-[10px] text-slate-500">
+                      {row.attribution_campaign}
+                    </div>
+                  ) : null}
+                  {row.attribution_cta_label ? (
+                    <div className="truncate text-[10px] text-slate-500">{row.attribution_cta_label}</div>
+                  ) : null}
+                </td>
                 <td className="max-w-[140px] truncate px-3 py-2 text-slate-600" title={row.queue_label}>
                   {row.route_key}
                 </td>
@@ -668,6 +725,49 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 Kontakt #{displayLead.contact_inquiry_sequence} von {displayLead.contact_submission_count}{" "}
                 (Schlüssel: <span className="font-mono">{displayLead.lead_contact_key.slice(0, 18)}…</span>)
               </p>
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-700">
+                <p className="font-semibold text-slate-800">Attribution (Wave 30)</p>
+                <p className="mt-1">
+                  Quelle: {LEAD_ATTRIBUTION_SOURCE_LABELS_DE[displayLead.attribution_source]}
+                  {displayLead.attribution_medium ? (
+                    <>
+                      {" "}
+                      · Medium: <span className="font-mono">{displayLead.attribution_medium}</span>
+                    </>
+                  ) : null}
+                  {displayLead.attribution_campaign ? (
+                    <>
+                      {" "}
+                      · Campaign:{" "}
+                      <span className="font-mono">{displayLead.attribution_campaign}</span>
+                    </>
+                  ) : null}
+                </p>
+                <p className="mt-1">
+                  CTA: {displayLead.attribution_cta_label || "—"}
+                  {displayLead.attribution_cta_id ? (
+                    <>
+                      {" "}
+                      (<span className="font-mono">{displayLead.attribution_cta_id}</span>)
+                    </>
+                  ) : null}
+                </p>
+                {(displayLead.attribution.utm_source_raw ||
+                  displayLead.attribution.utm_medium_raw ||
+                  displayLead.attribution.utm_campaign_raw) ? (
+                  <p className="mt-1 font-mono text-[10px] text-slate-500">
+                    UTM: {displayLead.attribution.utm_source_raw || "—"} /{" "}
+                    {displayLead.attribution.utm_medium_raw || "—"} /{" "}
+                    {displayLead.attribution.utm_campaign_raw || "—"}
+                  </p>
+                ) : null}
+                {displayLead.attribution.referrer_host ? (
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Referrer-Host:{" "}
+                    <span className="font-mono">{displayLead.attribution.referrer_host}</span>
+                  </p>
+                ) : null}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
@@ -750,6 +850,11 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                   <p className="mt-1 text-xs text-slate-600">
                     {forwardingLabel(h.forwarding_status)} · {LEAD_TRIAGE_LABELS_DE[h.triage_status]}
                     {h.owner ? ` · Owner: ${h.owner}` : ""}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    {LEAD_ATTRIBUTION_SOURCE_LABELS_DE[h.attribution_source]}
+                    {h.attribution_campaign ? ` · ${h.attribution_campaign}` : ""}
+                    {h.attribution_cta_label ? ` · CTA ${h.attribution_cta_label}` : ""}
                   </p>
                   <p className="mt-1 line-clamp-2 text-xs text-slate-700">{h.message_preview}</p>
                 </li>

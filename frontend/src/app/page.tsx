@@ -64,7 +64,11 @@ export default function HomePage() {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <TrackedContactLink
-                href={contactPageHref("home-hero")}
+                href={contactPageHref({
+                  quelle: "home-hero",
+                  ctaId: "home-hero-demo",
+                  ctaLabel: "Demo anfragen",
+                })}
                 ctaId="home-hero-demo"
                 quelle="home-hero"
                 className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-900/15 transition hover:from-emerald-700 hover:to-emerald-600"
@@ -251,7 +255,11 @@ export default function HomePage() {
           <p className="mt-6 text-center text-xs text-slate-500">
             Ihre Plattform fehlt?{" "}
             <TrackedContactLink
-              href={contactPageHref("home-integrations")}
+              href={contactPageHref({
+                quelle: "home-integrations",
+                ctaId: "home-integrations-kontakt",
+                ctaLabel: "Kontakt aufnehmen",
+              })}
               ctaId="home-integrations-kontakt"
               quelle="home-integrations"
               className="font-medium text-cyan-700 underline-offset-2 hover:underline"
@@ -278,7 +286,11 @@ export default function HomePage() {
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <TrackedContactLink
-              href={contactPageHref("home-mid-cta")}
+              href={contactPageHref({
+                quelle: "home-mid-cta",
+                ctaId: "home-mid-cta-demo",
+                ctaLabel: "Demo anfragen",
+              })}
               ctaId="home-mid-cta-demo"
               quelle="home-mid-cta"
               className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:from-emerald-700 hover:to-emerald-600"

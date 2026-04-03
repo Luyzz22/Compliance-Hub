@@ -2,6 +2,8 @@
  * Wave 28 – Lead-Sync-Jobs (getrennt von Roh-Anfrage / JSONL lead_inquiry).
  */
 
+import type { LeadAttributionSnapshot } from "@/lib/leadAttribution";
+
 export type LeadSyncTarget =
   | "n8n_webhook"
   | "hubspot"
@@ -52,6 +54,8 @@ export type LeadSyncPayloadV1 = {
   forwarding_status: string;
   /** Hinweis: separates Legacy-Webhook (Wave 25) vs. Sync-Framework */
   legacy_inbound_webhook_delivery: "forwarded" | "stored" | "stored_forward_failed" | "not_configured";
+  /** Wave 30 – optional; Downstream (HubSpot/n8n) kann Felder mappen. */
+  attribution?: LeadAttributionSnapshot;
 };
 
 export type LeadSyncJob = {
