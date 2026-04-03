@@ -65,6 +65,12 @@ export async function listLeadSyncJobsForLead(leadId: string): Promise<LeadSyncJ
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
+/** Alle Sync-Jobs (für interne Aggregationen, z. B. GTM-Dashboard). */
+export async function listAllLeadSyncJobs(): Promise<LeadSyncJob[]> {
+  const s = await readLeadSyncStore();
+  return Object.values(s.jobs);
+}
+
 /**
  * Legt einen Job an, wenn für dieselbe idempotency_key noch keiner existiert.
  */

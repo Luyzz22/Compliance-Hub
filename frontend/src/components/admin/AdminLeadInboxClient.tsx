@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LEAD_SEGMENTS } from "@/lib/leadCapture";
@@ -24,6 +25,9 @@ const DUPLICATE_REVIEW_LABELS: Record<LeadInboxItem["duplicate_review"], string>
   suggested: "Zur Prüfung (mögliche Dublette)",
   confirmed: "Zusammenhang bestätigt (manuell)",
 };
+
+const FOCUS_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const SYNC_TARGET_LABELS: Record<LeadSyncJobApi["target"], string> = {
   n8n_webhook: "n8n (Webhook)",
@@ -112,6 +116,7 @@ type PatchBody = {
 };
 
 export function AdminLeadInboxClient({ adminConfigured }: Props) {
+  const searchParams = useSearchParams();
   const [secretInput, setSecretInput] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -210,6 +215,13 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     if (!adminConfigured) return;
     void fetchLeads();
   }, [adminConfigured, fetchLeads]);
+
+  useEffect(() => {
+    const raw = searchParams.get("focus")?.trim() ?? "";
+    if (raw && FOCUS_UUID_RE.test(raw)) {
+      setSelectedId(raw);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selectedId || authed !== true) {
@@ -451,7 +463,15 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Lead-Inbox</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-xl font-semibold text-slate-900">Lead-Inbox</h1>
+            <a
+              href="/admin/gtm"
+              className="text-xs font-medium text-cyan-800 underline hover:text-cyan-950"
+            >
+              GTM Command Center
+            </a>
+          </div>
           <p className="text-sm text-slate-600">
             Triage und Nachverfolgung – nicht öffentlich, kein CRM. Kontakt-Historie gruppiert nach
             E-Mail-Schlüssel; jede Einreichung bleibt eigener Datensatz. Sortierung: zuerst
