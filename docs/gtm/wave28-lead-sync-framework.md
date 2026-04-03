@@ -9,7 +9,7 @@ Ziel: Zuverlässiger, nachvollziehbarer Push von Lead-/Inquiry-Daten zu **n8n** 
 - **Ops-Sicht** in der internen Lead-Inbox: Status pro Ziel, Fehler, manueller Retry.
 - **Aktivitäts-Log** (`lead_ops`): `lead_sync_job_created`, `lead_sync_sent`, `lead_sync_failed`, `lead_sync_retried`, `lead_sync_dead_letter`.
 
-Siehe auch: [Wave 25 – Lead-Routing](wave25-lead-routing-and-intake-governance.md), [Wave 27 – Dedup & Historie](wave27-lead-dedup-and-history.md), [Wave 26 – Lead-Inbox](wave26-internal-lead-inbox.md), [Wave 28.1 – HubSpot Upsert](wave28.1-hubspot-upsert.md), [Wave 28.2 – Pipedrive qualifizierte Deals](wave28.2-pipedrive-qualified-deals.md).
+Siehe auch: [Wave 25 – Lead-Routing](wave25-lead-routing-and-intake-governance.md), [Wave 27 – Dedup & Historie](wave27-lead-dedup-and-history.md), [Wave 26 – Lead-Inbox](wave26-internal-lead-inbox.md), [Wave 28.1 – HubSpot Upsert](wave28.1-hubspot-upsert.md), [Wave 28.2 – Pipedrive qualifizierte Deals](wave28.2-pipedrive-qualified-deals.md), [Wave 29 – GTM Command Center](wave29-founder-dashboard.md).
 
 ## Job-Modell (`LeadSyncJob`)
 
