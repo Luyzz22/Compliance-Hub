@@ -2,11 +2,13 @@ import "server-only";
 
 import { attachContactRollups, mergeLeadsWithOps } from "@/lib/leadInboxMerge";
 import { appendLeadOpsActivity, readLeadOpsState } from "@/lib/leadOpsState";
+import { isLeadPipedriveDealEligible } from "@/lib/pipedriveDealEligibility";
 import {
   buildLeadSyncPayloadV1,
   computeLeadSyncIdempotencyKey,
   defaultMaterialRevisionForIngest,
   LEAD_SYNC_PAYLOAD_VERSION,
+  pipedriveDealMaterialRevision,
   type LegacyInboundDelivery,
 } from "@/lib/leadSyncPayload";
 import { runLeadSyncConnector } from "@/lib/leadSyncConnectors";
@@ -26,6 +28,7 @@ export function getEnabledLeadSyncTargets(): LeadSyncTarget[] {
   if (process.env.LEAD_SYNC_N8N_URL?.trim()) t.push("n8n_webhook");
   if (process.env.HUBSPOT_ACCESS_TOKEN?.trim()) t.push("hubspot");
   if (process.env.LEAD_SYNC_HUBSPOT_STUB === "1") t.push("hubspot_stub");
+  if (process.env.PIPEDRIVE_API_TOKEN?.trim()) t.push("pipedrive");
   if (process.env.LEAD_SYNC_PIPEDRIVE_STUB === "1") t.push("pipedrive_stub");
   return t;
 }
@@ -52,11 +55,18 @@ export async function enqueueLeadSyncAfterIngest(input: {
   const contactKey = row.lead_contact_key ?? inboxItem.lead_contact_key;
 
   for (const target of targets) {
+    if (target === "pipedrive" && !isLeadPipedriveDealEligible(inboxItem)) {
+      continue;
+    }
+
+    const materialRev =
+      target === "pipedrive" ? pipedriveDealMaterialRevision(row.lead_id) : material;
+
     const idempotency_key = computeLeadSyncIdempotencyKey(
       target,
       row.lead_id,
       LEAD_SYNC_PAYLOAD_VERSION,
-      material,
+      materialRev,
     );
     const payload = buildLeadSyncPayloadV1({
       row,
@@ -86,6 +96,61 @@ export async function enqueueLeadSyncAfterIngest(input: {
     }
   }
   return jobIds;
+}
+
+/**
+ * Nach Qualifizierung (z. B. Admin-PATCH): Pipedrive-Deal-Job anlegen, falls Token + Gate erfüllt.
+ * Idempotency stabil pro lead_id über `pipedriveDealMaterialRevision`.
+ */
+export async function enqueuePipedriveDealSyncIfEligible(leadId: string): Promise<string[]> {
+  if (!process.env.PIPEDRIVE_API_TOKEN?.trim()) return [];
+
+  const row = await getMergedLeadAdminRow(leadId);
+  if (!row) return [];
+
+  const allRows = await readAllLeadRecordsMerged();
+  const ops = await readLeadOpsState();
+  const merged = mergeLeadsWithOps([row], ops);
+  const inboxItem = attachContactRollups(merged, allRows, ops)[0];
+  if (!inboxItem || !isLeadPipedriveDealEligible(inboxItem)) return [];
+
+  const materialRev = pipedriveDealMaterialRevision(row.lead_id);
+  const idempotency_key = computeLeadSyncIdempotencyKey(
+    "pipedrive",
+    row.lead_id,
+    LEAD_SYNC_PAYLOAD_VERSION,
+    materialRev,
+  );
+  const payload = buildLeadSyncPayloadV1({
+    row,
+    inboxItem,
+    legacyInboundDelivery: "not_configured",
+    idempotency_key,
+  });
+  const contactKey = row.lead_contact_key ?? inboxItem.lead_contact_key;
+
+  const { job, created } = await ensureLeadSyncJob({
+    lead_id: row.lead_id,
+    lead_contact_key: contactKey,
+    target: "pipedrive",
+    payload_version: LEAD_SYNC_PAYLOAD_VERSION,
+    idempotency_key,
+    payload_snapshot: payload,
+  });
+
+  if (created) {
+    try {
+      await appendLeadOpsActivity(
+        leadId,
+        "lead_sync_job_created",
+        `pipedrive job=${job.job_id.slice(0, 8)}`,
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return [job.job_id];
 }
 
 function backoffMs(attemptNumber: number): number {

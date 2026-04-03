@@ -2,7 +2,12 @@
  * Wave 28 – Lead-Sync-Jobs (getrennt von Roh-Anfrage / JSONL lead_inquiry).
  */
 
-export type LeadSyncTarget = "n8n_webhook" | "hubspot" | "hubspot_stub" | "pipedrive_stub";
+export type LeadSyncTarget =
+  | "n8n_webhook"
+  | "hubspot"
+  | "hubspot_stub"
+  | "pipedrive"
+  | "pipedrive_stub";
 
 export type LeadSyncJobStatus =
   | "pending"

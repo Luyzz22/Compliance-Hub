@@ -1,6 +1,7 @@
 import "server-only";
 
 import { runHubspotLeadSyncConnector } from "@/lib/hubspotLeadSyncConnector";
+import { runPipedriveLeadSyncConnector } from "@/lib/pipedriveLeadSyncConnector";
 import type { LeadSyncConnectorResult, LeadSyncPayloadV1, LeadSyncTarget } from "@/lib/leadSyncTypes";
 
 export type ConnectorResult = LeadSyncConnectorResult;
@@ -18,6 +19,8 @@ export async function runLeadSyncConnector(
       return runHubspotLeadSyncConnector(payload);
     case "hubspot_stub":
       return runHubspotStubConnector(payload);
+    case "pipedrive":
+      return runPipedriveLeadSyncConnector(payload);
     case "pipedrive_stub":
       return runPipedriveStubConnector(payload);
     default:

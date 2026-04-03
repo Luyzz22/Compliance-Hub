@@ -14,7 +14,11 @@ import {
   getMergedLeadAdminRow,
   readAllLeadRecordsMerged,
 } from "@/lib/leadPersistence";
-import { redactLeadSyncJobForApi } from "@/lib/leadSyncDispatcher";
+import {
+  enqueuePipedriveDealSyncIfEligible,
+  processLeadSyncJobById,
+  redactLeadSyncJobForApi,
+} from "@/lib/leadSyncDispatcher";
 import { listLeadSyncJobsForLead } from "@/lib/leadSyncStore";
 
 export const runtime = "nodejs";
@@ -143,11 +147,24 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ leadId: strin
   const item = row ? (attachContactRollups(merged, allRows, ops)[0] ?? null) : null;
   const contact_history = row ? buildContactHistoryItems(leadId, allRows, ops) : [];
 
+  try {
+    const pdJobIds = await enqueuePipedriveDealSyncIfEligible(leadId);
+    for (const jid of pdJobIds) {
+      await processLeadSyncJobById(jid);
+    }
+  } catch (e) {
+    console.warn("[lead-admin] pipedrive_enqueue_process", e);
+  }
+
+  const sync_jobs_raw = await listLeadSyncJobsForLead(leadId);
+  const sync_jobs = sync_jobs_raw.map(redactLeadSyncJobForApi);
+
   return NextResponse.json({
     ok: true,
     changed: true,
     entry: result.entry,
     item,
     contact_history,
+    sync_jobs,
   });
 }

@@ -2,7 +2,7 @@
 
 Ziel: End-to-end Sync von Website-Leads nach **HubSpot** über das bestehende `LeadSyncJob`-Framework, ohne generische CRM-Abstraktion. Fokus auf **Korrektheit, Nachvollziehbarkeit und konservative Updates**.
 
-Siehe auch: [Wave 28 – Lead-Sync-Framework](wave28-lead-sync-framework.md).
+Siehe auch: [Wave 28 – Lead-Sync-Framework](wave28-lead-sync-framework.md), [Wave 28.2 – Pipedrive qualifizierte Deals](wave28.2-pipedrive-qualified-deals.md) (Pipedrive ergänzt HubSpot, ersetzt es nicht).
 
 ## Aktivierung
 

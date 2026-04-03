@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LEAD_SEGMENTS } from "@/lib/leadCapture";
 import type { LeadContactHistoryEntry, LeadInboxItem } from "@/lib/leadInboxTypes";
+import { describePipedriveDealEligibility } from "@/lib/pipedriveDealEligibility";
 import type { LeadSyncJobApi } from "@/lib/leadSyncTypes";
 import { LEAD_TRIAGE_LABELS_DE, LEAD_TRIAGE_STATUSES } from "@/lib/leadTriage";
 
@@ -28,6 +29,7 @@ const SYNC_TARGET_LABELS: Record<LeadSyncJobApi["target"], string> = {
   n8n_webhook: "n8n (Webhook)",
   hubspot: "HubSpot",
   hubspot_stub: "HubSpot (Stub)",
+  pipedrive: "Pipedrive (Deal)",
   pipedrive_stub: "Pipedrive (Stub)",
 };
 
@@ -40,6 +42,37 @@ const HUBSPOT_COMPANY_ASSOC_DE: Record<string, string> = {
 };
 
 /** Client-sichere Auswertung von `mock_result` (kein server-only Import). */
+const PIPEDRIVE_ORG_ASSOC_DE: Record<string, string> = {
+  linked: "Organisation verknüpft",
+  skipped_weak_name: "Organisation: Name zu schwach",
+  skipped_no_match: "Organisation: kein exakter Treffer",
+  skipped_ambiguous: "Organisation: mehrdeutig",
+  skipped_create_disabled: "Organisation: Anlegen deaktiviert",
+};
+
+function pipedriveMockDetails(mock: unknown): {
+  person_id: string;
+  org_id?: string;
+  deal_id: string;
+  deal_action: string;
+  org_association: string;
+  synced_at?: string;
+} | null {
+  if (!mock || typeof mock !== "object") return null;
+  const m = mock as Record<string, unknown>;
+  if (m.system !== "pipedrive" || typeof m.person_id !== "string" || typeof m.deal_id !== "string") {
+    return null;
+  }
+  return {
+    person_id: m.person_id,
+    org_id: typeof m.org_id === "string" ? m.org_id : undefined,
+    deal_id: m.deal_id,
+    deal_action: typeof m.deal_action === "string" ? m.deal_action : "—",
+    org_association: typeof m.org_association === "string" ? m.org_association : "—",
+    synced_at: typeof m.synced_at === "string" ? m.synced_at : undefined,
+  };
+}
+
 function hubspotMockDetails(mock: unknown): {
   contact_id: string;
   company_id?: string;
@@ -113,6 +146,11 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
   );
 
   const displayLead = detailItem ?? selected;
+
+  const pipedriveEligibility = useMemo(
+    () => (displayLead ? describePipedriveDealEligibility(displayLead) : null),
+    [displayLead],
+  );
 
   useEffect(() => {
     if (!displayLead) {
@@ -263,6 +301,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
         ok?: boolean;
         item?: LeadInboxItem | null;
         contact_history?: LeadContactHistoryEntry[];
+        sync_jobs?: LeadSyncJobApi[];
       };
       if (!r.ok) {
         setActionMsg("Speichern fehlgeschlagen.");
@@ -276,6 +315,9 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
       }
       if (data.contact_history && selectedId === leadId) {
         setContactHistory(data.contact_history);
+      }
+      if (Array.isArray(data.sync_jobs) && selectedId === leadId) {
+        setSyncJobs(data.sync_jobs);
       }
       setActionMsg("Gespeichert.");
     } catch {
@@ -627,6 +669,14 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
               <button
                 type="button"
                 disabled={saving}
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+                onClick={() => void patchLead(displayLead.lead_id, { triage_status: "qualified" })}
+              >
+                Qualifiziert (Pipedrive)
+              </button>
+              <button
+                type="button"
+                disabled={saving}
                 className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm text-red-800 hover:bg-red-100 disabled:opacity-50"
                 onClick={() => void patchLead(displayLead.lead_id, { triage_status: "spam" })}
               >
@@ -690,13 +740,23 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
           <div className="mt-6 border-t border-slate-100 pt-4">
             <h3 className="text-sm font-medium text-slate-800">GTM-Sync (Wave 28)</h3>
             <p className="mt-1 text-xs text-slate-500">
-              Status pro Ziel (n8n, HubSpot, Stubs). Ohne konfigurierte Ziele entstehen keine Jobs.
+              HubSpot = Kontakt/Historie; Pipedrive = optional Deals nur bei qualifizierten Leads. Ohne
+              konfigurierte Ziele entstehen keine Jobs.
             </p>
+            {pipedriveEligibility ? (
+              <p className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700">
+                <span className="font-medium text-slate-800">Pipedrive-Deal möglich:</span>{" "}
+                <span className={pipedriveEligibility.eligible ? "text-emerald-800" : ""}>
+                  {pipedriveEligibility.eligible ? "Ja — " : "Nein — "}
+                </span>
+                {pipedriveEligibility.summary}
+              </p>
+            ) : null}
             {syncJobs.length === 0 ? (
               <p className="mt-2 text-sm text-slate-500">Keine Sync-Jobs für diesen Lead.</p>
             ) : (
               <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full min-w-[880px] border-collapse text-left text-xs">
+                <table className="w-full min-w-[960px] border-collapse text-left text-xs">
                   <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
                     <tr>
                       <th className="px-2 py-2 font-medium">Ziel</th>
@@ -705,13 +765,14 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                       <th className="px-2 py-2 font-medium">Letzter Versuch</th>
                       <th className="px-2 py-2 font-medium">Nächster Retry</th>
                       <th className="px-2 py-2 font-medium">Fehler</th>
-                      <th className="px-2 py-2 font-medium">HubSpot-Referenz</th>
+                      <th className="px-2 py-2 font-medium">CRM / Deal-Referenz</th>
                       <th className="px-2 py-2 font-medium" />
                     </tr>
                   </thead>
                   <tbody>
                     {syncJobs.map((j) => {
                       const hs = hubspotMockDetails(j.mock_result);
+                      const pd = pipedriveMockDetails(j.mock_result);
                       return (
                           <tr key={j.job_id} className="border-b border-slate-100">
                             <td className="px-2 py-2 text-slate-800">{SYNC_TARGET_LABELS[j.target]}</td>
@@ -731,9 +792,12 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                             >
                               {j.last_error ?? "—"}
                             </td>
-                            <td className="max-w-[220px] px-2 py-2 align-top text-[10px] text-slate-600">
+                            <td className="max-w-[240px] px-2 py-2 align-top text-[10px] text-slate-600">
                               {hs ? (
                                 <ul className="list-inside list-disc space-y-0.5 font-mono">
+                                  <li className="list-none pl-0 font-sans font-medium text-slate-700">
+                                    HubSpot
+                                  </li>
                                   <li>Kontakt {hs.contact_id}</li>
                                   {hs.company_id ? <li>Firma {hs.company_id}</li> : null}
                                   {hs.note_id ? (
@@ -751,9 +815,28 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                                     </li>
                                   ) : null}
                                 </ul>
-                              ) : (
-                                "—"
-                              )}
+                              ) : null}
+                              {pd ? (
+                                <ul className="mt-1 list-inside list-disc space-y-0.5 border-t border-slate-100 pt-1 font-mono">
+                                  <li className="list-none pl-0 font-sans font-medium text-slate-700">
+                                    Pipedrive
+                                  </li>
+                                  <li>Person {pd.person_id}</li>
+                                  {pd.org_id ? <li>Org {pd.org_id}</li> : null}
+                                  <li>
+                                    Deal {pd.deal_id} ({pd.deal_action})
+                                  </li>
+                                  <li className="list-none pl-0 font-sans text-slate-500">
+                                    {PIPEDRIVE_ORG_ASSOC_DE[pd.org_association] ?? pd.org_association}
+                                  </li>
+                                  {pd.synced_at ? (
+                                    <li className="list-none pl-0 font-sans text-slate-400">
+                                      Sync {new Date(pd.synced_at).toLocaleString("de-DE")}
+                                    </li>
+                                  ) : null}
+                                </ul>
+                              ) : null}
+                              {!hs && !pd ? "—" : null}
                             </td>
                             <td className="px-2 py-2">
                               {j.status === "failed" ||
