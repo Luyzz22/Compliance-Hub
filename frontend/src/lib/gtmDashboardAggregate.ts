@@ -12,8 +12,11 @@ import type { LeadInboxItem } from "@/lib/leadInboxTypes";
 import { readLeadOpsState } from "@/lib/leadOpsState";
 import { readAllLeadRecordsMerged } from "@/lib/leadPersistence";
 import { listAllLeadSyncJobs } from "@/lib/leadSyncStore";
+import type { LeadAttributionSource } from "@/lib/leadAttribution";
+import { LEAD_ATTRIBUTION_SOURCE_LABELS_DE } from "@/lib/leadAttributionLabels";
 import type {
   GtmAttentionItem,
+  GtmAttributionBreakdownRow,
   GtmDailyPoint,
   GtmDashboardSnapshot,
   GtmFunnelStage,
@@ -368,6 +371,56 @@ export async function computeGtmDashboardSnapshot(now: Date = new Date()): Promi
     pipedrive_deals_created: dealsPerWeek.get(week_start) ?? 0,
   }));
 
+  type Agg = { inquiries: number; qualified: number; deals: number };
+  function bumpAgg(m: Map<string, Agg>, key: string, qualified: boolean, deal: boolean) {
+    const cur = m.get(key) ?? { inquiries: 0, qualified: 0, deals: 0 };
+    cur.inquiries += 1;
+    if (qualified) cur.qualified += 1;
+    if (deal) cur.deals += 1;
+    m.set(key, cur);
+  }
+
+  const leadDeal30d = new Set<string>();
+  for (const j of jobs) {
+    if (pipedriveDealCreatedInWindow(j, w30.start, w30.end)) leadDeal30d.add(j.lead_id);
+  }
+
+  const items30d = items.filter((it) => isoInWindow(it.created_at, w30.start, w30.end));
+  const bySource = new Map<string, Agg>();
+  const byCampaign = new Map<string, Agg>();
+  for (const it of items30d) {
+    const q = isQualifiedTriage(it.triage_status);
+    const deal = leadDeal30d.has(it.lead_id);
+    bumpAgg(bySource, it.attribution_source, q, deal);
+    const camp = it.attribution_campaign || "(ohne_campaign)";
+    bumpAgg(byCampaign, camp, q, deal);
+  }
+
+  function rowsFromMap(
+    m: Map<string, Agg>,
+    labelForKey: (k: string) => string,
+  ): GtmAttributionBreakdownRow[] {
+    return [...m.entries()]
+      .sort((a, b) => b[1].inquiries - a[1].inquiries)
+      .slice(0, 14)
+      .map(([key, v]) => ({
+        key,
+        label_de: labelForKey(key),
+        inquiries_30d: v.inquiries,
+        qualified_30d: v.qualified,
+        pipedrive_deals_created_30d: v.deals,
+      }));
+  }
+
+  const attribution_by_source_30d = rowsFromMap(bySource, (k) => {
+    const label = LEAD_ATTRIBUTION_SOURCE_LABELS_DE[k as LeadAttributionSource];
+    return label ?? k;
+  });
+
+  const attribution_by_campaign_30d = rowsFromMap(byCampaign, (k) =>
+    k === "(ohne_campaign)" ? "Ohne utm_campaign" : k,
+  );
+
   return {
     generated_at: now.toISOString(),
     windows: {
@@ -382,12 +435,16 @@ export async function computeGtmDashboardSnapshot(now: Date = new Date()): Promi
       inquiries_per_day_utc: daily,
       qualified_and_deals_per_week_utc: qualified_and_deals_per_week_utc,
     },
+    attribution_by_source_30d,
+    attribution_by_campaign_30d,
     data_notes: {
       cta_clicks_persisted: false,
       cta_note_de:
         "CTA-Klicks werden aktuell nur serverseitig geloggt ([marketing-event]), nicht in einem Query-Store — daher keine zuverlässige Zahl im Dashboard.",
       funnel_note_de:
         "Stufen sind absolute Mengen je Zeitraum (Einreichungsdatum). Spätere Stufen können größer wirken als frühere, wenn Leads außerhalb des Fensters qualifiziert wurden; für Steuerung die KPI-Karten und Segmenttabelle nutzen.",
+      attribution_note_de:
+        "Attribution: first-touch-UTM (Tab-Session) plus Server-Referer-Heuristik beim Absenden — keine Multi-Touch-Zuordnung. „Deals“ = Pipedrive-Sync mit deal_action created im 30-Tage-Fenster.",
     },
   };
 }

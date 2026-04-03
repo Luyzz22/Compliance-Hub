@@ -81,5 +81,6 @@ export function buildLeadSyncPayloadV1(input: {
     pipeline_status: row.status,
     forwarding_status,
     legacy_inbound_webhook_delivery: legacyInboundDelivery,
+    ...(ob.attribution ? { attribution: ob.attribution } : {}),
   };
 }

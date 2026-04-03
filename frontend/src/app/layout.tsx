@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import React from "react";
+import React, { Suspense } from "react";
 
 import { DemoContextualHint } from "@/components/demo/DemoContextualHint";
 import { DemoEnvironmentBanner } from "@/components/demo/DemoEnvironmentBanner";
 import { DemoGuide } from "@/components/demo/DemoGuide";
+import { SessionAttributionCapture } from "@/components/marketing/SessionAttributionCapture";
 import { SbsFooter } from "@/components/sbs/SbsFooter";
 import { SbsHeader } from "@/components/sbs/SbsHeader";
 import { isDemoUiDesiredForTenant } from "@/lib/workspaceDemoServer";
@@ -28,6 +29,9 @@ export default async function RootLayout({
   return (
     <html lang="de" className="scroll-smooth scroll-pt-[7.5rem]">
       <body className="sbs-body flex min-h-screen flex-col bg-slate-50 antialiased">
+        <Suspense fallback={null}>
+          <SessionAttributionCapture />
+        </Suspense>
         <SbsHeader />
         <DemoEnvironmentBanner visible={showDemoUi} />
         <main

@@ -1,3 +1,4 @@
+import { attributionFromOutbound } from "@/lib/leadAttribution";
 import {
   deriveLeadAccountKeyFromStoredRecord,
   deriveLeadContactKeyFromStoredRecord,
@@ -34,6 +35,7 @@ export function mergeLeadsWithOps(rows: LeadAdminRow[], ops: LeadOpsFile): LeadI
     const contact_latest_seen_at =
       r.contact_latest_seen_at ?? ob.contact_latest_seen_at ?? r.created_at;
     const duplicate_hint = r.duplicate_hint ?? ob.duplicate_hint ?? "none";
+    const attr = attributionFromOutbound(ob);
     return {
       lead_id: r.lead_id,
       trace_id: r.trace_id,
@@ -49,6 +51,12 @@ export function mergeLeadsWithOps(rows: LeadAdminRow[], ops: LeadOpsFile): LeadI
       priority: ob.route.priority,
       sla_bucket: ob.route.sla_bucket,
       source_page: ob.source_page,
+      attribution_source: attr.source,
+      attribution_medium: attr.medium,
+      attribution_campaign: attr.campaign,
+      attribution_cta_id: attr.cta_id,
+      attribution_cta_label: attr.cta_label,
+      attribution: attr,
       company: ob.company,
       business_email: ob.business_email,
       name: ob.name,
@@ -169,6 +177,7 @@ export function buildContactHistoryItems(
     const o = getOpsEntryForLead(ops, r.lead_id);
     const fw = forwardingStatus(r);
     const ob = r.outbound;
+    const attr = attributionFromOutbound(ob);
     return {
       lead_id: r.lead_id,
       trace_id: r.trace_id,
@@ -179,6 +188,10 @@ export function buildContactHistoryItems(
       owner: o.owner,
       internal_note: o.internal_note,
       source_page: ob.source_page,
+      attribution_source: attr.source,
+      attribution_medium: attr.medium,
+      attribution_campaign: attr.campaign,
+      attribution_cta_label: attr.cta_label,
       segment: ob.segment,
       message_preview: ob.message.slice(0, 200),
       contact_inquiry_sequence:

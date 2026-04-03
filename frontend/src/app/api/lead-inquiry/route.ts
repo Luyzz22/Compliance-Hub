@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 
+import { buildLeadAttribution } from "@/lib/leadAttribution";
 import { validateBusinessEmailDomain, validateFormTiming } from "@/lib/leadAntiAbuse";
 import {
   checkLeadEmailCooldown,
@@ -43,6 +44,14 @@ type Incoming = {
   company_website?: string;
   /** ms seit Epoch – Formular geöffnet (Client) */
   form_opened_at?: number;
+  /** Wave 30 – optional, aus Session-UTM + Formular / Kontext */
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  /** document.referrer (gekürzt), first-party */
+  page_referrer?: string;
+  cta_id?: string;
+  cta_label?: string;
 };
 
 function trimStr(v: unknown, max: number): string {
@@ -91,6 +100,7 @@ export async function POST(req: Request) {
   const company = trimStr(body.company, LEAD_FIELD_LIMITS.company);
   const message = trimStr(body.message ?? "", LEAD_FIELD_LIMITS.message);
   const source_page = trimStr(body.source_page, LEAD_FIELD_LIMITS.source_page);
+  const httpReferer = req.headers.get("referer");
 
   if (!name || !work_email || !company || !source_page) {
     return NextResponse.json({ ok: false, error: "validation" }, { status: 400 });
@@ -145,6 +155,16 @@ export async function POST(req: Request) {
     lead_contact_key,
   );
 
+  const attribution = buildLeadAttribution({
+    utm_source: body.utm_source,
+    utm_medium: body.utm_medium,
+    utm_campaign: body.utm_campaign,
+    page_referrer: body.page_referrer,
+    cta_id: body.cta_id,
+    cta_label: body.cta_label,
+    http_referer: httpReferer,
+  });
+
   const outbound = buildLeadOutboundPayload({
     lead_id,
     trace_id,
@@ -164,6 +184,7 @@ export async function POST(req: Request) {
       contact_latest_seen_at,
       duplicate_hint,
     },
+    attribution,
   });
 
   const storeRecord: LeadStoreRecord = {
