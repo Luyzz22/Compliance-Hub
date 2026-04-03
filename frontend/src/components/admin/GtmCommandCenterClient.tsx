@@ -2,9 +2,25 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import type { GtmDashboardSnapshot, GtmWindowKey } from "@/lib/gtmDashboardTypes";
+import type {
+  GtmDashboardSnapshot,
+  GtmHealthStatus,
+  GtmWindowKey,
+} from "@/lib/gtmDashboardTypes";
 
 type Props = { adminConfigured: boolean };
+
+function healthStatusClass(s: GtmHealthStatus): string {
+  if (s === "good") return "border-emerald-200 bg-emerald-50/90 text-emerald-950";
+  if (s === "watch") return "border-amber-200 bg-amber-50/90 text-amber-950";
+  return "border-rose-200 bg-rose-50/90 text-rose-950";
+}
+
+function healthStatusLabel(s: GtmHealthStatus): string {
+  if (s === "good") return "OK";
+  if (s === "watch") return "Beobachten";
+  return "Handeln";
+}
 
 function KpiCard({
   title,
@@ -148,6 +164,53 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
 
       {snapshot ? (
         <>
+          <section id="gtm-health" className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-900">GTM Health</h2>
+            <p className="mt-1 text-xs text-slate-600">{snapshot.data_notes.health_note_de}</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {snapshot.health.tiles.map((t) => (
+                <div
+                  key={t.id}
+                  className={`rounded-lg border p-3 text-sm ${healthStatusClass(t.status)}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{t.label_de}</span>
+                    <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-90">
+                      {healthStatusLabel(t.status)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed opacity-95">{t.explanation_de}</p>
+                  <a
+                    href={t.href}
+                    className="mt-2 inline-block text-xs font-medium text-cyan-900 underline underline-offset-2"
+                  >
+                    {t.link_label_de} →
+                  </a>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {snapshot.health.ops_hints.length > 0 ? (
+            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-slate-800">Operative Hinweise (SLA‑Stil)</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Orientierung für den Alltag — keine verbindlichen SLAs, keine Personenbewertung.
+              </p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-800">
+                {snapshot.health.ops_hints.map((h) => (
+                  <li key={h.id} className="flex flex-wrap items-baseline gap-2">
+                    <span className="font-mono text-xs text-slate-500">×{h.count}</span>
+                    <span>{h.message_de}</span>
+                    <a href={h.href} className="text-xs text-cyan-800 underline">
+                      Öffnen
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           <section>
             <h2 className="mb-3 text-sm font-semibold text-slate-800">Kern-KPIs</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -200,34 +263,62 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-800">Segmente (30 Tage)</h2>
+          <section
+            id="gtm-segment-readiness"
+            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <h2 className="text-sm font-semibold text-slate-800">Segment-Readiness (30 Tage)</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Volumen, Qualifikation, CRM-Touches (gesendete Jobs) und dominante Attributions-Quellen.
+              Sync-Probleme: fehlgeschlagen oder Dead Letter (letztes Update im Fenster).
+            </p>
             <div className="mt-3 overflow-x-auto">
-              <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[860px] border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs text-slate-500">
                     <th className="py-2 pr-2">Segment</th>
-                    <th className="py-2 pr-2">Anfragen</th>
-                    <th className="py-2 pr-2">Qualifiziert</th>
-                    <th className="py-2">CRM-Sync-Probleme</th>
+                    <th className="py-2 pr-2">Anfr.</th>
+                    <th className="py-2 pr-2">Qual.</th>
+                    <th className="py-2 pr-2">HubSpot OK</th>
+                    <th className="py-2 pr-2">PD Touch</th>
+                    <th className="py-2 pr-2">Sync-Issues</th>
+                    <th className="py-2 pr-2">Top-Quellen</th>
+                    <th className="py-2 pr-2">Status</th>
+                    <th className="py-2">Hinweis</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {snapshot.segment_table.map((row) => (
-                    <tr key={row.segment} className="border-b border-slate-100">
-                      <td className="py-2 pr-2 text-slate-800">{row.label_de}</td>
-                      <td className="py-2 pr-2 font-mono">{row.inquiries_30d}</td>
-                      <td className="py-2 pr-2 font-mono">{row.qualified_30d}</td>
-                      <td className="py-2 font-mono text-amber-800">{row.sync_issues_30d}</td>
-                    </tr>
-                  ))}
+                  {snapshot.health.segment_readiness.map((row) => {
+                    const syncRow = snapshot.segment_table.find((s) => s.segment === row.segment);
+                    return (
+                      <tr key={row.segment} className="border-b border-slate-100">
+                        <td className="py-2 pr-2 text-slate-800">{row.label_de}</td>
+                        <td className="py-2 pr-2 font-mono">{row.inquiries_30d}</td>
+                        <td className="py-2 pr-2 font-mono">{row.qualified_30d}</td>
+                        <td className="py-2 pr-2 font-mono text-slate-700">{row.hubspot_sent_30d}</td>
+                        <td className="py-2 pr-2 font-mono text-slate-700">
+                          {row.pipedrive_touch_30d}
+                        </td>
+                        <td className="py-2 pr-2 font-mono text-amber-800">
+                          {syncRow?.sync_issues_30d ?? 0}
+                        </td>
+                        <td className="max-w-[200px] py-2 pr-2 text-xs text-slate-600">
+                          {row.dominant_sources_de}
+                        </td>
+                        <td className="py-2 pr-2">
+                          <span
+                            className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase ${healthStatusClass(row.status)}`}
+                          >
+                            {healthStatusLabel(row.status)}
+                          </span>
+                        </td>
+                        <td className="max-w-[220px] py-2 text-xs text-slate-600">{row.note_de}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Sync-Probleme: fehlgeschlagen oder Dead Letter bei HubSpot/Pipedrive (letztes Update im
-              30-Tage-Fenster).
-            </p>
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -311,6 +402,61 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
             </div>
           </section>
 
+          <section
+            id="gtm-attribution-health"
+            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <h2 className="text-sm font-semibold text-slate-800">Attribution &amp; Signalqualität (Top 3)</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Stärkste Quellen nach Volumen; „Noise“ = viele Leads, sehr wenig Qualifikation
+              (heuristisch, kein Bot-Nachweis).
+            </p>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[480px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs text-slate-500">
+                    <th className="py-2 pr-2">Quelle</th>
+                    <th className="py-2 pr-2">Leads</th>
+                    <th className="py-2 pr-2">Qual.</th>
+                    <th className="py-2 pr-2">Deals</th>
+                    <th className="py-2 pr-2">Qual.-Quote</th>
+                    <th className="py-2">Hinweis</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshot.health.attribution_health_top3.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-3 text-xs text-slate-500">
+                        Keine Daten.
+                      </td>
+                    </tr>
+                  ) : (
+                    snapshot.health.attribution_health_top3.map((row) => (
+                      <tr key={row.key} className="border-b border-slate-100">
+                        <td className="py-2 pr-2 text-slate-800">{row.label_de}</td>
+                        <td className="py-2 pr-2 font-mono">{row.inquiries_30d}</td>
+                        <td className="py-2 pr-2 font-mono">{row.qualified_30d}</td>
+                        <td className="py-2 pr-2 font-mono">{row.pipedrive_deals_created_30d}</td>
+                        <td className="py-2 pr-2 font-mono text-slate-600">
+                          {row.inquiries_30d > 0
+                            ? `${Math.round(row.qual_ratio * 100)}%`
+                            : "—"}
+                        </td>
+                        <td className="py-2 text-xs">
+                          {row.noise_suspected ? (
+                            <span className="text-amber-800">Viel Volumen, wenig Qual. prüfen</span>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
           <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-800">Trichter (absolute Zahlen)</h2>
             <p className="mt-1 text-xs text-slate-500">{snapshot.data_notes.funnel_note_de}</p>
@@ -337,7 +483,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-amber-50/80 p-4 shadow-sm">
+          <section id="gtm-attention" className="rounded-xl border border-slate-200 bg-amber-50/80 p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-amber-950">Aufmerksamkeit</h2>
             <ul className="mt-3 max-h-64 space-y-2 overflow-auto text-xs">
               {snapshot.attention.length === 0 ? (
