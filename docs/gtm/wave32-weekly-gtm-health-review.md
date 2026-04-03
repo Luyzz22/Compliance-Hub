@@ -85,3 +85,5 @@ Liefert u. a. Health-Kachel-Status, `health_signal_counts`, Aufmerksamkeit nach 
 - `frontend/src/lib/gtmAlertThresholds.ts`
 
 Siehe auch: [Wave 31 – Health & Readiness](wave31-gtm-health-and-readiness.md) (Aktualisierung unten).
+
+**Weiter:** [Wave 33 – Product ↔ GTM Bridge](wave33-product-gtm-bridge.md) (Readiness-Overlay und Matrix auf `/admin/gtm`).

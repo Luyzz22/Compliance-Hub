@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { GTM_READINESS_LABELS_DE, GTM_READINESS_SHORT_DE } from "@/lib/gtmAccountReadiness";
 import type {
   GtmDashboardSnapshot,
   GtmHealthStatus,
   GtmWeeklyReviewNote,
   GtmWindowKey,
 } from "@/lib/gtmDashboardTypes";
+import type { GtmProductBridgePayload } from "@/lib/gtmProductBridgeTypes";
 
 type Props = { adminConfigured: boolean };
 
@@ -53,6 +55,13 @@ function KpiCard({
   );
 }
 
+function readinessPillClass(cls: string): string {
+  if (cls === "no_footprint") return "border-slate-200 bg-slate-50 text-slate-800";
+  if (cls === "early_pilot") return "border-amber-200 bg-amber-50 text-amber-950";
+  if (cls === "baseline_governance") return "border-cyan-200 bg-cyan-50 text-cyan-950";
+  return "border-emerald-200 bg-emerald-50 text-emerald-950";
+}
+
 function attentionLabel(kind: string): string {
   if (kind === "failed_webhook") return "Webhook fehlgeschlagen";
   if (kind === "dead_letter_sync") return "Sync Dead Letter";
@@ -68,6 +77,7 @@ type WeeklyReviewPayload = {
 
 export function GtmCommandCenterClient({ adminConfigured }: Props) {
   const [snapshot, setSnapshot] = useState<GtmDashboardSnapshot | null>(null);
+  const [productBridge, setProductBridge] = useState<GtmProductBridgePayload | null>(null);
   const [weeklyReview, setWeeklyReview] = useState<WeeklyReviewPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +92,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
       const r = await fetch("/api/admin/gtm/summary", { credentials: "include" });
       if (r.status === 401) {
         setSnapshot(null);
+        setProductBridge(null);
         setWeeklyReview(null);
         setLoadError("unauthorized");
         return;
@@ -94,8 +105,10 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
         ok?: boolean;
         snapshot?: GtmDashboardSnapshot;
         weekly_review?: WeeklyReviewPayload;
+        product_bridge?: GtmProductBridgePayload;
       };
       setSnapshot(data.snapshot ?? null);
+      setProductBridge(data.product_bridge ?? null);
       setWeeklyReview(
         data.weekly_review ?? { last_reviewed_at: null, recent_notes: [] },
       );
@@ -461,6 +474,124 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
               </table>
             </div>
           </section>
+
+          {productBridge ? (
+            <section
+              id="gtm-product-readiness-overlay"
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            >
+              <h2 className="text-sm font-semibold text-slate-800">Product Readiness Overlay (Wave 33)</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                GTM-Segmente (30 Tage) plus grobe Produkt-/Governance-Readiness aus Mapping + Mandanten-API.
+                Doku:{" "}
+                <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">
+                  docs/gtm/wave33-product-gtm-bridge.md
+                </code>
+              </p>
+              <p className="mt-2 text-xs text-slate-600">
+                Mapping: {productBridge.map_entry_count} Einträge · {productBridge.mapped_tenant_count}{" "}
+                Mandanten · Backend:{" "}
+                {productBridge.backend_reachable ? (
+                  <span className="text-emerald-800">erreichbar</span>
+                ) : (
+                  <span className="text-amber-800">nicht bestätigt</span>
+                )}{" "}
+                · {productBridge.note_de}
+              </p>
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-xs text-slate-500">
+                      <th className="py-2 pr-2">Segment</th>
+                      <th className="py-2 pr-2">Anfr.</th>
+                      <th className="py-2 pr-2">Qual.</th>
+                      <th className="py-2 pr-2">PD neu</th>
+                      <th className="py-2 pr-2">Readiness-Schwerpunkt</th>
+                      <th className="py-2">Verteilung</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productBridge.segment_overlay.map((row) => (
+                      <tr key={row.segment} className="border-b border-slate-100">
+                        <td className="py-2 pr-2 text-slate-800">{row.label_de}</td>
+                        <td className="py-2 pr-2 font-mono">{row.inquiries_30d}</td>
+                        <td className="py-2 pr-2 font-mono">{row.qualified_30d}</td>
+                        <td className="py-2 pr-2 font-mono">{row.pipedrive_deals_created_30d}</td>
+                        <td className="py-2 pr-2">
+                          <span
+                            className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${readinessPillClass(row.dominant_readiness)}`}
+                          >
+                            {GTM_READINESS_LABELS_DE[row.dominant_readiness]}
+                          </span>
+                        </td>
+                        <td className="max-w-[280px] py-2 text-[11px] text-slate-600">
+                          {productBridge.matrix.rows.map((rc) => (
+                            <span key={rc} className="mr-2 inline-block whitespace-nowrap">
+                              <span className="font-mono text-slate-800">{row.readiness_breakdown[rc]}</span>{" "}
+                              {GTM_READINESS_SHORT_DE[rc]}
+                            </span>
+                          ))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
+
+          {productBridge ? (
+            <section
+              id="gtm-readiness-matrix"
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            >
+              <h2 className="text-sm font-semibold text-slate-800">GTM × Readiness-Matrix (Anfragen 30 Tage)</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Zeilen: Readiness-Klassen. Spalten: Segmente. Zellen: Anzahl Anfragen im Fenster.
+              </p>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-xs text-slate-500">
+                      <th className="py-2 pr-2">Readiness</th>
+                      {productBridge.matrix.columns.map((col) => (
+                        <th key={col} className="py-2 pr-2 text-right">
+                          {productBridge.matrix.column_labels_de[col]}
+                        </th>
+                      ))}
+                      <th className="py-2 text-right">Σ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productBridge.matrix.rows.map((rc) => (
+                      <tr key={rc} className="border-b border-slate-100">
+                        <td className="py-2 pr-2 text-xs text-slate-800">{GTM_READINESS_LABELS_DE[rc]}</td>
+                        {productBridge.matrix.columns.map((col) => (
+                          <td key={col} className="py-2 pr-2 text-right font-mono">
+                            {productBridge.matrix.cells[rc][col]}
+                          </td>
+                        ))}
+                        <td className="py-2 text-right font-mono text-slate-700">
+                          {productBridge.matrix.row_totals[rc]}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t border-slate-200 text-xs font-medium text-slate-700">
+                      <td className="py-2 pr-2">Σ</td>
+                      {productBridge.matrix.columns.map((col) => (
+                        <td key={col} className="py-2 pr-2 text-right font-mono">
+                          {productBridge.matrix.column_totals[col]}
+                        </td>
+                      ))}
+                      <td className="py-2 text-right font-mono">
+                        {productBridge.matrix.rows.reduce((s, rc) => s + productBridge.matrix.row_totals[rc], 0)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
 
           <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-800">Attribution (30 Tage)</h2>

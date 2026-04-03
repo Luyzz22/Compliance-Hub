@@ -14,6 +14,7 @@ import {
   getMergedLeadAdminRow,
   readAllLeadRecordsMerged,
 } from "@/lib/leadPersistence";
+import { buildProductBridgeHintForLead } from "@/lib/gtmProductBridgeAggregate";
 import {
   enqueuePipedriveDealSyncIfEligible,
   processLeadSyncJobById,
@@ -51,8 +52,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ leadId: string 
   const contact_history = buildContactHistoryItems(leadId, allRows, ops);
   const sync_jobs_raw = await listLeadSyncJobsForLead(leadId);
   const sync_jobs = sync_jobs_raw.map(redactLeadSyncJobForApi);
+  const product_bridge_hint = await buildProductBridgeHintForLead(item);
 
-  return NextResponse.json({ ok: true, item, contact_history, sync_jobs });
+  return NextResponse.json({ ok: true, item, contact_history, sync_jobs, product_bridge_hint });
 }
 
 type PatchBody = {
@@ -158,6 +160,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ leadId: strin
 
   const sync_jobs_raw = await listLeadSyncJobsForLead(leadId);
   const sync_jobs = sync_jobs_raw.map(redactLeadSyncJobForApi);
+  const product_bridge_hint = item ? await buildProductBridgeHintForLead(item) : null;
 
   return NextResponse.json({
     ok: true,
@@ -166,5 +169,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ leadId: strin
     item,
     contact_history,
     sync_jobs,
+    product_bridge_hint,
   });
 }
