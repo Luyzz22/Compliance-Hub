@@ -3,6 +3,8 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { GtmProductBridgeHint } from "@/lib/gtmProductBridgeTypes";
+import { GTM_READINESS_LABELS_DE } from "@/lib/gtmAccountReadiness";
 import { LEAD_ATTRIBUTION_SOURCES } from "@/lib/leadAttribution";
 import { LEAD_ATTRIBUTION_SOURCE_LABELS_DE } from "@/lib/leadAttributionLabels";
 import { LEAD_SEGMENTS } from "@/lib/leadCapture";
@@ -131,6 +133,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
   const [syncJobs, setSyncJobs] = useState<LeadSyncJobApi[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [syncRetryingId, setSyncRetryingId] = useState<string | null>(null);
+  const [productBridgeHint, setProductBridgeHint] = useState<GtmProductBridgeHint | null>(null);
   const [filters, setFilters] = useState({
     triage_status: "",
     segment: "",
@@ -236,6 +239,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
       setDetailItem(null);
       setContactHistory([]);
       setSyncJobs([]);
+      setProductBridgeHint(null);
       return;
     }
     let cancelled = false;
@@ -297,6 +301,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
     setDetailItem(null);
     setContactHistory([]);
     setSyncJobs([]);
+    setProductBridgeHint(null);
   }
 
   function parseRelatedIds(raw: string): string[] {
@@ -322,6 +327,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
         item?: LeadInboxItem | null;
         contact_history?: LeadContactHistoryEntry[];
         sync_jobs?: LeadSyncJobApi[];
+        product_bridge_hint?: GtmProductBridgeHint | null;
       };
       if (!r.ok) {
         setActionMsg("Speichern fehlgeschlagen.");
@@ -338,6 +344,9 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
       }
       if (Array.isArray(data.sync_jobs) && selectedId === leadId) {
         setSyncJobs(data.sync_jobs);
+      }
+      if (data.product_bridge_hint !== undefined && selectedId === leadId) {
+        setProductBridgeHint(data.product_bridge_hint);
       }
       setActionMsg("Gespeichert.");
     } catch {
@@ -768,6 +777,32 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                   </p>
                 ) : null}
               </div>
+              {!detailLoading && productBridgeHint ? (
+                <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50/80 px-3 py-2 text-xs text-violet-950">
+                  <p className="font-semibold text-violet-900">Produkt-/Governance-Hinweis (Wave 33)</p>
+                  <p className="mt-1">
+                    Readiness:{" "}
+                    <span className="font-medium">{productBridgeHint.readiness_label_de}</span>
+                    {productBridgeHint.mapped && productBridgeHint.tenant_id ? (
+                      <>
+                        {" "}
+                        · Mandant{" "}
+                        <span className="font-mono text-[11px]">{productBridgeHint.tenant_id}</span>
+                      </>
+                    ) : null}
+                    {productBridgeHint.pilot_flag ? " · Pilot (Mapping)" : null}
+                  </p>
+                  <ul className="mt-2 list-inside list-disc space-y-0.5 text-[11px] text-violet-900/90">
+                    {productBridgeHint.governance_hints_de.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-[10px] text-violet-800/80">
+                    Nur zur Orientierung; keine automatischen Änderungen in CRM oder Mandanten. Klassen:{" "}
+                    {GTM_READINESS_LABELS_DE.no_footprint} / {GTM_READINESS_LABELS_DE.early_pilot} / …
+                  </p>
+                </div>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               <button
