@@ -26,7 +26,9 @@ import type {
   GtmDailyPoint,
   GtmDashboardSnapshot,
   GtmFunnelStage,
+  GtmHealthSignalCounts,
   GtmSegmentBucket,
+  GtmSourceVolumeRow,
   GtmWeeklyPoint,
   GtmWindowMetrics,
 } from "@/lib/gtmDashboardTypes";
@@ -444,6 +446,28 @@ export async function computeGtmDashboardSnapshot(now: Date = new Date()): Promi
     k === "(ohne_campaign)" ? "Ohne utm_campaign" : k,
   );
 
+  const leadDeal7d = new Set<string>();
+  for (const j of jobs) {
+    if (pipedriveDealCreatedInWindow(j, w7.start, w7.end)) leadDeal7d.add(j.lead_id);
+  }
+  const items7d = items.filter((it) => isoInWindow(it.created_at, w7.start, w7.end));
+  const bySource7d = new Map<string, Agg>();
+  for (const it of items7d) {
+    const q = isQualifiedTriage(it.triage_status);
+    const deal = leadDeal7d.has(it.lead_id);
+    bumpAgg(bySource7d, it.attribution_source, q, deal);
+  }
+  const source_volume_by_attribution_7d: GtmSourceVolumeRow[] = [...bySource7d.entries()]
+    .sort((a, b) => b[1].inquiries - a[1].inquiries)
+    .slice(0, 14)
+    .map(([key, v]) => ({
+      key,
+      label_de: LEAD_ATTRIBUTION_SOURCE_LABELS_DE[key as LeadAttributionSource] ?? key,
+      inquiries: v.inquiries,
+      qualified: v.qualified,
+      pipedrive_deals_created: v.deals,
+    }));
+
   const MS_UNTRIAGED = GTM_HEALTH_UNTRIAGED_DAYS * MS_PER_DAY;
   const MS_QUAL_NO_DEAL = GTM_HEALTH_QUALIFIED_NO_DEAL_DAYS * MS_PER_DAY;
   const MS_STUCK_SYNC = GTM_HEALTH_STUCK_SYNC_HOURS * 60 * 60 * 1000;
@@ -486,6 +510,14 @@ export async function computeGtmDashboardSnapshot(now: Date = new Date()): Promi
     const age = nowMs - Date.parse(it.created_at);
     return age > MS_QUAL_NO_DEAL;
   }).length;
+
+  const health_signal_counts: GtmHealthSignalCounts = {
+    untriaged_over_3d,
+    stuck_failed_crm_sync_24h,
+    qualified_no_pipedrive_deal_old_7d,
+    crm_dead_letter_30d,
+    crm_failed_30d,
+  };
 
   const hubspotBySegment: Record<GtmSegmentBucket, number> = {
     industrie_mittelstand: 0,
@@ -568,6 +600,8 @@ export async function computeGtmDashboardSnapshot(now: Date = new Date()): Promi
     },
     attribution_by_source_30d,
     attribution_by_campaign_30d,
+    source_volume_by_attribution_7d,
+    health_signal_counts,
     health,
     data_notes: {
       cta_clicks_persisted: false,

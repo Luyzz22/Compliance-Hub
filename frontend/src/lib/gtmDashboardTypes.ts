@@ -47,6 +47,36 @@ export type GtmAttributionBreakdownRow = {
   pipedrive_deals_created_30d: number;
 };
 
+/** Attribution-Zählung mit klaren Feldnamen (z. B. 7-Tage-Fenster). */
+export type GtmSourceVolumeRow = {
+  key: string;
+  label_de: string;
+  inquiries: number;
+  qualified: number;
+  pipedrive_deals_created: number;
+};
+
+/** Rohzähler für Alerts & Health-Snapshot (Wave 32). */
+export type GtmHealthSignalCounts = {
+  untriaged_over_3d: number;
+  stuck_failed_crm_sync_24h: number;
+  qualified_no_pipedrive_deal_old_7d: number;
+  crm_dead_letter_30d: number;
+  crm_failed_30d: number;
+};
+
+export type GtmWeeklyReviewNote = {
+  id: string;
+  week_label: string;
+  text: string;
+  created_at: string;
+};
+
+export type GtmWeeklyReviewState = {
+  last_reviewed_at: string | null;
+  notes: GtmWeeklyReviewNote[];
+};
+
 /** Wave 31 – qualitative Health-Stufen */
 export type GtmHealthStatus = "good" | "watch" | "issue";
 
@@ -90,6 +120,35 @@ export type GtmHealthLayer = {
   attribution_health_top3: GtmAttributionHealthRow[];
 };
 
+/** API-Antwort GET /api/admin/gtm/health-snapshot */
+export type GtmHealthSnapshotPayload = {
+  generated_at: string;
+  health_tiles: { id: string; label_de: string; status: GtmHealthStatus }[];
+  health_signal_counts: GtmHealthSignalCounts;
+  attention_by_kind: Record<string, number>;
+  ops_hints: { id: string; count: number }[];
+  kpis: {
+    inbound_7d: number;
+    inbound_30d: number;
+    qualified_7d: number;
+    qualified_30d: number;
+    deals_7d: number;
+    deals_30d: number;
+    dead_letter_sync_30d: number;
+    failed_webhook_30d: number;
+  };
+  segment_readiness: {
+    segment: GtmSegmentBucket;
+    label_de: string;
+    inquiries_30d: number;
+    qualified_30d: number;
+    status: GtmHealthStatus;
+  }[];
+  attribution_sources_7d: GtmSourceVolumeRow[];
+  attribution_sources_30d_top: GtmSourceVolumeRow[];
+  alerts_evaluated: { id: string; severity: "warning" | "critical"; message_de: string }[];
+};
+
 export type GtmDashboardSnapshot = {
   generated_at: string;
   windows: Record<GtmWindowKey, { start: string; end: string }>;
@@ -110,6 +169,10 @@ export type GtmDashboardSnapshot = {
   /** Wave 30 – letzte 30 Tage, keine Multi-Touch-Modelle */
   attribution_by_source_30d: GtmAttributionBreakdownRow[];
   attribution_by_campaign_30d: GtmAttributionBreakdownRow[];
+  /** Wave 32 – Attribution nach Quelle, 7 Tage */
+  source_volume_by_attribution_7d: GtmSourceVolumeRow[];
+  /** Wave 32 – Zähler für Alerts / externe Snapshot-API */
+  health_signal_counts: GtmHealthSignalCounts;
   /** Wave 31 – regelbasierte Health / Readiness */
   health: GtmHealthLayer;
   data_notes: {

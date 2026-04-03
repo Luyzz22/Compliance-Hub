@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { computeGtmDashboardSnapshot } from "@/lib/gtmDashboardAggregate";
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
-import { readGtmWeeklyReviewState, sliceRecentNotes } from "@/lib/gtmWeeklyReviewStore";
+import { buildGtmHealthSnapshotPayload } from "@/lib/gtmHealthSnapshotBuilder";
+import { isLeadAdminOrGtmAlertSecretAuthorized } from "@/lib/leadAdminAuth";
 
 export const runtime = "nodejs";
 
@@ -10,15 +10,11 @@ export async function GET(req: Request) {
   if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
-  if (!isLeadAdminAuthorized(req)) {
+  if (!isLeadAdminOrGtmAlertSecretAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   const snapshot = await computeGtmDashboardSnapshot();
-  const wr = await readGtmWeeklyReviewState();
-  const weekly_review = {
-    last_reviewed_at: wr.last_reviewed_at,
-    recent_notes: sliceRecentNotes(wr, 3),
-  };
-  return NextResponse.json({ ok: true, snapshot, weekly_review });
+  const health_snapshot = buildGtmHealthSnapshotPayload(snapshot);
+  return NextResponse.json({ ok: true, health_snapshot });
 }
