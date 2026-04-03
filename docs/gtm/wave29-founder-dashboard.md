@@ -62,4 +62,4 @@ Kurze Listen (jeweils bis ca. 8 Einträge): fehlgeschlagene Webhooks, Dead-Lette
 - Sehr große JSONL/Job-Stores: Aggregation ist O(n); bei Bedarf später cachen oder Zeitraum begrenzen.
 - Fokus-Link setzt nur die `lead_id` in der Inbox, wenn die Liste geladen ist und die ID existiert.
 
-Siehe auch: [Wave 28 – Lead-Sync](wave28-lead-sync-framework.md), [Wave 26 – Lead-Inbox](wave26-internal-lead-inbox.md), [Wave 30 – Attribution](wave30-attribution-and-campaign-tracking.md), [Wave 31 – Health & Readiness](wave31-gtm-health-and-readiness.md).
+Siehe auch: [Wave 28 – Lead-Sync](wave28-lead-sync-framework.md), [Wave 26 – Lead-Inbox](wave26-internal-lead-inbox.md), [Wave 30 – Attribution](wave30-attribution-and-campaign-tracking.md), [Wave 31 – Health & Readiness](wave31-gtm-health-and-readiness.md), [Wave 32 – Weekly Review & Alerts](wave32-weekly-gtm-health-review.md).

@@ -74,3 +74,17 @@ export function isLeadAdminAuthorized(req: Request): boolean {
   const value = decodeURIComponent(match.slice(`${COOKIE_NAME}=`.length));
   return verifyLeadAdminSession(value);
 }
+
+/**
+ * Lead-Admin **oder** separates Automation-Secret (Wave 32 – Cron/n8n ohne Session-Cookie).
+ */
+export function isLeadAdminOrGtmAlertSecretAuthorized(req: Request): boolean {
+  if (isLeadAdminAuthorized(req)) return true;
+  const gtm = process.env.GTM_ALERT_SECRET?.trim();
+  if (!gtm) return false;
+  const auth = req.headers.get("authorization");
+  const url = new URL(req.url);
+  const q = url.searchParams.get("secret");
+  const bearer = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : q?.trim() ?? "";
+  return bearer === gtm;
+}

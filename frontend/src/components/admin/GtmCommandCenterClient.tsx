@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type {
   GtmDashboardSnapshot,
   GtmHealthStatus,
+  GtmWeeklyReviewNote,
   GtmWindowKey,
 } from "@/lib/gtmDashboardTypes";
 
@@ -60,10 +61,19 @@ function attentionLabel(kind: string): string {
   return kind;
 }
 
+type WeeklyReviewPayload = {
+  last_reviewed_at: string | null;
+  recent_notes: GtmWeeklyReviewNote[];
+};
+
 export function GtmCommandCenterClient({ adminConfigured }: Props) {
   const [snapshot, setSnapshot] = useState<GtmDashboardSnapshot | null>(null);
+  const [weeklyReview, setWeeklyReview] = useState<WeeklyReviewPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [weeklyNoteDraft, setWeeklyNoteDraft] = useState("");
+  const [weeklySaving, setWeeklySaving] = useState(false);
+  const [weeklyMsg, setWeeklyMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +82,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
       const r = await fetch("/api/admin/gtm/summary", { credentials: "include" });
       if (r.status === 401) {
         setSnapshot(null);
+        setWeeklyReview(null);
         setLoadError("unauthorized");
         return;
       }
@@ -79,8 +90,15 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
         setLoadError(`HTTP ${r.status}`);
         return;
       }
-      const data = (await r.json()) as { ok?: boolean; snapshot?: GtmDashboardSnapshot };
+      const data = (await r.json()) as {
+        ok?: boolean;
+        snapshot?: GtmDashboardSnapshot;
+        weekly_review?: WeeklyReviewPayload;
+      };
       setSnapshot(data.snapshot ?? null);
+      setWeeklyReview(
+        data.weekly_review ?? { last_reviewed_at: null, recent_notes: [] },
+      );
     } catch {
       setLoadError("Netzwerkfehler");
     } finally {
@@ -92,6 +110,47 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
     if (!adminConfigured) return;
     void load();
   }, [adminConfigured, load]);
+
+  async function submitWeeklyReview(mode: "mark_only" | "note_only" | "mark_with_note") {
+    setWeeklySaving(true);
+    setWeeklyMsg(null);
+    try {
+      let body: { mark_reviewed?: boolean; note?: string };
+      if (mode === "mark_only") body = { mark_reviewed: true };
+      else if (mode === "note_only") {
+        if (!weeklyNoteDraft.trim()) {
+          setWeeklyMsg("Bitte Notiztext eingeben.");
+          setWeeklySaving(false);
+          return;
+        }
+        body = { note: weeklyNoteDraft.trim().slice(0, 2000) };
+      } else {
+        if (!weeklyNoteDraft.trim()) {
+          setWeeklyMsg("Bitte Notiztext eingeben oder „nur abhaken“ nutzen.");
+          setWeeklySaving(false);
+          return;
+        }
+        body = { mark_reviewed: true, note: weeklyNoteDraft.trim().slice(0, 2000) };
+      }
+      const r = await fetch("/api/admin/gtm/weekly-review", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        setWeeklyMsg(`Speichern fehlgeschlagen (${r.status})`);
+        return;
+      }
+      setWeeklyMsg("Gespeichert.");
+      setWeeklyNoteDraft("");
+      await load();
+    } catch {
+      setWeeklyMsg("Netzwerkfehler beim Speichern.");
+    } finally {
+      setWeeklySaving(false);
+    }
+  }
 
   const k = (w: GtmWindowKey) => snapshot?.kpis[w];
 
@@ -188,6 +247,88 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
                   </a>
                 </div>
               ))}
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-900">Wöchentlicher GTM-Review (15–20 Min.)</h2>
+            <p className="mt-1 text-xs text-slate-600">
+              Leichte Routine für Founders &amp; GTM — vollständige Checkliste und Alert-Hinweise im Repo:{" "}
+              <code className="rounded bg-slate-100 px-1 font-mono text-[11px]">
+                docs/gtm/wave32-weekly-gtm-health-review.md
+              </code>
+            </p>
+            <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-slate-700">
+              <li>GTM Health-Kacheln (Eingang, Triage, Sync, Pipeline)</li>
+              <li>Aufmerksamkeit &amp; operative Hinweise (Backlog, Sync, Pipeline-Proxy)</li>
+              <li>Segment-Readiness (Mittelstand, Kanzlei, Enterprise) → Fokus setzen</li>
+              <li>Attribution &amp; Noise-Top-Quellen</li>
+              <li>2–3 konkrete Aktionen für die kommende Woche festhalten</li>
+            </ul>
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <p className="text-xs font-medium text-slate-600">
+                Zuletzt reviewt:{" "}
+                {weeklyReview?.last_reviewed_at
+                  ? new Date(weeklyReview.last_reviewed_at).toLocaleString("de-DE")
+                  : "noch nicht erfasst"}
+              </p>
+              {weeklyReview?.recent_notes?.length ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                    Letzte Notizen
+                  </p>
+                  {weeklyReview.recent_notes.map((n) => (
+                    <div
+                      key={n.id}
+                      className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs text-slate-800"
+                    >
+                      <p className="font-mono text-[10px] text-slate-500">
+                        {n.week_label} · {new Date(n.created_at).toLocaleDateString("de-DE")}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap">{n.text}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <label className="mt-3 block text-xs font-medium text-slate-600" htmlFor="gtm-weekly-note">
+                Optionale Wochen-Notiz (intern)
+              </label>
+              <textarea
+                id="gtm-weekly-note"
+                value={weeklyNoteDraft}
+                onChange={(e) => setWeeklyNoteDraft(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="z. B. Fokus: Kanzlei-Demos; Sync stabil; CTA X testen"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
+              />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={weeklySaving}
+                  onClick={() => void submitWeeklyReview("mark_only")}
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  Review heute abhaken
+                </button>
+                <button
+                  type="button"
+                  disabled={weeklySaving || !weeklyNoteDraft.trim()}
+                  onClick={() => void submitWeeklyReview("note_only")}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Nur Notiz anhängen
+                </button>
+                <button
+                  type="button"
+                  disabled={weeklySaving || !weeklyNoteDraft.trim()}
+                  onClick={() => void submitWeeklyReview("mark_with_note")}
+                  className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-950 hover:bg-emerald-100 disabled:opacity-50"
+                >
+                  Abhaken + Notiz
+                </button>
+              </div>
+              {weeklyMsg ? <p className="mt-2 text-xs text-slate-600">{weeklyMsg}</p> : null}
             </div>
           </section>
 

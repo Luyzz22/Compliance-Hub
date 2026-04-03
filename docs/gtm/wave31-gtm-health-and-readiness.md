@@ -69,3 +69,9 @@ Die drei stärksten Quellen (nach Leads 30 Tage) mit Qualifikationsquote. **Nois
 ## Ausblick
 
 Schwellen anpassen, wenn Volumen steigt; optional später echte **Triage-Timestamps** oder **HubSpot-Property-Mapping** aus Wave 30/28 — weiterhin ohne Drittanbieter-Attribution-Stack.
+
+## Ergänzung (Wave 32)
+
+- **`health_signal_counts`** im Dashboard-Snapshot: dieselben Rohzähler, die auch für **Alert-Checks** genutzt werden (`untriaged_over_3d`, CRM Dead Letter / Failed 30d, qualifiziert ohne Deal-Proxy, stuck failed sync bleibt in operativen Hinweisen).  
+- **Wöchentliche Routine** und **HTTP-Alerts**: siehe [Wave 32 – Weekly GTM Health Review](wave32-weekly-gtm-health-review.md).  
+- **Maschinenlesbarer Export:** `GET /api/admin/gtm/health-snapshot` (Auth wie Alert-Automation).
