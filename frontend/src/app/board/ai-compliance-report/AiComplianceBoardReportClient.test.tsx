@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TenantWorkspaceMetaDto } from "@/lib/api";
+import type { UseWorkspaceModeResult } from "@/hooks/useWorkspaceMode";
 import { resetWorkspaceTelemetryDebounceForTests } from "@/lib/workspaceTelemetry";
 
 function tenantMeta(over: Partial<TenantWorkspaceMetaDto> = {}): TenantWorkspaceMetaDto {
@@ -24,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   fetchDetail: vi.fn(),
   createReport: vi.fn(),
   fetchReadiness: vi.fn(),
-  useWorkspaceMode: vi.fn(() => ({
+  useWorkspaceMode: vi.fn((_tenantId?: string | null): UseWorkspaceModeResult => ({
     meta: tenantMeta(),
     loading: false,
     error: null,
@@ -32,7 +33,7 @@ const mocks = vi.hoisted(() => ({
     isDemoTenant: false,
     isPlaygroundTenant: false,
     refetch: vi.fn(),
-    workspaceMode: "production" as const,
+    workspaceMode: "production",
     modeLabel: "",
     modeHint: "",
     mutationsBlocked: false,
@@ -56,7 +57,7 @@ vi.mock("@/lib/api", async () => {
 });
 
 vi.mock("@/hooks/useWorkspaceMode", () => ({
-  useWorkspaceMode: (tenantId: string) => mocks.useWorkspaceMode(tenantId),
+  useWorkspaceMode: (tenantId?: string | null) => mocks.useWorkspaceMode(tenantId),
 }));
 
 vi.mock("@/lib/config", async (importOriginal) => {
@@ -83,7 +84,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   vi.unstubAllGlobals();
-  mocks.useWorkspaceMode.mockImplementation(() => ({
+  mocks.useWorkspaceMode.mockImplementation((): UseWorkspaceModeResult => ({
     meta: tenantMeta(),
     loading: false,
     error: null,
@@ -186,7 +187,7 @@ describe("AiComplianceBoardReportClient", () => {
       isDemoTenant: true,
       isPlaygroundTenant: false,
       refetch: vi.fn(),
-      workspaceMode: "demo",
+      workspaceMode: "demo" as const,
       modeLabel: "Demo",
       modeHint: "Hint",
       mutationsBlocked: true,

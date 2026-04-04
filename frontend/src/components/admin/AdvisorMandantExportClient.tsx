@@ -12,6 +12,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [bundleLoading, setBundleLoading] = useState(false);
 
   const load = useCallback(async () => {
     const id = clientId.trim();
@@ -76,6 +77,51 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
     URL.revokeObjectURL(url);
   }, [payload]);
 
+  const downloadDatevBundle = useCallback(async () => {
+    const id = clientId.trim();
+    if (!id) {
+      setError("Bitte Mandanten-ID (client_id) eingeben.");
+      return;
+    }
+    setBundleLoading(true);
+    setError(null);
+    setMsg(null);
+    try {
+      const q = new URLSearchParams({ client_id: id });
+      const r = await fetch(`/api/internal/advisor/datev-export-bundle?${q}`, {
+        credentials: "include",
+      });
+      if (r.status === 401) {
+        setError("Nicht angemeldet (Admin-Secret).");
+        return;
+      }
+      if (r.status === 400) {
+        const j = (await r.json()) as { detail?: string };
+        setError(j.detail ?? "Ungültige Mandanten-ID.");
+        return;
+      }
+      if (!r.ok) {
+        setError(`HTTP ${r.status}`);
+        return;
+      }
+      const blob = await r.blob();
+      const cd = r.headers.get("Content-Disposition");
+      const match = cd?.match(/filename="([^"]+)"/);
+      const name = match?.[1] ?? `datev-kanzlei-bundle-${id}.zip`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+      setMsg("ZIP-Arbeitspaket geladen.");
+    } catch {
+      setError("Netzwerkfehler");
+    } finally {
+      setBundleLoading(false);
+    }
+  }, [clientId]);
+
   if (!adminConfigured) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
@@ -98,6 +144,11 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
           <code className="rounded bg-slate-100 px-1 text-[11px]">
             GET /api/internal/advisor/mandant-readiness-export?client_id=…
           </code>
+          <br />
+          ZIP (Wave 38):{" "}
+          <code className="rounded bg-slate-100 px-1 text-[11px]">
+            GET /api/internal/advisor/datev-export-bundle?client_id=…
+          </code>
         </p>
       </div>
 
@@ -119,6 +170,14 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800 disabled:opacity-50"
         >
           {loading ? "Lade…" : "Export erzeugen"}
+        </button>
+        <button
+          type="button"
+          disabled={bundleLoading}
+          onClick={() => void downloadDatevBundle()}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {bundleLoading ? "ZIP…" : "DATEV-/Kanzlei-Export erstellen"}
         </button>
       </div>
 

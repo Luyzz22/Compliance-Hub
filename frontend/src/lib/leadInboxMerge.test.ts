@@ -15,13 +15,14 @@ import type { LeadOpsFile } from "@/lib/leadOpsTypes";
 import { LEAD_OUTBOUND_SCHEMA_VERSION } from "@/lib/leadOutbound";
 
 function baseRow(over: Partial<LeadAdminRow> & { lead_id: string }): LeadAdminRow {
+  const { lead_id, ...restOver } = over;
   const created = "2026-04-01T12:00:00.000Z";
   const email = "n@example.com";
   const ck = buildLeadContactKey(normalizeLeadEmail(email));
   const ak = buildLeadAccountKey("C", email);
   return {
     _kind: "lead_inquiry",
-    lead_id: over.lead_id,
+    lead_id,
     trace_id: "t1",
     status: "received",
     created_at: created,
@@ -55,7 +56,7 @@ function baseRow(over: Partial<LeadAdminRow> & { lead_id: string }): LeadAdminRo
     contact_first_seen_at: created,
     contact_latest_seen_at: created,
     duplicate_hint: "none",
-    ...over,
+    ...restOver,
   };
 }
 
