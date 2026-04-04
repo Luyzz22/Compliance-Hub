@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { boardReadinessBannerFromPayload, computeBoardReadinessPayload } from "@/lib/boardReadinessAggregate";
 import { computeGtmDashboardSnapshot } from "@/lib/gtmDashboardAggregate";
 import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
 import { computeProductBridgePayload } from "@/lib/gtmProductBridgeAggregate";
@@ -15,14 +16,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const [snapshot, product_bridge] = await Promise.all([
+  const [snapshot, product_bridge, board_payload] = await Promise.all([
     computeGtmDashboardSnapshot(),
     computeProductBridgePayload(),
+    computeBoardReadinessPayload(),
   ]);
+  const board_readiness_banner = boardReadinessBannerFromPayload(board_payload);
   const wr = await readGtmWeeklyReviewState();
   const weekly_review = {
     last_reviewed_at: wr.last_reviewed_at,
     recent_notes: sliceRecentNotes(wr, 3),
   };
-  return NextResponse.json({ ok: true, snapshot, weekly_review, product_bridge });
+  return NextResponse.json({
+    ok: true,
+    snapshot,
+    weekly_review,
+    product_bridge,
+    board_readiness_banner,
+  });
 }

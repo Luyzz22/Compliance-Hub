@@ -9,6 +9,7 @@ import type {
   GtmWeeklyReviewNote,
   GtmWindowKey,
 } from "@/lib/gtmDashboardTypes";
+import type { BoardReadinessBanner } from "@/lib/boardReadinessTypes";
 import type { GtmProductBridgePayload } from "@/lib/gtmProductBridgeTypes";
 
 type Props = { adminConfigured: boolean };
@@ -84,6 +85,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
   const [weeklyNoteDraft, setWeeklyNoteDraft] = useState("");
   const [weeklySaving, setWeeklySaving] = useState(false);
   const [weeklyMsg, setWeeklyMsg] = useState<string | null>(null);
+  const [boardReadinessBanner, setBoardReadinessBanner] = useState<BoardReadinessBanner | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +96,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
         setSnapshot(null);
         setProductBridge(null);
         setWeeklyReview(null);
+        setBoardReadinessBanner(null);
         setLoadError("unauthorized");
         return;
       }
@@ -106,9 +109,11 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
         snapshot?: GtmDashboardSnapshot;
         weekly_review?: WeeklyReviewPayload;
         product_bridge?: GtmProductBridgePayload;
+        board_readiness_banner?: BoardReadinessBanner;
       };
       setSnapshot(data.snapshot ?? null);
       setProductBridge(data.product_bridge ?? null);
+      setBoardReadinessBanner(data.board_readiness_banner ?? null);
       setWeeklyReview(
         data.weekly_review ?? { last_reviewed_at: null, recent_notes: [] },
       );
@@ -232,6 +237,38 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
 
       {loading && !snapshot ? (
         <p className="text-sm text-slate-500">Daten werden geladen …</p>
+      ) : null}
+
+      {boardReadinessBanner ? (
+        <a
+          href="/admin/board-readiness"
+          className={`block rounded-xl border p-4 shadow-sm transition hover:opacity-95 ${
+            boardReadinessBanner.status === "green"
+              ? "border-emerald-200 bg-emerald-50/90"
+              : boardReadinessBanner.status === "amber"
+                ? "border-amber-200 bg-amber-50/90"
+                : "border-rose-200 bg-rose-50/90"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">Board Readiness</h2>
+            <span className="rounded-full border border-slate-300 bg-white/80 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-800">
+              {boardReadinessBanner.status === "green"
+                ? "OK"
+                : boardReadinessBanner.status === "amber"
+                  ? "Beobachten"
+                  : "Handeln"}
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-slate-700">{boardReadinessBanner.label_de}</p>
+          <p className="mt-2 font-mono text-[10px] text-slate-600">
+            Mandanten (Map): {boardReadinessBanner.mapped_tenant_count} · Backend:{" "}
+            {boardReadinessBanner.backend_reachable ? "OK" : "teilweise offline"}
+          </p>
+          <p className="mt-2 text-xs font-medium text-cyan-900 underline underline-offset-2">
+            Details anzeigen →
+          </p>
+        </a>
       ) : null}
 
       {snapshot ? (
