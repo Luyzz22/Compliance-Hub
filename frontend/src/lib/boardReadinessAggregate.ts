@@ -31,13 +31,17 @@ import {
   type GtmProductMapEntry,
 } from "@/lib/gtmProductAccountMapStore";
 import { fetchTenantGovernanceSnapshot } from "@/lib/gtmProductGovernanceFetch";
+import { fetchTenantBoardReadinessRaw } from "@/lib/fetchTenantBoardReadinessRaw";
+import type { TenantBoardReadinessRaw } from "@/lib/tenantBoardReadinessRawTypes";
 import {
-  fetchTenantBoardReadinessRaw,
-  type TenantBoardReadinessRaw,
-} from "@/lib/fetchTenantBoardReadinessRaw";
+  boardComplianceReportFresh,
+  complianceGapStatus,
+  countSavedAiActDocSections,
+  EU_AI_ACT_ART9,
+  evidenceBundleComplete,
+} from "@/lib/tenantBoardReadinessGaps";
 
-const ART9 = "art9_risk_management";
-const ART11 = "art11_technical_documentation";
+const ART9 = EU_AI_ACT_ART9;
 
 const SEGMENT_LABELS_DE: Record<GtmSegmentBucket, string> = {
   industrie_mittelstand: "Industrie / Mittelstand",
@@ -70,25 +74,19 @@ function complianceStatus(
   rows: { requirement_id: string; status: string }[] | undefined,
   reqId: string,
 ): string | undefined {
-  return rows?.find((r) => r.requirement_id === reqId)?.status;
+  return complianceGapStatus(rows, reqId);
 }
 
 function countSavedAiActSections(raw: TenantBoardReadinessRaw, sysId: string): number {
-  const items = raw.ai_act_doc_items_by_system[sysId] ?? [];
-  return items.filter((it) => it.status === "saved").length;
+  return countSavedAiActDocSections(raw, sysId);
 }
 
 function evidenceBundleOk(raw: TenantBoardReadinessRaw, sysId: string): boolean {
-  const st = complianceStatus(raw.compliance_by_system[sysId], ART11);
-  if (st === "completed") return true;
-  return countSavedAiActSections(raw, sysId) >= 2;
+  return evidenceBundleComplete(raw, sysId);
 }
 
 function boardReportFresh(raw: TenantBoardReadinessRaw, nowMs: number): boolean {
-  const latest = raw.board_reports[0];
-  if (!latest?.created_at) return false;
-  const w = windowBoundsMs(BOARD_REPORT_FRESH_DAYS, nowMs);
-  return isoInWindow(latest.created_at, w.start, w.end);
+  return boardComplianceReportFresh(raw, nowMs);
 }
 
 function isoFrameworksScopes(setup: TenantBoardReadinessRaw["ai_governance_setup"]): {

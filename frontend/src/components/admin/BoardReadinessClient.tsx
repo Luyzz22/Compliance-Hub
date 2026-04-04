@@ -102,6 +102,12 @@ export function BoardReadinessClient({ adminConfigured }: Props) {
         </div>
         <div className="flex flex-wrap gap-2">
           <a
+            href="/admin/advisor-mandant-export"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            Mandanten-Export (Kanzlei)
+          </a>
+          <a
             href="/admin/gtm"
             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
           >
