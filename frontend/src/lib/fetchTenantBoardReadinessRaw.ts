@@ -1,6 +1,7 @@
 import "server-only";
 
 import type {
+  RawAIActDocListItem,
   RawAIActDocListResponse,
   RawAISystemRow,
   RawAIComplianceOverview,
