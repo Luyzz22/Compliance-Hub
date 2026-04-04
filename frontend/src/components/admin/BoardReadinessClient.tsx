@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BoardReadinessBriefingPanel } from "@/components/admin/BoardReadinessBriefingPanel";
+import { BoardQuarterlyPackPanel } from "@/components/admin/BoardQuarterlyPackPanel";
 import type { BoardReadinessPayload, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 
 type Props = { adminConfigured: boolean };
@@ -84,7 +85,7 @@ export function BoardReadinessClient({ adminConfigured }: Props) {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 34–35 · Intern</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 34–36 · Intern</p>
           <h1 className="text-2xl font-semibold text-slate-900">Board Readiness</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
             Governance-Signale je Säule (EU AI Act, ISO 42001, NIS2, DSGVO) über gemappte Mandanten –
@@ -123,6 +124,7 @@ export function BoardReadinessClient({ adminConfigured }: Props) {
 
       {loading && !payload ? <p className="text-sm text-slate-500">Daten werden geladen …</p> : null}
 
+      <BoardQuarterlyPackPanel />
       <BoardReadinessBriefingPanel />
 
       {payload ? (
