@@ -1,0 +1,61 @@
+/**
+ * Wave 39 – Kanzlei-Portfolio-Cockpit (intern, Mehrmandanten-Übersicht).
+ * JSON-Schema für API-Antwort; filterbar/sortierbar im Client.
+ */
+
+import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
+import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
+
+export const KANZLEI_PORTFOLIO_VERSION = "wave39-v1";
+
+export type KanzleiPortfolioPillarFilter = BoardReadinessPillarKey | "all";
+
+export type KanzleiPortfolioReadinessFilter = GtmReadinessClass | "all";
+
+export type KanzleiPortfolioRow = {
+  tenant_id: string;
+  mandant_label: string | null;
+  readiness_class: GtmReadinessClass;
+  readiness_label_de: string;
+  primary_segment_label_de: string | null;
+  open_points_count: number;
+  open_points_hoch: number;
+  /** Säule mit den gewichtet dringendsten offenen Punkten; sonst Ampel-Fokus. */
+  top_gap_pillar_code: string;
+  top_gap_pillar_label_de: string;
+  pillar_traffic: Record<BoardReadinessPillarKey, BoardReadinessTraffic>;
+  board_report_stale: boolean;
+  api_fetch_ok: boolean;
+  attention_score: number;
+  attention_flags_de: string[];
+  last_export_iso: string | null;
+  last_review_iso: string | null;
+  touchpoint_note_de: string | null;
+  links: {
+    mandant_export_page: string;
+    datev_bundle_api: string;
+    readiness_export_api: string;
+    board_readiness_admin: string;
+  };
+};
+
+export type KanzleiPortfolioPayload = {
+  version: typeof KANZLEI_PORTFOLIO_VERSION;
+  generated_at: string;
+  backend_reachable: boolean;
+  mapped_tenant_count: number;
+  tenants_partial: number;
+  constants: {
+    export_stale_days: number;
+    many_open_points_threshold: number;
+  };
+  rows: KanzleiPortfolioRow[];
+};
+
+export const KANZLEI_PILLAR_LABEL_DE: Record<string, string> = {
+  EU_AI_Act: "EU AI Act",
+  ISO_42001: "ISO 42001",
+  NIS2: "NIS2",
+  DSGVO: "DSGVO",
+  none: "—",
+};

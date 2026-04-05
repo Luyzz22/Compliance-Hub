@@ -111,7 +111,8 @@ function nis2RoleOk(setup: TenantBoardReadinessRaw["ai_governance_setup"]): bool
   });
 }
 
-type TenantPillarSnapshot = {
+/** Pro-Mandant-Pillar-Snapshot für Board Readiness und Kanzlei-Portfolio (Wave 39). */
+export type TenantPillarSnapshot = {
   tenant_id: string;
   tenant_label: string | null;
   pilot: boolean;
@@ -712,14 +713,26 @@ function mapEntryForTenant(
   return map.entries.find((e) => e.tenant_id === tid);
 }
 
-export async function computeBoardReadinessPayload(now: Date = new Date()): Promise<BoardReadinessPayload> {
+export type MappedTenantPillarSnapshotBundle = {
+  generated_at: string;
+  nowMs: number;
+  map: Awaited<ReturnType<typeof readGtmProductAccountMap>>;
+  tenantIds: string[];
+  leads30d: LeadInboxItem[];
+  snapshots: TenantPillarSnapshot[];
+  backend_reachable: boolean;
+  tenants_partial: number;
+};
+
+/**
+ * Lädt alle gemappten Mandanten mit Pillar-Snapshots (eine API-Runde pro Mandant).
+ * Wird von Board Readiness und Kanzlei-Portfolio (Wave 39) gemeinsam genutzt.
+ */
+export async function loadMappedTenantPillarSnapshots(now: Date = new Date()): Promise<MappedTenantPillarSnapshotBundle> {
   const nowMs = now.getTime();
   const map = await readGtmProductAccountMap();
   const tenantIds = [...new Set(map.entries.map((e) => e.tenant_id))];
   const leads30d = await loadLeads30d(nowMs);
-
-  const { computeProductBridgePayload } = await import("@/lib/gtmProductBridgeAggregate");
-  const product_bridge = await computeProductBridgePayload(now);
 
   const snapshots: TenantPillarSnapshot[] = [];
   let backendReachable = false;
@@ -736,6 +749,25 @@ export async function computeBoardReadinessPayload(now: Date = new Date()): Prom
     const primary_segment = primarySegmentForTenant(tid, map, leads30d);
     snapshots.push(buildTenantSnapshot(tid, entry, primary_segment, raw, govSnap, nowMs));
   }
+
+  return {
+    generated_at: now.toISOString(),
+    nowMs,
+    map,
+    tenantIds,
+    leads30d,
+    snapshots,
+    backend_reachable: backendReachable,
+    tenants_partial: partial,
+  };
+}
+
+export async function computeBoardReadinessPayload(now: Date = new Date()): Promise<BoardReadinessPayload> {
+  const bundle = await loadMappedTenantPillarSnapshots(now);
+  const { snapshots, backend_reachable: backendReachable, tenants_partial: partial, nowMs } = bundle;
+
+  const { computeProductBridgePayload } = await import("@/lib/gtmProductBridgeAggregate");
+  const product_bridge = await computeProductBridgePayload(now);
 
   const pillarMap = aggregatePillarsFromTenants(snapshots);
   const pillars = [
@@ -793,7 +825,7 @@ export async function computeBoardReadinessPayload(now: Date = new Date()): Prom
   return {
     generated_at: now.toISOString(),
     backend_reachable: backendReachable,
-    mapped_tenant_count: tenantIds.length,
+    mapped_tenant_count: bundle.tenantIds.length,
     tenants_partial: partial,
     overall: { status: overallStatus, label_de: overallLabel },
     pillars,
