@@ -121,6 +121,27 @@ export function kanzleiMonthlyReportMarkdownDe(r: KanzleiMonthlyReportDto): stri
     }
   }
 
+  const sla = r.section_7_advisor_sla;
+  parts.push(`## 7) SLA & Eskalation (Wave 47)`);
+  parts.push(`_Ausgewertet: ${sla.evaluated_at} · ${sla.findings.length} Befund(e) · Schema ${sla.version}._`);
+  const activeSig = sla.signals.filter((s) => s.active);
+  if (activeSig.length === 0) {
+    parts.push(`- Keine aktiven Eskalationssignale.`);
+  } else {
+    for (const s of activeSig) {
+      parts.push(`- **${s.label_de}:** ${s.detail_de}`);
+    }
+  }
+  if (sla.findings.length > 0) {
+    for (const f of sla.findings.slice(0, 8)) {
+      const sev = f.severity === "critical" ? "kritisch" : f.severity === "warning" ? "Warnung" : "Info";
+      parts.push(`- (${sev}) **${f.title_de}** – ${f.detail_de}`);
+    }
+  }
+  for (const step of sla.next_steps_de.slice(0, 4)) {
+    parts.push(`- Nächster Schritt: ${step}`);
+  }
+
   parts.push(`---`);
   parts.push(
     `Hinweis: Portfolio-Report für interne Kanzlei-Arbeit; keine Board-Tischreife. Daten aus Live-API und lokaler Historie – Änderungslogik bewusst grob (siehe Doku Wave 42).`,

@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 
-import type { KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
+import type { KanzleiAttentionQueueItem, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
 import {
   AUTO_MANDANT_REMINDER_CATEGORIES,
   defaultAutoDueAtIso,
@@ -115,6 +115,72 @@ export async function syncAdvisorMandantRemindersFromPortfolio(
 
   await writeAdvisorMandantRemindersState(state);
   return state;
+}
+
+const SLA_ESCALATION_NOTE_DE =
+  "Wave 47 SLA: Portfolio eskaliert – mit Partner abstimmen und Queue priorisieren (automatisch).";
+
+/**
+ * Legt bei aktiven Eskalationssignalen Auto-Reminder (max. Top-3 Queue) an, sonst schließt SLA-Auto-Reminder.
+ */
+export async function syncAdvisorSlaEscalationReminders(
+  attentionQueue: KanzleiAttentionQueueItem[],
+  escalate: boolean,
+  nowMs: number,
+): Promise<void> {
+  const state = await readAdvisorMandantRemindersState();
+  const isoNow = new Date(nowMs).toISOString();
+
+  const closeOpenSlaAuto = () => {
+    for (const r of state.reminders) {
+      if (r.category === "sla_escalation" && r.source === "auto" && r.status === "open") {
+        r.status = "done";
+        r.updated_at = isoNow;
+      }
+    }
+  };
+
+  if (!escalate) {
+    closeOpenSlaAuto();
+    await writeAdvisorMandantRemindersState(state);
+    return;
+  }
+
+  const top = attentionQueue.slice(0, 3);
+  const activeTenants = new Set(top.map((t) => t.tenant_id));
+
+  for (const r of state.reminders) {
+    if (r.category !== "sla_escalation" || r.source !== "auto" || r.status !== "open") continue;
+    if (!activeTenants.has(r.tenant_id)) {
+      r.status = "done";
+      r.updated_at = isoNow;
+    }
+  }
+
+  for (const q of top) {
+    const open = state.reminders.find(
+      (x) =>
+        x.tenant_id === q.tenant_id &&
+        x.category === "sla_escalation" &&
+        x.source === "auto" &&
+        x.status === "open",
+    );
+    if (!open) {
+      state.reminders.push({
+        reminder_id: randomUUID(),
+        tenant_id: q.tenant_id,
+        category: "sla_escalation",
+        due_at: defaultAutoDueAtIso(nowMs),
+        status: "open",
+        note: SLA_ESCALATION_NOTE_DE,
+        source: "auto",
+        created_at: isoNow,
+        updated_at: isoNow,
+      });
+    }
+  }
+
+  await writeAdvisorMandantRemindersState(state);
 }
 
 export async function createAdvisorMandantReminderManual(input: {

@@ -4,9 +4,10 @@
 
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
+import type { AdvisorSlaEvaluationDto } from "@/lib/advisorSlaTypes";
 import type { MandantReminderApiEntry } from "@/lib/advisorMandantReminderTypes";
 
-export const KANZLEI_PORTFOLIO_VERSION = "wave43-v1";
+export const KANZLEI_PORTFOLIO_VERSION = "wave47-v1";
 
 export type KanzleiPortfolioPillarFilter = BoardReadinessPillarKey | "all";
 
@@ -74,6 +75,8 @@ export type KanzleiPortfolioPayload = {
   open_reminders: MandantReminderApiEntry[];
   reminders_due_today_or_overdue_count: number;
   reminders_due_this_week_open_count: number;
+  /** Wave 47 – SLA-/Eskalationsauswertung (bei Portfolio-Compute). */
+  advisor_sla: AdvisorSlaEvaluationDto;
 };
 
 export const KANZLEI_PILLAR_LABEL_DE: Record<string, string> = {

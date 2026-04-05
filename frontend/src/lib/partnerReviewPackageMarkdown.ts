@@ -150,6 +150,29 @@ export function partnerReviewPackageMarkdownDe(pkg: PartnerReviewPackageDto): st
     lines.push("");
   }
 
+  const sla = pkg.part_g_sla_lagebild;
+  lines.push("## G) SLA-Lagebild (Wave 47)");
+  lines.push("");
+  lines.push(
+    `Auswertung **${sla.evaluated_at}** · ${sla.findings.length} Befund(e) · Schema ${sla.version}.`,
+  );
+  lines.push("");
+  for (const s of sla.signals) {
+    const mark = s.active ? "(!) " : "";
+    lines.push(`- ${mark}**${s.label_de}:** ${s.detail_de}`);
+  }
+  lines.push("");
+  if (sla.findings.length > 0) {
+    for (const f of sla.findings.slice(0, 6)) {
+      lines.push(`- **${f.title_de}** (${f.severity}): ${f.detail_de}`);
+    }
+    lines.push("");
+  }
+  for (const step of sla.next_steps_de.slice(0, 3)) {
+    lines.push(`- _Nächster Schritt:_ ${step}`);
+  }
+  lines.push("");
+
   lines.push("---");
   lines.push("");
   lines.push("### Priorisierung (Kurz)");

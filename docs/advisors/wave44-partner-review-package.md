@@ -12,6 +12,7 @@ Kompaktes **Portfolio-Artefakt** für interne Partnerrunden, vierteljährliche M
 | **D – Empfohlene Prioritäten** | Kurze, aggregierte Handlungsempfehlungen für den nächsten Monat/Quartal (gleiche Fokus-Heuristik wie Monatsreport Abschnitt 4). |
 | **E – Kanzlei-KPIs** | Wave 45 – gleicher KPI-Snapshot wie Monatsreport. |
 | **F – KPI-Trends (Kurz)** | Wave 46 – Kurzsätze aus persistierter History (rolling 3 Monate); siehe `wave46-kpi-trends.md`. |
+| **G – SLA-Lagebild** | Wave 47 – SLA-Befunde, Eskalationssignale und kurze Nächste-Schritte; siehe `wave47-sla-and-escalations.md`. |
 
 ## API
 
@@ -54,6 +55,7 @@ Die API liefert zusätzlich `meta.prioritization_rationale_de` als Kurzliste fü
 
 ## Siehe auch
 
+- `docs/advisors/wave47-sla-and-escalations.md`
 - `docs/advisors/wave46-kpi-trends.md`
 - `docs/advisors/wave45-advisor-kpis.md`
 - `docs/advisors/wave43-reminders-and-followups.md`

@@ -356,5 +356,6 @@ export function buildKanzleiMonthlyReport(
     section_4_focus_areas_de: buildKanzleiPortfolioFocusAreasDe(payload, s1),
     section_5_advisor_kpis: opts.advisorKpiSnapshot ?? null,
     section_6_kpi_trends: opts.kpiTrendsNarrative ?? null,
+    section_7_advisor_sla: payload.advisor_sla,
   };
 }

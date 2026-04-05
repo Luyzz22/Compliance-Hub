@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildAdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiPortfolioBuild";
 import { ADVISOR_KPI_TRENDS_VERSION } from "@/lib/advisorKpiTrendsBuild";
+import { stubAdvisorSlaEvaluation } from "@/lib/advisorSlaEvaluate";
 import { buildKanzleiMonthlyReport } from "@/lib/kanzleiMonthlyReportBuild";
 import { kanzleiMonthlyReportMarkdownDe } from "@/lib/kanzleiMonthlyReportMarkdown";
 import type { KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
@@ -63,6 +64,7 @@ function minimalPayload(): KanzleiPortfolioPayload {
     open_reminders: [],
     reminders_due_today_or_overdue_count: 0,
     reminders_due_this_week_open_count: 0,
+    advisor_sla: stubAdvisorSlaEvaluation("2026-04-04T10:00:00Z"),
   };
 }
 
@@ -79,6 +81,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
     expect(md).toContain("## 1) Portfolio-Überblick");
     expect(md).toContain("## 4) Empfohlene Schwerpunkte");
     expect(md).not.toContain("## 5) Kanzlei-KPIs");
+    expect(md).toContain("## 7) SLA & Eskalation (Wave 47)");
   });
 
   it("includes KPI section when snapshot provided", () => {
@@ -105,6 +108,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
     const md = kanzleiMonthlyReportMarkdownDe(r);
     expect(md).toContain("## 5) Kanzlei-KPIs");
     expect(md).toContain("## 6) KPI-Trends (Wave 46)");
+    expect(md).toContain("## 7) SLA & Eskalation (Wave 47)");
     expect(md).toContain("Review-Deckung im Vergleich zum vorherigen History-Punkt gestiegen.");
   });
 });
