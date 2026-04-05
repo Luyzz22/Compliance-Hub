@@ -1,11 +1,12 @@
 /**
- * Wave 39–41 – Kanzlei-Portfolio-Cockpit (intern, Mehrmandanten-Übersicht).
+ * Wave 39–43 – Kanzlei-Portfolio-Cockpit (intern, Mehrmandanten-Übersicht).
  */
 
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
+import type { MandantReminderApiEntry } from "@/lib/advisorMandantReminderTypes";
 
-export const KANZLEI_PORTFOLIO_VERSION = "wave41-v1";
+export const KANZLEI_PORTFOLIO_VERSION = "wave43-v1";
 
 export type KanzleiPortfolioPillarFilter = BoardReadinessPillarKey | "all";
 
@@ -35,6 +36,8 @@ export type KanzleiPortfolioRow = {
   any_export_stale: boolean;
   never_any_export: boolean;
   gaps_heavy_without_recent_export: boolean;
+  open_reminders_count: number;
+  next_reminder_due_at: string | null;
   links: {
     mandant_export_page: string;
     datev_bundle_api: string;
@@ -67,6 +70,10 @@ export type KanzleiPortfolioPayload = {
   };
   rows: KanzleiPortfolioRow[];
   attention_queue: KanzleiAttentionQueueItem[];
+  /** Offene Reminder (Wave 43), nach Fälligkeit sortiert. */
+  open_reminders: MandantReminderApiEntry[];
+  reminders_due_today_or_overdue_count: number;
+  reminders_due_this_week_open_count: number;
 };
 
 export const KANZLEI_PILLAR_LABEL_DE: Record<string, string> = {

@@ -6,6 +6,11 @@ import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/board
 import { GTM_READINESS_CLASSES, GTM_READINESS_SHORT_DE } from "@/lib/gtmAccountReadiness";
 import { KanzleiReviewPlaybookHelper } from "@/components/admin/KanzleiReviewPlaybookHelper";
 import type { KanzleiMonthlyReportDto } from "@/lib/kanzleiMonthlyReportTypes";
+import {
+  MANDANT_REMINDER_CATEGORY_LABEL_DE,
+  type MandantReminderApiEntry,
+} from "@/lib/advisorMandantReminderTypes";
+import { isDueThisCalendarWeek, isDueTodayOrOverdue } from "@/lib/advisorMandantReminderRules";
 import type {
   KanzleiAttentionQueueItem,
   KanzleiPortfolioPayload,
@@ -136,6 +141,48 @@ function formatIsoDe(iso: string | null): string {
   return new Date(d).toLocaleDateString("de-DE");
 }
 
+function ReminderRowItem({
+  r,
+  busy,
+  onDone,
+  onDismiss,
+}: {
+  r: MandantReminderApiEntry;
+  busy: boolean;
+  onDone: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <li className="rounded border border-rose-100 bg-white/90 p-2 text-[11px] text-slate-800">
+      <div className="font-medium text-slate-900">
+        {r.mandant_label ?? r.tenant_id}{" "}
+        <span className="font-mono text-[10px] text-slate-400">({r.tenant_id})</span>
+      </div>
+      <div className="text-slate-600">{MANDANT_REMINDER_CATEGORY_LABEL_DE[r.category]}</div>
+      <div className="text-slate-500">Fällig: {formatIsoDe(r.due_at)}</div>
+      {r.note ? <div className="mt-0.5 text-slate-600">{r.note}</div> : null}
+      <div className="mt-1 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onDone}
+          className="text-cyan-800 underline disabled:opacity-50"
+        >
+          Erledigt
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onDismiss}
+          className="text-slate-600 underline disabled:opacity-50"
+        >
+          Zurückstellen
+        </button>
+      </div>
+    </li>
+  );
+}
+
 export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [payload, setPayload] = useState<KanzleiPortfolioPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -158,6 +205,13 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [reportErr, setReportErr] = useState<string | null>(null);
   const [reportMd, setReportMd] = useState<string | null>(null);
   const [reportDto, setReportDto] = useState<KanzleiMonthlyReportDto | null>(null);
+
+  const [reminderPatchBusyId, setReminderPatchBusyId] = useState<string | null>(null);
+  const [manualRemTenantId, setManualRemTenantId] = useState("");
+  const [manualRemDue, setManualRemDue] = useState("");
+  const [manualRemCat, setManualRemCat] = useState<"manual" | "follow_up_note">("follow_up_note");
+  const [manualRemNote, setManualRemNote] = useState("");
+  const [manualRemBusy, setManualRemBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -284,6 +338,72 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     }
   }, [reportMd]);
 
+  const patchReminderStatus = useCallback(
+    async (reminderId: string, status: "done" | "dismissed") => {
+      setReminderPatchBusyId(reminderId);
+      try {
+        const r = await fetch("/api/internal/advisor/mandant-reminders", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reminder_id: reminderId, status }),
+        });
+        if (r.ok) await load();
+      } finally {
+        setReminderPatchBusyId(null);
+      }
+    },
+    [load],
+  );
+
+  const submitManualReminder = useCallback(async () => {
+    const tid = manualRemTenantId.trim();
+    if (!tid || !manualRemDue.trim()) return;
+    setManualRemBusy(true);
+    try {
+      const r = await fetch("/api/internal/advisor/mandant-reminders", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: tid,
+          category: manualRemCat,
+          due_at: manualRemDue.trim(),
+          ...(manualRemNote.trim() ? { note: manualRemNote.trim() } : {}),
+        }),
+      });
+      if (r.ok) {
+        setManualRemNote("");
+        await load();
+      }
+    } finally {
+      setManualRemBusy(false);
+    }
+  }, [load, manualRemCat, manualRemDue, manualRemNote, manualRemTenantId]);
+
+  const remindersDueUrgent = useMemo(() => {
+    const list = payload?.open_reminders ?? [];
+    const now = Date.now();
+    return list.filter((r) => isDueTodayOrOverdue(r.due_at, now));
+  }, [payload?.open_reminders]);
+
+  const remindersDueWeekNotUrgent = useMemo(() => {
+    const list = payload?.open_reminders ?? [];
+    const now = Date.now();
+    return list.filter((r) => isDueThisCalendarWeek(r.due_at, now) && !isDueTodayOrOverdue(r.due_at, now));
+  }, [payload?.open_reminders]);
+
+  useEffect(() => {
+    if (!payload?.rows.length) return;
+    setManualRemTenantId((prev) => (prev ? prev : payload.rows[0]!.tenant_id));
+    setManualRemDue((prev) => {
+      if (prev) return prev;
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      return d.toISOString().slice(0, 10);
+    });
+  }, [payload?.rows]);
+
   if (!adminConfigured) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
@@ -311,12 +431,13 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39–41 · Kanzlei / Berater</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39–43 · Kanzlei / Berater</p>
           <h1 className="text-2xl font-semibold text-slate-900">Mehrmandanten-Kanzlei-Cockpit</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
             Welcher Mandant braucht jetzt Aufmerksamkeit? Portfolio über gemappte Mandanten mit Readiness,
-            offenen Prüfpunkten, Export-Historie (Readiness / DATEV-ZIP), Review-Kadenz (Wave 40) und
-            Attention-Queue plus Review-Playbook (Wave 41).
+            offenen Prüfpunkten, Export-Historie (Readiness / DATEV-ZIP), Review-Kadenz (Wave 40),
+            Attention-Queue, Review-Playbook (Wave 41), Monatsreport (Wave 42) und Reminders / Follow-ups
+            (Wave 43).
           </p>
           {payload ? (
             <p className="mt-1 font-mono text-xs text-slate-400">
@@ -376,6 +497,125 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             reviewBusyId={reviewBusyId}
           />
         </div>
+      ) : null}
+
+      {payload ? (
+        <section className="rounded-xl border border-rose-200 bg-rose-50/20 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-rose-950">Reminders & Follow-ups (Wave 43)</h2>
+          <p className="mt-1 text-[11px] text-slate-600">
+            Gespeichert in{" "}
+            <code className="rounded bg-white px-1">data/advisor-mandant-reminders.json</code> – Auto-Hooks aus
+            Kadenz, Lücken und Attention-Queue; manuell ergänzbar. Kein Ticket-System.
+          </p>
+          <p className="mt-2 text-xs text-slate-700">
+            <span className="font-semibold">Heute / überfällig:</span>{" "}
+            {payload.reminders_due_today_or_overdue_count} ·{" "}
+            <span className="font-semibold">Offen diese Kalenderwoche:</span>{" "}
+            {payload.reminders_due_this_week_open_count} ·{" "}
+            <span className="font-semibold">Offen gesamt:</span> {payload.open_reminders.length}
+          </p>
+          <div className="mt-3 grid gap-4 lg:grid-cols-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800">Heute / überfällig</p>
+              {remindersDueUrgent.length === 0 ? (
+                <p className="mt-1 text-[11px] text-slate-500">Keine offenen Reminder in dieser Kategorie.</p>
+              ) : (
+                <ul className="mt-1 space-y-2">
+                  {remindersDueUrgent.map((r) => (
+                    <ReminderRowItem
+                      key={r.reminder_id}
+                      r={r}
+                      busy={reminderPatchBusyId === r.reminder_id}
+                      onDone={() => void patchReminderStatus(r.reminder_id, "done")}
+                      onDismiss={() => void patchReminderStatus(r.reminder_id, "dismissed")}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                Später diese Woche
+              </p>
+              {remindersDueWeekNotUrgent.length === 0 ? (
+                <p className="mt-1 text-[11px] text-slate-500">Keine weiteren in dieser Woche (außer oben).</p>
+              ) : (
+                <ul className="mt-1 max-h-48 space-y-2 overflow-y-auto">
+                  {remindersDueWeekNotUrgent.map((r) => (
+                    <ReminderRowItem
+                      key={r.reminder_id}
+                      r={r}
+                      busy={reminderPatchBusyId === r.reminder_id}
+                      onDone={() => void patchReminderStatus(r.reminder_id, "done")}
+                      onDismiss={() => void patchReminderStatus(r.reminder_id, "dismissed")}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          <div className="mt-4 rounded-lg border border-rose-100 bg-white/80 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Manuell anlegen</p>
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <label className="text-[11px] font-medium text-slate-700">
+                Mandant
+                <select
+                  className="mt-0.5 block max-w-[200px] rounded border border-slate-300 bg-white px-2 py-1 text-[11px]"
+                  value={manualRemTenantId}
+                  onChange={(e) => setManualRemTenantId(e.target.value)}
+                >
+                  {payload.rows.map((row) => (
+                    <option key={row.tenant_id} value={row.tenant_id}>
+                      {row.mandant_label ?? row.tenant_id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[11px] font-medium text-slate-700">
+                Fällig
+                <input
+                  type="date"
+                  className="mt-0.5 block rounded border border-slate-300 bg-white px-2 py-1 text-[11px]"
+                  value={manualRemDue}
+                  onChange={(e) => setManualRemDue(e.target.value)}
+                />
+              </label>
+              <label className="text-[11px] font-medium text-slate-700">
+                Art
+                <select
+                  className="mt-0.5 block rounded border border-slate-300 bg-white px-2 py-1 text-[11px]"
+                  value={manualRemCat}
+                  onChange={(e) => setManualRemCat(e.target.value as "manual" | "follow_up_note")}
+                >
+                  <option value="follow_up_note">Follow-up (Notiz Pflicht)</option>
+                  <option value="manual">Manuell</option>
+                </select>
+              </label>
+              <label className="block min-w-[180px] flex-1 text-[11px] font-medium text-slate-700">
+                Notiz
+                <input
+                  className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-[11px]"
+                  value={manualRemNote}
+                  onChange={(e) => setManualRemNote(e.target.value)}
+                  placeholder={manualRemCat === "follow_up_note" ? "z. B. ISO-Rollen anrufen" : "optional"}
+                  maxLength={500}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={manualRemBusy || !manualRemTenantId || !manualRemDue}
+                onClick={() => void submitManualReminder()}
+                className="rounded bg-rose-800 px-2 py-1 text-[11px] text-white hover:bg-rose-900 disabled:opacity-50"
+              >
+                {manualRemBusy ? "…" : "Speichern"}
+              </button>
+            </div>
+          </div>
+          <p className="mt-2 text-[10px] text-slate-500">
+            API:{" "}
+            <code className="rounded bg-white px-1">GET/POST/PATCH /api/internal/advisor/mandant-reminders</code>
+          </p>
+        </section>
       ) : null}
 
       {payload ? (
@@ -508,7 +748,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
 
       {payload ? (
         <section className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-[1100px] w-full border-collapse text-left text-xs">
+          <table className="min-w-[1180px] w-full border-collapse text-left text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                 <th className="px-3 py-2 font-medium">Mandant</th>
@@ -520,13 +760,14 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                 <th className="px-3 py-2 font-medium">Readiness-Export</th>
                 <th className="px-3 py-2 font-medium">DATEV-ZIP</th>
                 <th className="px-3 py-2 font-medium">Review</th>
+                <th className="px-3 py-2 font-medium">Reminder</th>
                 <th className="px-3 py-2 font-medium">Aktionen</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-3 py-6 text-center text-slate-500">
+                  <td colSpan={11} className="px-3 py-6 text-center text-slate-500">
                     Keine Mandanten für die aktuellen Filter.
                   </td>
                 </tr>
@@ -604,6 +845,16 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                         </div>
                       ) : null}
                     </td>
+                    <td className="px-3 py-2 align-top text-[10px] text-slate-700">
+                      {row.open_reminders_count > 0 ? (
+                        <>
+                          <div>{formatIsoDe(row.next_reminder_due_at)}</div>
+                          <div className="mt-0.5 font-mono text-slate-500">{row.open_reminders_count} offen</div>
+                        </>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 align-top">
                       <div className="flex flex-col gap-1">
                         <button
@@ -639,10 +890,11 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       {payload ? (
         <p className="text-xs text-slate-500">
           Historie: <code className="rounded bg-slate-100 px-1">data/advisor-mandant-history.json</code> (Export-
-          Zeitstempel automatisch; Review per Aktion). Optional weiterlesbar:{" "}
-          <code className="rounded bg-slate-100 px-1">data/advisor-portfolio-touchpoints.json</code> (Wave 39
-          Legacy). Schwellen: Review {payload.constants.review_stale_days} Tage, Export{" "}
-          {payload.constants.any_export_max_age_days} Tage – siehe Wave 40–42 (Doku: Wave 41/42 unter{" "}
+          Zeitstempel automatisch; Review per Aktion). Reminders:{" "}
+          <code className="rounded bg-slate-100 px-1">data/advisor-mandant-reminders.json</code>. Optional
+          weiterlesbar: <code className="rounded bg-slate-100 px-1">data/advisor-portfolio-touchpoints.json</code>{" "}
+          (Wave 39 Legacy). Schwellen: Review {payload.constants.review_stale_days} Tage, Export{" "}
+          {payload.constants.any_export_max_age_days} Tage – siehe Wave 40–43 (
           <code className="rounded bg-slate-100 px-1">docs/advisors/</code>
           ).
         </p>

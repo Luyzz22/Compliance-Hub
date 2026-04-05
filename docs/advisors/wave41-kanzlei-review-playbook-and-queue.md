@@ -64,6 +64,7 @@ Komponente: `frontend/src/components/admin/KanzleiReviewPlaybookHelper.tsx`.
 
 ## Siehe auch
 
+- `docs/advisors/wave43-reminders-and-followups.md`
 - `docs/advisors/wave42-kanzlei-monatsreport.md`
 - `docs/advisors/wave40-kanzlei-review-cadence-and-history.md`
 - `docs/advisors/wave39-kanzlei-portfolio-cockpit.md`
