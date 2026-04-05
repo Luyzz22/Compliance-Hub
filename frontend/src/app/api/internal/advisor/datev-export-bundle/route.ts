@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { recordDatevBundleExport } from "@/lib/advisorMandantHistoryStore";
 import { zipDatevKanzleiBundle, buildDatevKanzleiBundleFiles } from "@/lib/datevKanzleiBundleGenerate";
 import { fetchTenantBoardReadinessRaw } from "@/lib/fetchTenantBoardReadinessRaw";
 import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
@@ -63,6 +64,12 @@ export async function GET(req: Request) {
   const zipBuffer = await zipDatevKanzleiBundle(files);
   const day = exportPayload.meta.generated_at.slice(0, 10);
   const filename = `datev-kanzlei-bundle-${safeZipBaseName(clientId)}-${day}.zip`;
+
+  try {
+    await recordDatevBundleExport(clientId, new Date().toISOString());
+  } catch (e) {
+    console.error("advisor history: recordDatevBundleExport failed", e);
+  }
 
   return new NextResponse(new Uint8Array(zipBuffer), {
     status: 200,

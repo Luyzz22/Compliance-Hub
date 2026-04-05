@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { MandantReadinessAdvisorPayload } from "@/lib/mandantReadinessAdvisorTypes";
+import type { AdvisorMandantHistoryApiDto } from "@/lib/kanzleiPortfolioTypes";
 
 type Props = { adminConfigured: boolean };
 
@@ -13,12 +14,43 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [bundleLoading, setBundleLoading] = useState(false);
+  const [history, setHistory] = useState<AdvisorMandantHistoryApiDto | null>(null);
+  const [histLoading, setHistLoading] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewBusy, setReviewBusy] = useState(false);
+
+  const fetchHistory = useCallback(async () => {
+    const id = clientId.trim();
+    if (!id) {
+      setHistory(null);
+      return;
+    }
+    setHistLoading(true);
+    try {
+      const q = new URLSearchParams({ client_id: id });
+      const r = await fetch(`/api/internal/advisor/mandant-history?${q}`, { credentials: "include" });
+      if (!r.ok) {
+        setHistory(null);
+        return;
+      }
+      const data = (await r.json()) as { mandant_history?: AdvisorMandantHistoryApiDto };
+      setHistory(data.mandant_history ?? null);
+    } catch {
+      setHistory(null);
+    } finally {
+      setHistLoading(false);
+    }
+  }, [clientId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const c = new URLSearchParams(window.location.search).get("client_id")?.trim();
     if (c) setClientId(c);
   }, []);
+
+  useEffect(() => {
+    void fetchHistory();
+  }, [fetchHistory]);
 
   const load = useCallback(async () => {
     const id = clientId.trim();
@@ -55,12 +87,13 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
         mandant_readiness_export?: MandantReadinessAdvisorPayload;
       };
       setPayload(data.mandant_readiness_export ?? null);
+      void fetchHistory();
     } catch {
       setError("Netzwerkfehler");
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, fetchHistory]);
 
   const copyMd = useCallback(async () => {
     if (!payload?.markdown_de) return;
@@ -121,12 +154,58 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       a.click();
       URL.revokeObjectURL(url);
       setMsg("ZIP-Arbeitspaket geladen.");
+      void fetchHistory();
     } catch {
       setError("Netzwerkfehler");
     } finally {
       setBundleLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, fetchHistory]);
+
+  const submitReview = useCallback(async () => {
+    const id = clientId.trim();
+    if (!id) {
+      setError("Bitte Mandanten-ID (client_id) eingeben.");
+      return;
+    }
+    setReviewBusy(true);
+    setError(null);
+    setMsg(null);
+    try {
+      const body: { client_id: string; note_de?: string } = { client_id: id };
+      const n = reviewNote.trim();
+      if (n) body.note_de = n.slice(0, 500);
+      const r = await fetch("/api/internal/advisor/mandant-review", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (r.status === 401) {
+        setError("Nicht angemeldet (Admin-Secret).");
+        return;
+      }
+      if (!r.ok) {
+        setError(`HTTP ${r.status}`);
+        return;
+      }
+      const data = (await r.json()) as { mandant_history?: AdvisorMandantHistoryApiDto };
+      setHistory(data.mandant_history ?? null);
+      setReviewNote("");
+      setMsg("Review gespeichert.");
+    } catch {
+      setError("Netzwerkfehler");
+    } finally {
+      setReviewBusy(false);
+    }
+  }, [clientId, reviewNote]);
+
+  function formatHist(iso: string | null): string {
+    if (!iso) return "—";
+    const d = Date.parse(iso);
+    if (Number.isNaN(d)) return iso.slice(0, 10);
+    return new Date(d).toLocaleString("de-DE");
+  }
 
   if (!adminConfigured) {
     return (
@@ -139,7 +218,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   return (
     <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 37 · Kanzlei / Berater</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 37–40 · Kanzlei / Berater</p>
         <h1 className="text-xl font-semibold text-slate-900">Mandanten-Readiness-Export</h1>
         <p className="mt-2 text-sm text-slate-600">
           Kompakter Status für Steuerberater, WP und GRC-Berater – ein Mandant pro Export. Nutzt dieselben
@@ -155,8 +234,69 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
           <code className="rounded bg-slate-100 px-1 text-[11px]">
             GET /api/internal/advisor/datev-export-bundle?client_id=…
           </code>
+          <br />
+          Historie / Review (Wave 40):{" "}
+          <code className="rounded bg-slate-100 px-1 text-[11px]">
+            GET /api/internal/advisor/mandant-history
+          </code>{" "}
+          ·{" "}
+          <code className="rounded bg-slate-100 px-1 text-[11px]">
+            POST /api/internal/advisor/mandant-review
+          </code>
         </p>
       </div>
+
+      {clientId.trim() ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-700">
+          <p className="font-semibold text-slate-900">Kanzlei-Historie (Export und Review)</p>
+          {histLoading ? (
+            <p className="mt-1 text-slate-500">Lade Historie…</p>
+          ) : history ? (
+            <ul className="mt-2 list-inside list-disc space-y-0.5">
+              <li>Letzter Readiness-Export: {formatHist(history.last_mandant_readiness_export_at)}</li>
+              <li>Letzter DATEV-/ZIP-Export: {formatHist(history.last_datev_bundle_export_at)}</li>
+              <li>Letzter Review: {formatHist(history.last_review_marked_at)}</li>
+              {history.last_review_note_de ? (
+                <li className="text-slate-600">Notiz: {history.last_review_note_de}</li>
+              ) : null}
+              <li>
+                Signale:{" "}
+                {history.never_any_export
+                  ? "Noch kein Export erfasst"
+                  : history.any_export_stale
+                    ? `Export älter als ${history.constants.any_export_max_age_days} Tage`
+                    : "Export im Zeitraum OK"}
+                {" · "}
+                {history.review_stale
+                  ? `Review überfällig (>${history.constants.review_stale_days} Tage oder nie)`
+                  : "Review im Zeitraum OK"}
+              </li>
+            </ul>
+          ) : (
+            <p className="mt-1 text-slate-500">Historie nicht geladen.</p>
+          )}
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <label className="block min-w-[200px] flex-1 text-[11px] font-medium text-slate-600">
+              Optional: Notiz zum Review
+              <input
+                className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-xs"
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                placeholder="Kurz für die Kanzlei-Dokumentation"
+                maxLength={500}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={reviewBusy}
+              onClick={() => void submitReview()}
+              className="rounded-lg bg-violet-900 px-3 py-1.5 text-xs text-white hover:bg-violet-800 disabled:opacity-50"
+            >
+              {reviewBusy ? "Speichere…" : "Review durchgeführt"}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="block text-xs font-medium text-slate-700" htmlFor="mandant-id">

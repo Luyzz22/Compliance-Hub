@@ -1,12 +1,11 @@
 /**
- * Wave 39 – Kanzlei-Portfolio-Cockpit (intern, Mehrmandanten-Übersicht).
- * JSON-Schema für API-Antwort; filterbar/sortierbar im Client.
+ * Wave 39–40 – Kanzlei-Portfolio-Cockpit (intern, Mehrmandanten-Übersicht).
  */
 
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 
-export const KANZLEI_PORTFOLIO_VERSION = "wave39-v1";
+export const KANZLEI_PORTFOLIO_VERSION = "wave40-v1";
 
 export type KanzleiPortfolioPillarFilter = BoardReadinessPillarKey | "all";
 
@@ -20,7 +19,6 @@ export type KanzleiPortfolioRow = {
   primary_segment_label_de: string | null;
   open_points_count: number;
   open_points_hoch: number;
-  /** Säule mit den gewichtet dringendsten offenen Punkten; sonst Ampel-Fokus. */
   top_gap_pillar_code: string;
   top_gap_pillar_label_de: string;
   pillar_traffic: Record<BoardReadinessPillarKey, BoardReadinessTraffic>;
@@ -28,9 +26,15 @@ export type KanzleiPortfolioRow = {
   api_fetch_ok: boolean;
   attention_score: number;
   attention_flags_de: string[];
-  last_export_iso: string | null;
-  last_review_iso: string | null;
-  touchpoint_note_de: string | null;
+  last_mandant_readiness_export_at: string | null;
+  last_datev_bundle_export_at: string | null;
+  last_any_export_at: string | null;
+  last_review_marked_at: string | null;
+  last_review_note_de: string | null;
+  review_stale: boolean;
+  any_export_stale: boolean;
+  never_any_export: boolean;
+  gaps_heavy_without_recent_export: boolean;
   links: {
     mandant_export_page: string;
     datev_bundle_api: string;
@@ -46,8 +50,10 @@ export type KanzleiPortfolioPayload = {
   mapped_tenant_count: number;
   tenants_partial: number;
   constants: {
-    export_stale_days: number;
+    review_stale_days: number;
+    any_export_max_age_days: number;
     many_open_points_threshold: number;
+    gap_heavy_min_open_for_export_rule: number;
   };
   rows: KanzleiPortfolioRow[];
 };
@@ -58,4 +64,21 @@ export const KANZLEI_PILLAR_LABEL_DE: Record<string, string> = {
   NIS2: "NIS2",
   DSGVO: "DSGVO",
   none: "—",
+};
+
+/** API-Antwort Einzelmandant (Wave 40). */
+export type AdvisorMandantHistoryApiDto = {
+  tenant_id: string;
+  last_mandant_readiness_export_at: string | null;
+  last_datev_bundle_export_at: string | null;
+  last_any_export_at: string | null;
+  last_review_marked_at: string | null;
+  last_review_note_de: string | null;
+  review_stale: boolean;
+  any_export_stale: boolean;
+  never_any_export: boolean;
+  constants: {
+    review_stale_days: number;
+    any_export_max_age_days: number;
+  };
 };
