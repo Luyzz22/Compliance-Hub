@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildAdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiPortfolioBuild";
+import { ADVISOR_KPI_TRENDS_VERSION } from "@/lib/advisorKpiTrendsBuild";
 import { buildKanzleiMonthlyReport } from "@/lib/kanzleiMonthlyReportBuild";
 import { kanzleiMonthlyReportMarkdownDe } from "@/lib/kanzleiMonthlyReportMarkdown";
 import type { KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
@@ -94,8 +95,16 @@ describe("kanzleiMonthlyReportMarkdown", () => {
       compareToBaseline: false,
       attentionTopN: 5,
       advisorKpiSnapshot: kpi,
+      kpiTrendsNarrative: {
+        version: ADVISOR_KPI_TRENDS_VERSION,
+        period: "3m",
+        period_label_de: "Letzte 3 Monate",
+        narrative_lines_de: ["Review-Deckung im Vergleich zum vorherigen History-Punkt gestiegen."],
+      },
     });
     const md = kanzleiMonthlyReportMarkdownDe(r);
     expect(md).toContain("## 5) Kanzlei-KPIs");
+    expect(md).toContain("## 6) KPI-Trends (Wave 46)");
+    expect(md).toContain("Review-Deckung im Vergleich zum vorherigen History-Punkt gestiegen.");
   });
 });

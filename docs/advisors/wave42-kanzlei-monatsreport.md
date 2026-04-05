@@ -2,7 +2,7 @@
 
 Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine und wiederkehrende Status-Mails – **kein** Board-Pack, **kein** Mandanten-Einzelreport. Fokus: **Ist-Zustand**, **Top-Aufmerksamkeit**, **grobe Veränderungen** seit einem gespeicherten Stichtag, **Handlungsschwerpunkte**.
 
-## Report-Struktur (vier Abschnitte)
+## Report-Struktur (Kern: vier Abschnitte; KPI/Trends optional)
 
 | Abschnitt | Inhalt |
 |-----------|--------|
@@ -25,10 +25,12 @@ Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine
 | `compare` | `1` (an) | `compare=0` schaltet Abschnitt 3 ab (Snapshot trotzdem nutzbar) |
 | `update_baseline` | `0` | `update_baseline=1` **überschreibt** die Baseline-Datei mit dem **aktuellen** Portfolio-Snapshot |
 | `top_n` | `10` | Anzahl Zeilen in Abschnitt 2 (3–25) |
-| `kpi_window_days` | `90` | Wave 45: Fenster für KPI-Abschnitt 5 (7–365) |
-| `kpi` | `1` | `kpi=0` schaltet Abschnitt 5 ab |
+| `kpi_window_days` | `90` | Wave 45–46: Fenster für KPI-Abschnitt 5 und History-Schreiben für Abschnitt 6 (7–365) |
+| `kpi` | `1` | `kpi=0` schaltet Abschnitt 5 und 6 ab |
 
-**Antwort:** `{ ok, report, markdown_de, baseline_updated }` – `report` ist strukturiertes JSON (`wave45-v1` inkl. optionalem Abschnitt 5), `markdown_de` für Kopieren in E-Mails oder Arbeitsmappen.
+**Antwort:** `{ ok, report, markdown_de, baseline_updated }` – `report` ist strukturiertes JSON (`wave46-v1` inkl. optionalen Abschnitten 5–6), `markdown_de` für Kopieren in E-Mails oder Arbeitsmappen.
+
+**Wave 46:** Abschnitt **6) KPI-Trends** – Kurzsätze aus persistierter KPI-History (rolling 3 Monate). Siehe `wave46-kpi-trends.md`.
 
 ## Baseline & Change-Logik
 

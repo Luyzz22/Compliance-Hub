@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TenantWorkspaceMetaDto } from "@/lib/api";
@@ -177,11 +177,10 @@ describe("AiComplianceBoardReportClient", () => {
 
     render(<AiComplianceBoardReportClient tenantId="t1" />);
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: "AI Performance & Risk KPIs" }),
-      ).toBeTruthy();
-    });
+    const viewer = await screen.findByTestId("board-report-viewer", {}, { timeout: 5000 });
+    expect(
+      within(viewer).getByRole("heading", { name: "AI Performance & Risk KPIs" }),
+    ).toBeTruthy();
   });
 
   it("zeigt Demo-read-only-Hinweis und deaktiviert den Report-CTA bei mutationsBlocked", async () => {

@@ -94,6 +94,7 @@ describe("partnerReviewPackageBuild", () => {
     p.reminders_due_this_week_open_count = 1;
     const pkg = buildPartnerReviewPackage(p, null, { compareToBaseline: false, attentionTopN: 5 });
     expect(pkg.part_e_advisor_kpis).toBeNull();
+    expect(pkg.part_f_kpi_trends).toBeNull();
     expect(pkg.part_a_portfolio_overview.count_review_stale).toBe(1);
     expect(pkg.part_a_portfolio_overview.open_reminders_open_count).toBe(1);
     expect(pkg.part_b_top_attention.length).toBe(1);

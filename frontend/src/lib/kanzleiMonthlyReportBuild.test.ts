@@ -101,6 +101,7 @@ describe("kanzleiMonthlyReportBuild", () => {
     );
     expect(r.compared_to_baseline).toBe(true);
     expect(r.section_3_changes.readiness_improved.length).toBe(1);
+    expect(r.section_6_kpi_trends).toBeNull();
   });
 
   it("buildKanzleiMonthlyReport skips compare when compareToBaseline false", () => {

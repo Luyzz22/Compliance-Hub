@@ -19,8 +19,11 @@ export async function GET(req: Request) {
   const seg = url.searchParams.get("segment_by")?.trim().toLowerCase();
   const segmentBy: "readiness" | "primary_segment" =
     seg === "primary_segment" || seg === "segment" ? "primary_segment" : "readiness";
+  const persistHistory = url.searchParams.get("persist_history") === "1";
 
-  const snapshot = await computeAdvisorKpiPortfolioSnapshot(new Date(), windowDays, segmentBy);
+  const snapshot = await computeAdvisorKpiPortfolioSnapshot(new Date(), windowDays, segmentBy, {
+    persistHistory,
+  });
 
   return NextResponse.json({
     ok: true,

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { upsertAdvisorKpiHistoryDaily } from "@/lib/advisorKpiHistoryStore";
 import { attachAdvisorKpiToPayload } from "@/lib/advisorKpiPortfolioAggregate";
+import { advisorKpiTrendsNarrativeBlock, buildAdvisorKpiTrendsDto } from "@/lib/advisorKpiTrendsBuild";
 import { computeKanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioAggregate";
 import { readKanzleiMonthlyReportBaseline } from "@/lib/kanzleiMonthlyReportBaseline";
 import { buildPartnerReviewPackage } from "@/lib/partnerReviewPackageBuild";
@@ -34,10 +36,22 @@ export async function GET(req: Request) {
     ? null
     : await attachAdvisorKpiToPayload(payload, now.getTime(), kpiWindowDays);
 
+  let kpiTrendsNarrative = null;
+  if (!kpiOff && advisorKpiSnapshot) {
+    const hist = await upsertAdvisorKpiHistoryDaily(payload, advisorKpiSnapshot);
+    const trends = buildAdvisorKpiTrendsDto({
+      history: hist.snapshots,
+      period: "3m",
+      nowMs: now.getTime(),
+    });
+    kpiTrendsNarrative = advisorKpiTrendsNarrativeBlock(trends);
+  }
+
   const partner_review_package = buildPartnerReviewPackage(payload, baseline, {
     compareToBaseline: compare,
     attentionTopN,
     advisorKpiSnapshot,
+    kpiTrendsNarrative,
   });
   const markdown_de = partnerReviewPackageMarkdownDe(partner_review_package);
 
