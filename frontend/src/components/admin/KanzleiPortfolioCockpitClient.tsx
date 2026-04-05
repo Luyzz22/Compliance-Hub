@@ -10,6 +10,7 @@ import type {
   KanzleiPortfolioReadinessFilter,
   KanzleiPortfolioRow,
 } from "@/lib/kanzleiPortfolioTypes";
+import { isNonEmptyUnparsableIso } from "@/lib/mandantHistoryMerge";
 
 type Props = { adminConfigured: boolean };
 
@@ -23,6 +24,14 @@ function trafficLabel(s: BoardReadinessTraffic): string {
   if (s === "green") return "OK";
   if (s === "amber") return "Beobachten";
   return "Handeln";
+}
+
+function showKeinExportBadge(row: KanzleiPortfolioRow): boolean {
+  if (!row.never_any_export) return false;
+  return (
+    !isNonEmptyUnparsableIso(row.last_mandant_readiness_export_at) &&
+    !isNonEmptyUnparsableIso(row.last_datev_bundle_export_at)
+  );
 }
 
 const PILLAR_KEYS: BoardReadinessPillarKey[] = ["eu_ai_act", "iso_42001", "nis2", "dsgvo"];
@@ -60,6 +69,8 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [pillarFilter, setPillarFilter] = useState<KanzleiPortfolioPillarFilter>("all");
   const [staleOnly, setStaleOnly] = useState(false);
   const [manyOpenOnly, setManyOpenOnly] = useState(false);
+  const [reviewStaleOnly, setReviewStaleOnly] = useState(false);
+  const [reviewBusyId, setReviewBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,9 +112,40 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       }
       if (staleOnly && !row.board_report_stale) return false;
       if (manyOpenOnly && row.open_points_count < thr) return false;
+      if (reviewStaleOnly && !row.review_stale) return false;
       return true;
     });
-  }, [payload, readinessFilter, pillarFilter, staleOnly, manyOpenOnly]);
+  }, [payload, readinessFilter, pillarFilter, staleOnly, manyOpenOnly, reviewStaleOnly]);
+
+  const markReviewDone = useCallback(
+    async (tenantId: string) => {
+      const raw =
+        typeof window !== "undefined"
+          ? window.prompt(
+              "Optional: kurze Notiz zum Review. Leer = nur Zeitstempel, Abbrechen = keine Aktion.",
+              "",
+            )
+          : null;
+      if (raw === null) return;
+      setReviewBusyId(tenantId);
+      try {
+        const r = await fetch("/api/internal/advisor/mandant-review", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_id: tenantId,
+            ...(raw.trim() ? { note_de: raw.trim() } : {}),
+          }),
+        });
+        if (!r.ok) return;
+        await load();
+      } finally {
+        setReviewBusyId(null);
+      }
+    },
+    [load],
+  );
 
   if (!adminConfigured) {
     return (
@@ -132,12 +174,11 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39 · Kanzlei / Berater</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39–40 · Kanzlei / Berater</p>
           <h1 className="text-2xl font-semibold text-slate-900">Mehrmandanten-Kanzlei-Cockpit</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
-            Welcher Mandant braucht jetzt Aufmerksamkeit? Kompakte Portfolio-Sicht über gemappte Mandanten
-            (gtm-product-account-map), dieselben Readiness-Signale wie Board Readiness, plus offene Prüfpunkte
-            und optionale Touchpoints (Export/Review).
+            Welcher Mandant braucht jetzt Aufmerksamkeit? Portfolio über gemappte Mandanten mit Readiness,
+            offenen Prüfpunkten, Export-Historie (Readiness / DATEV-ZIP) und Review-Kadenz (Wave 40).
           </p>
           {payload ? (
             <p className="mt-1 font-mono text-xs text-slate-400">
@@ -225,6 +266,14 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             />
             Viele offene Punkte (≥{payload.constants.many_open_points_threshold})
           </label>
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+            <input
+              type="checkbox"
+              checked={reviewStaleOnly}
+              onChange={(e) => setReviewStaleOnly(e.target.checked)}
+            />
+            Review überfällig (&gt;{payload.constants.review_stale_days} Tage)
+          </label>
           <p className="text-xs text-slate-500">
             Sortierung: Kanzlei-Aufmerksamkeit (Score) absteigend, wie vom Server geliefert.
           </p>
@@ -235,7 +284,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
 
       {payload ? (
         <section className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-[960px] w-full border-collapse text-left text-xs">
+          <table className="min-w-[1100px] w-full border-collapse text-left text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                 <th className="px-3 py-2 font-medium">Mandant</th>
@@ -244,7 +293,8 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                 <th className="px-3 py-2 font-medium">Bericht</th>
                 <th className="px-3 py-2 font-medium">Offen</th>
                 <th className="px-3 py-2 font-medium">Signale</th>
-                <th className="px-3 py-2 font-medium">Letzter Export</th>
+                <th className="px-3 py-2 font-medium">Readiness-Export</th>
+                <th className="px-3 py-2 font-medium">DATEV-ZIP</th>
                 <th className="px-3 py-2 font-medium">Review</th>
                 <th className="px-3 py-2 font-medium">Aktionen</th>
               </tr>
@@ -252,7 +302,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-3 py-6 text-center text-slate-500">
+                  <td colSpan={10} className="px-3 py-6 text-center text-slate-500">
                     Keine Mandanten für die aktuellen Filter.
                   </td>
                 </tr>
@@ -265,6 +315,18 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                       {row.primary_segment_label_de ? (
                         <div className="mt-0.5 text-[10px] text-slate-500">{row.primary_segment_label_de}</div>
                       ) : null}
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {showKeinExportBadge(row) ? (
+                          <span className="rounded border border-amber-200 bg-amber-50 px-1 py-0.5 text-[9px] font-medium text-amber-900">
+                            Kein Export
+                          </span>
+                        ) : null}
+                        {row.review_stale ? (
+                          <span className="rounded border border-violet-200 bg-violet-50 px-1 py-0.5 text-[9px] font-medium text-violet-900">
+                            Review
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-3 py-2 align-top">
                       <span className="text-slate-800">{row.readiness_label_de}</span>
@@ -304,10 +366,30 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                       </ul>
                       <div className="mt-1 font-mono text-slate-400">Score {row.attention_score}</div>
                     </td>
-                    <td className="px-3 py-2 align-top text-slate-700">{formatIsoDe(row.last_export_iso)}</td>
-                    <td className="px-3 py-2 align-top text-slate-700">{formatIsoDe(row.last_review_iso)}</td>
+                    <td className="px-3 py-2 align-top text-slate-700">
+                      {formatIsoDe(row.last_mandant_readiness_export_at)}
+                    </td>
+                    <td className="px-3 py-2 align-top text-slate-700">
+                      {formatIsoDe(row.last_datev_bundle_export_at)}
+                    </td>
+                    <td className="px-3 py-2 align-top text-slate-700">
+                      <div>{formatIsoDe(row.last_review_marked_at)}</div>
+                      {row.last_review_note_de ? (
+                        <div className="mt-0.5 max-w-[140px] truncate text-[10px] text-slate-500" title={row.last_review_note_de}>
+                          {row.last_review_note_de}
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="px-3 py-2 align-top">
                       <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          disabled={reviewBusyId === row.tenant_id}
+                          onClick={() => void markReviewDone(row.tenant_id)}
+                          className="text-left text-[11px] text-violet-800 underline disabled:opacity-50"
+                        >
+                          {reviewBusyId === row.tenant_id ? "…" : "Review durchgeführt"}
+                        </button>
                         <a
                           className="text-cyan-700 underline"
                           href={row.links.mandant_export_page}
@@ -332,9 +414,11 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
 
       {payload ? (
         <p className="text-xs text-slate-500">
-          Touchpoints (letzter Export / Review): optional{" "}
-          <code className="rounded bg-slate-100 px-1">data/advisor-portfolio-touchpoints.json</code> – siehe
-          Dokumentation Wave 39.
+          Historie: <code className="rounded bg-slate-100 px-1">data/advisor-mandant-history.json</code> (Export-
+          Zeitstempel automatisch; Review per Aktion). Optional weiterlesbar:{" "}
+          <code className="rounded bg-slate-100 px-1">data/advisor-portfolio-touchpoints.json</code> (Wave 39
+          Legacy). Schwellen: Review {payload.constants.review_stale_days} Tage, Export{" "}
+          {payload.constants.any_export_max_age_days} Tage – siehe Wave 40.
         </p>
       ) : null}
     </div>

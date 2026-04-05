@@ -83,6 +83,7 @@ Keine automatische Befüllung in Wave 39: Kanzlei trägt manuell nach (oder spä
 
 ## Siehe auch
 
+- `docs/advisors/wave40-kanzlei-review-cadence-and-history.md` – Export-Historie, Review-Kadenz und verschärfte Attention-Regeln (ersetzt die reine Touchpoints-Datei für neue Installationen).
 - `docs/advisors/wave37-mandant-readiness-export.md`
 - `docs/advisors/wave38-datev-export-bundle.md`
 - `docs/board/wave34-board-readiness-dashboard.md`

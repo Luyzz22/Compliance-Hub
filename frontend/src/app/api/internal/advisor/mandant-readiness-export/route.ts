@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { generateMandantReadinessAdvisorExport } from "@/lib/mandantReadinessAdvisorExport";
+import { recordMandantReadinessExport } from "@/lib/advisorMandantHistoryStore";
 import { fetchTenantBoardReadinessRaw } from "@/lib/fetchTenantBoardReadinessRaw";
 import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
 import { readGtmProductAccountMap } from "@/lib/gtmProductAccountMapStore";
+import { generateMandantReadinessAdvisorExport } from "@/lib/mandantReadinessAdvisorExport";
 
 export const runtime = "nodejs";
 
@@ -34,13 +35,20 @@ export async function GET(req: Request) {
   const mandantenBezeichnung = entry?.label?.trim() || clientId;
   const pilotFlag = entry?.pilot === true;
 
+  const nowMs = Date.now();
   const exportPayload = generateMandantReadinessAdvisorExport({
     mandantId: clientId,
     mandantenBezeichnung,
     raw,
     pilotFlag,
-    nowMs: Date.now(),
+    nowMs,
   });
+
+  try {
+    await recordMandantReadinessExport(clientId, exportPayload.meta.generated_at);
+  } catch (e) {
+    console.error("advisor history: recordMandantReadinessExport failed", e);
+  }
 
   return NextResponse.json({
     ok: true,

@@ -1,29 +1,45 @@
 import "server-only";
 
+import type { AdvisorMandantHistoryEntry } from "@/lib/advisorMandantHistoryStore";
+import { readAdvisorMandantHistoryMap } from "@/lib/advisorMandantHistoryStore";
+import {
+  daysSinceValidIso,
+  isNonEmptyUnparsableIso,
+  maxIsoTimestamps,
+} from "@/lib/mandantHistoryMerge";
 import type { TenantPillarSnapshot } from "@/lib/boardReadinessAggregate";
 import { loadMappedTenantPillarSnapshots } from "@/lib/boardReadinessAggregate";
 import { worstTraffic } from "@/lib/boardReadinessThresholds";
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
-import { readAdvisorPortfolioTouchpoints } from "@/lib/advisorPortfolioTouchpointsStore";
 import type { GtmSegmentBucket } from "@/lib/gtmDashboardTypes";
 import { GTM_READINESS_LABELS_DE } from "@/lib/gtmAccountReadiness";
 import {
-  KANZLEI_EXPORT_STALE_DAYS,
-  KANZLEI_MANY_OPEN_POINTS,
+  computeGapsHeavyWithoutRecentExport,
   kanzleiAttentionScore,
 } from "@/lib/kanzleiPortfolioScoring";
-import {
-  computeMandantOffenePunkte,
-  pillarCodeForOpenPoint,
-} from "@/lib/tenantBoardReadinessGaps";
 import {
   KANZLEI_PILLAR_LABEL_DE,
   KANZLEI_PORTFOLIO_VERSION,
   type KanzleiPortfolioPayload,
   type KanzleiPortfolioRow,
 } from "@/lib/kanzleiPortfolioTypes";
+import {
+  KANZLEI_ANY_EXPORT_MAX_AGE_DAYS,
+  KANZLEI_GAP_HEAVY_FOR_EXPORT_RULE,
+  KANZLEI_MANY_OPEN_POINTS,
+  KANZLEI_REVIEW_STALE_DAYS,
+} from "@/lib/kanzleiReviewCadenceThresholds";
+import {
+  computeMandantOffenePunkte,
+  pillarCodeForOpenPoint,
+} from "@/lib/tenantBoardReadinessGaps";
 
-export { KANZLEI_EXPORT_STALE_DAYS, KANZLEI_MANY_OPEN_POINTS } from "@/lib/kanzleiPortfolioScoring";
+export {
+  KANZLEI_ANY_EXPORT_MAX_AGE_DAYS,
+  KANZLEI_GAP_HEAVY_FOR_EXPORT_RULE,
+  KANZLEI_MANY_OPEN_POINTS,
+  KANZLEI_REVIEW_STALE_DAYS,
+} from "@/lib/kanzleiReviewCadenceThresholds";
 
 const SEGMENT_LABELS_DE: Record<GtmSegmentBucket, string> = {
   industrie_mittelstand: "Industrie / Mittelstand",
@@ -102,17 +118,10 @@ function weightedTopPillarFromOpenPoints(
   return { code: bestCode, weight: bestW };
 }
 
-function daysSinceIso(iso: string | null | undefined, nowMs: number): number | null {
-  if (!iso?.trim()) return null;
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null;
-  return Math.floor((nowMs - t) / (24 * 60 * 60 * 1000));
-}
-
 function rowFromSnapshot(
   t: TenantPillarSnapshot,
   nowMs: number,
-  touchByTenant: Map<string, { last_export_iso?: string | null; last_review_iso?: string | null; note_de?: string | null }>,
+  historyByTenant: Map<string, AdvisorMandantHistoryEntry>,
 ): KanzleiPortfolioRow {
   const punkte = computeMandantOffenePunkte(t.tenant_id, t.raw, nowMs);
   const open_points_count = punkte.length;
@@ -134,16 +143,57 @@ function rowFromSnapshot(
   const hr = t.eu.hr_total > 0;
   const board_report_stale = hr && !t.eu.board_fresh;
 
-  const touch = touchByTenant.get(t.tenant_id);
-  const last_export_iso = touch?.last_export_iso ?? null;
-  const last_review_iso = touch?.last_review_iso ?? null;
-  const dExport = daysSinceIso(last_export_iso, nowMs);
-  const export_stale = dExport === null || dExport > KANZLEI_EXPORT_STALE_DAYS;
+  const h = historyByTenant.get(t.tenant_id);
+  const last_mandant_readiness_export_at = h?.last_mandant_readiness_export_at ?? null;
+  const last_datev_bundle_export_at = h?.last_datev_bundle_export_at ?? null;
+  const last_any_export_at = maxIsoTimestamps(last_mandant_readiness_export_at, last_datev_bundle_export_at);
+  const last_review_marked_at = h?.last_review_marked_at ?? null;
+  const last_review_note_de = h?.last_review_note_de ?? null;
+
+  const exportFieldMalformed =
+    isNonEmptyUnparsableIso(last_mandant_readiness_export_at) ||
+    isNonEmptyUnparsableIso(last_datev_bundle_export_at);
+  const never_any_export = !last_any_export_at;
+  const dAny = daysSinceValidIso(last_any_export_at, nowMs);
+  const any_export_stale =
+    never_any_export ||
+    exportFieldMalformed ||
+    (dAny !== null && dAny > KANZLEI_ANY_EXPORT_MAX_AGE_DAYS);
+
+  const reviewMalformed = isNonEmptyUnparsableIso(last_review_marked_at);
+  const dRev = daysSinceValidIso(last_review_marked_at, nowMs);
+  const review_stale =
+    !last_review_marked_at?.trim() ||
+    reviewMalformed ||
+    (dRev !== null && dRev > KANZLEI_REVIEW_STALE_DAYS);
 
   const baseline_gap = t.readiness_class === "early_pilot";
 
+  const gaps_heavy_without_recent_export = computeGapsHeavyWithoutRecentExport(
+    open_points_count,
+    any_export_stale,
+  );
+
   const attention_flags_de: string[] = [];
-  if (export_stale) attention_flags_de.push("Kein aktueller Export (Kanzlei) im Zeitraum");
+  if (never_any_export && !exportFieldMalformed) {
+    attention_flags_de.push("Noch kein Kanzlei-Export erfasst (Readiness- oder DATEV-ZIP-Export)");
+  } else if (exportFieldMalformed) {
+    attention_flags_de.push("Export-Zeitstempel in der Historie ungültig (Readiness/DATEV prüfen)");
+  } else if (any_export_stale) {
+    attention_flags_de.push(
+      `Letzter Export älter als ${KANZLEI_ANY_EXPORT_MAX_AGE_DAYS} Tage (jüngster Readiness/DATEV)`,
+    );
+  }
+  if (review_stale) {
+    attention_flags_de.push(
+      `Review überfällig oder nicht erfasst (>${KANZLEI_REVIEW_STALE_DAYS} Tage)`,
+    );
+  }
+  if (gaps_heavy_without_recent_export) {
+    attention_flags_de.push(
+      `Viele offene Prüfpunkte (≥${KANZLEI_GAP_HEAVY_FOR_EXPORT_RULE}) ohne frischen Export`,
+    );
+  }
   if (board_report_stale) attention_flags_de.push("Mandanten-/Board-Report überfällig");
   if (open_points_count >= KANZLEI_MANY_OPEN_POINTS) attention_flags_de.push("Viele offene Prüfpunkte");
   if (baseline_gap) attention_flags_de.push("Governance-Baseline noch dünn (Pilot)");
@@ -161,10 +211,12 @@ function rowFromSnapshot(
     open_points_count,
     open_points_hoch,
     board_report_stale,
-    export_stale,
+    any_export_stale,
     baseline_gap,
     api_fetch_ok: t.raw.fetch_ok,
     pillar_traffic,
+    review_stale,
+    gaps_heavy_without_recent_export,
   });
 
   const tidEnc = encodeURIComponent(t.tenant_id);
@@ -183,9 +235,15 @@ function rowFromSnapshot(
     api_fetch_ok: t.raw.fetch_ok,
     attention_score,
     attention_flags_de,
-    last_export_iso,
-    last_review_iso,
-    touchpoint_note_de: touch?.note_de ?? null,
+    last_mandant_readiness_export_at,
+    last_datev_bundle_export_at,
+    last_any_export_at,
+    last_review_marked_at,
+    last_review_note_de,
+    review_stale,
+    any_export_stale,
+    never_any_export,
+    gaps_heavy_without_recent_export,
     links: {
       mandant_export_page: `/admin/advisor-mandant-export?client_id=${tidEnc}`,
       datev_bundle_api: `/api/internal/advisor/datev-export-bundle?client_id=${tidEnc}`,
@@ -196,24 +254,14 @@ function rowFromSnapshot(
 }
 
 export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Promise<KanzleiPortfolioPayload> {
-  const [bundle, touchState] = await Promise.all([
+  const [bundle, historyByTenant] = await Promise.all([
     loadMappedTenantPillarSnapshots(now),
-    readAdvisorPortfolioTouchpoints(),
+    readAdvisorMandantHistoryMap(),
   ]);
   const nowMs = bundle.nowMs;
-  const touchByTenant = new Map(
-    touchState.entries.map((e) => [
-      e.tenant_id,
-      {
-        last_export_iso: e.last_export_iso,
-        last_review_iso: e.last_review_iso,
-        note_de: e.note_de,
-      },
-    ]),
-  );
 
   const rows = bundle.snapshots
-    .map((s) => rowFromSnapshot(s, nowMs, touchByTenant))
+    .map((s) => rowFromSnapshot(s, nowMs, historyByTenant))
     .sort((a, b) => {
       if (b.attention_score !== a.attention_score) return b.attention_score - a.attention_score;
       if (b.open_points_count !== a.open_points_count) return b.open_points_count - a.open_points_count;
@@ -227,8 +275,10 @@ export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Pr
     mapped_tenant_count: bundle.tenantIds.length,
     tenants_partial: bundle.tenants_partial,
     constants: {
-      export_stale_days: KANZLEI_EXPORT_STALE_DAYS,
+      review_stale_days: KANZLEI_REVIEW_STALE_DAYS,
+      any_export_max_age_days: KANZLEI_ANY_EXPORT_MAX_AGE_DAYS,
       many_open_points_threshold: KANZLEI_MANY_OPEN_POINTS,
+      gap_heavy_min_open_for_export_rule: KANZLEI_GAP_HEAVY_FOR_EXPORT_RULE,
     },
     rows,
   };

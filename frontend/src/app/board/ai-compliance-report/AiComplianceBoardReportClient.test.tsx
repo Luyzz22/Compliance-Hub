@@ -25,24 +25,27 @@ const mocks = vi.hoisted(() => ({
   fetchDetail: vi.fn(),
   createReport: vi.fn(),
   fetchReadiness: vi.fn(),
-  useWorkspaceMode: vi.fn((_tenantId?: string | null): UseWorkspaceModeResult => ({
-    meta: tenantMeta(),
-    loading: false,
-    error: null,
-    mutationBlocked: false,
-    isDemoTenant: false,
-    isPlaygroundTenant: false,
-    refetch: vi.fn(),
-    workspaceMode: "production",
-    modeLabel: "",
-    modeHint: "",
-    mutationsBlocked: false,
-    isDemo: false,
-    isProduction: true,
-    isPlayground: false,
-    isPlaygroundWritable: false,
-    docsUrl: "",
-  })),
+  useWorkspaceMode: vi.fn((tenantId?: string | null): UseWorkspaceModeResult => {
+    void tenantId;
+    return {
+      meta: tenantMeta(),
+      loading: false,
+      error: null,
+      mutationBlocked: false,
+      isDemoTenant: false,
+      isPlaygroundTenant: false,
+      refetch: vi.fn(),
+      workspaceMode: "production",
+      modeLabel: "",
+      modeHint: "",
+      mutationsBlocked: false,
+      isDemo: false,
+      isProduction: true,
+      isPlayground: false,
+      isPlaygroundWritable: false,
+      docsUrl: "",
+    };
+  }),
 }));
 
 vi.mock("@/lib/api", async () => {
@@ -84,24 +87,27 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   vi.unstubAllGlobals();
-  mocks.useWorkspaceMode.mockImplementation((): UseWorkspaceModeResult => ({
-    meta: tenantMeta(),
-    loading: false,
-    error: null,
-    mutationBlocked: false,
-    isDemoTenant: false,
-    isPlaygroundTenant: false,
-    refetch: vi.fn(),
-    workspaceMode: "production",
-    modeLabel: "",
-    modeHint: "",
-    mutationsBlocked: false,
-    isDemo: false,
-    isProduction: true,
-    isPlayground: false,
-    isPlaygroundWritable: false,
-    docsUrl: "",
-  }));
+  mocks.useWorkspaceMode.mockImplementation((tenantId?: string | null): UseWorkspaceModeResult => {
+    void tenantId;
+    return {
+      meta: tenantMeta(),
+      loading: false,
+      error: null,
+      mutationBlocked: false,
+      isDemoTenant: false,
+      isPlaygroundTenant: false,
+      refetch: vi.fn(),
+      workspaceMode: "production",
+      modeLabel: "",
+      modeHint: "",
+      mutationsBlocked: false,
+      isDemo: false,
+      isProduction: true,
+      isPlayground: false,
+      isPlaygroundWritable: false,
+      docsUrl: "",
+    };
+  });
 });
 
 describe("AiComplianceBoardReportClient", () => {
