@@ -2,7 +2,11 @@ import "server-only";
 
 import type { AdvisorMandantHistoryEntry } from "@/lib/advisorMandantHistoryStore";
 import { readAdvisorMandantHistoryMap } from "@/lib/advisorMandantHistoryStore";
-import { maxIsoTimestamps } from "@/lib/mandantHistoryMerge";
+import {
+  daysSinceValidIso,
+  isNonEmptyUnparsableIso,
+  maxIsoTimestamps,
+} from "@/lib/mandantHistoryMerge";
 import type { TenantPillarSnapshot } from "@/lib/boardReadinessAggregate";
 import { loadMappedTenantPillarSnapshots } from "@/lib/boardReadinessAggregate";
 import { worstTraffic } from "@/lib/boardReadinessThresholds";
@@ -114,13 +118,6 @@ function weightedTopPillarFromOpenPoints(
   return { code: bestCode, weight: bestW };
 }
 
-function daysSinceIso(iso: string | null | undefined, nowMs: number): number | null {
-  if (!iso?.trim()) return null;
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null;
-  return Math.floor((nowMs - t) / (24 * 60 * 60 * 1000));
-}
-
 function rowFromSnapshot(
   t: TenantPillarSnapshot,
   nowMs: number,
@@ -153,12 +150,22 @@ function rowFromSnapshot(
   const last_review_marked_at = h?.last_review_marked_at ?? null;
   const last_review_note_de = h?.last_review_note_de ?? null;
 
+  const exportFieldMalformed =
+    isNonEmptyUnparsableIso(last_mandant_readiness_export_at) ||
+    isNonEmptyUnparsableIso(last_datev_bundle_export_at);
   const never_any_export = !last_any_export_at;
-  const dAny = daysSinceIso(last_any_export_at, nowMs);
-  const any_export_stale = never_any_export || (dAny !== null && dAny > KANZLEI_ANY_EXPORT_MAX_AGE_DAYS);
+  const dAny = daysSinceValidIso(last_any_export_at, nowMs);
+  const any_export_stale =
+    never_any_export ||
+    exportFieldMalformed ||
+    (dAny !== null && dAny > KANZLEI_ANY_EXPORT_MAX_AGE_DAYS);
 
-  const dRev = daysSinceIso(last_review_marked_at, nowMs);
-  const review_stale = !last_review_marked_at || (dRev !== null && dRev > KANZLEI_REVIEW_STALE_DAYS);
+  const reviewMalformed = isNonEmptyUnparsableIso(last_review_marked_at);
+  const dRev = daysSinceValidIso(last_review_marked_at, nowMs);
+  const review_stale =
+    !last_review_marked_at?.trim() ||
+    reviewMalformed ||
+    (dRev !== null && dRev > KANZLEI_REVIEW_STALE_DAYS);
 
   const baseline_gap = t.readiness_class === "early_pilot";
 
@@ -168,8 +175,10 @@ function rowFromSnapshot(
   );
 
   const attention_flags_de: string[] = [];
-  if (never_any_export) {
+  if (never_any_export && !exportFieldMalformed) {
     attention_flags_de.push("Noch kein Kanzlei-Export erfasst (Readiness- oder DATEV-ZIP-Export)");
+  } else if (exportFieldMalformed) {
+    attention_flags_de.push("Export-Zeitstempel in der Historie ungültig (Readiness/DATEV prüfen)");
   } else if (any_export_stale) {
     attention_flags_de.push(
       `Letzter Export älter als ${KANZLEI_ANY_EXPORT_MAX_AGE_DAYS} Tage (jüngster Readiness/DATEV)`,

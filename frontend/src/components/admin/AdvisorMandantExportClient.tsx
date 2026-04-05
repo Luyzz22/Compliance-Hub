@@ -4,8 +4,27 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { MandantReadinessAdvisorPayload } from "@/lib/mandantReadinessAdvisorTypes";
 import type { AdvisorMandantHistoryApiDto } from "@/lib/kanzleiPortfolioTypes";
+import { isNonEmptyUnparsableIso } from "@/lib/mandantHistoryMerge";
 
 type Props = { adminConfigured: boolean };
+
+function advisorExportHistSignalDe(h: AdvisorMandantHistoryApiDto): string {
+  const exportMalformed =
+    isNonEmptyUnparsableIso(h.last_mandant_readiness_export_at) ||
+    isNonEmptyUnparsableIso(h.last_datev_bundle_export_at);
+  if (h.never_any_export && !exportMalformed) return "Noch kein Export erfasst";
+  if (exportMalformed) return "Export-Zeitstempel ungültig (Historie prüfen)";
+  if (h.any_export_stale) return `Export älter als ${h.constants.any_export_max_age_days} Tage`;
+  return "Export im Zeitraum OK";
+}
+
+function advisorReviewHistSignalDe(h: AdvisorMandantHistoryApiDto): string {
+  if (isNonEmptyUnparsableIso(h.last_review_marked_at)) {
+    return "Review-Zeitstempel ungültig (Historie prüfen)";
+  }
+  if (h.review_stale) return `Review überfällig (>${h.constants.review_stale_days} Tage oder nie)`;
+  return "Review im Zeitraum OK";
+}
 
 export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   const [clientId, setClientId] = useState("");
@@ -260,16 +279,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
                 <li className="text-slate-600">Notiz: {history.last_review_note_de}</li>
               ) : null}
               <li>
-                Signale:{" "}
-                {history.never_any_export
-                  ? "Noch kein Export erfasst"
-                  : history.any_export_stale
-                    ? `Export älter als ${history.constants.any_export_max_age_days} Tage`
-                    : "Export im Zeitraum OK"}
-                {" · "}
-                {history.review_stale
-                  ? `Review überfällig (>${history.constants.review_stale_days} Tage oder nie)`
-                  : "Review im Zeitraum OK"}
+                Signale: {advisorExportHistSignalDe(history)} · {advisorReviewHistSignalDe(history)}
               </li>
             </ul>
           ) : (

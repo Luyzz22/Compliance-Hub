@@ -10,6 +10,7 @@ import type {
   KanzleiPortfolioReadinessFilter,
   KanzleiPortfolioRow,
 } from "@/lib/kanzleiPortfolioTypes";
+import { isNonEmptyUnparsableIso } from "@/lib/mandantHistoryMerge";
 
 type Props = { adminConfigured: boolean };
 
@@ -23,6 +24,14 @@ function trafficLabel(s: BoardReadinessTraffic): string {
   if (s === "green") return "OK";
   if (s === "amber") return "Beobachten";
   return "Handeln";
+}
+
+function showKeinExportBadge(row: KanzleiPortfolioRow): boolean {
+  if (!row.never_any_export) return false;
+  return (
+    !isNonEmptyUnparsableIso(row.last_mandant_readiness_export_at) &&
+    !isNonEmptyUnparsableIso(row.last_datev_bundle_export_at)
+  );
 }
 
 const PILLAR_KEYS: BoardReadinessPillarKey[] = ["eu_ai_act", "iso_42001", "nis2", "dsgvo"];
@@ -307,7 +316,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                         <div className="mt-0.5 text-[10px] text-slate-500">{row.primary_segment_label_de}</div>
                       ) : null}
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {row.never_any_export ? (
+                        {showKeinExportBadge(row) ? (
                           <span className="rounded border border-amber-200 bg-amber-50 px-1 py-0.5 text-[9px] font-medium text-amber-900">
                             Kein Export
                           </span>

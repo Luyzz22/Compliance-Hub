@@ -8,7 +8,11 @@ import {
   KANZLEI_ANY_EXPORT_MAX_AGE_DAYS,
   KANZLEI_REVIEW_STALE_DAYS,
 } from "@/lib/kanzleiReviewCadenceThresholds";
-import { maxIsoTimestamps } from "@/lib/mandantHistoryMerge";
+import {
+  daysSinceValidIso,
+  isNonEmptyUnparsableIso,
+  maxIsoTimestamps,
+} from "@/lib/mandantHistoryMerge";
 
 /**
  * Persistente Kanzlei-Historie pro Mandant (Wave 40): Export-Zeitpunkte und Review-Markierung.
@@ -238,13 +242,6 @@ export async function recordAdvisorReviewMarked(
   await writeHistoryState({ entries });
 }
 
-function daysSinceIsoLocal(iso: string | null | undefined, nowMs: number): number | null {
-  if (!iso?.trim()) return null;
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null;
-  return Math.floor((nowMs - t) / (24 * 60 * 60 * 1000));
-}
-
 export async function getAdvisorMandantHistoryApiDto(
   tenantId: string,
   nowMs: number = Date.now(),
@@ -254,12 +251,21 @@ export async function getAdvisorMandantHistoryApiDto(
     entry.last_mandant_readiness_export_at,
     entry.last_datev_bundle_export_at,
   );
+  const exportFieldMalformed =
+    isNonEmptyUnparsableIso(entry.last_mandant_readiness_export_at) ||
+    isNonEmptyUnparsableIso(entry.last_datev_bundle_export_at);
   const never_any_export = !last_any_export_at;
-  const dAny = daysSinceIsoLocal(last_any_export_at, nowMs);
-  const any_export_stale = never_any_export || (dAny !== null && dAny > KANZLEI_ANY_EXPORT_MAX_AGE_DAYS);
-  const dRev = daysSinceIsoLocal(entry.last_review_marked_at, nowMs);
+  const dAny = daysSinceValidIso(last_any_export_at, nowMs);
+  const any_export_stale =
+    never_any_export ||
+    exportFieldMalformed ||
+    (dAny !== null && dAny > KANZLEI_ANY_EXPORT_MAX_AGE_DAYS);
+  const reviewMalformed = isNonEmptyUnparsableIso(entry.last_review_marked_at);
+  const dRev = daysSinceValidIso(entry.last_review_marked_at, nowMs);
   const review_stale =
-    !entry.last_review_marked_at || (dRev !== null && dRev > KANZLEI_REVIEW_STALE_DAYS);
+    !entry.last_review_marked_at?.trim() ||
+    reviewMalformed ||
+    (dRev !== null && dRev > KANZLEI_REVIEW_STALE_DAYS);
 
   return {
     tenant_id: entry.tenant_id,
