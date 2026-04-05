@@ -2,6 +2,11 @@ import "server-only";
 
 import type { AdvisorMandantHistoryEntry } from "@/lib/advisorMandantHistoryStore";
 import { readAdvisorMandantHistoryMap } from "@/lib/advisorMandantHistoryStore";
+import type { MandantReminderApiEntry } from "@/lib/advisorMandantReminderTypes";
+import {
+  syncAdvisorMandantRemindersFromPortfolio,
+} from "@/lib/advisorMandantReminderStore";
+import { isDueThisCalendarWeek, isDueTodayOrOverdue } from "@/lib/advisorMandantReminderRules";
 import {
   daysSinceValidIso,
   isNonEmptyUnparsableIso,
@@ -245,6 +250,8 @@ function rowFromSnapshot(
     any_export_stale,
     never_any_export,
     gaps_heavy_without_recent_export,
+    open_reminders_count: 0,
+    next_reminder_due_at: null,
     links: {
       mandant_export_page: `/admin/advisor-mandant-export?client_id=${tidEnc}`,
       datev_bundle_api: `/api/internal/advisor/datev-export-bundle?client_id=${tidEnc}`,
@@ -271,6 +278,51 @@ export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Pr
 
   const attention_queue = buildAttentionQueue(rows, KANZLEI_MANY_OPEN_POINTS);
 
+  const remState = await syncAdvisorMandantRemindersFromPortfolio(
+    rows,
+    KANZLEI_MANY_OPEN_POINTS,
+    nowMs,
+  );
+  const openReminderRecords = remState.reminders.filter((r) => r.status === "open");
+  const openByTenant = new Map<string, typeof openReminderRecords>();
+  for (const r of openReminderRecords) {
+    const arr = openByTenant.get(r.tenant_id) ?? [];
+    arr.push(r);
+    openByTenant.set(r.tenant_id, arr);
+  }
+  for (const arr of openByTenant.values()) {
+    arr.sort((a, b) => Date.parse(a.due_at) - Date.parse(b.due_at));
+  }
+
+  const labelByTenant = new Map(rows.map((r) => [r.tenant_id, r.mandant_label]));
+  const rowsWithReminders = rows.map((row) => {
+    const list = openByTenant.get(row.tenant_id) ?? [];
+    return {
+      ...row,
+      open_reminders_count: list.length,
+      next_reminder_due_at: list[0]?.due_at ?? null,
+    };
+  });
+
+  const open_reminders: MandantReminderApiEntry[] = [...openReminderRecords]
+    .sort((a, b) => Date.parse(a.due_at) - Date.parse(b.due_at))
+    .map((r) => ({
+      reminder_id: r.reminder_id,
+      tenant_id: r.tenant_id,
+      mandant_label: labelByTenant.get(r.tenant_id) ?? null,
+      category: r.category,
+      due_at: r.due_at,
+      note: r.note,
+      source: r.source,
+    }));
+
+  let reminders_due_today_or_overdue_count = 0;
+  let reminders_due_this_week_open_count = 0;
+  for (const r of openReminderRecords) {
+    if (isDueTodayOrOverdue(r.due_at, nowMs)) reminders_due_today_or_overdue_count += 1;
+    if (isDueThisCalendarWeek(r.due_at, nowMs)) reminders_due_this_week_open_count += 1;
+  }
+
   return {
     version: KANZLEI_PORTFOLIO_VERSION,
     generated_at: bundle.generated_at,
@@ -283,7 +335,10 @@ export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Pr
       many_open_points_threshold: KANZLEI_MANY_OPEN_POINTS,
       gap_heavy_min_open_for_export_rule: KANZLEI_GAP_HEAVY_FOR_EXPORT_RULE,
     },
-    rows,
+    rows: rowsWithReminders,
     attention_queue,
+    open_reminders,
+    reminders_due_today_or_overdue_count,
+    reminders_due_this_week_open_count,
   };
 }

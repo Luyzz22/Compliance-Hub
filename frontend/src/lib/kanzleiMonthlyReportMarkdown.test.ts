@@ -35,6 +35,8 @@ function minimalPayload(): KanzleiPortfolioPayload {
     any_export_stale: false,
     never_any_export: false,
     gaps_heavy_without_recent_export: false,
+    open_reminders_count: 0,
+    next_reminder_due_at: null,
     links: {
       mandant_export_page: "/a",
       datev_bundle_api: "/b",
@@ -56,6 +58,9 @@ function minimalPayload(): KanzleiPortfolioPayload {
     },
     rows: [row],
     attention_queue: [],
+    open_reminders: [],
+    reminders_due_today_or_overdue_count: 0,
+    reminders_due_this_week_open_count: 0,
   };
 }
 

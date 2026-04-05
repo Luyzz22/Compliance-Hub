@@ -6,6 +6,10 @@ import {
   KanzleiReviewPlaybookHelper,
   type KanzleiPlaybookMandateSnapshot,
 } from "@/components/admin/KanzleiReviewPlaybookHelper";
+import {
+  MANDANT_REMINDER_CATEGORY_LABEL_DE,
+  type MandantReminderRecord,
+} from "@/lib/advisorMandantReminderTypes";
 import type { MandantReadinessAdvisorPayload } from "@/lib/mandantReadinessAdvisorTypes";
 import { naechsterSchrittForRow } from "@/lib/kanzleiAttentionQueue";
 import type { AdvisorMandantHistoryApiDto, KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
@@ -74,6 +78,50 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   const [reviewBusy, setReviewBusy] = useState(false);
   const [portfolioRow, setPortfolioRow] = useState<KanzleiPortfolioRow | null>(null);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
+  const [tenantReminders, setTenantReminders] = useState<MandantReminderRecord[]>([]);
+  const [remLoading, setRemLoading] = useState(false);
+  const [remPatchId, setRemPatchId] = useState<string | null>(null);
+  const [newRemDue, setNewRemDue] = useState("");
+  const [newRemCat, setNewRemCat] = useState<"manual" | "follow_up_note">("follow_up_note");
+  const [newRemNote, setNewRemNote] = useState("");
+  const [newRemBusy, setNewRemBusy] = useState(false);
+
+  const fetchTenantReminders = useCallback(async () => {
+    const id = clientId.trim();
+    if (!id) {
+      setTenantReminders([]);
+      return;
+    }
+    setRemLoading(true);
+    try {
+      const q = new URLSearchParams({ client_id: id, status: "open" });
+      const r = await fetch(`/api/internal/advisor/mandant-reminders?${q}`, { credentials: "include" });
+      if (!r.ok) {
+        setTenantReminders([]);
+        return;
+      }
+      const data = (await r.json()) as { reminders?: MandantReminderRecord[] };
+      setTenantReminders(data.reminders ?? []);
+    } catch {
+      setTenantReminders([]);
+    } finally {
+      setRemLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    void fetchTenantReminders();
+  }, [fetchTenantReminders]);
+
+  useEffect(() => {
+    if (!clientId.trim()) return;
+    setNewRemDue((prev) => {
+      if (prev) return prev;
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      return d.toISOString().slice(0, 10);
+    });
+  }, [clientId]);
 
   const fetchPortfolioRow = useCallback(async () => {
     const id = clientId.trim();
@@ -177,12 +225,13 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       setPayload(data.mandant_readiness_export ?? null);
       void fetchHistory();
       void fetchPortfolioRow();
+      void fetchTenantReminders();
     } catch {
       setError("Netzwerkfehler");
     } finally {
       setLoading(false);
     }
-  }, [clientId, fetchHistory, fetchPortfolioRow]);
+  }, [clientId, fetchHistory, fetchPortfolioRow, fetchTenantReminders]);
 
   const copyMd = useCallback(async () => {
     if (!payload?.markdown_de) return;
@@ -245,12 +294,13 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       setMsg("ZIP-Arbeitspaket geladen.");
       void fetchHistory();
       void fetchPortfolioRow();
+      void fetchTenantReminders();
     } catch {
       setError("Netzwerkfehler");
     } finally {
       setBundleLoading(false);
     }
-  }, [clientId, fetchHistory, fetchPortfolioRow]);
+  }, [clientId, fetchHistory, fetchPortfolioRow, fetchTenantReminders]);
 
   const submitReview = useCallback(async () => {
     const id = clientId.trim();
@@ -284,12 +334,62 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       setReviewNote("");
       setMsg("Review gespeichert.");
       void fetchPortfolioRow();
+      void fetchTenantReminders();
     } catch {
       setError("Netzwerkfehler");
     } finally {
       setReviewBusy(false);
     }
-  }, [clientId, reviewNote, fetchPortfolioRow]);
+  }, [clientId, reviewNote, fetchPortfolioRow, fetchTenantReminders]);
+
+  const patchTenantReminder = useCallback(
+    async (reminderId: string, status: "done" | "dismissed") => {
+      setRemPatchId(reminderId);
+      try {
+        const r = await fetch("/api/internal/advisor/mandant-reminders", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reminder_id: reminderId, status }),
+        });
+        if (r.ok) void fetchTenantReminders();
+      } finally {
+        setRemPatchId(null);
+      }
+    },
+    [fetchTenantReminders],
+  );
+
+  const submitNewReminder = useCallback(async () => {
+    const id = clientId.trim();
+    if (!id || !newRemDue.trim()) return;
+    setNewRemBusy(true);
+    try {
+      const r = await fetch("/api/internal/advisor/mandant-reminders", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: id,
+          category: newRemCat,
+          due_at: newRemDue.trim(),
+          ...(newRemNote.trim() ? { note: newRemNote.trim() } : {}),
+        }),
+      });
+      if (r.ok) {
+        setNewRemNote("");
+        void fetchTenantReminders();
+        setMsg("Reminder gespeichert.");
+      } else {
+        const j = (await r.json()) as { detail?: string };
+        setError(j.detail ?? `Reminder HTTP ${r.status}`);
+      }
+    } catch {
+      setError("Netzwerkfehler");
+    } finally {
+      setNewRemBusy(false);
+    }
+  }, [clientId, fetchTenantReminders, newRemCat, newRemDue, newRemNote]);
 
   function formatHist(iso: string | null): string {
     if (!iso) return "—";
@@ -309,7 +409,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   return (
     <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 37–41 · Kanzlei / Berater</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 37–43 · Kanzlei / Berater</p>
         <h1 className="text-xl font-semibold text-slate-900">Mandanten-Readiness-Export</h1>
         <p className="mt-2 text-sm text-slate-600">
           Kompakter Status für Steuerberater, WP und GRC-Berater – ein Mandant pro Export. Nutzt dieselben
@@ -333,6 +433,11 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
           ·{" "}
           <code className="rounded bg-slate-100 px-1 text-[11px]">
             POST /api/internal/advisor/mandant-review
+          </code>
+          <br />
+          Reminders (Wave 43):{" "}
+          <code className="rounded bg-slate-100 px-1 text-[11px]">
+            GET/POST/PATCH /api/internal/advisor/mandant-reminders
           </code>
         </p>
       </div>
@@ -395,6 +500,85 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
               className="rounded-lg bg-violet-900 px-3 py-1.5 text-xs text-white hover:bg-violet-800 disabled:opacity-50"
             >
               {reviewBusy ? "Speichere…" : "Review durchgeführt"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {clientId.trim() ? (
+        <div className="rounded-lg border border-rose-200 bg-rose-50/40 p-3 text-xs text-slate-800">
+          <p className="font-semibold text-rose-950">Offene Reminders (Wave 43)</p>
+          {remLoading ? (
+            <p className="mt-1 text-slate-500">Lade Reminder…</p>
+          ) : tenantReminders.length === 0 ? (
+            <p className="mt-1 text-slate-600">Keine offenen Reminder für diesen Mandanten.</p>
+          ) : (
+            <ul className="mt-2 space-y-2">
+              {tenantReminders.map((r) => (
+                <li key={r.reminder_id} className="rounded border border-rose-100 bg-white/90 p-2">
+                  <div className="font-medium">{MANDANT_REMINDER_CATEGORY_LABEL_DE[r.category]}</div>
+                  <div className="text-slate-600">Fällig: {formatHist(r.due_at)}</div>
+                  {r.note ? <div className="mt-0.5 text-slate-700">{r.note}</div> : null}
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={remPatchId === r.reminder_id}
+                      onClick={() => void patchTenantReminder(r.reminder_id, "done")}
+                      className="text-cyan-800 underline disabled:opacity-50"
+                    >
+                      Erledigt
+                    </button>
+                    <button
+                      type="button"
+                      disabled={remPatchId === r.reminder_id}
+                      onClick={() => void patchTenantReminder(r.reminder_id, "dismissed")}
+                      className="text-slate-600 underline disabled:opacity-50"
+                    >
+                      Zurückstellen
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-rose-100 pt-2">
+            <label className="text-[11px] font-medium text-slate-700">
+              Neu · Fällig
+              <input
+                type="date"
+                className="mt-0.5 block rounded border border-slate-300 bg-white px-2 py-1 text-[11px]"
+                value={newRemDue}
+                onChange={(e) => setNewRemDue(e.target.value)}
+              />
+            </label>
+            <label className="text-[11px] font-medium text-slate-700">
+              Art
+              <select
+                className="mt-0.5 block rounded border border-slate-300 bg-white px-2 py-1 text-[11px]"
+                value={newRemCat}
+                onChange={(e) => setNewRemCat(e.target.value as "manual" | "follow_up_note")}
+              >
+                <option value="follow_up_note">Follow-up</option>
+                <option value="manual">Manuell</option>
+              </select>
+            </label>
+            <label className="min-w-[160px] flex-1 text-[11px] font-medium text-slate-700">
+              Notiz
+              <input
+                className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-[11px]"
+                value={newRemNote}
+                onChange={(e) => setNewRemNote(e.target.value)}
+                placeholder="Kurztext"
+                maxLength={500}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={newRemBusy || !newRemDue.trim()}
+              onClick={() => void submitNewReminder()}
+              className="rounded bg-rose-800 px-2 py-1 text-[11px] text-white hover:bg-rose-900 disabled:opacity-50"
+            >
+              {newRemBusy ? "…" : "Reminder anlegen"}
             </button>
           </div>
         </div>

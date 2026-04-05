@@ -39,6 +39,8 @@ function row(partial: Partial<KanzleiPortfolioRow>): KanzleiPortfolioRow {
     any_export_stale: false,
     never_any_export: false,
     gaps_heavy_without_recent_export: false,
+    open_reminders_count: 0,
+    next_reminder_due_at: null,
     links: {
       mandant_export_page: "/x",
       datev_bundle_api: "/y",
@@ -71,6 +73,9 @@ function payload(rows: KanzleiPortfolioRow[]): KanzleiPortfolioPayload {
       naechster_schritt_de: "Test-Schritt",
       links: r.links,
     })),
+    open_reminders: [],
+    reminders_due_today_or_overdue_count: 0,
+    reminders_due_this_week_open_count: 0,
   };
 }
 
