@@ -36,7 +36,6 @@ import type { TenantBoardReadinessRaw } from "@/lib/tenantBoardReadinessRawTypes
 import {
   boardComplianceReportFresh,
   complianceGapStatus,
-  countSavedAiActDocSections,
   EU_AI_ACT_ART9,
   evidenceBundleComplete,
 } from "@/lib/tenantBoardReadinessGaps";
@@ -75,10 +74,6 @@ function complianceStatus(
   reqId: string,
 ): string | undefined {
   return complianceGapStatus(rows, reqId);
-}
-
-function countSavedAiActSections(raw: TenantBoardReadinessRaw, sysId: string): number {
-  return countSavedAiActDocSections(raw, sysId);
 }
 
 function evidenceBundleOk(raw: TenantBoardReadinessRaw, sysId: string): boolean {
@@ -260,7 +255,6 @@ function buildTenantSnapshot(
 
   const nis2_obl = raw.setup_status?.nis2_kpis_seeded === true;
   const mean = raw.ai_compliance_overview?.nis2_kritis_kpi_mean_percent;
-  const cov = raw.ai_compliance_overview?.nis2_kritis_systems_full_coverage_ratio ?? 0;
   const obligations_ok = nis2_obl || (mean != null && mean > 0);
   let hr_inc = 0;
   let hr_inc_ok = 0;

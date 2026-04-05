@@ -3,10 +3,7 @@
  */
 
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
-import {
-  KANZLEI_GAP_HEAVY_FOR_EXPORT_RULE,
-  KANZLEI_MANY_OPEN_POINTS,
-} from "@/lib/kanzleiReviewCadenceThresholds";
+import { KANZLEI_GAP_HEAVY_FOR_EXPORT_RULE } from "@/lib/kanzleiReviewCadenceThresholds";
 
 export { KANZLEI_MANY_OPEN_POINTS } from "@/lib/kanzleiReviewCadenceThresholds";
 
