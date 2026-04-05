@@ -49,6 +49,16 @@ export type MandantOffenerPunkt = {
   letzte_aenderung_iso?: string | null;
 };
 
+/** Säulen-Code für offene Punkte (Kanzlei-Export / Portfolio). */
+export function pillarCodeForOpenPoint(p: MandantOffenerPunkt): string {
+  if (p.id.startsWith("board:")) return "EU_AI_Act";
+  const t = p.pruefpunkt_de.toLowerCase();
+  if (t.includes("nis2")) return "NIS2";
+  if (t.includes("dsgvo") || t.includes("datenschutz")) return "DSGVO";
+  if (t.includes("iso")) return "ISO_42001";
+  return "EU_AI_Act";
+}
+
 function refKi(sysId: string): string {
   return `HR-AI-${sysId}`;
 }

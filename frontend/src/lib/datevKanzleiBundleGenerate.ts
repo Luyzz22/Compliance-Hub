@@ -5,8 +5,11 @@
 
 import JSZip from "jszip";
 
-import { boardComplianceReportFresh } from "@/lib/tenantBoardReadinessGaps";
-import type { MandantOffenerPunkt } from "@/lib/tenantBoardReadinessGaps";
+import {
+  boardComplianceReportFresh,
+  pillarCodeForOpenPoint,
+  type MandantOffenerPunkt,
+} from "@/lib/tenantBoardReadinessGaps";
 import type { TenantBoardReadinessRaw } from "@/lib/tenantBoardReadinessRawTypes";
 
 export const DATEV_KANZLEI_BUNDLE_VERSION = "wave38-v1";
@@ -16,14 +19,7 @@ const CSV_SEP = ";";
 /** UTF-8 BOM so Excel (DE) opens UTF-8 correctly. */
 export const EXCEL_UTF8_BOM = "\uFEFF";
 
-export function pillarCodeForOpenPoint(p: MandantOffenerPunkt): string {
-  if (p.id.startsWith("board:")) return "EU_AI_Act";
-  const t = p.pruefpunkt_de.toLowerCase();
-  if (t.includes("nis2")) return "NIS2";
-  if (t.includes("dsgvo") || t.includes("datenschutz")) return "DSGVO";
-  if (t.includes("iso")) return "ISO_42001";
-  return "EU_AI_Act";
-}
+export { pillarCodeForOpenPoint };
 
 export function objectTypeForOpenPoint(p: MandantOffenerPunkt): string {
   if (p.id.startsWith("owner:")) return "AI_System";

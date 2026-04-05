@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { MandantReadinessAdvisorPayload } from "@/lib/mandantReadinessAdvisorTypes";
 
@@ -13,6 +13,12 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [bundleLoading, setBundleLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const c = new URLSearchParams(window.location.search).get("client_id")?.trim();
+    if (c) setClientId(c);
+  }, []);
 
   const load = useCallback(async () => {
     const id = clientId.trim();
@@ -182,8 +188,12 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       </div>
 
       <p className="text-xs text-slate-500">
+        <a className="text-cyan-700 underline" href="/admin/advisor-portfolio">
+          Kanzlei-Cockpit
+        </a>
+        {" · "}
         <a className="text-cyan-700 underline" href="/admin/board-readiness">
-          ← Board Readiness
+          Board Readiness
         </a>
       </p>
 
