@@ -13,6 +13,7 @@ import { worstTraffic } from "@/lib/boardReadinessThresholds";
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmSegmentBucket } from "@/lib/gtmDashboardTypes";
 import { GTM_READINESS_LABELS_DE } from "@/lib/gtmAccountReadiness";
+import { buildAttentionQueue } from "@/lib/kanzleiAttentionQueue";
 import {
   computeGapsHeavyWithoutRecentExport,
   kanzleiAttentionScore,
@@ -268,6 +269,8 @@ export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Pr
       return (a.mandant_label ?? a.tenant_id).localeCompare(b.mandant_label ?? b.tenant_id, "de");
     });
 
+  const attention_queue = buildAttentionQueue(rows, KANZLEI_MANY_OPEN_POINTS);
+
   return {
     version: KANZLEI_PORTFOLIO_VERSION,
     generated_at: bundle.generated_at,
@@ -281,5 +284,6 @@ export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Pr
       gap_heavy_min_open_for_export_rule: KANZLEI_GAP_HEAVY_FOR_EXPORT_RULE,
     },
     rows,
+    attention_queue,
   };
 }

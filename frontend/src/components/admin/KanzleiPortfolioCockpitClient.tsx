@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import { GTM_READINESS_CLASSES, GTM_READINESS_SHORT_DE } from "@/lib/gtmAccountReadiness";
+import { KanzleiReviewPlaybookHelper } from "@/components/admin/KanzleiReviewPlaybookHelper";
 import type {
+  KanzleiAttentionQueueItem,
   KanzleiPortfolioPayload,
   KanzleiPortfolioPillarFilter,
   KanzleiPortfolioReadinessFilter,
@@ -31,6 +33,79 @@ function showKeinExportBadge(row: KanzleiPortfolioRow): boolean {
   return (
     !isNonEmptyUnparsableIso(row.last_mandant_readiness_export_at) &&
     !isNonEmptyUnparsableIso(row.last_datev_bundle_export_at)
+  );
+}
+
+function AttentionQueuePanel({
+  items,
+  onMarkReview,
+  reviewBusyId,
+}: {
+  items: KanzleiAttentionQueueItem[];
+  onMarkReview: (tenantId: string) => void;
+  reviewBusyId: string | null;
+}) {
+  return (
+    <section className="max-h-[min(70vh,520px)] overflow-y-auto rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-amber-950">Attention-Queue</h2>
+      <p className="mt-1 text-[11px] leading-snug text-slate-600">
+        Priorisiert nach Kanzlei-Attention-Score und harten Signalen (Review, Export, Lücken, Ampeln). Kein
+        Workflow-Tool – nur die Reihenfolge für Ihre wöchentliche Durcharbeitung.
+      </p>
+      {items.length === 0 ? (
+        <p className="mt-3 text-xs text-slate-600">
+          Kein Mandant erfüllt die Queue-Kriterien – gute Ausgangslage oder Daten noch nicht vollständig.
+        </p>
+      ) : (
+        <ol className="mt-3 space-y-3">
+          {items.map((q, idx) => (
+            <li
+              key={q.tenant_id}
+              className="rounded-lg border border-amber-100 bg-white/90 p-3 text-xs text-slate-800 shadow-sm"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <span className="font-mono text-[10px] text-slate-400">#{idx + 1}</span>{" "}
+                  <span className="font-semibold text-slate-900">{q.mandant_label ?? q.tenant_id}</span>
+                  <div className="font-mono text-[10px] text-slate-500">{q.tenant_id}</div>
+                </div>
+                <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                  Score {q.attention_score}
+                </span>
+              </div>
+              <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Warum jetzt?
+              </p>
+              <ul className="mt-0.5 list-inside list-disc space-y-0.5 text-[11px] text-slate-700">
+                {q.warum_jetzt_de.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[11px] text-slate-800">
+                <span className="font-semibold text-violet-900">Nächster Schritt:</span>{" "}
+                {q.naechster_schritt_de}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+                <a className="text-cyan-700 underline" href={q.links.mandant_export_page}>
+                  Mandanten-Export
+                </a>
+                <a className="text-cyan-700 underline" href={q.links.datev_bundle_api}>
+                  DATEV-ZIP
+                </a>
+                <button
+                  type="button"
+                  disabled={reviewBusyId === q.tenant_id}
+                  onClick={() => onMarkReview(q.tenant_id)}
+                  className="text-violet-800 underline disabled:opacity-50"
+                >
+                  {reviewBusyId === q.tenant_id ? "…" : "Review durchgeführt"}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 
@@ -174,11 +249,12 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39–40 · Kanzlei / Berater</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39–41 · Kanzlei / Berater</p>
           <h1 className="text-2xl font-semibold text-slate-900">Mehrmandanten-Kanzlei-Cockpit</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
             Welcher Mandant braucht jetzt Aufmerksamkeit? Portfolio über gemappte Mandanten mit Readiness,
-            offenen Prüfpunkten, Export-Historie (Readiness / DATEV-ZIP) und Review-Kadenz (Wave 40).
+            offenen Prüfpunkten, Export-Historie (Readiness / DATEV-ZIP), Review-Kadenz (Wave 40) und
+            Attention-Queue plus Review-Playbook (Wave 41).
           </p>
           {payload ? (
             <p className="mt-1 font-mono text-xs text-slate-400">
@@ -220,6 +296,24 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
 
       {loadError && loadError !== "unauthorized" ? (
         <p className="text-sm text-red-600">{loadError}</p>
+      ) : null}
+
+      {payload ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <KanzleiReviewPlaybookHelper
+            variant="full"
+            footerHint={
+              (payload.attention_queue ?? []).length > 0
+                ? `Aktuell ${(payload.attention_queue ?? []).length} Mandant(en) in der Attention-Queue (rechts).`
+                : "Keine Mandanten in der Queue – Playbook trotzdem für Stichproben nutzen."
+            }
+          />
+          <AttentionQueuePanel
+            items={payload.attention_queue ?? []}
+            onMarkReview={(tid) => void markReviewDone(tid)}
+            reviewBusyId={reviewBusyId}
+          />
+        </div>
       ) : null}
 
       {payload ? (
@@ -418,7 +512,9 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
           Zeitstempel automatisch; Review per Aktion). Optional weiterlesbar:{" "}
           <code className="rounded bg-slate-100 px-1">data/advisor-portfolio-touchpoints.json</code> (Wave 39
           Legacy). Schwellen: Review {payload.constants.review_stale_days} Tage, Export{" "}
-          {payload.constants.any_export_max_age_days} Tage – siehe Wave 40.
+          {payload.constants.any_export_max_age_days} Tage – siehe Wave 40–41 (Doku:{" "}
+          <code className="rounded bg-slate-100 px-1">docs/advisors/wave41-kanzlei-review-playbook-and-queue.md</code>
+          ).
         </p>
       ) : null}
     </div>
