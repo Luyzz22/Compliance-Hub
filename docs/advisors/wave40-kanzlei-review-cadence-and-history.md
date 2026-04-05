@@ -72,6 +72,7 @@ Payload-Version ab Wave 41 **`wave41-v1`** (inkl. `attention_queue`); Konstanten
 
 ## Siehe auch
 
+- `docs/advisors/wave42-kanzlei-monatsreport.md`
 - `docs/advisors/wave41-kanzlei-review-playbook-and-queue.md`
 - `docs/advisors/wave37-mandant-readiness-export.md`
 - `docs/advisors/wave38-datev-export-bundle.md`

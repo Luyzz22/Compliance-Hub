@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import { GTM_READINESS_CLASSES, GTM_READINESS_SHORT_DE } from "@/lib/gtmAccountReadiness";
 import { KanzleiReviewPlaybookHelper } from "@/components/admin/KanzleiReviewPlaybookHelper";
+import type { KanzleiMonthlyReportDto } from "@/lib/kanzleiMonthlyReportTypes";
 import type {
   KanzleiAttentionQueueItem,
   KanzleiPortfolioPayload,
@@ -147,6 +148,17 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [reviewStaleOnly, setReviewStaleOnly] = useState(false);
   const [reviewBusyId, setReviewBusyId] = useState<string | null>(null);
 
+  const [reportPeriod, setReportPeriod] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [reportCompare, setReportCompare] = useState(true);
+  const [reportSaveBaseline, setReportSaveBaseline] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportErr, setReportErr] = useState<string | null>(null);
+  const [reportMd, setReportMd] = useState<string | null>(null);
+  const [reportDto, setReportDto] = useState<KanzleiMonthlyReportDto | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -221,6 +233,56 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     },
     [load],
   );
+
+  const fetchMonthlyReport = useCallback(async () => {
+    setReportLoading(true);
+    setReportErr(null);
+    try {
+      const q = new URLSearchParams();
+      q.set("period", reportPeriod.trim());
+      if (!reportCompare) q.set("compare", "0");
+      if (reportSaveBaseline) q.set("update_baseline", "1");
+      const r = await fetch(`/api/internal/advisor/kanzlei-monthly-report?${q}`, { credentials: "include" });
+      if (r.status === 401) {
+        setReportErr("Nicht angemeldet (Admin-Secret).");
+        setReportMd(null);
+        setReportDto(null);
+        return;
+      }
+      if (!r.ok) {
+        setReportErr(`HTTP ${r.status}`);
+        setReportMd(null);
+        setReportDto(null);
+        return;
+      }
+      const data = (await r.json()) as {
+        ok?: boolean;
+        report?: KanzleiMonthlyReportDto;
+        markdown_de?: string;
+        baseline_updated?: boolean;
+      };
+      setReportDto(data.report ?? null);
+      setReportMd(data.markdown_de ?? null);
+      if (data.baseline_updated) {
+        void load();
+      }
+    } catch {
+      setReportErr("Netzwerkfehler");
+      setReportMd(null);
+      setReportDto(null);
+    } finally {
+      setReportLoading(false);
+    }
+  }, [load, reportCompare, reportPeriod, reportSaveBaseline]);
+
+  const copyReportMd = useCallback(async () => {
+    if (!reportMd) return;
+    try {
+      await navigator.clipboard.writeText(reportMd);
+    } catch {
+      /* ignore */
+    }
+  }, [reportMd]);
 
   if (!adminConfigured) {
     return (
@@ -314,6 +376,74 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             reviewBusyId={reviewBusyId}
           />
         </div>
+      ) : null}
+
+      {payload ? (
+        <section className="rounded-xl border border-cyan-200 bg-cyan-50/30 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">Monatsreport / Sammelreport (Wave 42)</h2>
+          <p className="mt-1 text-[11px] text-slate-600">
+            Portfolio-weiter Überblick für interne Kanzlei-Reviews und Status-Mails. JSON + Markdown über{" "}
+            <code className="rounded bg-white px-1">GET /api/internal/advisor/kanzlei-monthly-report</code>.
+            Vergleich nutzt optional{" "}
+            <code className="rounded bg-white px-1">data/kanzlei-monthly-report-baseline.json</code> (siehe
+            Doku).
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="text-xs font-medium text-slate-700">
+              Periode (YYYY-MM)
+              <input
+                className="mt-1 block w-36 rounded-lg border border-slate-300 bg-white px-2 py-1.5 font-mono text-sm"
+                value={reportPeriod}
+                onChange={(e) => setReportPeriod(e.target.value)}
+                placeholder="2026-04"
+              />
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+              <input
+                type="checkbox"
+                checked={reportCompare}
+                onChange={(e) => setReportCompare(e.target.checked)}
+              />
+              Vergleich mit Baseline
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+              <input
+                type="checkbox"
+                checked={reportSaveBaseline}
+                onChange={(e) => setReportSaveBaseline(e.target.checked)}
+              />
+              Baseline nach Erzeugung speichern
+            </label>
+            <button
+              type="button"
+              disabled={reportLoading}
+              onClick={() => void fetchMonthlyReport()}
+              className="rounded-lg bg-cyan-800 px-3 py-1.5 text-sm text-white hover:bg-cyan-900 disabled:opacity-50"
+            >
+              {reportLoading ? "Erzeuge…" : "Monatsreport erstellen"}
+            </button>
+            <button
+              type="button"
+              disabled={!reportMd}
+              onClick={() => void copyReportMd()}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Markdown kopieren
+            </button>
+          </div>
+          {reportErr ? <p className="mt-2 text-xs text-red-600">{reportErr}</p> : null}
+          {reportDto ? (
+            <p className="mt-2 font-mono text-[10px] text-slate-500">
+              Schema {reportDto.version} · compared_to_baseline={String(reportDto.compared_to_baseline)} · Top{" "}
+              {reportDto.section_2_attention_top.length}
+            </p>
+          ) : null}
+          {reportMd ? (
+            <pre className="mt-3 max-h-[min(55vh,480px)] overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 font-mono text-[11px] leading-relaxed text-slate-800">
+              {reportMd}
+            </pre>
+          ) : null}
+        </section>
       ) : null}
 
       {payload ? (
@@ -512,8 +642,8 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
           Zeitstempel automatisch; Review per Aktion). Optional weiterlesbar:{" "}
           <code className="rounded bg-slate-100 px-1">data/advisor-portfolio-touchpoints.json</code> (Wave 39
           Legacy). Schwellen: Review {payload.constants.review_stale_days} Tage, Export{" "}
-          {payload.constants.any_export_max_age_days} Tage – siehe Wave 40–41 (Doku:{" "}
-          <code className="rounded bg-slate-100 px-1">docs/advisors/wave41-kanzlei-review-playbook-and-queue.md</code>
+          {payload.constants.any_export_max_age_days} Tage – siehe Wave 40–42 (Doku: Wave 41/42 unter{" "}
+          <code className="rounded bg-slate-100 px-1">docs/advisors/</code>
           ).
         </p>
       ) : null}
