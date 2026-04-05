@@ -8,6 +8,7 @@ import {
   buildKanzleiPortfolioFocusAreasDe,
   summarizeKanzleiMonthlyReportSection1,
 } from "@/lib/kanzleiMonthlyReportBuild";
+import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { KanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioTypes";
 import type {
   PartnerReviewAttentionEntry,
@@ -98,6 +99,8 @@ export type BuildPartnerReviewPackageOptions = {
   compareToBaseline: boolean;
   attentionTopN: number;
   generatedAt?: Date;
+  /** Wave 45 – Kanzlei-KPIs (optional). */
+  advisorKpiSnapshot?: AdvisorKpiPortfolioSnapshot | null;
 };
 
 export function buildPartnerReviewPackage(
@@ -147,5 +150,6 @@ export function buildPartnerReviewPackage(
     part_b_top_attention: buildPartB(payload, opts.attentionTopN),
     part_c_changes_since_baseline: mergePartC(s3),
     part_d_recommended_priorities_de: part_d.slice(0, 8),
+    part_e_advisor_kpis: opts.advisorKpiSnapshot ?? null,
   };
 }

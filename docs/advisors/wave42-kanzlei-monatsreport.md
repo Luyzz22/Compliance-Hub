@@ -25,8 +25,10 @@ Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine
 | `compare` | `1` (an) | `compare=0` schaltet Abschnitt 3 ab (Snapshot trotzdem nutzbar) |
 | `update_baseline` | `0` | `update_baseline=1` **überschreibt** die Baseline-Datei mit dem **aktuellen** Portfolio-Snapshot |
 | `top_n` | `10` | Anzahl Zeilen in Abschnitt 2 (3–25) |
+| `kpi_window_days` | `90` | Wave 45: Fenster für KPI-Abschnitt 5 (7–365) |
+| `kpi` | `1` | `kpi=0` schaltet Abschnitt 5 ab |
 
-**Antwort:** `{ ok, report, markdown_de, baseline_updated }` – `report` ist strukturiertes JSON (`wave42-v1`), `markdown_de` für Kopieren in E-Mails oder Arbeitsmappen.
+**Antwort:** `{ ok, report, markdown_de, baseline_updated }` – `report` ist strukturiertes JSON (`wave45-v1` inkl. optionalem Abschnitt 5), `markdown_de` für Kopieren in E-Mails oder Arbeitsmappen.
 
 ## Baseline & Change-Logik
 
@@ -63,6 +65,7 @@ Listen sind auf **12 Einträge** pro Kategorie begrenzt (Lesbarkeit).
 
 ## Siehe auch
 
+- `docs/advisors/wave45-advisor-kpis.md`
 - `docs/advisors/wave44-partner-review-package.md`
 - `docs/advisors/wave43-reminders-and-followups.md`
 - `docs/advisors/wave41-kanzlei-review-playbook-and-queue.md`

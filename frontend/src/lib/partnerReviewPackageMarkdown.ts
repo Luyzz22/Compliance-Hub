@@ -114,6 +114,28 @@ export function partnerReviewPackageMarkdownDe(pkg: PartnerReviewPackageDto): st
   }
   lines.push("");
 
+  const kpi = pkg.part_e_advisor_kpis;
+  if (kpi) {
+    lines.push("## E) Kanzlei-KPIs (Steuerung)");
+    lines.push("");
+    lines.push(
+      `Fenster **${kpi.window_days}** Tage · ${kpi.mapped_tenant_count} Mandanten · Schema ${kpi.version}.`,
+    );
+    lines.push("");
+    for (const tile of kpi.strip) {
+      const tr =
+        tile.trend === "up"
+          ? "↑"
+          : tile.trend === "down"
+            ? "↓"
+            : tile.trend === "flat"
+              ? "→"
+              : "○";
+      lines.push(`- **${tile.label_de}:** ${tile.value_display_de} ${tr} (${tile.traffic_light})`);
+    }
+    lines.push("");
+  }
+
   lines.push("---");
   lines.push("");
   lines.push("### Priorisierung (Kurz)");

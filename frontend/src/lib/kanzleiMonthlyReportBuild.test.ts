@@ -114,5 +114,6 @@ describe("kanzleiMonthlyReportBuild", () => {
     );
     expect(r.compared_to_baseline).toBe(false);
     expect(r.section_3_changes.readiness_improved.length).toBe(0);
+    expect(r.section_5_advisor_kpis).toBeNull();
   });
 });

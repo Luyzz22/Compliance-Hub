@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import { GTM_READINESS_CLASSES, GTM_READINESS_SHORT_DE } from "@/lib/gtmAccountReadiness";
 import { KanzleiReviewPlaybookHelper } from "@/components/admin/KanzleiReviewPlaybookHelper";
+import type { AdvisorKpiPortfolioSnapshot, AdvisorKpiTrend, AdvisorKpiTraffic } from "@/lib/advisorKpiTypes";
 import type { KanzleiMonthlyReportDto } from "@/lib/kanzleiMonthlyReportTypes";
 import type { PartnerReviewPackageDto } from "@/lib/partnerReviewPackageTypes";
 import {
@@ -22,6 +23,20 @@ import type {
 import { isNonEmptyUnparsableIso } from "@/lib/mandantHistoryMerge";
 
 type Props = { adminConfigured: boolean };
+
+function kpiTrendSymbol(t: AdvisorKpiTrend): string {
+  if (t === "up") return "↑";
+  if (t === "down") return "↓";
+  if (t === "flat") return "→";
+  return "○";
+}
+
+function kpiTileBorder(t: AdvisorKpiTraffic): string {
+  if (t === "green") return "border-emerald-300 bg-emerald-50/70";
+  if (t === "amber") return "border-amber-300 bg-amber-50/70";
+  if (t === "red") return "border-rose-300 bg-rose-50/70";
+  return "border-slate-200 bg-slate-50/80";
+}
 
 function trafficPill(s: BoardReadinessTraffic): string {
   if (s === "green") return "border-emerald-300 bg-emerald-50 text-emerald-950";
@@ -214,6 +229,11 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [partnerCompare, setPartnerCompare] = useState(true);
   const [partnerTopN, setPartnerTopN] = useState(8);
 
+  const [kpiSnapshot, setKpiSnapshot] = useState<AdvisorKpiPortfolioSnapshot | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(false);
+  const [kpiErr, setKpiErr] = useState<string | null>(null);
+  const [kpiWindowDays, setKpiWindowDays] = useState(90);
+
   const [reminderPatchBusyId, setReminderPatchBusyId] = useState<string | null>(null);
   const [manualRemTenantId, setManualRemTenantId] = useState("");
   const [manualRemDue, setManualRemDue] = useState("");
@@ -248,6 +268,39 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     if (!adminConfigured) return;
     void load();
   }, [adminConfigured, load]);
+
+  const fetchKpi = useCallback(async () => {
+    setKpiLoading(true);
+    setKpiErr(null);
+    try {
+      const w = Math.min(365, Math.max(7, kpiWindowDays));
+      const r = await fetch(`/api/internal/advisor/kpi-portfolio?window_days=${w}`, {
+        credentials: "include",
+      });
+      if (r.status === 401) {
+        setKpiErr("KPI: nicht angemeldet.");
+        setKpiSnapshot(null);
+        return;
+      }
+      if (!r.ok) {
+        setKpiErr(`KPI: HTTP ${r.status}`);
+        setKpiSnapshot(null);
+        return;
+      }
+      const data = (await r.json()) as { advisor_kpi_portfolio?: AdvisorKpiPortfolioSnapshot };
+      setKpiSnapshot(data.advisor_kpi_portfolio ?? null);
+    } catch {
+      setKpiErr("KPI: Netzwerkfehler");
+      setKpiSnapshot(null);
+    } finally {
+      setKpiLoading(false);
+    }
+  }, [kpiWindowDays]);
+
+  useEffect(() => {
+    if (!adminConfigured || !payload?.generated_at) return;
+    void fetchKpi();
+  }, [adminConfigured, payload?.generated_at, fetchKpi]);
 
   const filteredRows = useMemo(() => {
     if (!payload) return [];
@@ -498,13 +551,13 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39–44 · Kanzlei / Berater</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39–45 · Kanzlei / Berater</p>
           <h1 className="text-2xl font-semibold text-slate-900">Mehrmandanten-Kanzlei-Cockpit</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
             Welcher Mandant braucht jetzt Aufmerksamkeit? Portfolio über gemappte Mandanten mit Readiness,
             offenen Prüfpunkten, Export-Historie (Readiness / DATEV-ZIP), Review-Kadenz (Wave 40),
             Attention-Queue, Review-Playbook (Wave 41), Monatsreport (Wave 42), Reminders / Follow-ups
-            (Wave 43) und Partner-Review-Paket (Wave 44) für interne Steuerung.
+            (Wave 43), Partner-Review-Paket (Wave 44) und Kanzlei-KPIs (Wave 45) für internes Steering.
           </p>
           {payload ? (
             <p className="mt-1 font-mono text-xs text-slate-400">
@@ -521,6 +574,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             ·{" "}
             <code className="rounded bg-slate-100 px-1 text-[11px]">
               GET /api/internal/advisor/partner-review-package
+            </code>{" "}
+            ·{" "}
+            <code className="rounded bg-slate-100 px-1 text-[11px]">
+              GET /api/internal/advisor/kpi-portfolio
             </code>
           </p>
         </div>
@@ -553,6 +610,68 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       ) : null}
 
       {payload ? (
+        <section
+          id="kanzlei-kpi-strip"
+          className="rounded-xl border border-teal-200 bg-teal-50/40 p-4 shadow-sm"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-teal-950">Kanzlei-KPIs (Wave 45)</h2>
+              <p className="mt-1 text-[11px] text-slate-600">
+                Operative Kennzahlen für Regelmäßigkeit (Review, Export, Reminder-Reaktion). Kein BI-System –{" "}
+                <code className="rounded bg-white px-1">GET /api/internal/advisor/kpi-portfolio</code>.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-[11px] font-medium text-slate-700">
+                Fenster (Tage)
+                <select
+                  className="mt-0.5 block rounded border border-slate-300 bg-white px-2 py-1 text-[11px]"
+                  value={kpiWindowDays}
+                  onChange={(e) => setKpiWindowDays(Number.parseInt(e.target.value, 10) || 90)}
+                >
+                  <option value={30}>30</option>
+                  <option value={60}>60</option>
+                  <option value={90}>90</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={kpiLoading}
+                onClick={() => void fetchKpi()}
+                className="rounded-lg border border-teal-700 bg-teal-800 px-2 py-1 text-[11px] text-white hover:bg-teal-900 disabled:opacity-50"
+              >
+                {kpiLoading ? "…" : "KPI aktualisieren"}
+              </button>
+            </div>
+          </div>
+          {kpiErr ? <p className="mt-2 text-[11px] text-red-600">{kpiErr}</p> : null}
+          {kpiSnapshot ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              {kpiSnapshot.strip.map((tile) => (
+                <a
+                  key={tile.id}
+                  href={tile.href ?? "#"}
+                  className={`block rounded-lg border p-2.5 text-[11px] shadow-sm transition hover:opacity-95 ${kpiTileBorder(tile.traffic_light)}`}
+                >
+                  <div className="font-semibold text-slate-900">{tile.label_de}</div>
+                  <div className="mt-1 flex items-baseline gap-1.5 tabular-nums">
+                    <span className="text-base font-bold text-slate-900">{tile.value_display_de}</span>
+                    <span className="text-slate-600" title="Trend vs. Vorperiode (wo verfügbar)">
+                      {kpiTrendSymbol(tile.trend)}
+                    </span>
+                  </div>
+                  <p className="mt-1 leading-snug text-slate-600">{tile.hint_de}</p>
+                </a>
+              ))}
+            </div>
+          ) : !kpiLoading ? (
+            <p className="mt-2 text-[11px] text-slate-500">KPI werden nach Portfolio-Laden geladen …</p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {payload ? (
         <div className="grid gap-4 lg:grid-cols-2">
           <KanzleiReviewPlaybookHelper
             variant="full"
@@ -562,16 +681,18 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                 : "Keine Mandanten in der Queue – Playbook trotzdem für Stichproben nutzen."
             }
           />
-          <AttentionQueuePanel
-            items={payload.attention_queue ?? []}
-            onMarkReview={(tid) => void markReviewDone(tid)}
-            reviewBusyId={reviewBusyId}
-          />
+          <section id="kanzlei-kpi-queue" className="min-w-0">
+            <AttentionQueuePanel
+              items={payload.attention_queue ?? []}
+              onMarkReview={(tid) => void markReviewDone(tid)}
+              reviewBusyId={reviewBusyId}
+            />
+          </section>
         </div>
       ) : null}
 
       {payload ? (
-        <section className="rounded-xl border border-rose-200 bg-rose-50/20 p-4 shadow-sm">
+        <section id="kanzlei-kpi-reminders" className="rounded-xl border border-rose-200 bg-rose-50/20 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-rose-950">Reminders & Follow-ups (Wave 43)</h2>
           <p className="mt-1 text-[11px] text-slate-600">
             Gespeichert in{" "}
@@ -691,13 +812,15 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
 
       {payload ? (
         <section className="rounded-xl border border-cyan-200 bg-cyan-50/30 p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-900">Monatsreport / Sammelreport (Wave 42)</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Monatsreport / Sammelreport (Wave 42–45)</h2>
           <p className="mt-1 text-[11px] text-slate-600">
             Portfolio-weiter Überblick für interne Kanzlei-Reviews und Status-Mails. JSON + Markdown über{" "}
             <code className="rounded bg-white px-1">GET /api/internal/advisor/kanzlei-monthly-report</code>.
             Vergleich nutzt optional{" "}
             <code className="rounded bg-white px-1">data/kanzlei-monthly-report-baseline.json</code> (siehe
-            Doku).
+            Doku). Abschnitt 5 (KPIs):{" "}
+            <code className="rounded bg-white px-1">kpi_window_days</code>, abschalten mit{" "}
+            <code className="rounded bg-white px-1">kpi=0</code>.
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <label className="text-xs font-medium text-slate-700">
@@ -759,12 +882,14 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
 
       {payload ? (
         <section className="rounded-xl border border-indigo-200 bg-indigo-50/30 p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-900">Partner-Review-Paket (Wave 44)</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Partner-Review-Paket (Wave 44–45)</h2>
           <p className="mt-1 text-[11px] text-slate-600">
             Kompaktes Sammelpaket für Partnerrunden und Portfolio-Steuerung (nicht Mandanten-Einzel, nicht
-            Board-Pack). Teil C nutzt dieselbe Baseline wie der Monatsreport.{" "}
+            Board-Pack). Teil C nutzt dieselbe Baseline wie der Monatsreport; Teil E enthält Kanzlei-KPIs
+            (Wave 45).{" "}
             <code className="rounded bg-white px-1">GET /api/internal/advisor/partner-review-package</code> ·{" "}
-            <code className="rounded bg-white px-1">?format=markdown</code> für Datei-Download.
+            <code className="rounded bg-white px-1">?format=markdown</code> · optional{" "}
+            <code className="rounded bg-white px-1">kpi=0</code>.
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <label className="text-xs font-medium text-slate-700">
@@ -830,7 +955,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       ) : null}
 
       {payload ? (
-        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div
+          id="kanzlei-kpi-filters"
+          className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
           <label className="text-xs font-medium text-slate-700">
             Readiness-Klasse
             <select
@@ -873,7 +1001,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             />
             Viele offene Punkte (≥{payload.constants.many_open_points_threshold})
           </label>
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+          <label
+            id="kanzlei-kpi-review"
+            className="flex cursor-pointer items-center gap-2 text-xs text-slate-700"
+          >
             <input
               type="checkbox"
               checked={reviewStaleOnly}
@@ -890,7 +1021,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       {loading && !payload ? <p className="text-sm text-slate-500">Portfolio wird geladen …</p> : null}
 
       {payload ? (
-        <section className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <section
+          id="kanzlei-kpi-table"
+          className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm"
+        >
           <table className="min-w-[1180px] w-full border-collapse text-left text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
@@ -900,7 +1034,9 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                 <th className="px-3 py-2 font-medium">Bericht</th>
                 <th className="px-3 py-2 font-medium">Offen</th>
                 <th className="px-3 py-2 font-medium">Signale</th>
-                <th className="px-3 py-2 font-medium">Readiness-Export</th>
+                <th id="kanzlei-kpi-export" className="px-3 py-2 font-medium">
+                  Readiness-Export
+                </th>
                 <th className="px-3 py-2 font-medium">DATEV-ZIP</th>
                 <th className="px-3 py-2 font-medium">Review</th>
                 <th className="px-3 py-2 font-medium">Reminder</th>
@@ -1036,7 +1172,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
           Zeitstempel automatisch; Review per Aktion). Reminders:{" "}
           <code className="rounded bg-slate-100 px-1">data/advisor-mandant-reminders.json</code>. Optional
           weiterlesbar: <code className="rounded bg-slate-100 px-1">data/advisor-portfolio-touchpoints.json</code>{" "}
-          (Wave 39–44). Schwellen: Review {payload.constants.review_stale_days} Tage, Export{" "}
+          (Wave 39–45). Schwellen: Review {payload.constants.review_stale_days} Tage, Export{" "}
           {payload.constants.any_export_max_age_days} Tage – siehe Wave 40–43 (
           <code className="rounded bg-slate-100 px-1">docs/advisors/</code>
           ).

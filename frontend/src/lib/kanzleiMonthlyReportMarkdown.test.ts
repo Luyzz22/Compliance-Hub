@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { buildAdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiPortfolioBuild";
 import { buildKanzleiMonthlyReport } from "@/lib/kanzleiMonthlyReportBuild";
 import { kanzleiMonthlyReportMarkdownDe } from "@/lib/kanzleiMonthlyReportMarkdown";
 import type { KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
@@ -76,5 +77,25 @@ describe("kanzleiMonthlyReportMarkdown", () => {
     expect(md).toContain("# Kanzlei-Portfolio-Report");
     expect(md).toContain("## 1) Portfolio-Überblick");
     expect(md).toContain("## 4) Empfohlene Schwerpunkte");
+    expect(md).not.toContain("## 5) Kanzlei-KPIs");
+  });
+
+  it("includes KPI section when snapshot provided", () => {
+    const p = minimalPayload();
+    const nowMs = Date.parse("2026-04-04T12:00:00Z");
+    const kpi = buildAdvisorKpiPortfolioSnapshot({
+      payload: p,
+      reminders: [],
+      nowMs,
+      windowDays: 90,
+    });
+    const r = buildKanzleiMonthlyReport(p, null, {
+      periodLabel: "2026-04",
+      compareToBaseline: false,
+      attentionTopN: 5,
+      advisorKpiSnapshot: kpi,
+    });
+    const md = kanzleiMonthlyReportMarkdownDe(r);
+    expect(md).toContain("## 5) Kanzlei-KPIs");
   });
 });
