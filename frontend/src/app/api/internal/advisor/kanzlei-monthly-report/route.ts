@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { attachAdvisorKpiToPayload } from "@/lib/advisorKpiPortfolioAggregate";
 import { computeKanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioAggregate";
 import { readKanzleiMonthlyReportBaseline, writeKanzleiMonthlyReportBaseline } from "@/lib/kanzleiMonthlyReportBaseline";
 import { buildKanzleiMonthlyReport } from "@/lib/kanzleiMonthlyReportBuild";
@@ -29,14 +30,23 @@ export async function GET(req: Request) {
   const updateBaseline = url.searchParams.get("update_baseline") === "1";
   const topNRaw = url.searchParams.get("top_n");
   const attentionTopN = Math.min(25, Math.max(3, Number.parseInt(topNRaw ?? "10", 10) || 10));
+  const kpiWindowRaw = url.searchParams.get("kpi_window_days");
+  const kpiWindowDays = Math.min(365, Math.max(7, Number.parseInt(kpiWindowRaw ?? "90", 10) || 90));
+  const kpiOff = url.searchParams.get("kpi") === "0";
 
-  const payload = await computeKanzleiPortfolioPayload(new Date());
+  const now = new Date();
+  const payload = await computeKanzleiPortfolioPayload(now);
   const baseline = await readKanzleiMonthlyReportBaseline();
+
+  const advisorKpiSnapshot = kpiOff
+    ? null
+    : await attachAdvisorKpiToPayload(payload, now.getTime(), kpiWindowDays);
 
   const report = buildKanzleiMonthlyReport(payload, baseline, {
     periodLabel: period,
     compareToBaseline: compare,
     attentionTopN,
+    advisorKpiSnapshot,
   });
   const markdown_de = kanzleiMonthlyReportMarkdownDe(report);
 

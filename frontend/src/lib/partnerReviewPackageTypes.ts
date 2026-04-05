@@ -2,10 +2,11 @@
  * Wave 44 – Kanzlei Partner-Review-Paket (Portfolio-Steuerung, kein Board-Pack).
  */
 
+import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 import type { KanzleiMonthlyChangeLine } from "@/lib/kanzleiMonthlyReportTypes";
 
-export const PARTNER_REVIEW_PACKAGE_VERSION = "wave44-v1";
+export const PARTNER_REVIEW_PACKAGE_VERSION = "wave45-v1";
 
 export type PartnerReviewPackageMeta = {
   version: typeof PARTNER_REVIEW_PACKAGE_VERSION;
@@ -61,4 +62,6 @@ export type PartnerReviewPackageDto = {
   part_b_top_attention: PartnerReviewAttentionEntry[];
   part_c_changes_since_baseline: PartnerReviewPartC;
   part_d_recommended_priorities_de: string[];
+  /** Wave 45 – gleicher Snapshot wie Monatsreport-KPI-Block. */
+  part_e_advisor_kpis: AdvisorKpiPortfolioSnapshot | null;
 };

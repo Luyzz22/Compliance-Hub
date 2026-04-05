@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { attachAdvisorKpiToPayload } from "@/lib/advisorKpiPortfolioAggregate";
 import { computeKanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioAggregate";
 import { readKanzleiMonthlyReportBaseline } from "@/lib/kanzleiMonthlyReportBaseline";
 import { buildPartnerReviewPackage } from "@/lib/partnerReviewPackageBuild";
@@ -21,13 +22,22 @@ export async function GET(req: Request) {
   const topNRaw = url.searchParams.get("top_n");
   const attentionTopN = Math.min(15, Math.max(3, Number.parseInt(topNRaw ?? "8", 10) || 8));
   const format = url.searchParams.get("format")?.trim().toLowerCase();
+  const kpiWindowRaw = url.searchParams.get("kpi_window_days");
+  const kpiWindowDays = Math.min(365, Math.max(7, Number.parseInt(kpiWindowRaw ?? "90", 10) || 90));
+  const kpiOff = url.searchParams.get("kpi") === "0";
 
-  const payload = await computeKanzleiPortfolioPayload(new Date());
+  const now = new Date();
+  const payload = await computeKanzleiPortfolioPayload(now);
   const baseline = await readKanzleiMonthlyReportBaseline();
+
+  const advisorKpiSnapshot = kpiOff
+    ? null
+    : await attachAdvisorKpiToPayload(payload, now.getTime(), kpiWindowDays);
 
   const partner_review_package = buildPartnerReviewPackage(payload, baseline, {
     compareToBaseline: compare,
     attentionTopN,
+    advisorKpiSnapshot,
   });
   const markdown_de = partnerReviewPackageMarkdownDe(partner_review_package);
 

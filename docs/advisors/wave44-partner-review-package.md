@@ -19,7 +19,8 @@ Kompaktes **Portfolio-Artefakt** für interne Partnerrunden, vierteljährliche M
     - `compare=0` – kein Vergleich mit Baseline (Teil C ohne Inhalt außer Hinweis).
     - `top_n` – Anzahl Top-Mandanten in Teil B (3–15, Standard 8).
     - `format=markdown` – Antwort als **Markdown-Datei** (`Content-Disposition: attachment`) statt JSON.
-  - JSON-Antwort: `partner_review_package` (strukturiert), `markdown_de`, kompaktes `meta`.
+    - `kpi_window_days` / `kpi=0` – Wave 45: KPI-Teil E wie beim Monatsreport.
+  - JSON-Antwort: `partner_review_package` (strukturiert, Schema `wave45-v1`), `markdown_de`, kompaktes `meta`.
 
 ## Priorisierung (transparent)
 
@@ -51,6 +52,7 @@ Die API liefert zusätzlich `meta.prioritization_rationale_de` als Kurzliste fü
 
 ## Siehe auch
 
+- `docs/advisors/wave45-advisor-kpis.md`
 - `docs/advisors/wave43-reminders-and-followups.md`
 - `docs/advisors/wave42-kanzlei-monatsreport.md`
 - `docs/advisors/wave41-kanzlei-review-playbook-and-queue.md`

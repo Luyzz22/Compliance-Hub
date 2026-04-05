@@ -83,6 +83,33 @@ export function kanzleiMonthlyReportMarkdownDe(r: KanzleiMonthlyReportDto): stri
     parts.push(`- ${f}`);
   }
 
+  const kpi = r.section_5_advisor_kpis;
+  if (kpi) {
+    parts.push(`## 5) Kanzlei-KPIs (Wave 45)`);
+    parts.push(
+      `_Fenster **${kpi.window_days}** Tage · Schema ${kpi.version} · Median-Reaktionszeiten vs. Vorperiode._`,
+    );
+    for (const tile of kpi.strip) {
+      const tr =
+        tile.trend === "up"
+          ? "↑"
+          : tile.trend === "down"
+            ? "↓"
+            : tile.trend === "flat"
+              ? "→"
+              : "○";
+      parts.push(
+        `- **${tile.label_de}:** ${tile.value_display_de} ${tr} (_Ampel: ${tile.traffic_light}_) — ${tile.hint_de}`,
+      );
+    }
+    parts.push(`### Segment-Überblick (${kpi.segment_by === "readiness" ? "Readiness" : "Branchenlabel"})`);
+    for (const s of kpi.segments.slice(0, 6)) {
+      parts.push(
+        `- **${s.label_de}** (${s.tenant_count}): Review aktuell ${Math.round(s.review_current_share * 100)} % · Export OK ${Math.round(s.export_fresh_share * 100)} % · ohne Reminder ${Math.round(s.share_no_open_reminders * 100)} % · ohne rote Säule ${Math.round(s.share_no_red_pillar * 100)} %`,
+      );
+    }
+  }
+
   parts.push(`---`);
   parts.push(
     `Hinweis: Portfolio-Report für interne Kanzlei-Arbeit; keine Board-Tischreife. Daten aus Live-API und lokaler Historie – Änderungslogik bewusst grob (siehe Doku Wave 42).`,
