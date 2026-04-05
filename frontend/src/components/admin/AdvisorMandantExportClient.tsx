@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  KanzleiReviewPlaybookHelper,
+  type KanzleiPlaybookMandateSnapshot,
+} from "@/components/admin/KanzleiReviewPlaybookHelper";
 import type { MandantReadinessAdvisorPayload } from "@/lib/mandantReadinessAdvisorTypes";
-import type { AdvisorMandantHistoryApiDto } from "@/lib/kanzleiPortfolioTypes";
-import { isNonEmptyUnparsableIso } from "@/lib/mandantHistoryMerge";
+import { naechsterSchrittForRow } from "@/lib/kanzleiAttentionQueue";
+import type { AdvisorMandantHistoryApiDto, KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
+import { KANZLEI_MANY_OPEN_POINTS } from "@/lib/kanzleiPortfolioScoring";
+import { daysSinceValidIso, isNonEmptyUnparsableIso } from "@/lib/mandantHistoryMerge";
 
 type Props = { adminConfigured: boolean };
 
@@ -26,6 +32,35 @@ function advisorReviewHistSignalDe(h: AdvisorMandantHistoryApiDto): string {
   return "Review im Zeitraum OK";
 }
 
+function buildExportPagePlaybookSnapshot(
+  row: KanzleiPortfolioRow | null,
+  history: AdvisorMandantHistoryApiDto | null,
+  nowMs: number,
+): KanzleiPlaybookMandateSnapshot | null {
+  if (row) {
+    return {
+      open_points_count: row.open_points_count,
+      open_points_hoch: row.open_points_hoch,
+      export_days_since: daysSinceValidIso(row.last_any_export_at, nowMs),
+      review_stale: row.review_stale,
+      any_export_stale: row.any_export_stale,
+      never_any_export: row.never_any_export,
+      board_report_stale: row.board_report_stale,
+      top_gap_pillar_label_de: row.top_gap_pillar_label_de,
+      api_fetch_ok: row.api_fetch_ok,
+    };
+  }
+  if (history) {
+    return {
+      export_days_since: daysSinceValidIso(history.last_any_export_at, nowMs),
+      review_stale: history.review_stale,
+      any_export_stale: history.any_export_stale,
+      never_any_export: history.never_any_export,
+    };
+  }
+  return null;
+}
+
 export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   const [clientId, setClientId] = useState("");
   const [payload, setPayload] = useState<MandantReadinessAdvisorPayload | null>(null);
@@ -37,6 +72,31 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   const [histLoading, setHistLoading] = useState(false);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewBusy, setReviewBusy] = useState(false);
+  const [portfolioRow, setPortfolioRow] = useState<KanzleiPortfolioRow | null>(null);
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
+
+  const fetchPortfolioRow = useCallback(async () => {
+    const id = clientId.trim();
+    if (!id) {
+      setPortfolioRow(null);
+      return;
+    }
+    setPortfolioLoading(true);
+    try {
+      const r = await fetch("/api/internal/advisor/kanzlei-portfolio", { credentials: "include" });
+      if (!r.ok) {
+        setPortfolioRow(null);
+        return;
+      }
+      const data = (await r.json()) as { ok?: boolean; kanzlei_portfolio?: KanzleiPortfolioPayload };
+      const rows = data.kanzlei_portfolio?.rows ?? [];
+      setPortfolioRow(rows.find((x) => x.tenant_id === id) ?? null);
+    } catch {
+      setPortfolioRow(null);
+    } finally {
+      setPortfolioLoading(false);
+    }
+  }, [clientId]);
 
   const fetchHistory = useCallback(async () => {
     const id = clientId.trim();
@@ -70,6 +130,15 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   useEffect(() => {
     void fetchHistory();
   }, [fetchHistory]);
+
+  useEffect(() => {
+    void fetchPortfolioRow();
+  }, [fetchPortfolioRow]);
+
+  const playbookSnapshot = useMemo(
+    () => buildExportPagePlaybookSnapshot(portfolioRow, history, Date.now()),
+    [portfolioRow, history],
+  );
 
   const load = useCallback(async () => {
     const id = clientId.trim();
@@ -107,12 +176,13 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       };
       setPayload(data.mandant_readiness_export ?? null);
       void fetchHistory();
+      void fetchPortfolioRow();
     } catch {
       setError("Netzwerkfehler");
     } finally {
       setLoading(false);
     }
-  }, [clientId, fetchHistory]);
+  }, [clientId, fetchHistory, fetchPortfolioRow]);
 
   const copyMd = useCallback(async () => {
     if (!payload?.markdown_de) return;
@@ -174,12 +244,13 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       URL.revokeObjectURL(url);
       setMsg("ZIP-Arbeitspaket geladen.");
       void fetchHistory();
+      void fetchPortfolioRow();
     } catch {
       setError("Netzwerkfehler");
     } finally {
       setBundleLoading(false);
     }
-  }, [clientId, fetchHistory]);
+  }, [clientId, fetchHistory, fetchPortfolioRow]);
 
   const submitReview = useCallback(async () => {
     const id = clientId.trim();
@@ -212,12 +283,13 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       setHistory(data.mandant_history ?? null);
       setReviewNote("");
       setMsg("Review gespeichert.");
+      void fetchPortfolioRow();
     } catch {
       setError("Netzwerkfehler");
     } finally {
       setReviewBusy(false);
     }
-  }, [clientId, reviewNote]);
+  }, [clientId, reviewNote, fetchPortfolioRow]);
 
   function formatHist(iso: string | null): string {
     if (!iso) return "—";
@@ -237,7 +309,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   return (
     <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 37–40 · Kanzlei / Berater</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 37–41 · Kanzlei / Berater</p>
         <h1 className="text-xl font-semibold text-slate-900">Mandanten-Readiness-Export</h1>
         <p className="mt-2 text-sm text-slate-600">
           Kompakter Status für Steuerberater, WP und GRC-Berater – ein Mandant pro Export. Nutzt dieselben
@@ -264,6 +336,26 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
           </code>
         </p>
       </div>
+
+      <KanzleiReviewPlaybookHelper
+        variant={clientId.trim() ? "full" : "compact"}
+        snapshot={clientId.trim() ? playbookSnapshot : null}
+        footerHint={
+          clientId.trim()
+            ? portfolioLoading
+              ? "Portfolio-Zeile für dynamische Kennzahlen wird geladen …"
+              : portfolioRow
+                ? null
+                : "Keine Portfolio-Zeile für diese ID – Kennzahlen nur aus Historie, falls geladen."
+            : "Mandanten-ID eintragen für dynamische Kennzahlen; vollständige Queue siehe Kanzlei-Cockpit."
+        }
+      />
+      {clientId.trim() && portfolioRow ? (
+        <p className="rounded-lg border border-violet-100 bg-violet-50/60 px-3 py-2 text-xs text-violet-950">
+          <span className="font-semibold">Nächster Schritt (Queue-Regel):</span>{" "}
+          {naechsterSchrittForRow(portfolioRow, KANZLEI_MANY_OPEN_POINTS)}
+        </p>
+      ) : null}
 
       {clientId.trim() ? (
         <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-700">

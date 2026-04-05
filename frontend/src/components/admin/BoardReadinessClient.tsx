@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BoardReadinessBriefingPanel } from "@/components/admin/BoardReadinessBriefingPanel";
 import { BoardQuarterlyPackPanel } from "@/components/admin/BoardQuarterlyPackPanel";
+import { KanzleiReviewPlaybookHelper } from "@/components/admin/KanzleiReviewPlaybookHelper";
 import type { BoardReadinessPayload, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 
 type Props = { adminConfigured: boolean };
@@ -129,6 +130,11 @@ export function BoardReadinessClient({ adminConfigured }: Props) {
           </button>
         </div>
       </div>
+
+      <KanzleiReviewPlaybookHelper
+        variant="compact"
+        footerHint="Einzelmandant und Kanzlei-Kadenz: Kanzlei-Cockpit und Mandanten-Export (client_id) nutzen; dynamische Kennzahlen und Queue dort."
+      />
 
       {loadError && loadError !== "unauthorized" ? (
         <p className="text-sm text-red-600">{loadError}</p>

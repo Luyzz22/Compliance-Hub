@@ -40,7 +40,7 @@ Zentral: `frontend/src/lib/kanzleiReviewCadenceThresholds.ts`
 - Filter **Review überfällig**.
 - Aktion **Review durchgeführt** pro Zeile (optionaler Kurztext per Prompt).
 
-Payload-Version **`wave40-v1`**; Konstanten in `kanzlei_portfolio.constants` ausgeliefert.
+Payload-Version ab Wave 41 **`wave41-v1`** (inkl. `attention_queue`); Konstanten in `kanzlei_portfolio.constants` ausgeliefert.
 
 ## Mandanten-Readiness-UI (`/admin/advisor-mandant-export`)
 
@@ -72,6 +72,7 @@ Payload-Version **`wave40-v1`**; Konstanten in `kanzlei_portfolio.constants` aus
 
 ## Siehe auch
 
+- `docs/advisors/wave41-kanzlei-review-playbook-and-queue.md`
 - `docs/advisors/wave37-mandant-readiness-export.md`
 - `docs/advisors/wave38-datev-export-bundle.md`
 - `docs/advisors/wave39-kanzlei-portfolio-cockpit.md`

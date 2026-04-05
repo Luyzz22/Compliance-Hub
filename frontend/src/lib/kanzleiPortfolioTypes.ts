@@ -1,11 +1,11 @@
 /**
- * Wave 39–40 – Kanzlei-Portfolio-Cockpit (intern, Mehrmandanten-Übersicht).
+ * Wave 39–41 – Kanzlei-Portfolio-Cockpit (intern, Mehrmandanten-Übersicht).
  */
 
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 
-export const KANZLEI_PORTFOLIO_VERSION = "wave40-v1";
+export const KANZLEI_PORTFOLIO_VERSION = "wave41-v1";
 
 export type KanzleiPortfolioPillarFilter = BoardReadinessPillarKey | "all";
 
@@ -43,6 +43,16 @@ export type KanzleiPortfolioRow = {
   };
 };
 
+/** Wave 41 – priorisierte Arbeitsliste (kein Task-Backend). */
+export type KanzleiAttentionQueueItem = {
+  tenant_id: string;
+  mandant_label: string | null;
+  attention_score: number;
+  warum_jetzt_de: string[];
+  naechster_schritt_de: string;
+  links: KanzleiPortfolioRow["links"];
+};
+
 export type KanzleiPortfolioPayload = {
   version: typeof KANZLEI_PORTFOLIO_VERSION;
   generated_at: string;
@@ -56,6 +66,7 @@ export type KanzleiPortfolioPayload = {
     gap_heavy_min_open_for_export_rule: number;
   };
   rows: KanzleiPortfolioRow[];
+  attention_queue: KanzleiAttentionQueueItem[];
 };
 
 export const KANZLEI_PILLAR_LABEL_DE: Record<string, string> = {
