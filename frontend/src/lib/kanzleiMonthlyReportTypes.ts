@@ -2,11 +2,12 @@
  * Wave 42–45 – Kanzlei-Monatsreport / Sammelreport (Portfolio-Ebene, kein Board-Pack).
  */
 
+import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 
-export const KANZLEI_MONTHLY_REPORT_VERSION = "wave45-v1";
+export const KANZLEI_MONTHLY_REPORT_VERSION = "wave46-v1";
 
 export type KanzleiAttentionBand = "low" | "medium" | "high";
 
@@ -85,4 +86,6 @@ export type KanzleiMonthlyReportDto = {
   section_4_focus_areas_de: string[];
   /** Wave 45 – Kanzlei-KPI-Snapshot; null wenn nicht mitgeliefert. */
   section_5_advisor_kpis: AdvisorKpiPortfolioSnapshot | null;
+  /** Wave 46 – Kurz-Trends aus persistierter KPI-History (rolling, kein BI). */
+  section_6_kpi_trends: AdvisorKpiTrendsNarrativeBlock | null;
 };

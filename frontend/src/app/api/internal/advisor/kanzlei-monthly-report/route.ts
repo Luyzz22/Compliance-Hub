@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { upsertAdvisorKpiHistoryDaily } from "@/lib/advisorKpiHistoryStore";
 import { attachAdvisorKpiToPayload } from "@/lib/advisorKpiPortfolioAggregate";
+import { advisorKpiTrendsNarrativeBlock, buildAdvisorKpiTrendsDto } from "@/lib/advisorKpiTrendsBuild";
 import { computeKanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioAggregate";
 import { readKanzleiMonthlyReportBaseline, writeKanzleiMonthlyReportBaseline } from "@/lib/kanzleiMonthlyReportBaseline";
 import { buildKanzleiMonthlyReport } from "@/lib/kanzleiMonthlyReportBuild";
@@ -42,11 +44,23 @@ export async function GET(req: Request) {
     ? null
     : await attachAdvisorKpiToPayload(payload, now.getTime(), kpiWindowDays);
 
+  let kpiTrendsNarrative = null;
+  if (!kpiOff && advisorKpiSnapshot) {
+    const hist = await upsertAdvisorKpiHistoryDaily(payload, advisorKpiSnapshot);
+    const trends = buildAdvisorKpiTrendsDto({
+      history: hist.snapshots,
+      period: "3m",
+      nowMs: now.getTime(),
+    });
+    kpiTrendsNarrative = advisorKpiTrendsNarrativeBlock(trends);
+  }
+
   const report = buildKanzleiMonthlyReport(payload, baseline, {
     periodLabel: period,
     compareToBaseline: compare,
     attentionTopN,
     advisorKpiSnapshot,
+    kpiTrendsNarrative,
   });
   const markdown_de = kanzleiMonthlyReportMarkdownDe(report);
 

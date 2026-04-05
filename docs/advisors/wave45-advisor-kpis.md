@@ -19,7 +19,7 @@ Zusätzlich im JSON (nicht immer im Strip): **Mittleres Review-Alter** (Tage sei
 - **Review:** Vergleich der *Aktivität*: Anteil Mandanten mit Review-Zeitstempel im aktuellen Fenster vs. der Vorperiode (gleiche Länge).
 - **Export-Aktivität:** Anteil Mandanten mit Export-Zeitstempel im Fenster vs. Vorperiode.
 - **Median-Stunden (Reminder / Queue-Proxy):** niedrigere Mediane in der aktuellen Periode = Verbesserung (↑).
-- **Ohne rote Säule:** Trend `unknown` (kein historischer Querschnitt ohne zusätzliche Persistenz).
+- **Ohne rote Säule:** Im Strip weiterhin oft `unknown`; **Wave 46** ergänzt dafür persistierte **History-Trends** (siehe `wave46-kpi-trends.md`).
 
 ## API
 
@@ -29,13 +29,14 @@ Zusätzlich im JSON (nicht immer im Strip): **Mittleres Review-Alter** (Tage sei
 |-----------|----------|-----------|
 | `window_days` | `90` | Auswertungsfenster und Länge der Vorperiode (7–365) |
 | `segment_by` | `readiness` | `readiness` oder `primary_segment` (Branchencluster aus GTM-Segment) |
+| `persist_history` | — | `1` = nach Snapshot einen **Tagespunkt** in die KPI-History schreiben (Wave 46) |
 
 Antwort: `{ ok, advisor_kpi_portfolio }` – vollständiger Snapshot inkl. `strip`, `segments`, `interpretation_notes_de`.
 
 ## Einbindung Monatsreport & Partner-Paket
 
-- **Monatsreport:** Abschnitt **5) Kanzlei-KPIs** im Markdown/JSON, sofern KPIs nicht abgeschaltet werden. Query: `kpi_window_days`, `kpi=0` schaltet den Block ab.
-- **Partner-Review-Paket:** Abschnitt **E) Kanzlei-KPIs**; `kpi=0` optional.
+- **Monatsreport:** Abschnitt **5) Kanzlei-KPIs** im Markdown/JSON, sofern KPIs nicht abgeschaltet werden. Query: `kpi_window_days`, `kpi=0` schaltet den Block ab. **Wave 46:** Abschnitt **6) KPI-Trends** (rolling 3 Monate), wenn KPIs an sind.
+- **Partner-Review-Paket:** Abschnitt **E) Kanzlei-KPIs**; `kpi=0` optional. **Wave 46:** Abschnitt **F) KPI-Trends**.
 
 ## Grenzen (bewusst)
 
@@ -51,6 +52,7 @@ Antwort: `{ ok, advisor_kpi_portfolio }` – vollständiger Snapshot inkl. `stri
 
 ## Siehe auch
 
+- `docs/advisors/wave46-kpi-trends.md`
 - `docs/advisors/wave44-partner-review-package.md`
 - `docs/advisors/wave42-kanzlei-monatsreport.md`
 - `docs/advisors/wave43-reminders-and-followups.md`

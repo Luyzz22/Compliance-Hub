@@ -110,6 +110,17 @@ export function kanzleiMonthlyReportMarkdownDe(r: KanzleiMonthlyReportDto): stri
     }
   }
 
+  const trd = r.section_6_kpi_trends;
+  if (trd) {
+    parts.push(`## 6) KPI-Trends (Wave 46)`);
+    parts.push(
+      `_Rolling **${trd.period_label_de}** · Schema ${trd.version} · Vergleich letzter History-Punkt vs. vorheriger Punkt im Zeitraum._`,
+    );
+    for (const line of trd.narrative_lines_de) {
+      parts.push(`- ${line}`);
+    }
+  }
+
   parts.push(`---`);
   parts.push(
     `Hinweis: Portfolio-Report für interne Kanzlei-Arbeit; keine Board-Tischreife. Daten aus Live-API und lokaler Historie – Änderungslogik bewusst grob (siehe Doku Wave 42).`,

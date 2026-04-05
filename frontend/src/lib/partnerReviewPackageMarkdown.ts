@@ -136,6 +136,20 @@ export function partnerReviewPackageMarkdownDe(pkg: PartnerReviewPackageDto): st
     lines.push("");
   }
 
+  const trd = pkg.part_f_kpi_trends;
+  if (trd) {
+    lines.push("## F) KPI-Trends (Kurz)");
+    lines.push("");
+    lines.push(
+      `Rolling **${trd.period_label_de}** · Schema ${trd.version} – letzter History-Punkt vs. vorheriger Punkt im Zeitraum.`,
+    );
+    lines.push("");
+    for (const line of trd.narrative_lines_de) {
+      lines.push(`- ${line}`);
+    }
+    lines.push("");
+  }
+
   lines.push("---");
   lines.push("");
   lines.push("### Priorisierung (Kurz)");

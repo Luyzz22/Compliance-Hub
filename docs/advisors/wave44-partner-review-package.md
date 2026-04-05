@@ -10,6 +10,8 @@ Kompaktes **Portfolio-Artefakt** für interne Partnerrunden, vierteljährliche M
 | **B – Top Attention-Mandanten** | Die ersten *N* Einträge der bestehenden Attention-Queue (typisch 5–10) mit **Warum jetzt?** und **Nächster Schritt** – identisch zur Cockpit-Logik (Wave 41). |
 | **C – Veränderungen seit letzter Periode** | Nutzt dieselbe **Monats-Baseline** wie der Kanzlei-Monatsreport (`data/kanzlei-monthly-report-baseline.json` bzw. `KANZLEI_MONTHLY_REPORT_BASELINE_PATH`): Verbesserungen, Verschlechterungen/Mehrlast, neu dringlicher (Attention-Eskalation + Kadenz-Hinweise). Ohne Baseline ist dieser Block erklärend leer. |
 | **D – Empfohlene Prioritäten** | Kurze, aggregierte Handlungsempfehlungen für den nächsten Monat/Quartal (gleiche Fokus-Heuristik wie Monatsreport Abschnitt 4). |
+| **E – Kanzlei-KPIs** | Wave 45 – gleicher KPI-Snapshot wie Monatsreport. |
+| **F – KPI-Trends (Kurz)** | Wave 46 – Kurzsätze aus persistierter History (rolling 3 Monate); siehe `wave46-kpi-trends.md`. |
 
 ## API
 
@@ -19,8 +21,8 @@ Kompaktes **Portfolio-Artefakt** für interne Partnerrunden, vierteljährliche M
     - `compare=0` – kein Vergleich mit Baseline (Teil C ohne Inhalt außer Hinweis).
     - `top_n` – Anzahl Top-Mandanten in Teil B (3–15, Standard 8).
     - `format=markdown` – Antwort als **Markdown-Datei** (`Content-Disposition: attachment`) statt JSON.
-    - `kpi_window_days` / `kpi=0` – Wave 45: KPI-Teil E wie beim Monatsreport.
-  - JSON-Antwort: `partner_review_package` (strukturiert, Schema `wave45-v1`), `markdown_de`, kompaktes `meta`.
+    - `kpi_window_days` / `kpi=0` – Wave 45–46: KPI-Teil E und Trend-Teil F wie beim Monatsreport.
+  - JSON-Antwort: `partner_review_package` (strukturiert, Schema `wave46-v1`), `markdown_de`, kompaktes `meta`.
 
 ## Priorisierung (transparent)
 
@@ -52,6 +54,7 @@ Die API liefert zusätzlich `meta.prioritization_rationale_de` als Kurzliste fü
 
 ## Siehe auch
 
+- `docs/advisors/wave46-kpi-trends.md`
 - `docs/advisors/wave45-advisor-kpis.md`
 - `docs/advisors/wave43-reminders-and-followups.md`
 - `docs/advisors/wave42-kanzlei-monatsreport.md`

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { buildAdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiPortfolioBuild";
+import { upsertAdvisorKpiHistoryDaily } from "@/lib/advisorKpiHistoryStore";
 import { readAdvisorMandantRemindersState } from "@/lib/advisorMandantReminderStore";
 import { computeKanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioAggregate";
 import type { KanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioTypes";
@@ -26,7 +27,12 @@ export async function computeAdvisorKpiPortfolioSnapshot(
   now: Date = new Date(),
   windowDays: number = 90,
   segmentBy: "readiness" | "primary_segment" = "readiness",
+  options?: { persistHistory?: boolean },
 ) {
   const payload = await computeKanzleiPortfolioPayload(now);
-  return attachAdvisorKpiToPayload(payload, now.getTime(), windowDays, segmentBy);
+  const snapshot = await attachAdvisorKpiToPayload(payload, now.getTime(), windowDays, segmentBy);
+  if (options?.persistHistory) {
+    await upsertAdvisorKpiHistoryDaily(payload, snapshot);
+  }
+  return snapshot;
 }
