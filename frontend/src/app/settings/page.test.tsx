@@ -1,5 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/link", () => ({
+  default: ({ children, href }: { children: ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
+}));
 
 vi.mock("@/components/usage/TenantUsageSummary", () => ({
   TenantUsageSummary: () => <div data-testid="usage" />,
@@ -27,6 +34,10 @@ vi.mock("@/lib/config", async () => {
 import SettingsPage from "./page";
 
 describe("SettingsPage", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("zeigt API-Keys-Bereich wenn NEXT_PUBLIC_FEATURE_API_KEYS_UI aktiv ist", () => {
     render(<SettingsPage />);
     const panel = screen.getByTestId("api-keys-panel");

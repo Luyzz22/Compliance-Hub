@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildAdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiPortfolioBuild";
 import type { MandantReminderRecord } from "@/lib/advisorMandantReminderTypes";
+import { stubAdvisorSlaEvaluation } from "@/lib/advisorSlaEvaluate";
 import type { KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
 import { KANZLEI_PORTFOLIO_VERSION } from "@/lib/kanzleiPortfolioTypes";
 
@@ -65,6 +66,7 @@ function payload(rows: KanzleiPortfolioRow[]): KanzleiPortfolioPayload {
     open_reminders: [],
     reminders_due_today_or_overdue_count: 0,
     reminders_due_this_week_open_count: 0,
+    advisor_sla: stubAdvisorSlaEvaluation("2026-04-10T12:00:00Z"),
   };
 }
 

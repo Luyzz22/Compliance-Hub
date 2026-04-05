@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { buildPartnerReviewPackage } from "@/lib/partnerReviewPackageBuild";
 import { partnerReviewPackageMarkdownDe } from "@/lib/partnerReviewPackageMarkdown";
+import { stubAdvisorSlaEvaluation } from "@/lib/advisorSlaEvaluate";
+import { ADVISOR_SLA_VERSION } from "@/lib/advisorSlaTypes";
 import type { KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
 import { KANZLEI_PORTFOLIO_VERSION } from "@/lib/kanzleiPortfolioTypes";
 import { rowToBaselineTenant } from "@/lib/kanzleiMonthlyReportBuild";
@@ -73,6 +75,7 @@ function mkPayload(rows: KanzleiPortfolioRow[]): KanzleiPortfolioPayload {
     open_reminders: [],
     reminders_due_today_or_overdue_count: 0,
     reminders_due_this_week_open_count: 0,
+    advisor_sla: stubAdvisorSlaEvaluation("2026-04-01T12:00:00Z"),
   };
 }
 
@@ -95,6 +98,7 @@ describe("partnerReviewPackageBuild", () => {
     const pkg = buildPartnerReviewPackage(p, null, { compareToBaseline: false, attentionTopN: 5 });
     expect(pkg.part_e_advisor_kpis).toBeNull();
     expect(pkg.part_f_kpi_trends).toBeNull();
+    expect(pkg.part_g_sla_lagebild.version).toBe(ADVISOR_SLA_VERSION);
     expect(pkg.part_a_portfolio_overview.count_review_stale).toBe(1);
     expect(pkg.part_a_portfolio_overview.open_reminders_open_count).toBe(1);
     expect(pkg.part_b_top_attention.length).toBe(1);
@@ -125,5 +129,9 @@ describe("partnerReviewPackageBuild", () => {
     const md = partnerReviewPackageMarkdownDe(pkg);
     expect(md).toContain("## A) Portfolio-Überblick");
     expect(md).toContain("## D) Empfohlene Berater-Prioritäten");
+    expect(md).toContain("## G) SLA-Lagebild (Wave 47)");
+    expect(md).toContain(`Schema ${ADVISOR_SLA_VERSION}`);
+    expect(md).toContain("Portfolio kritisch (mehrere SLA-Critical)");
+    expect(md).toContain("Keine SLA-Abweichungen – bestehende Kadenz beibehalten.");
   });
 });

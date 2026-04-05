@@ -4,6 +4,7 @@
 
 import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
+import type { AdvisorSlaEvaluationDto } from "@/lib/advisorSlaTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 import type { KanzleiMonthlyChangeLine } from "@/lib/kanzleiMonthlyReportTypes";
 
@@ -67,4 +68,6 @@ export type PartnerReviewPackageDto = {
   part_e_advisor_kpis: AdvisorKpiPortfolioSnapshot | null;
   /** Wave 46 – KPI-Trend-Kurzsätze (rolling History). */
   part_f_kpi_trends: AdvisorKpiTrendsNarrativeBlock | null;
+  /** Wave 47 – SLA-Lagebild (Befunde + Eskalation). */
+  part_g_sla_lagebild: AdvisorSlaEvaluationDto;
 };

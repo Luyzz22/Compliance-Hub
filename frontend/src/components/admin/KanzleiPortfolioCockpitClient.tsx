@@ -18,6 +18,7 @@ import {
   type MandantReminderApiEntry,
 } from "@/lib/advisorMandantReminderTypes";
 import { isDueThisCalendarWeek, isDueTodayOrOverdue } from "@/lib/advisorMandantReminderRules";
+import type { AdvisorSlaDeepLinkId } from "@/lib/advisorSlaTypes";
 import type {
   KanzleiAttentionQueueItem,
   KanzleiPortfolioPayload,
@@ -104,6 +105,24 @@ function trafficLabel(s: BoardReadinessTraffic): string {
   if (s === "green") return "OK";
   if (s === "amber") return "Beobachten";
   return "Handeln";
+}
+
+function advisorSlaDeepLinkHref(link: AdvisorSlaDeepLinkId): string {
+  const b = "/admin/advisor-portfolio";
+  const m: Record<AdvisorSlaDeepLinkId, string> = {
+    reviews: `${b}#kanzlei-kpi-review`,
+    exports: `${b}#kanzlei-kpi-export`,
+    reminders: `${b}#kanzlei-kpi-reminders`,
+    queue: `${b}#kanzlei-kpi-queue`,
+    gaps: `${b}#kanzlei-kpi-table`,
+  };
+  return m[link];
+}
+
+function slaSeverityPillClass(sev: "info" | "warning" | "critical"): string {
+  if (sev === "critical") return "border-rose-200 bg-rose-50 text-rose-950";
+  if (sev === "warning") return "border-amber-200 bg-amber-50 text-amber-950";
+  return "border-slate-200 bg-slate-50 text-slate-800";
 }
 
 function showKeinExportBadge(row: KanzleiPortfolioRow): boolean {
@@ -688,6 +707,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             ·{" "}
             <code className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
               /kpi-trends
+            </code>{" "}
+            ·{" "}
+            <code className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
+              /sla-status
             </code>
           </p>
         </div>
@@ -717,6 +740,97 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
 
       {loadError && loadError !== "unauthorized" ? (
         <p className="text-sm text-red-600">{loadError}</p>
+      ) : null}
+
+      {payload?.advisor_sla ? (
+        <section
+          id="kanzlei-sla-panel"
+          className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm ring-1 ring-slate-950/[0.04]"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">SLA & Eskalation</p>
+              <h2 className="mt-0.5 text-sm font-semibold tracking-tight text-slate-900">Wave 47 – operative Warnsignale</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600">
+                Regelbasiert aus KPI, Queue und Remindern. Kein Ticket-System – nur Steuerungshinweise für die Kanzlei.
+              </p>
+              <p className="mt-1.5 text-[10px] text-slate-500">
+                Auswertung: {new Date(payload.advisor_sla.evaluated_at).toLocaleString("de-DE")} ·{" "}
+                {payload.advisor_sla.findings.length} Befund(e) · Schema {payload.advisor_sla.version}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {payload.advisor_sla.signals.map((s) => (
+              <span
+                key={s.signal_id}
+                className={`inline-flex max-w-full items-center rounded-md border px-2 py-1 text-[11px] font-medium ${
+                  s.active ? "border-rose-300 bg-rose-50 text-rose-950" : "border-slate-200 bg-slate-50 text-slate-600"
+                }`}
+                title={s.detail_de}
+              >
+                {s.active ? "● " : "○ "}
+                {s.label_de}
+              </span>
+            ))}
+          </div>
+          {payload.advisor_sla.findings.length > 0 ? (
+            <ul className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
+              {payload.advisor_sla.findings.slice(0, 6).map((f) => (
+                <li key={f.finding_id} className="flex flex-wrap items-start gap-2 text-xs">
+                  <span
+                    className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase ${slaSeverityPillClass(f.severity)}`}
+                  >
+                    {f.severity}
+                  </span>
+                  <div className="min-w-0">
+                    <span className="font-medium text-slate-900">{f.title_de}</span>
+                    {f.detail_de ? <span className="text-slate-600"> – {f.detail_de}</span> : null}
+                    <div className="mt-0.5">
+                      <a
+                        href={advisorSlaDeepLinkHref(f.deep_link)}
+                        className="text-[10px] font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
+                      >
+                        Zur Ansicht
+                      </a>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-600">Keine SLA-Befunde im aktuellen Lauf.</p>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3 text-[10px]">
+            <span className="font-medium text-slate-600">Schnellzugriff:</span>
+            <a className="text-slate-800 underline" href={advisorSlaDeepLinkHref("reviews")}>
+              Alte Reviews
+            </a>
+            <span className="text-slate-300">·</span>
+            <a className="text-slate-800 underline" href={advisorSlaDeepLinkHref("exports")}>
+              Export-Kadenz
+            </a>
+            <span className="text-slate-300">·</span>
+            <a className="text-slate-800 underline" href={advisorSlaDeepLinkHref("reminders")}>
+              Reminder-Backlog
+            </a>
+            <span className="text-slate-300">·</span>
+            <a className="text-slate-800 underline" href={advisorSlaDeepLinkHref("queue")}>
+              Attention-Queue
+            </a>
+            <span className="text-slate-300">·</span>
+            <a className="text-slate-800 underline" href={advisorSlaDeepLinkHref("gaps")}>
+              Kritische Säulen (Tabelle)
+            </a>
+          </div>
+          {payload.advisor_sla.next_steps_de.length > 0 ? (
+            <ul className="mt-2 list-inside list-disc text-[11px] text-slate-700">
+              {payload.advisor_sla.next_steps_de.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
       ) : null}
 
       {payload ? (

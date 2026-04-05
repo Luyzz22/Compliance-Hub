@@ -155,5 +155,6 @@ export function buildPartnerReviewPackage(
     part_d_recommended_priorities_de: part_d.slice(0, 8),
     part_e_advisor_kpis: opts.advisorKpiSnapshot ?? null,
     part_f_kpi_trends: opts.kpiTrendsNarrative ?? null,
+    part_g_sla_lagebild: payload.advisor_sla,
   };
 }

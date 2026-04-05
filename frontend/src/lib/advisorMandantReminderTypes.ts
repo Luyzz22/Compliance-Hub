@@ -8,6 +8,7 @@ export type MandantReminderCategory =
   | "stale_export"
   | "high_gap_count"
   | "portfolio_attention"
+  | "sla_escalation"
   | "follow_up_note"
   | "manual";
 
@@ -47,6 +48,7 @@ export const MANDANT_REMINDER_CATEGORY_LABEL_DE: Record<MandantReminderCategory,
   stale_export: "Export-Kadenz",
   high_gap_count: "Viele offene Prüfpunkte",
   portfolio_attention: "Portfolio-Aufmerksamkeit (Queue)",
+  sla_escalation: "SLA-Eskalation (Portfolio)",
   follow_up_note: "Follow-up / Notiz",
   manual: "Manuell",
 };

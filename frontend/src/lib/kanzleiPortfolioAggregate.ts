@@ -2,10 +2,19 @@ import "server-only";
 
 import type { AdvisorMandantHistoryEntry } from "@/lib/advisorMandantHistoryStore";
 import { readAdvisorMandantHistoryMap } from "@/lib/advisorMandantHistoryStore";
-import type { MandantReminderApiEntry } from "@/lib/advisorMandantReminderTypes";
+import { attachAdvisorKpiToPayload } from "@/lib/advisorKpiPortfolioAggregate";
+import type { AdvisorMandantRemindersState, MandantReminderApiEntry } from "@/lib/advisorMandantReminderTypes";
 import {
+  readAdvisorMandantRemindersState,
   syncAdvisorMandantRemindersFromPortfolio,
+  syncAdvisorSlaEscalationReminders,
 } from "@/lib/advisorMandantReminderStore";
+import {
+  criticalRuleIdsFromFindings,
+  evaluateAdvisorSla,
+  stubAdvisorSlaEvaluation,
+} from "@/lib/advisorSlaEvaluate";
+import { readAdvisorSlaSignalState, writeAdvisorSlaSignalState } from "@/lib/advisorSlaSignalStateStore";
 import { isDueThisCalendarWeek, isDueTodayOrOverdue } from "@/lib/advisorMandantReminderRules";
 import {
   daysSinceValidIso,
@@ -28,6 +37,7 @@ import {
   KANZLEI_PORTFOLIO_VERSION,
   type KanzleiPortfolioPayload,
   type KanzleiPortfolioRow,
+  type KanzleiAttentionQueueItem,
 } from "@/lib/kanzleiPortfolioTypes";
 import {
   KANZLEI_ANY_EXPORT_MAX_AGE_DAYS,
@@ -261,28 +271,18 @@ function rowFromSnapshot(
   };
 }
 
-export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Promise<KanzleiPortfolioPayload> {
-  const [bundle, historyByTenant] = await Promise.all([
-    loadMappedTenantPillarSnapshots(now),
-    readAdvisorMandantHistoryMap(),
-  ]);
-  const nowMs = bundle.nowMs;
-
-  const rows = bundle.snapshots
-    .map((s) => rowFromSnapshot(s, nowMs, historyByTenant))
-    .sort((a, b) => {
-      if (b.attention_score !== a.attention_score) return b.attention_score - a.attention_score;
-      if (b.open_points_count !== a.open_points_count) return b.open_points_count - a.open_points_count;
-      return (a.mandant_label ?? a.tenant_id).localeCompare(b.mandant_label ?? b.tenant_id, "de");
-    });
-
-  const attention_queue = buildAttentionQueue(rows, KANZLEI_MANY_OPEN_POINTS);
-
-  const remState = await syncAdvisorMandantRemindersFromPortfolio(
-    rows,
-    KANZLEI_MANY_OPEN_POINTS,
-    nowMs,
-  );
+function assemblePortfolioPayloadWithoutSla(
+  bundle: {
+    generated_at: string;
+    backend_reachable: boolean;
+    tenantIds: string[];
+    tenants_partial: number;
+  },
+  rows: KanzleiPortfolioRow[],
+  attention_queue: KanzleiAttentionQueueItem[],
+  remState: AdvisorMandantRemindersState,
+  nowMs: number,
+): Omit<KanzleiPortfolioPayload, "advisor_sla"> {
   const openReminderRecords = remState.reminders.filter((r) => r.status === "open");
   const openByTenant = new Map<string, typeof openReminderRecords>();
   for (const r of openReminderRecords) {
@@ -341,4 +341,60 @@ export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Pr
     reminders_due_today_or_overdue_count,
     reminders_due_this_week_open_count,
   };
+}
+
+export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Promise<KanzleiPortfolioPayload> {
+  const [bundle, historyByTenant] = await Promise.all([
+    loadMappedTenantPillarSnapshots(now),
+    readAdvisorMandantHistoryMap(),
+  ]);
+  const nowMs = bundle.nowMs;
+
+  const rows = bundle.snapshots
+    .map((s) => rowFromSnapshot(s, nowMs, historyByTenant))
+    .sort((a, b) => {
+      if (b.attention_score !== a.attention_score) return b.attention_score - a.attention_score;
+      if (b.open_points_count !== a.open_points_count) return b.open_points_count - a.open_points_count;
+      return (a.mandant_label ?? a.tenant_id).localeCompare(b.mandant_label ?? b.tenant_id, "de");
+    });
+
+  const attention_queue = buildAttentionQueue(rows, KANZLEI_MANY_OPEN_POINTS);
+
+  let remState = await syncAdvisorMandantRemindersFromPortfolio(
+    rows,
+    KANZLEI_MANY_OPEN_POINTS,
+    nowMs,
+  );
+
+  const bundleMeta = {
+    generated_at: bundle.generated_at,
+    backend_reachable: bundle.backend_reachable,
+    tenantIds: bundle.tenantIds,
+    tenants_partial: bundle.tenants_partial,
+  };
+
+  const basePayload = assemblePortfolioPayloadWithoutSla(bundleMeta, rows, attention_queue, remState, nowMs);
+  const payloadForKpi: KanzleiPortfolioPayload = {
+    ...basePayload,
+    advisor_sla: stubAdvisorSlaEvaluation(new Date(nowMs).toISOString()),
+  };
+  const kpiSnapshot = await attachAdvisorKpiToPayload(payloadForKpi, nowMs, 90);
+
+  const prevSla = await readAdvisorSlaSignalState();
+  const slaEval = evaluateAdvisorSla({
+    payload: payloadForKpi,
+    kpiSnapshot,
+    nowMs,
+    previousCriticalRuleIds: prevSla.critical_rule_ids,
+  });
+  await writeAdvisorSlaSignalState(criticalRuleIdsFromFindings(slaEval.findings));
+
+  const escalate =
+    Boolean(slaEval.signals.find((s) => s.signal_id === "portfolio_red")?.active) ||
+    Boolean(slaEval.signals.find((s) => s.signal_id === "partner_attention_required")?.active);
+  await syncAdvisorSlaEscalationReminders(attention_queue, escalate, nowMs);
+
+  remState = await readAdvisorMandantRemindersState();
+  const finalBase = assemblePortfolioPayloadWithoutSla(bundleMeta, rows, attention_queue, remState, nowMs);
+  return { ...finalBase, advisor_sla: slaEval };
 }

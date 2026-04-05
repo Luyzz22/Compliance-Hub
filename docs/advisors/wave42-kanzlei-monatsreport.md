@@ -2,7 +2,7 @@
 
 Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine und wiederkehrende Status-Mails – **kein** Board-Pack, **kein** Mandanten-Einzelreport. Fokus: **Ist-Zustand**, **Top-Aufmerksamkeit**, **grobe Veränderungen** seit einem gespeicherten Stichtag, **Handlungsschwerpunkte**.
 
-## Report-Struktur (Kern: vier Abschnitte; KPI/Trends optional)
+## Report-Struktur (Kern 1–4; KPI, Trends und SLA optional)
 
 | Abschnitt | Inhalt |
 |-----------|--------|
@@ -10,6 +10,8 @@ Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine
 | **2) Top-Aufmerksamkeit** | Die ersten *N* Einträge aus der bestehenden Attention-Queue (gleiche Priorisierung wie Wave 41) inkl. „Nächster Schritt“ |
 | **3) Veränderungen seit Baseline** | Nur wenn **Baseline-Datei** existiert und **Vergleich** aktiv ist: verbesserte / zurückgefallene Readiness-Klasse, größere Bewegungen bei offenen Punkten (±2), Attention-Band, Ampel „schlechteste Säule“, Kadenz-Hinweise Review/Export |
 | **4) Empfohlene Schwerpunkte** | Regelbasierte Bullet-Liste (EU AI Act, ISO 42001, NIS2, DSGVO, Export-/Review-Kadenz, API-Lesbarkeit, „viele Lücken ohne Export“) |
+| **5–6) KPIs & Trends** | Wave 45–46: siehe `wave45-advisor-kpis.md` / `wave46-kpi-trends.md` |
+| **7) SLA & Eskalation** | Wave 47: leichte Regeln, Befunde und Eskalationssignale aus KPI, Queue und Remindern – siehe `wave47-sla-and-escalations.md` |
 
 ## API (intern, Lead-Admin)
 
@@ -67,6 +69,7 @@ Listen sind auf **12 Einträge** pro Kategorie begrenzt (Lesbarkeit).
 
 ## Siehe auch
 
+- `docs/advisors/wave47-sla-and-escalations.md`
 - `docs/advisors/wave45-advisor-kpis.md`
 - `docs/advisors/wave44-partner-review-package.md`
 - `docs/advisors/wave43-reminders-and-followups.md`
