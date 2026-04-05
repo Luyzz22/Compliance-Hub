@@ -63,6 +63,7 @@ Listen sind auf **12 Einträge** pro Kategorie begrenzt (Lesbarkeit).
 
 ## Siehe auch
 
+- `docs/advisors/wave44-partner-review-package.md`
 - `docs/advisors/wave43-reminders-and-followups.md`
 - `docs/advisors/wave41-kanzlei-review-playbook-and-queue.md`
 - `docs/advisors/wave40-kanzlei-review-cadence-and-history.md`
