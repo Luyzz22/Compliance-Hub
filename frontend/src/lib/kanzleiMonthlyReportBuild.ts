@@ -56,7 +56,7 @@ export function rowToBaselineTenant(row: KanzleiPortfolioRow): KanzleiMonthlyBas
   };
 }
 
-function summarizeSection1(payload: KanzleiPortfolioPayload): KanzleiMonthlyReportSection1 {
+export function summarizeKanzleiMonthlyReportSection1(payload: KanzleiPortfolioPayload): KanzleiMonthlyReportSection1 {
   const readiness_distribution: Record<GtmReadinessClass, number> = {
     no_footprint: 0,
     early_pilot: 0,
@@ -102,7 +102,7 @@ function line(
   return { tenant_id: row.tenant_id, mandant_label: row.mandant_label, text_de };
 }
 
-function buildSection3(
+export function buildKanzleiMonthlyReportSection3(
   payload: KanzleiPortfolioPayload,
   baseline: { saved_at: string; period_label: string | null; tenants: Record<string, KanzleiMonthlyBaselineTenant> } | null,
 ): KanzleiMonthlyReportSection3 {
@@ -223,7 +223,10 @@ function buildSection3(
   return out;
 }
 
-function buildFocusAreas(payload: KanzleiPortfolioPayload, s1: KanzleiMonthlyReportSection1): string[] {
+export function buildKanzleiPortfolioFocusAreasDe(
+  payload: KanzleiPortfolioPayload,
+  s1: KanzleiMonthlyReportSection1,
+): string[] {
   const rows = payload.rows;
   let euRed = 0;
   let euAmber = 0;
@@ -310,7 +313,7 @@ export function buildKanzleiMonthlyReport(
   } | null,
   opts: BuildMonthlyReportOptions,
 ): KanzleiMonthlyReportDto {
-  const s1 = summarizeSection1(payload);
+  const s1 = summarizeKanzleiMonthlyReportSection1(payload);
   const top = payload.attention_queue.slice(0, opts.attentionTopN).map((q, i) => ({
     rank: i + 1,
     tenant_id: q.tenant_id,
@@ -320,7 +323,7 @@ export function buildKanzleiMonthlyReport(
   }));
 
   const s3: KanzleiMonthlyReportSection3 = opts.compareToBaseline
-    ? buildSection3(payload, baseline)
+    ? buildKanzleiMonthlyReportSection3(payload, baseline)
     : {
         baseline_available: false,
         baseline_saved_at: baseline?.saved_at ?? null,
@@ -344,6 +347,6 @@ export function buildKanzleiMonthlyReport(
     section_1_portfolio_summary: s1,
     section_2_attention_top: top,
     section_3_changes: s3,
-    section_4_focus_areas_de: buildFocusAreas(payload, s1),
+    section_4_focus_areas_de: buildKanzleiPortfolioFocusAreasDe(payload, s1),
   };
 }

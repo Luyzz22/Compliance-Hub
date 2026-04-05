@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { AiKpiPortfolioStrip } from "@/components/ai/AiKpiPortfolioStrip";
 import { CrossRegulationLlmGapPanel } from "@/app/tenant/cross-regulation-dashboard/CrossRegulationLlmGapPanel";
@@ -85,6 +85,14 @@ export function CrossRegulationDashboardClient({
   const [detailErr, setDetailErr] = useState<string | null>(null);
   const [detailBusy, setDetailBusy] = useState(false);
 
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const filteredRequirements = useMemo(() => {
     return requirementsForUi.filter((r) => {
       if (frameworkFilter !== "all" && r.framework_key !== frameworkFilter) return false;
@@ -96,16 +104,22 @@ export function CrossRegulationDashboardClient({
   }, [requirementsForUi, frameworkFilter, coverageFilter, typeFilter, criticalityFilter]);
 
   const openDrilldown = async (requirementId: number) => {
-    setDetailBusy(true);
-    setDetailErr(null);
+    if (mountedRef.current) {
+      setDetailBusy(true);
+      setDetailErr(null);
+    }
     try {
       const d = await fetchRequirementControlsDetail(tenantId, requirementId);
+      if (!mountedRef.current) return;
       setDetail(d);
     } catch (e) {
+      if (!mountedRef.current) return;
       setDetail(null);
       setDetailErr(e instanceof Error ? e.message : "Drilldown fehlgeschlagen");
     } finally {
-      setDetailBusy(false);
+      if (mountedRef.current) {
+        setDetailBusy(false);
+      }
     }
   };
 

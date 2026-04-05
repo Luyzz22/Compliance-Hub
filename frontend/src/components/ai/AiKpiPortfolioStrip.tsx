@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchTenantAiKpiSummary, type AiKpiSummaryResponseDto } from "@/lib/api";
 import { CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
@@ -25,19 +25,33 @@ export function AiKpiPortfolioStrip({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
 
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const load = useCallback(async () => {
-    setBusy(true);
-    setErr(null);
+    if (mountedRef.current) {
+      setBusy(true);
+      setErr(null);
+    }
     try {
       const d = await fetchTenantAiKpiSummary(tenantId, {
         framework_key: fw || undefined,
       });
+      if (!mountedRef.current) return;
       setData(d);
     } catch (e) {
+      if (!mountedRef.current) return;
       setData(null);
       setErr(e instanceof Error ? e.message : "Laden fehlgeschlagen");
     } finally {
-      setBusy(false);
+      if (mountedRef.current) {
+        setBusy(false);
+      }
     }
   }, [tenantId, fw]);
 

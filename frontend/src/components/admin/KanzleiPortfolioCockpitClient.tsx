@@ -6,6 +6,7 @@ import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/board
 import { GTM_READINESS_CLASSES, GTM_READINESS_SHORT_DE } from "@/lib/gtmAccountReadiness";
 import { KanzleiReviewPlaybookHelper } from "@/components/admin/KanzleiReviewPlaybookHelper";
 import type { KanzleiMonthlyReportDto } from "@/lib/kanzleiMonthlyReportTypes";
+import type { PartnerReviewPackageDto } from "@/lib/partnerReviewPackageTypes";
 import {
   MANDANT_REMINDER_CATEGORY_LABEL_DE,
   type MandantReminderApiEntry,
@@ -206,6 +207,13 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [reportMd, setReportMd] = useState<string | null>(null);
   const [reportDto, setReportDto] = useState<KanzleiMonthlyReportDto | null>(null);
 
+  const [partnerLoading, setPartnerLoading] = useState(false);
+  const [partnerErr, setPartnerErr] = useState<string | null>(null);
+  const [partnerMd, setPartnerMd] = useState<string | null>(null);
+  const [partnerDto, setPartnerDto] = useState<PartnerReviewPackageDto | null>(null);
+  const [partnerCompare, setPartnerCompare] = useState(true);
+  const [partnerTopN, setPartnerTopN] = useState(8);
+
   const [reminderPatchBusyId, setReminderPatchBusyId] = useState<string | null>(null);
   const [manualRemTenantId, setManualRemTenantId] = useState("");
   const [manualRemDue, setManualRemDue] = useState("");
@@ -338,6 +346,65 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     }
   }, [reportMd]);
 
+  const fetchPartnerReviewPackage = useCallback(async () => {
+    setPartnerLoading(true);
+    setPartnerErr(null);
+    try {
+      const q = new URLSearchParams();
+      const top = Math.min(15, Math.max(3, Number.isFinite(partnerTopN) ? partnerTopN : 8));
+      q.set("top_n", String(top));
+      if (!partnerCompare) q.set("compare", "0");
+      const r = await fetch(`/api/internal/advisor/partner-review-package?${q}`, {
+        credentials: "include",
+      });
+      if (r.status === 401) {
+        setPartnerErr("Nicht angemeldet (Admin-Secret).");
+        setPartnerMd(null);
+        setPartnerDto(null);
+        return;
+      }
+      if (!r.ok) {
+        setPartnerErr(`HTTP ${r.status}`);
+        setPartnerMd(null);
+        setPartnerDto(null);
+        return;
+      }
+      const data = (await r.json()) as {
+        ok?: boolean;
+        partner_review_package?: PartnerReviewPackageDto;
+        markdown_de?: string;
+      };
+      setPartnerDto(data.partner_review_package ?? null);
+      setPartnerMd(data.markdown_de ?? null);
+    } catch {
+      setPartnerErr("Netzwerkfehler");
+      setPartnerMd(null);
+      setPartnerDto(null);
+    } finally {
+      setPartnerLoading(false);
+    }
+  }, [partnerCompare, partnerTopN]);
+
+  const copyPartnerMd = useCallback(async () => {
+    if (!partnerMd) return;
+    try {
+      await navigator.clipboard.writeText(partnerMd);
+    } catch {
+      /* ignore */
+    }
+  }, [partnerMd]);
+
+  const downloadPartnerMd = useCallback(() => {
+    if (!partnerMd) return;
+    const blob = new Blob([partnerMd], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `partner-review-package-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [partnerMd]);
+
   const patchReminderStatus = useCallback(
     async (reminderId: string, status: "done" | "dismissed") => {
       setReminderPatchBusyId(reminderId);
@@ -431,13 +498,13 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39–43 · Kanzlei / Berater</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wave 39–44 · Kanzlei / Berater</p>
           <h1 className="text-2xl font-semibold text-slate-900">Mehrmandanten-Kanzlei-Cockpit</h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-600">
             Welcher Mandant braucht jetzt Aufmerksamkeit? Portfolio über gemappte Mandanten mit Readiness,
             offenen Prüfpunkten, Export-Historie (Readiness / DATEV-ZIP), Review-Kadenz (Wave 40),
-            Attention-Queue, Review-Playbook (Wave 41), Monatsreport (Wave 42) und Reminders / Follow-ups
-            (Wave 43).
+            Attention-Queue, Review-Playbook (Wave 41), Monatsreport (Wave 42), Reminders / Follow-ups
+            (Wave 43) und Partner-Review-Paket (Wave 44) für interne Steuerung.
           </p>
           {payload ? (
             <p className="mt-1 font-mono text-xs text-slate-400">
@@ -450,6 +517,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             API:{" "}
             <code className="rounded bg-slate-100 px-1 text-[11px]">
               GET /api/internal/advisor/kanzlei-portfolio
+            </code>{" "}
+            ·{" "}
+            <code className="rounded bg-slate-100 px-1 text-[11px]">
+              GET /api/internal/advisor/partner-review-package
             </code>
           </p>
         </div>
@@ -687,6 +758,78 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       ) : null}
 
       {payload ? (
+        <section className="rounded-xl border border-indigo-200 bg-indigo-50/30 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">Partner-Review-Paket (Wave 44)</h2>
+          <p className="mt-1 text-[11px] text-slate-600">
+            Kompaktes Sammelpaket für Partnerrunden und Portfolio-Steuerung (nicht Mandanten-Einzel, nicht
+            Board-Pack). Teil C nutzt dieselbe Baseline wie der Monatsreport.{" "}
+            <code className="rounded bg-white px-1">GET /api/internal/advisor/partner-review-package</code> ·{" "}
+            <code className="rounded bg-white px-1">?format=markdown</code> für Datei-Download.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="text-xs font-medium text-slate-700">
+              Top-Mandanten (3–15)
+              <input
+                type="number"
+                min={3}
+                max={15}
+                className="mt-1 block w-20 rounded-lg border border-slate-300 bg-white px-2 py-1.5 font-mono text-sm"
+                value={Number.isFinite(partnerTopN) ? partnerTopN : 8}
+                onChange={(e) => {
+                  const v = Number.parseInt(e.target.value, 10);
+                  setPartnerTopN(Number.isFinite(v) ? v : 8);
+                }}
+              />
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+              <input
+                type="checkbox"
+                checked={partnerCompare}
+                onChange={(e) => setPartnerCompare(e.target.checked)}
+              />
+              Vergleich mit Baseline (Teil C)
+            </label>
+            <button
+              type="button"
+              disabled={partnerLoading}
+              onClick={() => void fetchPartnerReviewPackage()}
+              className="rounded-lg bg-indigo-800 px-3 py-1.5 text-sm text-white hover:bg-indigo-900 disabled:opacity-50"
+            >
+              {partnerLoading ? "Erzeuge…" : "Partner-Review-Paket erstellen"}
+            </button>
+            <button
+              type="button"
+              disabled={!partnerMd}
+              onClick={() => void copyPartnerMd()}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Markdown kopieren
+            </button>
+            <button
+              type="button"
+              disabled={!partnerMd}
+              onClick={() => downloadPartnerMd()}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Als Markdown speichern
+            </button>
+          </div>
+          {partnerErr ? <p className="mt-2 text-xs text-red-600">{partnerErr}</p> : null}
+          {partnerDto ? (
+            <p className="mt-2 font-mono text-[10px] text-slate-500">
+              Schema {partnerDto.meta.version} · compared_to_baseline={String(partnerDto.meta.compared_to_baseline)}{" "}
+              · Top {partnerDto.part_b_top_attention.length}
+            </p>
+          ) : null}
+          {partnerMd ? (
+            <pre className="mt-3 max-h-[min(50vh,420px)] overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 font-mono text-[11px] leading-relaxed text-slate-800">
+              {partnerMd}
+            </pre>
+          ) : null}
+        </section>
+      ) : null}
+
+      {payload ? (
         <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <label className="text-xs font-medium text-slate-700">
             Readiness-Klasse
@@ -893,7 +1036,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
           Zeitstempel automatisch; Review per Aktion). Reminders:{" "}
           <code className="rounded bg-slate-100 px-1">data/advisor-mandant-reminders.json</code>. Optional
           weiterlesbar: <code className="rounded bg-slate-100 px-1">data/advisor-portfolio-touchpoints.json</code>{" "}
-          (Wave 39 Legacy). Schwellen: Review {payload.constants.review_stale_days} Tage, Export{" "}
+          (Wave 39–44). Schwellen: Review {payload.constants.review_stale_days} Tage, Export{" "}
           {payload.constants.any_export_max_age_days} Tage – siehe Wave 40–43 (
           <code className="rounded bg-slate-100 px-1">docs/advisors/</code>
           ).

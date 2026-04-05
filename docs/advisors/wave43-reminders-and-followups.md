@@ -69,6 +69,7 @@ Das **Portfolio** liefert zusätzlich eingebettet: `open_reminders`, Zähler **h
 
 ## Siehe auch
 
+- `docs/advisors/wave44-partner-review-package.md`
 - `docs/advisors/wave41-kanzlei-review-playbook-and-queue.md`
 - `docs/advisors/wave40-kanzlei-review-cadence-and-history.md`
 - `frontend/src/lib/advisorMandantReminderRules.ts`

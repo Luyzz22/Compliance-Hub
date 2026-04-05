@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   type CrossRegLlmGapSuggestionDto,
@@ -61,6 +61,14 @@ export function CrossRegulationLlmGapPanel({ tenantId, requirements }: CrossRegu
     null,
   );
 
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const reqById = useMemo(() => {
     const m = new Map<number, RegulatoryRequirementRowDto>();
     for (const r of requirements) {
@@ -75,16 +83,20 @@ export function CrossRegulationLlmGapPanel({ tenantId, requirements }: CrossRegu
   );
 
   const runAnalysis = async () => {
-    setBusy(true);
-    setErr(null);
+    if (mountedRef.current) {
+      setBusy(true);
+      setErr(null);
+    }
     try {
       const res = await postCrossRegulationLlmGapAssistant(tenantId, {
         focus_frameworks: focusKeys ?? undefined,
         max_suggestions: 8,
       });
+      if (!mountedRef.current) return;
       setSuggestions(res.suggestions);
       setOpenIdx(null);
     } catch (e) {
+      if (!mountedRef.current) return;
       setSuggestions([]);
       setErr(
         e instanceof Error
@@ -92,7 +104,9 @@ export function CrossRegulationLlmGapPanel({ tenantId, requirements }: CrossRegu
           : "Die KI-Auswertung ist fehlgeschlagen. Prüfen Sie LLM-Konfiguration und Feature-Flags.",
       );
     } finally {
-      setBusy(false);
+      if (mountedRef.current) {
+        setBusy(false);
+      }
     }
   };
 
