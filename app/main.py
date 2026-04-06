@@ -268,6 +268,7 @@ from app.services.advisor_tenant_report_markdown import render_tenant_report_mar
 from app.services.ai_act_docs import build_ai_act_doc_list_response, upsert_ai_act_doc
 from app.services.ai_act_docs_ai_assist import generate_ai_act_doc_draft
 from app.services.ai_act_docs_export import render_ai_act_documentation_markdown
+from app.services.audit_gobd_export import generate_gobd_xml
 from app.services.ai_action_drafts import generate_action_drafts
 from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_compliance_board_report import (
@@ -1462,6 +1463,25 @@ def list_audit_logs(
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> list[AuditLog]:
     return audit_repo.list_for_tenant(tenant_id=tenant_id)
+
+
+@app.get("/api/v1/audit-logs/export/gobd-xml")
+def export_audit_logs_gobd_xml(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> Response:
+    """GoBD §14 compliant XML export of the audit trail."""
+    entries = audit_repo.list_for_tenant(tenant_id=tenant_id, limit=10_000)
+    xml = generate_gobd_xml(entries)
+    return Response(
+        content=xml,
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="audit-trail-{tenant_id}.xml"'
+            ),
+        },
+    )
 
 
 @app.get("/api/v1/audit-events", response_model=list[AuditEvent])

@@ -15,6 +15,10 @@ class AuditLog(BaseModel):
     entity_id: str
     before: str | None = None
     after: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    previous_hash: str | None = None
+    entry_hash: str | None = None
     created_at_utc: datetime
 
 
