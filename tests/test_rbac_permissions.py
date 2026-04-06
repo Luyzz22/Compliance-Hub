@@ -37,9 +37,7 @@ def test_compliance_officer_can_manage_incidents() -> None:
 
 def test_super_admin_has_all_permissions() -> None:
     for perm in Permission:
-        assert has_permission(EnterpriseRole.SUPER_ADMIN, perm), (
-            f"SUPER_ADMIN missing {perm}"
-        )
+        assert has_permission(EnterpriseRole.SUPER_ADMIN, perm), f"SUPER_ADMIN missing {perm}"
 
 
 def test_role_hierarchy_is_consistent() -> None:
@@ -66,11 +64,13 @@ def test_role_hierarchy_is_consistent() -> None:
 
 def test_board_member_has_restricted_view() -> None:
     perms = ROLE_PERMISSIONS[EnterpriseRole.BOARD_MEMBER]
-    assert perms == frozenset({
-        Permission.VIEW_DASHBOARD,
-        Permission.VIEW_BOARD_REPORTS,
-        Permission.VIEW_COMPLIANCE_STATUS,
-    })
+    assert perms == frozenset(
+        {
+            Permission.VIEW_DASHBOARD,
+            Permission.VIEW_BOARD_REPORTS,
+            Permission.VIEW_COMPLIANCE_STATUS,
+        }
+    )
 
 
 def test_auditor_has_export_audit_log() -> None:
@@ -103,6 +103,7 @@ def test_resolve_role_maps_new_roles() -> None:
 
 
 # ── Integration tests: FastAPI dependency ──────────────────────────────
+
 
 def _build_app(permission: Permission) -> FastAPI:
     """Build a minimal FastAPI app with a single guarded endpoint."""

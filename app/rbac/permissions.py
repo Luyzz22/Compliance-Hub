@@ -28,50 +28,64 @@ class Permission(StrEnum):
     PROVISION_TENANT = "provision_tenant"
 
 
-_VIEWER_PERMS = frozenset({
-    Permission.VIEW_DASHBOARD,
-    Permission.VIEW_AI_SYSTEMS,
-    Permission.VIEW_COMPLIANCE_STATUS,
-    Permission.VIEW_BOARD_REPORTS,
-})
+_VIEWER_PERMS = frozenset(
+    {
+        Permission.VIEW_DASHBOARD,
+        Permission.VIEW_AI_SYSTEMS,
+        Permission.VIEW_COMPLIANCE_STATUS,
+        Permission.VIEW_BOARD_REPORTS,
+    }
+)
 
-_CONTRIBUTOR_PERMS = _VIEWER_PERMS | frozenset({
-    Permission.VIEW_RISK_REGISTER,
-    Permission.VIEW_INCIDENTS,
-    Permission.VIEW_AUDIT_LOG,
-})
+_CONTRIBUTOR_PERMS = _VIEWER_PERMS | frozenset(
+    {
+        Permission.VIEW_RISK_REGISTER,
+        Permission.VIEW_INCIDENTS,
+        Permission.VIEW_AUDIT_LOG,
+    }
+)
 
-_EDITOR_PERMS = _CONTRIBUTOR_PERMS | frozenset({
-    Permission.EDIT_AI_SYSTEMS,
-    Permission.EDIT_RISK_REGISTER,
-    Permission.EDIT_COMPLIANCE_STATUS,
-})
+_EDITOR_PERMS = _CONTRIBUTOR_PERMS | frozenset(
+    {
+        Permission.EDIT_AI_SYSTEMS,
+        Permission.EDIT_RISK_REGISTER,
+        Permission.EDIT_COMPLIANCE_STATUS,
+    }
+)
 
-_AUDITOR_PERMS = _CONTRIBUTOR_PERMS | frozenset({
-    Permission.EXPORT_AUDIT_LOG,
-})
+_AUDITOR_PERMS = _CONTRIBUTOR_PERMS | frozenset(
+    {
+        Permission.EXPORT_AUDIT_LOG,
+    }
+)
 
-_COMPLIANCE_OFFICER_PERMS = _EDITOR_PERMS | frozenset({
-    Permission.MANAGE_INCIDENTS,
-    Permission.MANAGE_POLICIES,
-    Permission.GENERATE_BOARD_REPORTS,
-})
+_COMPLIANCE_OFFICER_PERMS = _EDITOR_PERMS | frozenset(
+    {
+        Permission.MANAGE_INCIDENTS,
+        Permission.MANAGE_POLICIES,
+        Permission.GENERATE_BOARD_REPORTS,
+    }
+)
 
 # CISO inherits all compliance_officer perms (VIEW_BOARD_REPORTS and
 # GENERATE_BOARD_REPORTS are already present via that chain).
 _CISO_PERMS = _COMPLIANCE_OFFICER_PERMS
 
-_BOARD_MEMBER_PERMS = frozenset({
-    Permission.VIEW_DASHBOARD,
-    Permission.VIEW_BOARD_REPORTS,
-    Permission.VIEW_COMPLIANCE_STATUS,
-})
+_BOARD_MEMBER_PERMS = frozenset(
+    {
+        Permission.VIEW_DASHBOARD,
+        Permission.VIEW_BOARD_REPORTS,
+        Permission.VIEW_COMPLIANCE_STATUS,
+    }
+)
 
-_TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset({
-    Permission.MANAGE_TENANT_SETTINGS,
-    Permission.MANAGE_USERS,
-    Permission.MANAGE_API_KEYS,
-})
+_TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
+    {
+        Permission.MANAGE_TENANT_SETTINGS,
+        Permission.MANAGE_USERS,
+        Permission.MANAGE_API_KEYS,
+    }
+)
 
 _SUPER_ADMIN_PERMS = frozenset(Permission)
 
