@@ -79,6 +79,7 @@ Aus dem **Kanzlei-Portfolio** werden automatisch ergänzt:
 
 ## Verwandte Doku
 
+- `docs/advisors/wave51-board-ready-evidence-pack.md` (Abschnitt D – Evidence Touchpoints)
 - `docs/advisors/wave42-kanzlei-monatsreport.md` (Abschnitt 10)
 - `docs/advisors/wave44-partner-review-package.md` (Teil J)
 - `docs/advisors/wave49-cross-regulation-matrix.md`

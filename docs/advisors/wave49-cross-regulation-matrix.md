@@ -64,6 +64,7 @@ Panel **`#kanzlei-cross-regulation-panel`**: kompakte Tabelle Mandant × Säule 
 
 ## Siehe auch
 
+- `docs/advisors/wave51-board-ready-evidence-pack.md`
 - `docs/advisors/wave50-enterprise-evidence-hooks.md`
 - `docs/advisors/wave48-ai-governance-view.md`
 - `docs/advisors/wave39-kanzlei-portfolio-cockpit.md`
