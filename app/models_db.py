@@ -878,3 +878,22 @@ class NIS2IncidentTable(Base):
     updated_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+
+
+class ComplianceDeadlineTable(Base):
+    """Regulatory compliance deadlines per tenant."""
+
+    __tablename__ = "compliance_deadlines"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    due_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    owner: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    regulation_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    recurrence_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )

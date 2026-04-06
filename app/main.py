@@ -111,6 +111,11 @@ from app.classification_models import (
     ClassificationSummary,
     RiskClassification,
 )
+from app.compliance_calendar_models import (
+    ComplianceDeadlineCreate,
+    ComplianceDeadlineResponse,
+    ComplianceDeadlineUpdate,
+)
 from app.compliance_gap_models import (
     REQUIREMENTS,
     REQUIREMENTS_BY_ID,
@@ -230,6 +235,7 @@ from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
 from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.classifications import ClassificationRepository
+from app.repositories.compliance_deadlines import ComplianceDeadlineRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
 from app.repositories.evidence_files import EvidenceFileRepository
 from app.repositories.incidents import IncidentRepository
@@ -315,6 +321,7 @@ from app.services.board_report_norm_evidence import (
     query_by_norm,
 )
 from app.services.classification_engine import classify_ai_system
+from app.services.compliance_calendar_ical import generate_ical
 from app.services.compliance_dashboard import (
     compute_ai_compliance_overview,
     compute_compliance_dashboard,
@@ -551,6 +558,12 @@ def get_compliance_gap_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> ComplianceGapRepository:
     return ComplianceGapRepository(session)
+
+
+def get_compliance_deadline_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> ComplianceDeadlineRepository:
+    return ComplianceDeadlineRepository(session)
 
 
 def get_nis2_kritis_kpi_repository(
@@ -4734,3 +4747,108 @@ async def post_tenant_oami_explain_langgraph_poc(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="OAMI explain PoC workflow failed",
         ) from exc
+
+
+# ── Compliance Calendar + Deadline Management ──────────────────────────────────
+
+
+@app.post(
+    "/api/v1/compliance-calendar/deadlines",
+    response_model=ComplianceDeadlineResponse,
+    status_code=201,
+)
+def create_compliance_deadline(
+    body: ComplianceDeadlineCreate,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
+) -> ComplianceDeadlineResponse:
+    """Create a new regulatory compliance deadline."""
+    return repo.create(tenant_id=tenant_id, data=body)
+
+
+@app.get(
+    "/api/v1/compliance-calendar/deadlines",
+    response_model=list[ComplianceDeadlineResponse],
+)
+def list_compliance_deadlines(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
+) -> list[ComplianceDeadlineResponse]:
+    """List compliance deadlines for the authenticated tenant."""
+    return repo.list_for_tenant(tenant_id=tenant_id)
+
+
+@app.get(
+    "/api/v1/compliance-calendar/deadlines/{deadline_id}",
+    response_model=ComplianceDeadlineResponse,
+)
+def get_compliance_deadline(
+    deadline_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
+) -> ComplianceDeadlineResponse:
+    """Get a single compliance deadline by ID (tenant-isolated)."""
+    result = repo.get(tenant_id=tenant_id, deadline_id=deadline_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Compliance deadline not found")
+    return result
+
+
+@app.patch(
+    "/api/v1/compliance-calendar/deadlines/{deadline_id}",
+    response_model=ComplianceDeadlineResponse,
+)
+def update_compliance_deadline(
+    deadline_id: str,
+    body: ComplianceDeadlineUpdate,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
+) -> ComplianceDeadlineResponse:
+    """Partially update a compliance deadline."""
+    result = repo.update(tenant_id=tenant_id, deadline_id=deadline_id, data=body)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Compliance deadline not found")
+    return result
+
+
+@app.delete(
+    "/api/v1/compliance-calendar/deadlines/{deadline_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_compliance_deadline(
+    deadline_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
+) -> Response:
+    """Delete a compliance deadline."""
+    deleted = repo.delete(tenant_id=tenant_id, deadline_id=deadline_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Compliance deadline not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.post(
+    "/api/v1/compliance-calendar/seed-defaults",
+    response_model=list[ComplianceDeadlineResponse],
+)
+def seed_compliance_defaults(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
+) -> list[ComplianceDeadlineResponse]:
+    """Pre-populate DACH-region regulatory deadlines for a tenant."""
+    return repo.seed_dach_defaults(tenant_id=tenant_id)
+
+
+@app.get("/api/v1/compliance-calendar/export/ical")
+def export_compliance_calendar_ical(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
+) -> Response:
+    """Export all compliance deadlines as an iCal (.ics) calendar file."""
+    deadlines = repo.list_for_tenant(tenant_id=tenant_id)
+    ical_content = generate_ical(deadlines=deadlines, tenant_id=tenant_id)
+    return Response(
+        content=ical_content,
+        media_type="text/calendar",
+        headers={"Content-Disposition": "attachment; filename=compliance-calendar.ics"},
+    )
