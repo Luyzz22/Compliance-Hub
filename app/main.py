@@ -241,6 +241,9 @@ from app.provisioning_models import (
 )
 from app.rag.models import EuAiActNis2RagRequest, EuAiActNis2RagResponse
 from app.rag.service import run_advisor_eu_reg_rag
+from app.rbac.dependencies import require_permission
+from app.rbac.permissions import Permission
+from app.rbac.roles import EnterpriseRole
 from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_act_docs import AIActDocRepository
@@ -260,9 +263,6 @@ from app.repositories.tenant_ai_governance_setup import TenantAIGovernanceSetupR
 from app.repositories.tenant_api_keys import TenantApiKeyRepository
 from app.repositories.tenant_registry import TenantRegistryRepository
 from app.repositories.violations import ViolationRepository
-from app.rbac.dependencies import require_permission
-from app.rbac.permissions import Permission
-from app.rbac.roles import EnterpriseRole
 from app.security import (
     AuthContext,
     delete_evidence_allowed_for_api_key,
@@ -319,13 +319,6 @@ from app.services.ai_kpi_service import (
 )
 from app.services.ai_system_import import import_ai_systems_from_file
 from app.services.audit_gobd_export import generate_gobd_xml
-from app.services.governance_audit import (
-    actor_id_from_request,
-    client_ip_from_request,
-    correlation_id_from_request,
-    record_governance_audit,
-    user_agent_from_request,
-)
 from app.services.board_kpi_export import board_kpi_export_csv, build_board_kpi_export_envelope
 from app.services.board_kpi_export_jobs import get_kpi_job, register_kpi_export_job
 from app.services.board_report_audit_records import (
@@ -377,6 +370,13 @@ from app.services.evidence_service import (
     upload_evidence as upload_evidence_file,
 )
 from app.services.evidence_storage import get_evidence_storage
+from app.services.governance_audit import (
+    actor_id_from_request,
+    client_ip_from_request,
+    correlation_id_from_request,
+    record_governance_audit,
+    user_agent_from_request,
+)
 from app.services.governance_maturity_board_summary_llm import (
     maybe_build_governance_maturity_board_summary_result,
 )
@@ -4893,6 +4893,7 @@ def export_compliance_calendar_ical(
         media_type="text/calendar",
         headers={"Content-Disposition": "attachment; filename=compliance-calendar.ics"},
     )
+
 
 @app.get("/api/v1/audit-logs", response_model=list[AuditLog])
 def list_audit_logs(

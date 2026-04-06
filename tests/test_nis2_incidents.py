@@ -8,6 +8,7 @@ from app.main import app
 
 client = TestClient(app)
 
+
 def _headers(tenant: str) -> dict[str, str]:
     return {
         "x-api-key": "test-key",
