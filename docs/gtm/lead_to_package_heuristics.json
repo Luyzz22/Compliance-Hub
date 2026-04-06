@@ -1,0 +1,109 @@
+{
+  "meta": {
+    "version": "1",
+    "purpose": "Konzeptionelles Lead-Routing für CRM, Discovery-Calls und Playbooks. Keine automatische Preislogik im Produkt.",
+    "language": "de"
+  },
+  "qualification_questions": [
+    {
+      "id": "isms_iso27001",
+      "question_de": "Betreiben Sie bereits ein ISMS (z. B. ISO 27001) und planen oder führen Sie ein AI-Management-System (ISO 42001) ein?",
+      "follow_up_de": "Wer ist für KI-Risiko und Dokumentation zuständig — CISO, Datenschutz, Fachbereich?"
+    },
+    {
+      "id": "datev_primary",
+      "question_de": "Ist DATEV (oder vergleichbare Kanzlei-Software) das führende System für Mandanten- und Belegprozesse?",
+      "follow_up_de": "Exportieren Sie Compliance-Nachweise heute manuell oder über Schnittstellen?"
+    },
+    {
+      "id": "high_risk_ai",
+      "question_de": "Setzen Sie eigene oder eingekaufte Hochrisiko-KI ein (z. B. Kredit-Scoring, Personalauswahl, biometrische Systeme)?",
+      "follow_up_de": "Werden diese Systeme schon im Inventar geführt und gegen AI Act / interne Policy geprüft?"
+    },
+    {
+      "id": "sap_landscape",
+      "question_de": "Läuft Ihr Kerngeschäft über SAP (S/4HANA, BTP) oder planen Sie Event-getriebene Integrationen?",
+      "follow_up_de": "Gibt es ein zentrales AI- oder Innovation-Office mit ERP-Bezug?"
+    },
+    {
+      "id": "mandanten_count",
+      "question_de": "Wie viele relevante Mandanten bzw. rechtliche Einheiten sollen abgedeckt werden?",
+      "follow_up_de": "Brauchen Sie pro Mandant getrennte Nachweise (Kanzlei) oder ein konzernweites Tenant-Modell?"
+    },
+    {
+      "id": "audit_pressure",
+      "question_de": "Steht eine externe Prüfung, NIS2-Meldepflicht oder Konzern-Audit in den nächsten 12 Monaten an?",
+      "follow_up_de": "Welche Nachweise werden explizit eingefordert?"
+    }
+  ],
+  "routing_heuristics": [
+    {
+      "id": "route_starter_light",
+      "if_signals_de": [
+        "Wenige KI-Anwendungen, noch kein formales Inventar",
+        "Fokus: erst Verständnis und erste AI-Act-Einschätzung",
+        "Kein kurzfristiger Integrationsbedarf SAP/DATEV"
+      ],
+      "suggested_entry_package": "SKU_AI_ACT_STARTER",
+      "tier_hint": "starter",
+      "notes_de": "Demo: sme_demo oder schlanke Umgebung; Upsell-Pfad zu Governance-Pro klar benennen."
+    },
+    {
+      "id": "route_pro_kanzlei",
+      "if_signals_de": [
+        "DATEV oder stark mandantenbezogene Arbeit",
+        "Bedarf an Board-Reports, Dossiers, wiederholbarer Mandanten-Dokumentation"
+      ],
+      "suggested_entry_package": "SKU_GOVERNANCE_PRO",
+      "tier_hint": "pro",
+      "notes_de": "Demo: kanzlei_demo; Argument: Honorar-Pakete und Verfahrensdokumentation."
+    },
+    {
+      "id": "route_pro_industrie",
+      "if_signals_de": [
+        "Mehrere KI-Systeme, NIS2/ISO-42001-Relevanz",
+        "CISO/Leiter Informationssicherheit involviert",
+        "ISMS vorhanden oder geplant"
+      ],
+      "suggested_entry_package": "SKU_GOVERNANCE_PRO",
+      "tier_hint": "pro",
+      "notes_de": "Demo: industrie_mittelstand_demo; Fokus Inventar + GRC + Evidence."
+    },
+    {
+      "id": "route_enterprise_connect",
+      "if_signals_de": [
+        "SAP BTP / S/4 oder DATEV-Exporte als Muss",
+        "KI-Events aus ERP oder verpflichtende Schnittstellen-Roadmap"
+      ],
+      "suggested_entry_package": "SKU_ENTERPRISE_CONNECT",
+      "tier_hint": "enterprise",
+      "notes_de": "Nur zusammen mit Governance-Basis verkaufen; Demo: sap_enterprise_demo. Prüfen, ob Pro bereits live oder parallel beschlossen."
+    }
+  ],
+  "answer_hints_to_packages": [
+    {
+      "question_id": "high_risk_ai",
+      "answer_pattern": "ja_mehrere_kritische",
+      "lean_toward": "SKU_GOVERNANCE_PRO",
+      "rationale_de": "Inventar + GRC + Evidence werden schnell Pflicht; Starter reicht selten."
+    },
+    {
+      "question_id": "datev_primary",
+      "answer_pattern": "ja",
+      "lean_toward": "SKU_GOVERNANCE_PRO",
+      "rationale_de": "Mandanten-Reports und Dossiers sind das natürliche Kernprodukt; Connectors optional als Upsell."
+    },
+    {
+      "question_id": "sap_landscape",
+      "answer_pattern": "ja_event_mesh",
+      "lean_toward": "SKU_ENTERPRISE_CONNECT",
+      "rationale_de": "Enterprise-Tier mit Integrationspaket; Governance-Pro als fachliche Basis."
+    },
+    {
+      "question_id": "isms_iso27001",
+      "answer_pattern": "noch_nicht",
+      "lean_toward": "SKU_AI_ACT_STARTER",
+      "rationale_de": "Einstieg über Readiness und Evidence; spätere Ausweitung auf ISO-42001-Gaps im Pro-Paket."
+    }
+  ]
+}

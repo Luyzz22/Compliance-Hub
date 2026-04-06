@@ -31,6 +31,14 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.advisor.metrics import AdvisorMetricsResponse, aggregate_advisor_metrics
+from app.advisor.preset_models import (
+    AiActRiskPresetInput,
+    Iso42001GapCheckPresetInput,
+    Nis2ObligationsPresetInput,
+    PresetResult,
+)
+from app.advisor.presets import FlowType
 from app.advisor_client_snapshot_models import (
     AdvisorClientGovernanceSnapshotResponse,
     AdvisorGovernanceSnapshotMarkdownResponse,
@@ -44,6 +52,13 @@ from app.ai_act_doc_models import (
     AIActDocSectionKey,
     AIActDocUpsertRequest,
 )
+from app.ai_act_evidence_models import (
+    AdvisorAgentEvidenceStoredEvent,
+    RagEvidenceStatsResponse,
+    RagEvidenceStoredEvent,
+    RagRetrieveRequest,
+    RagRetrieveResponse,
+)
 from app.ai_compliance_board_report_models import (
     AdvisorBoardReportsPortfolioResponse,
     AiComplianceBoardReportCreateBody,
@@ -56,8 +71,6 @@ from app.ai_compliance_board_report_models import (
 )
 from app.ai_governance_action_models import (
     AIGovernanceActionCreate,
-    AIGovernanceActionDraftRequest,
-    AIGovernanceActionDraftResponse,
     AIGovernanceActionRead,
     AIGovernanceActionUpdate,
     GovernanceActionStatus,
@@ -163,7 +176,6 @@ from app.evidence.queries import (
     list_ai_events_for_export,
 )
 from app.evidence_models import EvidenceFile, EvidenceFileListResponse
-from app.explain_models import ExplainRequest, ExplainResponse
 from app.feature_flags import (
     FeatureFlag,
     create_feature_guard,
@@ -219,6 +231,7 @@ from app.policy.role_resolution import (
 from app.policy.user_context import UserPolicyContext
 from app.policy_models import Violation
 from app.policy_service import evaluate_policies_for_ai_system
+from app.product.models import Capability
 from app.provisioning_models import (
     ProvisionTenantRequest,
     ProvisionTenantResponse,
@@ -282,16 +295,13 @@ from app.services.advisor_report_llm_enrichment import (
 from app.services.advisor_tenant_report import build_advisor_tenant_report
 from app.services.advisor_tenant_report_markdown import render_tenant_report_markdown
 from app.services.ai_act_docs import build_ai_act_doc_list_response, upsert_ai_act_doc
-from app.services.ai_act_docs_ai_assist import generate_ai_act_doc_draft
 from app.services.ai_act_docs_export import render_ai_act_documentation_markdown
-from app.services.ai_action_drafts import generate_action_drafts
 from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_compliance_board_report import (
     create_ai_compliance_board_report,
     get_ai_compliance_board_report_detail,
     list_ai_compliance_board_reports,
 )
-from app.services.ai_explain import explain_kpi_or_alert
 from app.services.ai_governance_incidents import (
     compute_ai_incident_overview,
     compute_ai_incidents_by_system,
@@ -385,9 +395,21 @@ from app.services.operational_monitoring_index import (
     compute_system_monitoring_index,
     compute_tenant_operational_monitoring_index,
 )
+from app.services.rag.confidence import should_decline_answer
+from app.services.rag.config import RAGConfig
+from app.services.rag.corpus_loader import load_advisor_corpus
+from app.services.rag.evidence_store import (
+    aggregate_rag_hybrid_stats,
+    list_advisor_agent_events,
+    list_rag_events,
+)
+from app.services.rag.hybrid_retriever import HybridRetriever
+from app.services.rag.logging import log_rag_query_event
 from app.services.readiness_score_explain import explain_readiness_score
 from app.services.readiness_score_service import compute_readiness_score
-from app.services.runtime_events_demo_guard import ensure_runtime_events_api_ingest_allowed
+from app.services.runtime_events_demo_guard import (
+    ensure_runtime_events_api_ingest_allowed,
+)
 from app.services.runtime_events_ingest import ingest_runtime_events
 from app.services.setup_status import compute_tenant_setup_status
 from app.services.tenant_ai_governance_setup import (
@@ -1204,361 +1226,111 @@ def post_nis2_kritis_kpi_suggestions(
 
 
 @app.get(
-    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs",
-    response_model=AIActDocListResponse,
-    tags=["ai-act-docs"],
+    "/api/v1/ai-act-evidence/rag-events",
+    response_model=list[RagEvidenceStoredEvent],
+    tags=["ai-act-evidence"],
 )
-def list_ai_act_docs_for_system(
-    ai_system_id: str,
+def list_ai_act_rag_evidence(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
-) -> AIActDocListResponse:
-    tenant_id = auth_context.tenant_id
-    _ensure_feature_ai_act_docs(tenant_id, session)
-    _require_high_risk_system(tenant_id, ai_repo, ai_system_id)
-    return build_ai_act_doc_list_response(ai_system_id, doc_repo, tenant_id)
-
-
-@app.post(
-    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/{section_key}/draft",
-    response_model=AIActDoc,
-    tags=["ai-act-docs"],
-)
-def post_ai_act_doc_draft(
-    ai_system_id: str,
-    section_key: AIActDocSectionKey,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
-    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
-    action_repo: Annotated[
-        AIGovernanceActionRepository,
-        Depends(get_ai_governance_action_repository),
-    ],
-    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
-) -> AIActDoc:
-    tenant_id = auth_context.tenant_id
-    _ensure_feature_ai_act_docs(tenant_id, session)
-    require_tenant_llm_features(
-        tenant_id,
-        session,
-        FeatureFlag.llm_legal_reasoning,
-        FeatureFlag.llm_report_assistant,
-    )
-    system = _require_high_risk_system(tenant_id, ai_repo, ai_system_id)
-    classification = cls_repo.get_for_system(tenant_id, ai_system_id)
-    kpis = nis2_repo.list_for_ai_system(tenant_id, ai_system_id)
-    actions = [
-        {"title": a.title, "status": a.status.value, "related_requirement": a.related_requirement}
-        for a in action_repo.list_for_tenant(tenant_id, limit=200)
-        if a.related_ai_system_id == ai_system_id
-    ]
-    ev = evidence_repo.list_for_tenant(tenant_id, ai_system_id=ai_system_id)
-    try:
-        draft = generate_ai_act_doc_draft(
-            system,
-            section_key,
-            tenant_id,
-            session=session,
-            classification=classification,
-            nis2_kpis=kpis,
-            actions_brief=actions,
-            evidence_file_count=len(ev),
-        )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
-    except llm_client_mod.LLMConfigurationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-    except llm_client_mod.LLMProviderHTTPError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
-        ) from exc
-    usage_event_logger.log_usage_event(
-        session,
-        tenant_id,
-        usage_event_logger.LLM_AI_ACT_DOC_DRAFT_REQUESTED,
-        {"ai_system_id": ai_system_id, "section": section_key.value},
-    )
-    return draft
-
-
-@app.post(
-    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/{section_key}",
-    response_model=AIActDoc,
-    tags=["ai-act-docs"],
-)
-def persist_ai_act_doc_section(
-    ai_system_id: str,
-    section_key: AIActDocSectionKey,
-    body: AIActDocUpsertRequest,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
-) -> AIActDoc:
-    tenant_id = auth_context.tenant_id
-    _ensure_feature_ai_act_docs(tenant_id, session)
-    _require_high_risk_system(tenant_id, ai_repo, ai_system_id)
-    actor = "api_client"
-    return upsert_ai_act_doc(doc_repo, tenant_id, ai_system_id, section_key, body, actor)
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[RagEvidenceStoredEvent]:
+    raw = list_rag_events(auth_context.tenant_id, limit=limit)
+    return [RagEvidenceStoredEvent.model_validate(row) for row in raw]
 
 
 @app.get(
-    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/export",
-    tags=["ai-act-docs"],
+    "/api/v1/ai-act-evidence/advisor-agent-events",
+    response_model=list[AdvisorAgentEvidenceStoredEvent],
+    tags=["ai-act-evidence"],
 )
-def export_ai_act_docs_markdown(
-    ai_system_id: str,
+def list_ai_act_advisor_agent_evidence(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
-    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
-    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
-    action_repo: Annotated[
-        AIGovernanceActionRepository,
-        Depends(get_ai_governance_action_repository),
-    ],
-    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
-    format: Annotated[
-        Literal["markdown"],
-        Query(description="Nur markdown unterstützt; PDF später extern."),
-    ] = "markdown",
-) -> Response:
-    tenant_id = auth_context.tenant_id
-    _ensure_feature_ai_act_docs(tenant_id, session)
-    system = _require_high_risk_system(tenant_id, ai_repo, ai_system_id)
-    if format != "markdown":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only format=markdown is supported.",
-        )
-    classification = cls_repo.get_for_system(tenant_id, ai_system_id)
-    kpis = nis2_repo.list_for_ai_system(tenant_id, ai_system_id)
-    actions = action_repo.list_for_tenant(tenant_id, limit=500)
-    ev = evidence_repo.list_for_tenant(tenant_id, ai_system_id=ai_system_id)
-    md = render_ai_act_documentation_markdown(
-        system=system,
-        classification=classification,
-        nis2_kpis=kpis,
-        actions=actions,
-        evidence_count=len(ev),
-        docs_repo=doc_repo,
-        tenant_id=tenant_id,
-    )
-    return Response(
-        content=md,
-        media_type="text/markdown; charset=utf-8",
-        headers={
-            "Content-Disposition": f'attachment; filename="ai-act-documentation-{ai_system_id}.md"',
-        },
-    )
-
-
-@app.post(
-    "/api/v1/ai-governance/what-if/board-impact",
-    response_model=WhatIfScenarioResult,
-    tags=["ai-governance"],
-)
-def post_what_if_board_impact(
-    body: WhatIfScenarioInput,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
-    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
-    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
-    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
-) -> WhatIfScenarioResult:
-    tenant_id = auth_context.tenant_id
-    _ensure_feature_what_if_simulator(tenant_id, session)
-    return simulate_board_impact(
-        body,
-        tenant_id,
-        session=session,
-        ai_repo=ai_repo,
-        cls_repo=cls_repo,
-        gap_repo=gap_repo,
-        violation_repo=violation_repo,
-        nis2_repo=nis2_repo,
-    )
-
-
-@app.post(
-    "/api/v1/ai-governance/explain",
-    response_model=ExplainResponse,
-    tags=["ai-governance"],
-)
-def post_ai_governance_explain(
-    body: ExplainRequest,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-) -> ExplainResponse:
-    """Kurzerklärung zu Board-KPI oder Alert (LLM, nicht persistiert)."""
-    tenant_id = auth_context.tenant_id
-    require_tenant_llm_features(tenant_id, session, FeatureFlag.llm_explain)
-    try:
-        result = explain_kpi_or_alert(body, tenant_id, session=session)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
-    except llm_client_mod.LLMConfigurationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-    except llm_client_mod.LLMProviderHTTPError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
-        ) from exc
-    usage_event_logger.log_usage_event(
-        session,
-        tenant_id,
-        usage_event_logger.LLM_EXPLAIN_REQUESTED,
-        {"kpi_key": body.kpi_key},
-    )
-    return result
-
-
-@app.post(
-    "/api/v1/ai-governance/action-drafts",
-    response_model=AIGovernanceActionDraftResponse,
-    tags=["ai-governance"],
-)
-def post_ai_governance_action_drafts(
-    body: AIGovernanceActionDraftRequest,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-) -> AIGovernanceActionDraftResponse:
-    """Governance-Action-Entwürfe aus Lücken (LLM, ohne Persistenz)."""
-    tenant_id = auth_context.tenant_id
-    require_tenant_llm_features(tenant_id, session, FeatureFlag.llm_action_drafts)
-    try:
-        out = generate_action_drafts(body, tenant_id, session=session)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
-    except llm_client_mod.LLMConfigurationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-    except llm_client_mod.LLMProviderHTTPError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
-        ) from exc
-    usage_event_logger.log_usage_event(
-        session,
-        tenant_id,
-        usage_event_logger.LLM_ACTION_DRAFT_REQUESTED,
-        {"requirement_count": len(body.requirements)},
-    )
-    return out
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[AdvisorAgentEvidenceStoredEvent]:
+    raw = list_advisor_agent_events(auth_context.tenant_id, limit=limit)
+    return [AdvisorAgentEvidenceStoredEvent.model_validate(row) for row in raw]
 
 
 @app.get(
-    "/api/v1/nis2-kritis/kpi-drilldown",
-    response_model=Nis2KritisKpiDrilldown,
-    tags=["nis2-kritis"],
+    "/api/v1/ai-act-evidence/rag-stats",
+    response_model=RagEvidenceStatsResponse,
+    tags=["ai-act-evidence"],
 )
-def get_nis2_kritis_kpi_drilldown(
+def get_ai_act_rag_evidence_stats(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
-    top_n: Annotated[
-        int,
-        Query(ge=1, le=50, description="Top-N schwächste Systeme je KPI-Typ"),
-    ] = 5,
-) -> Nis2KritisKpiDrilldown:
-    """Histogramm + Worst-Offenders je NIS2-/KRITIS-KPI-Typ (mandantenisoliert)."""
-    return build_nis2_kritis_kpi_drilldown(
-        auth_context.tenant_id,
-        nis2_repo,
-        top_n=top_n,
-    )
+    limit: int = Query(default=500, ge=1, le=2000),
+) -> RagEvidenceStatsResponse:
+    agg = aggregate_rag_hybrid_stats(auth_context.tenant_id, limit=limit)
+    return RagEvidenceStatsResponse.model_validate(agg)
 
 
-@app.get("/api/v1/audit-logs", response_model=list[AuditLog])
-def list_audit_logs(
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_AUDIT_LOG))],
-    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-) -> list[AuditLog]:
-    return audit_repo.list_for_tenant(tenant_id=tenant_id)
-
-
-@app.get("/api/v1/audit-logs/export/gobd-xml")
-def export_audit_logs_gobd_xml(
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
-    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-) -> Response:
-    """GoBD §14 compliant XML export of the audit trail."""
-    entries = audit_repo.list_for_tenant(tenant_id=tenant_id, limit=10_000)
-    xml = generate_gobd_xml(entries)
-    return Response(
-        content=xml,
-        media_type="application/xml; charset=utf-8",
-        headers={
-            "Content-Disposition": (f'attachment; filename="audit-trail-{tenant_id}.xml"'),
-        },
-    )
-
-
-@app.get("/api/v1/audit-events", response_model=list[AuditEvent])
-def list_audit_events(
+@app.post(
+    "/api/v1/advisor/rag-retrieve",
+    response_model=RagRetrieveResponse,
+    tags=["advisor"],
+)
+def advisor_rag_retrieve(
+    body: RagRetrieveRequest,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
-    entity_type: str | None = None,
-    entity_id: str | None = None,
-    limit: int = Query(default=100, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
-) -> list[AuditEvent]:
-    tenant_id = auth_context.tenant_id
-    if entity_type is not None and entity_id is not None:
-        return audit_repo.list_events_for_entity(
-            tenant_id=tenant_id,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            limit=limit,
-            offset=offset,
-        )
-    return audit_repo.list_events_for_tenant(
-        tenant_id=tenant_id,
-        limit=limit,
-        offset=offset,
+) -> RagRetrieveResponse:
+    """Retrieval-only advisor call (no LLM).
+
+    Records metadata-only RAG evidence (SHA-256 of query).
+    """
+    corpus = load_advisor_corpus()
+    cfg = RAGConfig(retrieval_mode=body.retrieval_mode)
+    response = HybridRetriever(corpus, cfg).retrieve(body.query.strip(), k=body.k)
+    top_bm25 = response.results[0].bm25_score if response.results else None
+    top_dense = response.results[0].dense_score if response.results else None
+    decline, decline_reason = should_decline_answer(
+        response.confidence_level,
+        tenant_expects_guidance=body.tenant_expects_guidance,
+        has_tenant_guidance=response.has_tenant_guidance,
+        has_results=bool(response.results),
+        top_bm25=top_bm25,
+        top_dense=top_dense,
+        bm25_floor=cfg.bm25_floor,
+        dense_threshold=cfg.dense_score_threshold,
     )
-
-
-@app.get("/api/v1/audit-events/ai-systems/{ai_system_id}", response_model=list[AuditEvent])
-def list_ai_system_audit_events(
-    ai_system_id: str,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
-    limit: int = Query(default=100, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
-) -> list[AuditEvent]:
-    return audit_repo.list_events_for_entity(
+    top_ids = [hit.doc.doc_id for hit in response.results[:10]]
+    hybrid_differs = False
+    if response.results:
+        bm25_top_id = max(response.results, key=lambda h: h.bm25_score).doc.doc_id
+        hybrid_differs = response.results[0].doc.doc_id != bm25_top_id
+    scores_summary: dict[str, float] = {}
+    if response.results:
+        top = response.results[0]
+        scores_summary = {
+            "top_combined": round(top.score, 4),
+            "top_bm25": round(top.bm25_score, 4),
+            "top_dense": round(top.dense_score, 4),
+        }
+    log_rag_query_event(
+        response,
         tenant_id=auth_context.tenant_id,
-        entity_type="ai_system",
-        entity_id=ai_system_id,
-        limit=limit,
-        offset=offset,
+        query_text=body.query,
+        decline_reason=decline_reason if decline else None,
+        trace_id=body.trace_id,
+        persist_evidence=True,
+    )
+    top_primary = "bm25"
+    if response.retrieval_mode == "hybrid" and hybrid_differs:
+        top_primary = "dense_rescue"
+    qsha = hashlib.sha256(body.query.encode()).hexdigest()
+    return RagRetrieveResponse(
+        query_sha256=qsha,
+        retrieval_mode=response.retrieval_mode,
+        top_doc_ids=top_ids,
+        top_doc_primary_source=top_primary,
+        hybrid_alpha=response.alpha_used if response.retrieval_mode == "hybrid" else None,
+        hybrid_differs_from_bm25_top=hybrid_differs,
+        confidence_level=response.confidence_level,
+        confidence_score=response.confidence_score,
+        decline_answer=decline,
+        decline_reason=decline_reason if decline else None,
+        tenant_guidance_matched=response.has_tenant_guidance,
+        scores_summary=scores_summary,
+        citations=[{"doc_id": hit.doc.doc_id} for hit in response.results[:5]],
     )
 
 
@@ -1573,6 +1345,8 @@ def _enterprise_status_payload() -> dict[str, object]:
             "document_intake",
             "ai_system_registry",
             "audit_logging",
+            "ai_act_evidence",
+            "advisor_rag_retrieve",
         ],
         "compliance_profiles": [
             "EU_AI_ACT_FOUNDATION",
@@ -3686,6 +3460,11 @@ def get_workspace_tenant_meta(
             "risk_score": 0.4,
         },
     )
+    from app.product.offerings import sku_for_tier
+    from app.product.plan_store import get_tenant_plan
+
+    plan = get_tenant_plan(tid)
+    sku = sku_for_tier(plan.tier)
     return TenantWorkspaceMetaResponse(
         tenant_id=row.id,
         display_name=row.display_name,
@@ -3698,6 +3477,11 @@ def get_workspace_tenant_meta(
         demo_mode_feature_enabled=is_feature_enabled(FeatureFlag.demo_mode),
         feature_ai_act_evidence_views=ai_evidence_ff,
         can_view_ai_evidence=bool(evidence_decision.allowed),
+        plan_tier=plan.tier.value,
+        plan_display=plan.plan_display(),
+        plan_capabilities=sorted(c.value for c in plan.capabilities()),
+        sku_name_de=sku.name_de if sku else "",
+        sku_tagline_de=sku.tagline_de if sku else "",
     )
 
 
@@ -5109,3 +4893,1098 @@ def export_compliance_calendar_ical(
         media_type="text/calendar",
         headers={"Content-Disposition": "attachment; filename=compliance-calendar.ics"},
     )
+
+@app.get("/api/v1/audit-logs", response_model=list[AuditLog])
+def list_audit_logs(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_AUDIT_LOG))],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> list[AuditLog]:
+    return audit_repo.list_for_tenant(tenant_id=tenant_id)
+
+
+@app.get("/api/v1/audit-logs/export/gobd-xml")
+def export_audit_logs_gobd_xml(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> Response:
+    """GoBD §14 compliant XML export of the audit trail."""
+    entries = audit_repo.list_for_tenant(tenant_id=tenant_id, limit=10_000)
+    xml = generate_gobd_xml(entries)
+    return Response(
+        content=xml,
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "Content-Disposition": (f'attachment; filename="audit-trail-{tenant_id}.xml"'),
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Audit Events
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/v1/audit-events", response_model=list[AuditEvent], tags=["audit"])
+def list_audit_events(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> list[AuditEvent]:
+    return audit_repo.list_events_for_tenant(auth.tenant_id)
+
+
+@app.get(
+    "/api/v1/audit-events/ai-systems/{ai_system_id}",
+    response_model=list[AuditEvent],
+    tags=["audit"],
+)
+def list_audit_events_for_ai_system(
+    ai_system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
+) -> list[AuditEvent]:
+    return audit_repo.list_events_for_entity(
+        auth.tenant_id,
+        entity_type="ai_system",
+        entity_id=ai_system_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+
+
+# AI Act Documentation
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs",
+    response_model=AIActDocListResponse,
+    tags=["ai-act-docs"],
+)
+def get_ai_act_docs(
+    ai_system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
+) -> AIActDocListResponse:
+    _ensure_feature_ai_act_docs(auth.tenant_id, session)
+    _require_high_risk_system(auth.tenant_id, ai_repo, ai_system_id)
+    return build_ai_act_doc_list_response(ai_system_id, doc_repo, auth.tenant_id)
+
+
+@app.get(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/export",
+    tags=["ai-act-docs"],
+)
+def export_ai_act_docs(
+    ai_system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+) -> Response:
+    _ensure_feature_ai_act_docs(auth.tenant_id, session)
+    system = _require_high_risk_system(auth.tenant_id, ai_repo, ai_system_id)
+    classification = cls_repo.get_for_system(auth.tenant_id, ai_system_id)
+    nis2_kpis = nis2_repo.list_for_ai_system(auth.tenant_id, ai_system_id)
+    actions = action_repo.list_for_tenant(auth.tenant_id)
+    evidence_count = len(evidence_repo.list_for_tenant(auth.tenant_id))
+    md = render_ai_act_documentation_markdown(
+        system=system,
+        classification=classification,
+        nis2_kpis=nis2_kpis,
+        actions=actions,
+        evidence_count=evidence_count,
+        docs_repo=doc_repo,
+        tenant_id=auth.tenant_id,
+    )
+    return Response(content=md, media_type="text/markdown")
+
+
+@app.post(
+    "/api/v1/ai-systems/{ai_system_id}/ai-act-docs/{section_key}",
+    response_model=AIActDoc,
+    tags=["ai-act-docs"],
+)
+def upsert_ai_act_doc_section(
+    ai_system_id: str,
+    section_key: AIActDocSectionKey,
+    body: AIActDocUpsertRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    doc_repo: Annotated[AIActDocRepository, Depends(get_ai_act_doc_repository)],
+) -> AIActDoc:
+    _ensure_feature_ai_act_docs(auth.tenant_id, session)
+    _require_high_risk_system(auth.tenant_id, ai_repo, ai_system_id)
+    return upsert_ai_act_doc(
+        doc_repo,
+        auth.tenant_id,
+        ai_system_id,
+        section_key,
+        body,
+        actor="api",
+    )
+
+
+# ---------------------------------------------------------------------------
+# NIS2 KRITIS KPI Drilldown
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/nis2-kritis/kpi-drilldown",
+    response_model=Nis2KritisKpiDrilldown,
+    tags=["nis2-kritis"],
+)
+def get_nis2_kritis_kpi_drilldown(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+    top_n: int = 5,
+) -> Nis2KritisKpiDrilldown:
+    return build_nis2_kritis_kpi_drilldown(
+        auth.tenant_id,
+        nis2_repo,
+        top_n=top_n,
+    )
+
+
+# ---------------------------------------------------------------------------
+# What-If Board Impact Simulator
+# ---------------------------------------------------------------------------
+
+
+@app.post(
+    "/api/v1/ai-governance/what-if/board-impact",
+    response_model=WhatIfScenarioResult,
+    tags=["ai-governance"],
+)
+def post_what_if_board_impact(
+    body: WhatIfScenarioInput,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
+    violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
+    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
+) -> WhatIfScenarioResult:
+    _ensure_feature_what_if_simulator(auth.tenant_id, session)
+    return simulate_board_impact(
+        body,
+        auth.tenant_id,
+        session=session,
+        ai_repo=ai_repo,
+        cls_repo=cls_repo,
+        gap_repo=gap_repo,
+        violation_repo=violation_repo,
+        nis2_repo=nis2_repo,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Internal: Advisor Metrics (feature-flagged + OPA-guarded)
+# ---------------------------------------------------------------------------
+
+_advisor_metrics_guard = create_feature_guard(FeatureFlag.advisor_metrics_internal)
+
+
+@app.get(
+    "/api/internal/advisor/metrics",
+    response_model=AdvisorMetricsResponse,
+    tags=["internal"],
+    dependencies=[Depends(_advisor_metrics_guard)],
+)
+def get_advisor_metrics(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    from_date: str | None = Query(None, alias="from"),
+    to_date: str | None = Query(None, alias="to"),
+) -> AdvisorMetricsResponse:
+    role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name="COMPLIANCEHUB_OPA_ROLE_ADVISOR_METRICS",
+        default="platform_admin",
+    )
+    enforce_action_policy(
+        "view_advisor_metrics",
+        UserPolicyContext(tenant_id=auth.tenant_id, user_role=role),
+        risk_score=0.2,
+    )
+    return aggregate_advisor_metrics(
+        tenant_id=tenant_id,
+        from_date=from_date,
+        to_date=to_date,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Advisor Preset Micro-Flows (Wave 9 / 9.1 enterprise)
+# ---------------------------------------------------------------------------
+
+
+def _enforce_preset_opa(
+    flow_type: FlowType,
+    tenant_id: str,
+    auth: AuthContext,
+    opa_role_header: str | None,
+) -> None:
+    opa_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name="COMPLIANCEHUB_OPA_ROLE_ADVISOR_PRESET",
+        default="advisor_user",
+    )
+    enforce_action_policy(
+        f"advisor_preset_{flow_type.value}",
+        UserPolicyContext(
+            tenant_id=tenant_id or auth.tenant_id,
+            user_role=opa_role,
+        ),
+        risk_score=0.6,
+    )
+
+
+@app.post(
+    "/api/v1/advisor/presets/eu-ai-act-risk-assessment",
+    response_model=PresetResult,
+    tags=["advisor", "presets"],
+)
+def preset_eu_ai_act_risk_assessment(
+    body: AiActRiskPresetInput,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> PresetResult:
+    """Preset: EU AI Act high-risk classification assessment."""
+    from app.advisor.preset_service import run_eu_ai_act_risk_preset
+
+    _enforce_preset_opa(
+        FlowType.eu_ai_act_risk_assessment,
+        body.effective_tenant_id(),
+        auth,
+        opa_role_header,
+    )
+    if not body.context.tenant_id and not body.tenant_id:
+        body.context.tenant_id = auth.tenant_id
+    return run_eu_ai_act_risk_preset(body)
+
+
+@app.post(
+    "/api/v1/advisor/presets/nis2-obligations",
+    response_model=PresetResult,
+    tags=["advisor", "presets"],
+)
+def preset_nis2_obligations(
+    body: Nis2ObligationsPresetInput,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> PresetResult:
+    """Preset: NIS2 obligation mapping for a given entity role."""
+    from app.advisor.preset_service import run_nis2_obligations_preset
+
+    _enforce_preset_opa(
+        FlowType.nis2_obligations,
+        body.effective_tenant_id(),
+        auth,
+        opa_role_header,
+    )
+    if not body.context.tenant_id and not body.tenant_id:
+        body.context.tenant_id = auth.tenant_id
+    return run_nis2_obligations_preset(body)
+
+
+@app.post(
+    "/api/v1/advisor/presets/iso42001-gap-check",
+    response_model=PresetResult,
+    tags=["advisor", "presets"],
+)
+def preset_iso42001_gap_check(
+    body: Iso42001GapCheckPresetInput,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> PresetResult:
+    """Preset: ISO 42001 gap analysis for current governance measures."""
+    from app.advisor.preset_service import run_iso42001_gap_preset
+
+    _enforce_preset_opa(
+        FlowType.iso42001_gap_check,
+        body.effective_tenant_id(),
+        auth,
+        opa_role_header,
+    )
+    if not body.context.tenant_id and not body.tenant_id:
+        body.context.tenant_id = auth.tenant_id
+    return run_iso42001_gap_preset(body)
+
+
+# ---------------------------------------------------------------------------
+# GRC Read-Only APIs (Wave 10)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/grc/ai-risks",
+    tags=["grc"],
+)
+def list_grc_ai_risks(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    system_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """List AI risk assessment records (read-only)."""
+    from app.grc.store import list_risks
+    from app.product.plan_store import require_capability
+
+    _enforce_grc_opa("view_grc_records", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.grc_records)
+    tid = tenant_id or auth.tenant_id
+    records = list_risks(tenant_id=tid, client_id=client_id, system_id=system_id)
+    return [r.model_dump() for r in records]
+
+
+@app.get(
+    "/api/v1/grc/nis2-obligations",
+    tags=["grc"],
+)
+def list_grc_nis2_obligations(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    entity_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """List NIS2 obligation records (read-only)."""
+    from app.grc.store import list_nis2_obligations
+    from app.product.plan_store import require_capability
+
+    _enforce_grc_opa("view_grc_records", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.grc_records)
+    tid = tenant_id or auth.tenant_id
+    records = list_nis2_obligations(
+        tenant_id=tid,
+        client_id=client_id,
+        entity_type=entity_type,
+    )
+    return [r.model_dump() for r in records]
+
+
+@app.get(
+    "/api/v1/grc/iso42001-gaps",
+    tags=["grc"],
+)
+def list_grc_iso42001_gaps(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    control_family: str | None = None,
+) -> list[dict[str, Any]]:
+    """List ISO 42001 gap records (read-only)."""
+    from app.grc.store import list_iso42001_gaps
+    from app.product.plan_store import require_capability
+
+    _enforce_grc_opa("view_grc_records", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.grc_records)
+    tid = tenant_id or auth.tenant_id
+    records = list_iso42001_gaps(
+        tenant_id=tid,
+        client_id=client_id,
+        control_family=control_family,
+    )
+    return [r.model_dump() for r in records]
+
+
+def _enforce_grc_opa(
+    action: str,
+    auth: AuthContext,
+    opa_role_header: str | None,
+) -> None:
+    opa_role = resolve_opa_role_for_policy(
+        header_value=opa_role_header,
+        env_var_name="COMPLIANCEHUB_OPA_ROLE_GRC",
+        default="platform_admin",
+    )
+    enforce_action_policy(
+        action,
+        UserPolicyContext(tenant_id=auth.tenant_id, user_role=opa_role),
+        risk_score=0.3,
+    )
+
+
+# ---------------------------------------------------------------------------
+# AI System Inventory APIs (Wave 11)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/ai-systems",
+    tags=["ai-systems"],
+)
+def list_ai_systems_endpoint(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    classification: str | None = None,
+    nis2_relevant: bool | None = None,
+) -> list[dict[str, Any]]:
+    """List AI systems registered for a tenant."""
+    from app.grc.store import list_ai_systems
+    from app.product.plan_store import require_capability
+
+    _enforce_grc_opa("view_ai_systems", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.ai_system_inventory)
+    tid = tenant_id or auth.tenant_id
+    systems = list_ai_systems(
+        tenant_id=tid,
+        client_id=client_id,
+        classification=classification,
+        nis2_relevant=nis2_relevant,
+    )
+    return [s.model_dump() for s in systems]
+
+
+@app.get(
+    "/api/v1/ai-systems/{system_id}/overview",
+    tags=["ai-systems"],
+)
+def get_ai_system_overview(
+    system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+) -> dict[str, Any]:
+    """AI-system-centric overview: metadata, GRC records, framework hints."""
+    from app.grc.framework_mapping import build_system_overview_hints
+    from app.grc.store import (
+        get_ai_system,
+        list_iso42001_gaps,
+        list_nis2_obligations,
+        list_risks,
+    )
+
+    _enforce_grc_opa("view_ai_systems", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+
+    ai_sys = get_ai_system(tenant_id=tid, system_id=system_id)
+    if ai_sys is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"AI system '{system_id}' not found for tenant.",
+        )
+
+    risks = list_risks(tenant_id=tid, system_id=system_id)
+    nis2 = list_nis2_obligations(tenant_id=tid, client_id=None)
+    nis2_for_sys = [r for r in nis2 if r.system_id == system_id]
+    gaps = list_iso42001_gaps(tenant_id=tid, client_id=None)
+    gaps_for_sys = [g for g in gaps if g.system_id == system_id]
+
+    framework_hints = build_system_overview_hints(
+        risks=risks,
+        nis2_records=nis2_for_sys,
+        gap_records=gaps_for_sys,
+    )
+
+    return {
+        "system": ai_sys.model_dump(),
+        "risk_assessments": [r.model_dump() for r in risks],
+        "nis2_obligations": [r.model_dump() for r in nis2_for_sys],
+        "iso42001_gaps": [g.model_dump() for g in gaps_for_sys],
+        "framework_coverage": framework_hints,
+    }
+
+
+@app.get(
+    "/api/v1/ai-systems/{system_id}/readiness",
+    tags=["ai-systems"],
+)
+def get_ai_system_readiness(
+    system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    trace_id: str | None = None,
+) -> dict[str, Any]:
+    """Release-gate readiness check for an AI system (advisory only)."""
+    from app.grc.ai_system_readiness import evaluate_and_update
+
+    _enforce_grc_opa("view_ai_systems", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+    result = evaluate_and_update(
+        tenant_id=tid,
+        system_id=system_id,
+        trace_id=trace_id or "",
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Deployment Check API (Wave 14)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/ai-systems/{system_id}/deployment-check",
+    tags=["ai-systems"],
+)
+def get_deployment_check(
+    system_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    caller_type: str | None = None,
+    trace_id: str | None = None,
+) -> dict[str, Any]:
+    """Deployment readiness check for CI/Temporal (advisory only)."""
+    from app.grc.ai_system_readiness import deployment_check
+
+    _enforce_grc_opa("view_ai_systems", auth, opa_role_header)
+    tid = tenant_id or auth.tenant_id
+    result = deployment_check(
+        tenant_id=tid,
+        system_id=system_id,
+        caller_type=caller_type or "manual",
+        trace_id=trace_id or "",
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Client/Mandant Board Report APIs (Wave 13)
+# ---------------------------------------------------------------------------
+
+
+@app.post(
+    "/api/v1/clients/{client_id}/ai-board-report/workflows/start",
+    tags=["client-board-reports"],
+    status_code=202,
+)
+def start_client_board_report(
+    client_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    reporting_period: str | None = None,
+    system_filter: str | None = None,
+) -> dict[str, Any]:
+    """Start a Mandant-level AI compliance board report workflow."""
+    from app.grc.client_board_report_service import run_client_board_report
+    from app.product.plan_store import require_capability
+
+    _enforce_grc_opa("start_client_board_report", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.kanzlei_reports)
+    tid = auth.tenant_id
+
+    sf = [s.strip() for s in system_filter.split(",") if s.strip()] if system_filter else None
+
+    result = run_client_board_report(
+        tenant_id=tid,
+        client_id=client_id,
+        reporting_period=reporting_period or "",
+        system_filter=sf,
+    )
+    return result
+
+
+@app.get(
+    "/api/v1/clients/{client_id}/ai-board-report/workflows/{workflow_id}",
+    tags=["client-board-reports"],
+)
+def get_client_board_report_workflow(
+    client_id: str,
+    workflow_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Get status/result of a client board report workflow."""
+    from app.grc.client_board_report_service import (
+        get_report,
+        get_workflow_status,
+    )
+
+    _enforce_grc_opa("view_client_board_report", auth, opa_role_header)
+
+    wf = get_workflow_status(workflow_id)
+    if wf is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    if wf.get("client_id") != client_id:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    report_data: dict[str, Any] | None = None
+    if wf.get("report_id"):
+        rpt = get_report(wf["report_id"])
+        if rpt:
+            report_data = {
+                "report_id": rpt.id,
+                "report_markdown": rpt.report_markdown,
+                "highlights": rpt.highlights,
+                "systems_included": rpt.systems_included,
+                "system_ids": rpt.system_ids,
+                "created_at": rpt.created_at,
+            }
+
+    return {
+        "workflow_id": workflow_id,
+        "status": wf.get("status", "UNKNOWN"),
+        "tenant_id": wf.get("tenant_id"),
+        "client_id": client_id,
+        "reporting_period": wf.get("reporting_period"),
+        "report": report_data,
+    }
+
+
+@app.get(
+    "/api/v1/clients/{client_id}/ai-board-reports",
+    tags=["client-board-reports"],
+)
+def list_client_board_reports(
+    client_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> list[dict[str, Any]]:
+    """List past AI board reports for a Mandant."""
+    from app.grc.client_board_report_service import list_reports
+
+    _enforce_grc_opa("view_client_board_report", auth, opa_role_header)
+    reports = list_reports(tenant_id=auth.tenant_id, client_id=client_id)
+    return [
+        {
+            "report_id": r.id,
+            "reporting_period": r.reporting_period,
+            "systems_included": r.systems_included,
+            "highlights": r.highlights,
+            "created_at": r.created_at,
+        }
+        for r in reports
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Integration Jobs — Internal APIs (Wave 15 / 15.1)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/internal/integrations/jobs",
+    tags=["integrations"],
+)
+def list_integration_jobs(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    status_filter: str | None = Query(None, alias="status"),
+    target: str | None = None,
+    payload_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """List outbox integration jobs (internal/admin)."""
+    from app.integrations.store import list_jobs
+    from app.product.plan_store import require_capability
+
+    _enforce_grc_opa("view_integration_jobs", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.enterprise_integrations)
+    tid = tenant_id or auth.tenant_id
+    jobs = list_jobs(
+        tenant_id=tid,
+        client_id=client_id,
+        status=status_filter,
+        target=target,
+        payload_type=payload_type,
+    )
+    return [j.model_dump() for j in jobs]
+
+
+class CreateIntegrationJobRequest(BaseModel):
+    source_entity_type: str
+    source_entity_id: str
+    target: str = "generic_partner_api"
+    client_id: str = ""
+    system_id: str = ""
+    trace_id: str = ""
+    priority: int = 0
+
+
+@app.post(
+    "/api/internal/integrations/jobs",
+    tags=["integrations"],
+    status_code=201,
+)
+def create_integration_job(
+    body: CreateIntegrationJobRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Manually enqueue an integration job for a source entity."""
+    from app.integrations.models import IntegrationTarget
+    from app.integrations.outbox import enqueue_for_entity
+    from app.product.plan_store import require_capability
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.enterprise_integrations)
+    try:
+        tgt = IntegrationTarget(body.target)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown target: {body.target}",
+        )
+    job = enqueue_for_entity(
+        entity_type=body.source_entity_type,
+        entity_id=body.source_entity_id,
+        tenant_id=auth.tenant_id,
+        client_id=body.client_id,
+        system_id=body.system_id,
+        target=tgt,
+        trace_id=body.trace_id,
+    )
+    if job is None:
+        raise HTTPException(
+            status_code=422,
+            detail=("Entity type not mappable or payload type not enabled"),
+        )
+    if body.priority:
+        job.priority = body.priority
+    return job.model_dump()
+
+
+@app.post(
+    "/api/internal/integrations/jobs/{job_id}/retry",
+    tags=["integrations"],
+)
+def retry_integration_job(
+    job_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Retry a failed / dead-lettered integration job."""
+    from app.integrations.store import mark_for_retry
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    job = mark_for_retry(job_id, tenant_id=auth.tenant_id)
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found or not in a retryable state",
+        )
+    return job.model_dump()
+
+
+@app.get(
+    "/api/internal/integrations/jobs/{job_id}",
+    tags=["integrations"],
+)
+def get_integration_job(
+    job_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Get integration job detail including dispatch result."""
+    from app.integrations.store import get_job
+
+    _enforce_grc_opa("view_integration_jobs", auth, opa_role_header)
+    job = get_job(job_id, tenant_id=auth.tenant_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job.model_dump()
+
+
+@app.post(
+    "/api/internal/integrations/dispatch",
+    tags=["integrations"],
+)
+def trigger_integration_dispatch(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Trigger dispatch of all pending integration jobs."""
+    from app.integrations.dispatcher import dispatch_pending
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    return dispatch_pending()
+
+
+# ---------------------------------------------------------------------------
+# Mandant-Dossier Export API (Wave 16)
+# ---------------------------------------------------------------------------
+
+
+class MandantExportRequest(BaseModel):
+    client_id: str
+    period: str = ""
+    export_version: int = 1
+    mandant_kurzname: str = ""
+    branche: str = ""
+    trace_id: str = ""
+
+
+@app.post(
+    "/api/internal/integrations/mandant-export",
+    tags=["integrations"],
+    status_code=201,
+)
+def create_mandant_export(
+    body: MandantExportRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Enqueue a Mandanten-Compliance-Dossier export job."""
+    from app.integrations.outbox import enqueue_mandant_dossier
+    from app.product.plan_store import require_capability
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    require_capability(auth.tenant_id, Capability.kanzlei_reports)
+    job = enqueue_mandant_dossier(
+        tenant_id=auth.tenant_id,
+        client_id=body.client_id,
+        period=body.period,
+        export_version=body.export_version,
+        trace_id=body.trace_id,
+        mandant_kurzname=body.mandant_kurzname,
+        branche=body.branche,
+    )
+    if job is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Dossier export payload type not enabled or duplicate",
+        )
+    return job.model_dump()
+
+
+# ---------------------------------------------------------------------------
+# SAP S/4 + BTP Inbound Endpoint (Wave 16 — reference flow)
+# ---------------------------------------------------------------------------
+
+
+@app.post(
+    "/api/v1/integrations/sap/ai-system-event",
+    tags=["integrations"],
+    status_code=202,
+)
+def receive_sap_ai_system_event(
+    body: dict[str, Any],
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, Any]:
+    """Receive a CloudEvents envelope from SAP S/4/BTP Event Mesh.
+
+    Validates mandatory fields, maps to an AiSystem stub, and emits
+    evidence.  Designed for future BTP Integration Suite wiring.
+    """
+    from app.integrations.sap_inbound import (
+        process_sap_ai_system_event,
+        validate_sap_envelope,
+    )
+    from app.product.plan_store import require_capability
+
+    require_capability(auth.tenant_id, Capability.enterprise_integrations)
+
+    if not body.get("tenantid"):
+        body["tenantid"] = auth.tenant_id
+
+    errors = validate_sap_envelope(body)
+    if errors:
+        raise HTTPException(
+            status_code=422,
+            detail={"validation_errors": errors},
+        )
+    result = process_sap_ai_system_event(body)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Product Packaging APIs (Wave 17)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/internal/product/plan",
+    tags=["product"],
+)
+def get_tenant_plan_api(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, Any]:
+    """Return the product plan for the authenticated tenant."""
+    from app.product.plan_store import get_tenant_plan
+
+    plan = get_tenant_plan(auth.tenant_id)
+    return {
+        "tenant_id": auth.tenant_id,
+        "tier": plan.tier.value,
+        "bundles": sorted(b.value for b in plan.effective_bundles()),
+        "capabilities": sorted(c.value for c in plan.capabilities()),
+        "plan_display": plan.plan_display(),
+        "label": plan.label,
+    }
+
+
+class SetTenantPlanRequest(BaseModel):
+    tier: str = "starter"
+    bundles: list[str] = []
+    label: str = ""
+
+
+@app.put(
+    "/api/internal/product/plan/{tenant_id}",
+    tags=["product"],
+)
+def set_tenant_plan_api(
+    tenant_id: str,
+    body: SetTenantPlanRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+) -> dict[str, Any]:
+    """Set the product plan for a tenant (admin-only)."""
+    from app.product.models import ProductTier, TenantPlanConfig
+    from app.product.plan_store import set_tenant_plan
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    try:
+        tier = ProductTier(body.tier)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Unknown tier: {body.tier}")
+    plan = TenantPlanConfig(
+        tenant_id=tenant_id,
+        tier=tier,
+        bundles=set(body.bundles),
+        label=body.label,
+    )
+    saved = set_tenant_plan(plan)
+    return {
+        "tenant_id": tenant_id,
+        "tier": saved.tier.value,
+        "bundles": sorted(b.value for b in saved.effective_bundles()),
+        "capabilities": sorted(c.value for c in saved.capabilities()),
+        "plan_display": saved.plan_display(),
+    }
+
+
+@app.post(
+    "/api/internal/product/demo-seed/{tenant_id}",
+    tags=["product"],
+)
+def seed_demo_plan_api(
+    tenant_id: str,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
+    profile: str = Query(
+        ...,
+        description=(
+            "Demo profile: industrie_mittelstand_demo, kanzlei_demo, sap_enterprise_demo, sme_demo"
+        ),
+    ),
+    seed_data: bool = Query(
+        default=True,
+        description="Also seed sample AiSystems, GRC records, etc.",
+    ),
+) -> dict[str, Any]:
+    """Apply a demo plan profile to a tenant and optionally seed sample data."""
+    from app.product.demo_plans import seed_demo_data, seed_demo_plan
+
+    _enforce_grc_opa("manage_integrations", auth, opa_role_header)
+    plan = seed_demo_plan(tenant_id, profile)
+    if plan is None:
+        raise HTTPException(status_code=400, detail=f"Unknown profile: {profile}")
+    result: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "profile": profile,
+        "tier": plan.tier.value,
+        "bundles": sorted(b.value for b in plan.effective_bundles()),
+        "capabilities": sorted(c.value for c in plan.capabilities()),
+    }
+    if seed_data:
+        result["seeded_data"] = seed_demo_data(tenant_id, profile)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# GTM: Offerings, Value Hints & Telemetry (Wave 18)
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/internal/product/offerings",
+    tags=["product"],
+)
+def list_offerings_api(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, Any]:
+    """List all defined SKU offerings (internal)."""
+    from app.product.offerings import list_skus
+
+    return {"offerings": [s.model_dump() for s in list_skus()]}
+
+
+@app.get(
+    "/api/internal/product/value-hints",
+    tags=["product"],
+)
+def get_value_hints_api(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, Any]:
+    """Return German value hints keyed by screen/feature, filtered by plan."""
+    from app.product.copy_de import VALUE_HINTS_DE
+    from app.product.plan_store import get_tenant_plan
+
+    plan = get_tenant_plan(auth.tenant_id)
+    caps = plan.capabilities()
+
+    from app.product.models import Capability
+
+    cap_to_hints = {
+        Capability.ai_advisor_basic: ["ai_advisor"],
+        Capability.ai_evidence_basic: ["evidence_views"],
+        Capability.grc_records: ["grc_records"],
+        Capability.ai_system_inventory: ["ai_system_inventory"],
+        Capability.kanzlei_reports: ["kanzlei_reports", "kanzlei_dossier"],
+        Capability.enterprise_integrations: ["enterprise_integrations"],
+    }
+    enabled_hints: dict[str, str] = {}
+    for cap, hint_keys in cap_to_hints.items():
+        if cap in caps:
+            for key in hint_keys:
+                if key in VALUE_HINTS_DE:
+                    enabled_hints[key] = VALUE_HINTS_DE[key]
+    return {
+        "tenant_id": auth.tenant_id,
+        "plan_tier": plan.tier.value,
+        "hints": enabled_hints,
+    }
+
+
+@app.post(
+    "/api/internal/product/telemetry/screen-view",
+    tags=["product"],
+)
+def record_screen_view_api(
+    body: dict[str, Any],
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> dict[str, str]:
+    """Record a screen view event for GTM analytics (no PII)."""
+    from app.product.plan_store import get_tenant_plan as _get_plan
+    from app.services.rag.evidence_store import record_event as _record_ev
+
+    plan = _get_plan(auth.tenant_id)
+    _record_ev(
+        {
+            "event_type": "gtm_screen_view",
+            "tenant_id": auth.tenant_id,
+            "screen": body.get("screen", "unknown"),
+            "demo_profile": body.get("demo_profile", ""),
+            "plan_tier": plan.tier.value,
+        }
+    )
+    return {"status": "recorded"}

@@ -1,0 +1,344 @@
+# Ground Truth for Hybrid Retrieval Evaluation
+#
+# Curated synthetic queries mapped to expected corpus documents.
+# NO raw customer prompts — only category-based representative queries.
+# Maintained manually by compliance domain experts.
+#
+# Format per entry:
+#   query_id:    Unique identifier
+#   category:    Thematic category for reporting
+#   query:       Synthetic representative query (German)
+#   expected_doc_ids: List of doc_ids that SHOULD appear in top-k
+#   good_doc_ids:     Subset considered "highly relevant"
+#   bad_doc_ids:      Documents that should NOT rank highly (negative examples)
+#   notes:       Optional context for evaluators
+
+queries:
+  - query_id: "eval-001"
+    category: "hochrisiko_definition"
+    query: "Was sind Hochrisiko-KI-Systeme nach dem EU AI Act?"
+    expected_doc_ids:
+      - "euaia-art6"
+      - "euaia-annexiii"
+      - "euaia-art7"
+    good_doc_ids:
+      - "euaia-art6"
+      - "euaia-annexiii"
+    bad_doc_ids:
+      - "nis2-art21"
+    notes: "Core definitional query — Art. 6 + Annex III are primary sources."
+
+  - query_id: "eval-002"
+    category: "nis2_meldefrist"
+    query: "Welche Meldefristen gelten bei Sicherheitsvorfällen unter NIS2?"
+    expected_doc_ids:
+      - "nis2-art23"
+      - "nis2-art21"
+    good_doc_ids:
+      - "nis2-art23"
+    bad_doc_ids:
+      - "euaia-art6"
+    notes: "NIS2 incident reporting — Art. 23 (24h/72h) is primary."
+
+  - query_id: "eval-003"
+    category: "iso42001_risikobewertung"
+    query: "Wie wird eine KI-Risikobewertung nach ISO 42001 durchgeführt?"
+    expected_doc_ids:
+      - "iso42001-a6-2-6"
+      - "iso42001-6-1"
+    good_doc_ids:
+      - "iso42001-a6-2-6"
+    bad_doc_ids:
+      - "nis2-art23"
+    notes: "ISO 42001 risk assessment clauses."
+
+  - query_id: "eval-004"
+    category: "transparenzpflichten"
+    query: "Welche Transparenzpflichten bestehen für KI-Chatbots nach dem EU AI Act?"
+    expected_doc_ids:
+      - "euaia-art52"
+      - "euaia-art50"
+    good_doc_ids:
+      - "euaia-art52"
+    bad_doc_ids:
+      - "euaia-annexiii"
+    notes: "Art. 52 transparency obligations for conversational AI."
+
+  - query_id: "eval-005"
+    category: "konformitaetsbewertung"
+    query: "Wie läuft die Konformitätsbewertung für Hochrisiko-KI-Systeme ab?"
+    expected_doc_ids:
+      - "euaia-art43"
+      - "euaia-art40"
+      - "euaia-annexvii"
+    good_doc_ids:
+      - "euaia-art43"
+    bad_doc_ids:
+      - "nis2-art21"
+    notes: "Conformity assessment — Art. 43 is primary."
+
+  - query_id: "eval-006"
+    category: "datenschutz_ki"
+    query: "Welche DSGVO-Anforderungen gelten für KI-Trainingsdaten?"
+    expected_doc_ids:
+      - "dsgvo-art22"
+      - "euaia-art10"
+    good_doc_ids:
+      - "euaia-art10"
+      - "dsgvo-art22"
+    bad_doc_ids:
+      - "nis2-art23"
+    notes: "Intersection of GDPR Art. 22 (automated decisions) and AI Act Art. 10 (data governance)."
+
+  - query_id: "eval-007"
+    category: "geschaeftsleiterhaftung"
+    query: "Welche persönliche Haftung tragen Geschäftsleiter unter NIS2?"
+    expected_doc_ids:
+      - "nis2-art20"
+      - "nis2-art21"
+    good_doc_ids:
+      - "nis2-art20"
+    bad_doc_ids:
+      - "euaia-art52"
+    notes: "NIS2 Art. 20 — management body personal liability."
+
+  - query_id: "eval-008"
+    category: "post_market_surveillance"
+    query: "Welche Anforderungen an die Marktüberwachung stellt der EU AI Act?"
+    expected_doc_ids:
+      - "euaia-art61"
+      - "euaia-art62"
+    good_doc_ids:
+      - "euaia-art61"
+    bad_doc_ids:
+      - "iso42001-6-1"
+    notes: "Post-market monitoring — Art. 61/62."
+
+  - query_id: "eval-009"
+    category: "verbotene_praktiken"
+    query: "Welche KI-Praktiken sind nach dem EU AI Act verboten?"
+    expected_doc_ids:
+      - "euaia-art5"
+    good_doc_ids:
+      - "euaia-art5"
+    bad_doc_ids:
+      - "euaia-art52"
+    notes: "Prohibited practices — Art. 5 only."
+
+  - query_id: "eval-010"
+    category: "cross_mapping"
+    query: "Wie lassen sich ISO 42001 und EU AI Act Anforderungen gegenseitig zuordnen?"
+    expected_doc_ids:
+      - "iso42001-a6-2-6"
+      - "euaia-art9"
+      - "iso42001-6-1"
+    good_doc_ids:
+      - "iso42001-a6-2-6"
+      - "euaia-art9"
+    bad_doc_ids:
+      - "nis2-art23"
+    notes: "Cross-mapping query — tests recall across regulation boundaries."
+
+# Synthetic corpus documents (for evaluation only).
+# In production the corpus is loaded from Supabase pgvector.
+corpus:
+  - doc_id: "euaia-art5"
+    title: "EU AI Act – Artikel 5: Verbotene Praktiken"
+    source: "EU AI Act"
+    section: "Titel II, Art. 5"
+    content: >
+      Folgende KI-Praktiken sind verboten: (a) KI-Systeme, die unterschwellige
+      Techniken einsetzen, die das Verhalten einer Person wesentlich verzerren;
+      (b) KI-Systeme, die Schwachstellen bestimmter Personengruppen ausnutzen;
+      (c) Sozialkreditsysteme durch Behörden; (d) biometrische Echtzeit-
+      Fernidentifizierung in öffentlich zugänglichen Räumen für Strafverfolgung,
+      mit eng definierten Ausnahmen.
+
+  - doc_id: "euaia-art6"
+    title: "EU AI Act – Artikel 6: Klassifizierungsregeln für Hochrisiko-KI"
+    source: "EU AI Act"
+    section: "Titel III, Art. 6"
+    content: >
+      Ein KI-System gilt als Hochrisiko, wenn es (1) als Sicherheitskomponente
+      eines Produkts dient, das unter EU-Harmonisierungsrecht fällt und einer
+      Konformitätsbewertung durch Dritte bedarf (Anhang I), oder (2) unter
+      einen der in Anhang III aufgeführten Anwendungsbereiche fällt. Art. 6
+      Abs. 3 sieht Ausnahmen vor für enge verfahrensbezogene Aufgaben, sofern
+      keine Profilierung natürlicher Personen erfolgt.
+
+  - doc_id: "euaia-art7"
+    title: "EU AI Act – Artikel 7: Änderung von Anhang III"
+    source: "EU AI Act"
+    section: "Titel III, Art. 7"
+    content: >
+      Die Kommission kann Anhang III durch delegierte Rechtsakte ändern, um
+      Hochrisiko-Anwendungsbereiche hinzuzufügen oder zu streichen, unter
+      Berücksichtigung spezifischer Kriterien wie Schwere möglicher Schäden,
+      Ausmaß der Nutzung und Grad der Irreversibilität.
+
+  - doc_id: "euaia-art9"
+    title: "EU AI Act – Artikel 9: Risikomanagementsystem"
+    source: "EU AI Act"
+    section: "Titel III, Art. 9"
+    content: >
+      Für Hochrisiko-KI-Systeme ist ein Risikomanagementsystem einzurichten,
+      das den gesamten Lebenszyklus abdeckt. Es umfasst: Identifizierung und
+      Analyse bekannter und vorhersehbarer Risiken, Schätzung und Bewertung
+      der Risiken, Ergreifung geeigneter Risikomanagementmaßnahmen. Das System
+      muss regelmäßig aktualisiert werden. Cross-Mapping zu ISO 42001 A.6.2.6.
+
+  - doc_id: "euaia-art10"
+    title: "EU AI Act – Artikel 10: Daten und Daten-Governance"
+    source: "EU AI Act"
+    section: "Titel III, Art. 10"
+    content: >
+      Trainings-, Validierungs- und Testdatensätze unterliegen angemessenen
+      Daten-Governance-Praktiken. Die Datensätze müssen relevant, repräsentativ,
+      fehlerfrei und vollständig sein. Besondere Kategorien personenbezogener
+      Daten dürfen nur unter strengen Bedingungen verarbeitet werden, in
+      Übereinstimmung mit DSGVO Art. 9 und Art. 10.
+
+  - doc_id: "euaia-annexiii"
+    title: "EU AI Act – Anhang III: Hochrisiko-Anwendungsbereiche"
+    source: "EU AI Act"
+    section: "Anhang III"
+    content: >
+      Hochrisiko-Anwendungsbereiche umfassen: (1) Biometrische Identifizierung;
+      (2) Kritische Infrastruktur; (3) Bildung und Berufsausbildung; (4)
+      Beschäftigung und Personalmanagement; (5) Zugang zu wesentlichen
+      Dienstleistungen; (6) Strafverfolgung; (7) Migration und Grenzschutz;
+      (8) Rechtspflege und demokratische Prozesse.
+
+  - doc_id: "euaia-art40"
+    title: "EU AI Act – Artikel 40: Harmonisierte Normen"
+    source: "EU AI Act"
+    section: "Titel III, Art. 40"
+    content: >
+      Hochrisiko-KI-Systeme, die harmonisierten Normen entsprechen, genießen
+      eine Konformitätsvermutung. Die Kommission kann die europäischen
+      Normungsorganisationen beauftragen, harmonisierte Normen zu entwickeln.
+
+  - doc_id: "euaia-art43"
+    title: "EU AI Act – Artikel 43: Konformitätsbewertung"
+    source: "EU AI Act"
+    section: "Titel III, Art. 43"
+    content: >
+      Die Konformitätsbewertung für Hochrisiko-KI erfolgt nach Anhang VI
+      (internes Kontrollverfahren) oder Anhang VII (Bewertung durch Dritte).
+      Systeme unter Anhang I Abschnitt A benötigen grundsätzlich eine
+      Drittbewertung. Das Verfahren umfasst: Qualitätsmanagement-Audit,
+      technische Dokumentation, Konformitätserklärung und CE-Kennzeichnung.
+
+  - doc_id: "euaia-annexvii"
+    title: "EU AI Act – Anhang VII: Konformitätsbewertung durch Dritte"
+    source: "EU AI Act"
+    section: "Anhang VII"
+    content: >
+      Das externe Konformitätsbewertungsverfahren umfasst: Prüfung des
+      Qualitätsmanagementsystems, Bewertung der technischen Dokumentation,
+      Produktprüfung, Überwachungsaudits und Zertifizierungsentscheidung.
+
+  - doc_id: "euaia-art50"
+    title: "EU AI Act – Artikel 50: Transparenzpflichten für bestimmte KI-Systeme"
+    source: "EU AI Act"
+    section: "Titel IV, Art. 50"
+    content: >
+      Anbieter von KI-Systemen, die direkt mit natürlichen Personen
+      interagieren, müssen sicherstellen, dass die Interaktion als KI-generiert
+      erkennbar ist. Anbieter von Emotionserkennungssystemen müssen die
+      betroffenen Personen informieren.
+
+  - doc_id: "euaia-art52"
+    title: "EU AI Act – Artikel 52: Transparenzpflichten Chatbots & Deepfakes"
+    source: "EU AI Act"
+    section: "Titel IV, Art. 52"
+    content: >
+      KI-Chatbots müssen klar als KI gekennzeichnet werden. Deepfake-Inhalte
+      müssen als künstlich erzeugt oder manipuliert gekennzeichnet werden.
+      Nutzer von Emotionserkennungssystemen oder biometrischen
+      Kategorisierungssystemen müssen über den Einsatz informiert werden.
+
+  - doc_id: "euaia-art61"
+    title: "EU AI Act – Artikel 61: Post-Market-Monitoring"
+    source: "EU AI Act"
+    section: "Titel III, Art. 61"
+    content: >
+      Anbieter von Hochrisiko-KI-Systemen müssen ein Post-Market-Monitoring-
+      System einrichten, das aktiv und systematisch relevante Daten über die
+      Leistung des Systems sammelt und analysiert. Ergebnisse fließen in das
+      Risikomanagementsystem ein.
+
+  - doc_id: "euaia-art62"
+    title: "EU AI Act – Artikel 62: Meldepflichten bei schwerwiegenden Vorfällen"
+    source: "EU AI Act"
+    section: "Titel III, Art. 62"
+    content: >
+      Anbieter von Hochrisiko-KI-Systemen müssen schwerwiegende Vorfälle
+      unverzüglich den Marktüberwachungsbehörden melden. Die Meldung muss
+      innerhalb von 15 Tagen nach Kenntnisnahme erfolgen.
+
+  - doc_id: "nis2-art20"
+    title: "NIS2 – Artikel 20: Governance und Verantwortlichkeit der Leitungsorgane"
+    source: "NIS2-Richtlinie"
+    section: "Kapitel IV, Art. 20"
+    content: >
+      Die Leitungsorgane wesentlicher und wichtiger Einrichtungen müssen die
+      Cybersicherheitsmaßnahmen genehmigen und deren Umsetzung überwachen.
+      Sie können bei Verstößen persönlich haftbar gemacht werden. Mitglieder
+      der Leitungsorgane müssen an Schulungen teilnehmen und ihren Mitarbeitern
+      regelmäßige Schulungen anbieten.
+
+  - doc_id: "nis2-art21"
+    title: "NIS2 – Artikel 21: Risikomanagementmaßnahmen"
+    source: "NIS2-Richtlinie"
+    section: "Kapitel IV, Art. 21"
+    content: >
+      Wesentliche und wichtige Einrichtungen müssen technische, operative und
+      organisatorische Maßnahmen ergreifen, darunter: Risikoanalyse, Incident
+      Handling, Business Continuity, Lieferkettensicherheit, Netz- und
+      Informationssystemsicherheit, und regelmäßige Bewertung der Wirksamkeit.
+
+  - doc_id: "nis2-art23"
+    title: "NIS2 – Artikel 23: Meldepflichten bei Sicherheitsvorfällen"
+    source: "NIS2-Richtlinie"
+    section: "Kapitel IV, Art. 23"
+    content: >
+      Wesentliche und wichtige Einrichtungen müssen erhebliche Sicherheits-
+      vorfälle unverzüglich melden: (1) Frühwarnung innerhalb von 24 Stunden
+      nach Kenntnisnahme; (2) Vorfallmeldung innerhalb von 72 Stunden mit
+      erster Bewertung; (3) Abschlussbericht innerhalb eines Monats. Bei
+      grenzüberschreitenden Auswirkungen sind das CSIRT und die zuständigen
+      Behörden anderer betroffener Mitgliedstaaten zu informieren.
+
+  - doc_id: "iso42001-6-1"
+    title: "ISO 42001 – Abschnitt 6.1: Maßnahmen zum Umgang mit Risiken und Chancen"
+    source: "ISO 42001"
+    section: "Abschnitt 6.1"
+    content: >
+      Die Organisation muss Risiken und Chancen bestimmen, die beim Planen
+      des KI-Managementsystems zu berücksichtigen sind. Dies umfasst die
+      Beurteilung von Risiken im Zusammenhang mit KI-Systemen, einschließlich
+      Auswirkungen auf Einzelpersonen und Gruppen, gesellschaftliche
+      Auswirkungen und Risiken für die Organisation selbst.
+
+  - doc_id: "iso42001-a6-2-6"
+    title: "ISO 42001 – A.6.2.6: KI-Risikobewertung"
+    source: "ISO 42001"
+    section: "Anhang A, A.6.2.6"
+    content: >
+      Die Organisation muss einen Prozess zur KI-Risikobewertung definieren
+      und implementieren, der: Risiken für KI-Systeme identifiziert und
+      analysiert, die Auswirkungen und Wahrscheinlichkeit bewertet,
+      angemessene Risikobehandlungsmaßnahmen bestimmt, und die Ergebnisse
+      dokumentiert. Cross-Mapping: EU AI Act Art. 9 (Risikomanagementsystem).
+
+  - doc_id: "dsgvo-art22"
+    title: "DSGVO – Artikel 22: Automatisierte Einzelentscheidungen"
+    source: "DSGVO"
+    section: "Kapitel III, Art. 22"
+    content: >
+      Die betroffene Person hat das Recht, nicht einer ausschließlich auf
+      automatisierter Verarbeitung beruhenden Entscheidung unterworfen zu
+      werden, die ihr gegenüber rechtliche Wirkung entfaltet. Ausnahmen
+      gelten bei Vertragserfüllung, gesetzlicher Ermächtigung oder
+      ausdrücklicher Einwilligung – jeweils mit angemessenen Schutzmaßnahmen.
