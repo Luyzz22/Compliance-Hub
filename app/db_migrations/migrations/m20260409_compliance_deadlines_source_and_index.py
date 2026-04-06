@@ -40,15 +40,12 @@ def apply(engine: Engine) -> bool:
             )
             changed = True
         if not column_exists(engine, "compliance_deadlines", "source_id"):
-            conn.execute(
-                text("ALTER TABLE compliance_deadlines ADD COLUMN source_id VARCHAR(128)")
-            )
+            conn.execute(text("ALTER TABLE compliance_deadlines ADD COLUMN source_id VARCHAR(128)"))
             changed = True
         if not index_exists(engine, "compliance_deadlines", _IDX_TENANT_DUE):
             conn.execute(
                 text(
-                    f"CREATE INDEX {_IDX_TENANT_DUE} ON compliance_deadlines "
-                    "(tenant_id, due_date)"
+                    f"CREATE INDEX {_IDX_TENANT_DUE} ON compliance_deadlines (tenant_id, due_date)"
                 )
             )
             changed = True
