@@ -145,6 +145,7 @@ describe("partnerReviewPackageBuild", () => {
     expect(md).toContain("Portfolio kritisch (mehrere SLA-Critical)");
     expect(md).toContain("Keine SLA-Abweichungen – bestehende Kadenz beibehalten.");
     expect(md).toContain("## H) AI-Governance-Steuerung (Wave 48)");
-    expect(md).toContain("wave48-v1");
+    expect(md).toContain("## I) Cross-Regulation-Matrix (Wave 49)");
+    expect(md).toContain("wave49-v1");
   });
 });

@@ -3,6 +3,10 @@
  */
 
 import { GTM_READINESS_LABELS_DE } from "@/lib/gtmAccountReadiness";
+import {
+  CROSS_REGULATION_PILLAR_LABEL_DE,
+  CROSS_REGULATION_PILLAR_ORDER,
+} from "@/lib/advisorCrossRegulationTypes";
 import type { PartnerReviewPackageDto } from "@/lib/partnerReviewPackageTypes";
 
 function lineLabel(row: { mandant_label: string | null; tenant_id: string }): string {
@@ -192,6 +196,29 @@ export function partnerReviewPackageMarkdownDe(pkg: PartnerReviewPackageDto): st
   lines.push("### Top Mandanten für Beraterkapazität");
   for (const t of ag.top_attention.slice(0, 8)) {
     lines.push(`- **${lineLabel(t)}:** ${t.priority_hint_de}`);
+  }
+  lines.push("");
+
+  const cr = pkg.part_i_cross_regulation_matrix;
+  const crt = cr.totals;
+  lines.push("## I) Cross-Regulation-Matrix (Wave 49)");
+  lines.push("");
+  lines.push(`_${cr.disclaimer_de}_`);
+  lines.push("");
+  lines.push(
+    `- **≥2** Säulen prioritär: **${crt.mandanten_multi_pillar_priority}** · **≥2** Säulen unter Druck: **${crt.mandanten_multi_pillar_stress}** · ${cr.version}.`,
+  );
+  for (const pk of CROSS_REGULATION_PILLAR_ORDER) {
+    const c = crt.per_pillar[pk];
+    const lab = CROSS_REGULATION_PILLAR_LABEL_DE[pk];
+    lines.push(
+      `- **${lab}:** OK ${c.ok} · Nacharbeit ${c.needs_attention} · Priorität ${c.priority} · unbek. ${c.unknown}`,
+    );
+  }
+  lines.push("");
+  lines.push("### Beratungs-Fokus (Mehrfachnutzen)");
+  for (const t of cr.top_cases.slice(0, 8)) {
+    lines.push(`- **${lineLabel(t)}:** ${t.hint_de}`);
   }
   lines.push("");
 

@@ -7,7 +7,7 @@ import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 import type { AdvisorSlaEvaluationDto } from "@/lib/advisorSlaTypes";
 import type { MandantReminderApiEntry } from "@/lib/advisorMandantReminderTypes";
 
-export const KANZLEI_PORTFOLIO_VERSION = "wave48-v1";
+export const KANZLEI_PORTFOLIO_VERSION = "wave49-v1";
 
 export type KanzleiPortfolioPillarFilter = BoardReadinessPillarKey | "all";
 

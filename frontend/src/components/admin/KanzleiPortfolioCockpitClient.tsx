@@ -19,6 +19,12 @@ import {
 } from "@/lib/advisorMandantReminderTypes";
 import { isDueThisCalendarWeek, isDueTodayOrOverdue } from "@/lib/advisorMandantReminderRules";
 import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
+import { buildCrossRegulationMatrixFromPayload } from "@/lib/advisorCrossRegulationBuild";
+import {
+  CROSS_REGULATION_PILLAR_LABEL_DE,
+  CROSS_REGULATION_PILLAR_ORDER,
+  type CrossRegulationBucket,
+} from "@/lib/advisorCrossRegulationTypes";
 import type { AdvisorSlaDeepLinkId } from "@/lib/advisorSlaTypes";
 import type {
   KanzleiAttentionQueueItem,
@@ -30,6 +36,29 @@ import type {
 import { isNonEmptyUnparsableIso } from "@/lib/mandantHistoryMerge";
 
 type Props = { adminConfigured: boolean };
+
+type CrossRegMatrixFilter = "all" | "multi_stress" | CrossRegulationBucket;
+
+function crossRegBucketAbbrev(b: CrossRegulationBucket): string {
+  if (b === "ok") return "O";
+  if (b === "needs_attention") return "!";
+  if (b === "priority") return "P";
+  return "?";
+}
+
+function crossRegBucketTitle(b: CrossRegulationBucket): string {
+  if (b === "ok") return "OK";
+  if (b === "needs_attention") return "Nacharbeit";
+  if (b === "priority") return "Priorität";
+  return "Unbekannt";
+}
+
+function crossRegBucketCellClass(b: CrossRegulationBucket): string {
+  if (b === "priority") return "border-rose-200 bg-rose-50 text-rose-950";
+  if (b === "needs_attention") return "border-amber-200 bg-amber-50 text-amber-950";
+  if (b === "ok") return "border-emerald-200 bg-emerald-50 text-emerald-950";
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
 
 function kpiTrendSymbol(t: AdvisorKpiTrend): string {
   if (t === "up") return "↑";
@@ -322,6 +351,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [manualRemCat, setManualRemCat] = useState<"manual" | "follow_up_note">("follow_up_note");
   const [manualRemNote, setManualRemNote] = useState("");
   const [manualRemBusy, setManualRemBusy] = useState(false);
+  const [crossRegFilter, setCrossRegFilter] = useState<CrossRegMatrixFilter>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -456,6 +486,28 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       return true;
     });
   }, [payload, readinessFilter, pillarFilter, staleOnly, manyOpenOnly, reviewStaleOnly]);
+
+  const crossRegMatrix = useMemo(
+    () => (payload ? buildCrossRegulationMatrixFromPayload(payload) : null),
+    [payload],
+  );
+
+  const crossRegFilteredMandanten = useMemo(() => {
+    if (!crossRegMatrix) return [];
+    let m = crossRegMatrix.mandanten;
+    if (crossRegFilter === "multi_stress") {
+      m = m.filter((x) => x.active_pillar_pressure_count >= 2);
+    } else if (crossRegFilter === "priority") {
+      m = m.filter((x) => CROSS_REGULATION_PILLAR_ORDER.some((pk) => x.pillars[pk] === "priority"));
+    } else if (crossRegFilter === "needs_attention") {
+      m = m.filter((x) => CROSS_REGULATION_PILLAR_ORDER.some((pk) => x.pillars[pk] === "needs_attention"));
+    } else if (crossRegFilter === "unknown") {
+      m = m.filter((x) => CROSS_REGULATION_PILLAR_ORDER.some((pk) => x.pillars[pk] === "unknown"));
+    } else if (crossRegFilter === "ok") {
+      m = m.filter((x) => CROSS_REGULATION_PILLAR_ORDER.every((pk) => x.pillars[pk] === "ok"));
+    }
+    return m;
+  }, [crossRegMatrix, crossRegFilter]);
 
   const markReviewDone = useCallback(
     async (tenantId: string) => {
@@ -697,15 +749,15 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
               Intern · Mandanten-Steering
             </span>
-            <span className="text-[11px] text-slate-400">Waves 39–48</span>
+            <span className="text-[11px] text-slate-400">Waves 39–49</span>
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.65rem]">
             Kanzlei-Portfolio
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             Operatives Cockpit für gemappte Mandanten: Readiness, Prüfpunkte, Export-Kadenz, Reviews,
-            Attention-Queue, Playbook, Reports, Reminders, Kanzlei-KPIs, SLA-Signale und AI-Governance-Fokus
-            (EU AI Act / ISO 42001, heuristisch).
+            Attention-Queue, Playbook, Reports, Reminders, Kanzlei-KPIs, SLA, AI-Governance und
+            Cross-Regulation-Matrix (vier Säulen – Steuerung, keine Rechtsautomatik).
           </p>
           {payload ? (
             <p className="mt-3 text-xs tabular-nums text-slate-500">
@@ -739,6 +791,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             ·{" "}
             <code className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
               /ai-governance-overview
+            </code>{" "}
+            ·{" "}
+            <code className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
+              /cross-regulation-matrix
             </code>
           </p>
         </div>
@@ -956,6 +1012,119 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             </a>{" "}
             (Säulenfilter EU AI Act / ISO 42001) · Keine automatische Rechtsbewertung.
           </p>
+        </section>
+      ) : null}
+
+      {crossRegMatrix && payload ? (
+        <section
+          id="kanzlei-cross-regulation-panel"
+          className="rounded-xl border border-violet-200/80 bg-white p-4 shadow-sm ring-1 ring-violet-950/[0.05]"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 max-w-2xl">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-violet-800/90">Cross-Regulation</p>
+              <h2 className="mt-0.5 text-sm font-semibold tracking-tight text-slate-900">
+                Vier Säulen – Portfolio-Matrix
+              </h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">{crossRegMatrix.disclaimer_de}</p>
+              <p className="mt-1.5 text-[10px] text-slate-500">
+                ≥2 Säulen prioritär:{" "}
+                <span className="font-semibold text-slate-800">
+                  {crossRegMatrix.totals.mandanten_multi_pillar_priority}
+                </span>{" "}
+                · ≥2 Säulen unter Druck:{" "}
+                <span className="font-semibold text-slate-800">
+                  {crossRegMatrix.totals.mandanten_multi_pillar_stress}
+                </span>{" "}
+                · {crossRegMatrix.version}
+              </p>
+            </div>
+            <label className="text-[11px] font-medium text-slate-700">
+              Filter
+              <select
+                className="mt-1 block min-w-[11rem] rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 shadow-sm"
+                value={crossRegFilter}
+                onChange={(e) => setCrossRegFilter(e.target.value as CrossRegMatrixFilter)}
+              >
+                <option value="all">Alle Mandanten</option>
+                <option value="multi_stress">Mehrfach-Druck (≥2 Säulen)</option>
+                <option value="priority">Mindestens eine Priorität</option>
+                <option value="needs_attention">Mindestens Nacharbeit</option>
+                <option value="unknown">Unbekannt enthalten</option>
+                <option value="ok">Nur durchgehend OK (alle Säulen)</option>
+              </select>
+            </label>
+          </div>
+          <p className="mt-2 text-[10px] text-slate-500">
+            Legende: <span className="font-mono">O</span> OK · <span className="font-mono">!</span> Nacharbeit ·{" "}
+            <span className="font-mono">P</span> Priorität · <span className="font-mono">?</span> unbekannt (Datenlage).
+          </p>
+          <div className="mt-2 max-h-[min(55vh,420px)] overflow-auto rounded-lg border border-slate-100">
+            <table className="min-w-[640px] w-full border-collapse text-left text-[11px]">
+              <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                <tr>
+                  <th className="border-b border-slate-200 px-2 py-2">Mandant</th>
+                  {CROSS_REGULATION_PILLAR_ORDER.map((pk) => (
+                    <th key={pk} className="border-b border-slate-200 px-1.5 py-2 text-center">
+                      {CROSS_REGULATION_PILLAR_LABEL_DE[pk]}
+                    </th>
+                  ))}
+                  <th className="border-b border-slate-200 px-2 py-2 text-center">Links</th>
+                </tr>
+              </thead>
+              <tbody>
+                {crossRegFilteredMandanten.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-4 text-center text-slate-500">
+                      Keine Zeilen für diesen Filter.
+                    </td>
+                  </tr>
+                ) : (
+                  crossRegFilteredMandanten.map((m) => (
+                    <tr key={m.tenant_id} className="border-b border-slate-100 odd:bg-white even:bg-slate-50/50">
+                      <td className="max-w-[200px] px-2 py-1.5 align-top">
+                        <div className="truncate font-medium text-slate-900">{m.mandant_label ?? m.tenant_id}</div>
+                        <div className="font-mono text-[10px] text-slate-400">{m.tenant_id}</div>
+                      </td>
+                      {CROSS_REGULATION_PILLAR_ORDER.map((pk) => {
+                        const b = m.pillars[pk];
+                        return (
+                          <td key={pk} className="px-1 py-1 align-middle text-center">
+                            <span
+                              className={`inline-flex min-w-[1.75rem] justify-center rounded border px-1 py-0.5 font-mono text-[10px] font-semibold ${crossRegBucketCellClass(b)}`}
+                              title={crossRegBucketTitle(b)}
+                            >
+                              {crossRegBucketAbbrev(b)}
+                            </span>
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 py-1 align-top">
+                        <div className="flex flex-col gap-0.5 text-[10px]">
+                          <a className="text-cyan-800 underline" href={m.links.mandant_export_page}>
+                            Export
+                          </a>
+                          <a className="text-cyan-800 underline" href={m.links.readiness_export_api}>
+                            Readiness-API
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 border-t border-slate-100 pt-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Top Querschnitt</p>
+            <ul className="mt-1 space-y-1 text-[11px] text-slate-700">
+              {crossRegMatrix.top_cases.slice(0, 5).map((t) => (
+                <li key={t.tenant_id}>
+                  <span className="font-medium">{t.mandant_label ?? t.tenant_id}</span>: {t.hint_de}
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       ) : null}
 

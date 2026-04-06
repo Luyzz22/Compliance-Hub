@@ -77,6 +77,7 @@ Es wird **nicht** behauptet, dass ein Registerpflicht-Eintrag besteht oder ein S
 
 ## Siehe auch
 
+- `docs/advisors/wave49-cross-regulation-matrix.md`
 - `docs/advisors/wave47-sla-and-escalations.md`
 - `docs/advisors/wave45-advisor-kpis.md`
 - `docs/advisors/wave39-kanzlei-portfolio-cockpit.md`
