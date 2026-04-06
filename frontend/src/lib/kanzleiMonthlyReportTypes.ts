@@ -4,11 +4,12 @@
 
 import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
+import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
 import type { AdvisorSlaEvaluationDto } from "@/lib/advisorSlaTypes";
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 
-export const KANZLEI_MONTHLY_REPORT_VERSION = "wave46-v1";
+export const KANZLEI_MONTHLY_REPORT_VERSION = "wave48-v1";
 
 export type KanzleiAttentionBand = "low" | "medium" | "high";
 
@@ -91,4 +92,6 @@ export type KanzleiMonthlyReportDto = {
   section_6_kpi_trends: AdvisorKpiTrendsNarrativeBlock | null;
   /** Wave 47 – SLA-Befunde und Eskalationssignale (aus Portfolio-Compute). */
   section_7_advisor_sla: AdvisorSlaEvaluationDto;
+  /** Wave 48 – AI-Governance-Posture (EU AI Act / ISO 42001, heuristisch). */
+  section_8_ai_governance: AdvisorAiGovernancePortfolioDto;
 };

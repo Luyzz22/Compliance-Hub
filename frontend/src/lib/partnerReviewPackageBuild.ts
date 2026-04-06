@@ -8,6 +8,7 @@ import {
   buildKanzleiPortfolioFocusAreasDe,
   summarizeKanzleiMonthlyReportSection1,
 } from "@/lib/kanzleiMonthlyReportBuild";
+import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
 import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { KanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioTypes";
@@ -104,6 +105,8 @@ export type BuildPartnerReviewPackageOptions = {
   advisorKpiSnapshot?: AdvisorKpiPortfolioSnapshot | null;
   /** Wave 46 – KPI-Trends (optional). */
   kpiTrendsNarrative?: AdvisorKpiTrendsNarrativeBlock | null;
+  /** Wave 48 – AI-Governance-Überblick. */
+  aiGovernance: AdvisorAiGovernancePortfolioDto;
 };
 
 export function buildPartnerReviewPackage(
@@ -156,5 +159,6 @@ export function buildPartnerReviewPackage(
     part_e_advisor_kpis: opts.advisorKpiSnapshot ?? null,
     part_f_kpi_trends: opts.kpiTrendsNarrative ?? null,
     part_g_sla_lagebild: payload.advisor_sla,
+    part_h_ai_governance: opts.aiGovernance,
   };
 }

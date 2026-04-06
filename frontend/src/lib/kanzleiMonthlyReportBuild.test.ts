@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { stubAdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceBuild";
 import {
   attentionBand,
   buildKanzleiMonthlyReport,
@@ -99,7 +100,12 @@ describe("kanzleiMonthlyReportBuild", () => {
     const r = buildKanzleiMonthlyReport(
       p,
       { saved_at: "2026-03-01T00:00:00Z", period_label: "2026-03", tenants: { x: base } },
-      { periodLabel: "2026-04", compareToBaseline: true, attentionTopN: 5 },
+      {
+        periodLabel: "2026-04",
+        compareToBaseline: true,
+        attentionTopN: 5,
+        aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+      },
     );
     expect(r.compared_to_baseline).toBe(true);
     expect(r.section_3_changes.readiness_improved.length).toBe(1);
@@ -113,7 +119,12 @@ describe("kanzleiMonthlyReportBuild", () => {
     const r = buildKanzleiMonthlyReport(
       p,
       { saved_at: "2026-03-01T00:00:00Z", period_label: "2026-03", tenants: { x: base } },
-      { periodLabel: "2026-04", compareToBaseline: false, attentionTopN: 5 },
+      {
+        periodLabel: "2026-04",
+        compareToBaseline: false,
+        attentionTopN: 5,
+        aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+      },
     );
     expect(r.compared_to_baseline).toBe(false);
     expect(r.section_3_changes.readiness_improved.length).toBe(0);

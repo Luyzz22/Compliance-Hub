@@ -142,6 +142,33 @@ export function kanzleiMonthlyReportMarkdownDe(r: KanzleiMonthlyReportDto): stri
     parts.push(`- Nächster Schritt: ${step}`);
   }
 
+  const ag = r.section_8_ai_governance;
+  const ags = ag.summary;
+  parts.push(`## 8) AI-Governance (Wave 48)`);
+  parts.push(`_${ag.disclaimer_de}_`);
+  parts.push(
+    `- Mandanten: **${ags.total_mandanten}** · API teilweise: **${ags.tenants_partial_api}** · Schema ${ag.version}.`,
+  );
+  parts.push(
+    `- Hinweis auf mögliche AI-Act-/Register-Thematik (Heuristik): **${ags.count_likely_ai_act_relevance}** · High-Risk im Dashboard: **${ags.count_potential_high_risk_exposure}**`,
+  );
+  parts.push(
+    `- Schwache ISO-42001-Säule (schwach/mittel): **${ags.count_weak_iso42001}** · Post-Market/Reporting-Lücke: **${ags.count_weak_post_market}** · Prüfbedarf Human Oversight: **${ags.count_weak_human_oversight}**`,
+  );
+  parts.push(`- EU AI Act (Bucket): schwach **${ags.bucket_ai_act.weak}**, mittel **${ags.bucket_ai_act.medium}**, stark **${ags.bucket_ai_act.strong}**, unbekannt **${ags.bucket_ai_act.unknown}**`);
+  parts.push(
+    `- ISO 42001 (Bucket): schwach **${ags.bucket_iso42001.weak}**, mittel **${ags.bucket_iso42001.medium}**, stark **${ags.bucket_iso42001.strong}**, unbekannt **${ags.bucket_iso42001.unknown}**`,
+  );
+  parts.push(`### Top-Fokus Mandanten`);
+  if (ag.top_attention.length === 0) {
+    parts.push(`- _Keine Mandanten im Überblick._`);
+  } else {
+    for (const t of ag.top_attention.slice(0, 8)) {
+      const name = t.mandant_label ?? t.tenant_id;
+      parts.push(`- **${name}** (\`${t.tenant_id}\`): ${t.priority_hint_de}`);
+    }
+  }
+
   parts.push(`---`);
   parts.push(
     `Hinweis: Portfolio-Report für interne Kanzlei-Arbeit; keine Board-Tischreife. Daten aus Live-API und lokaler Historie – Änderungslogik bewusst grob (siehe Doku Wave 42).`,

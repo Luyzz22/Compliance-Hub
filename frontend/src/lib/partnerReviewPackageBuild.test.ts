@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { stubAdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceBuild";
 import { buildPartnerReviewPackage } from "@/lib/partnerReviewPackageBuild";
 import { partnerReviewPackageMarkdownDe } from "@/lib/partnerReviewPackageMarkdown";
 import { stubAdvisorSlaEvaluation } from "@/lib/advisorSlaEvaluate";
@@ -95,7 +96,11 @@ describe("partnerReviewPackageBuild", () => {
     ];
     p.reminders_due_today_or_overdue_count = 1;
     p.reminders_due_this_week_open_count = 1;
-    const pkg = buildPartnerReviewPackage(p, null, { compareToBaseline: false, attentionTopN: 5 });
+    const pkg = buildPartnerReviewPackage(p, null, {
+      compareToBaseline: false,
+      attentionTopN: 5,
+      aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+    });
     expect(pkg.part_e_advisor_kpis).toBeNull();
     expect(pkg.part_f_kpi_trends).toBeNull();
     expect(pkg.part_g_sla_lagebild.version).toBe(ADVISOR_SLA_VERSION);
@@ -115,16 +120,22 @@ describe("partnerReviewPackageBuild", () => {
     const pkg = buildPartnerReviewPackage(
       p,
       { saved_at: "2026-03-01T00:00:00Z", period_label: "2026-03", tenants: { x: base } },
-      { compareToBaseline: true, attentionTopN: 3 },
+      {
+        compareToBaseline: true,
+        attentionTopN: 3,
+        aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+      },
     );
     expect(pkg.meta.compared_to_baseline).toBe(true);
     expect(pkg.part_c_changes_since_baseline.improvements.length).toBeGreaterThanOrEqual(1);
   });
 
   it("markdown contains section headers", () => {
-    const pkg = buildPartnerReviewPackage(mkPayload([baseRow({})]), null, {
+    const p = mkPayload([baseRow({})]);
+    const pkg = buildPartnerReviewPackage(p, null, {
       compareToBaseline: false,
       attentionTopN: 3,
+      aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
     });
     const md = partnerReviewPackageMarkdownDe(pkg);
     expect(md).toContain("## A) Portfolio-Überblick");
@@ -133,5 +144,7 @@ describe("partnerReviewPackageBuild", () => {
     expect(md).toContain(`Schema ${ADVISOR_SLA_VERSION}`);
     expect(md).toContain("Portfolio kritisch (mehrere SLA-Critical)");
     expect(md).toContain("Keine SLA-Abweichungen – bestehende Kadenz beibehalten.");
+    expect(md).toContain("## H) AI-Governance-Steuerung (Wave 48)");
+    expect(md).toContain("wave48-v1");
   });
 });

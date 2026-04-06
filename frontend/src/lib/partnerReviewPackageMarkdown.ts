@@ -173,6 +173,28 @@ export function partnerReviewPackageMarkdownDe(pkg: PartnerReviewPackageDto): st
   }
   lines.push("");
 
+  const ag = pkg.part_h_ai_governance;
+  const ags = ag.summary;
+  lines.push("## H) AI-Governance-Steuerung (Wave 48)");
+  lines.push("");
+  lines.push(`_${ag.disclaimer_de}_`);
+  lines.push("");
+  lines.push(
+    `- Mandanten: **${ags.total_mandanten}** · API teilweise: **${ags.tenants_partial_api}** · Schema ${ag.version}.`,
+  );
+  lines.push(
+    `- Hinweis AI-Act-/Register-Thematik: **${ags.count_likely_ai_act_relevance}** · High-Risk im Dashboard: **${ags.count_potential_high_risk_exposure}**`,
+  );
+  lines.push(
+    `- ISO-42001 Nachholbedarf (schwach/mittel): **${ags.count_weak_iso42001}** · Post-Market-Lücke: **${ags.count_weak_post_market}** · Human Oversight: **${ags.count_weak_human_oversight}**`,
+  );
+  lines.push("");
+  lines.push("### Top Mandanten für Beraterkapazität");
+  for (const t of ag.top_attention.slice(0, 8)) {
+    lines.push(`- **${lineLabel(t)}:** ${t.priority_hint_de}`);
+  }
+  lines.push("");
+
   lines.push("---");
   lines.push("");
   lines.push("### Priorisierung (Kurz)");

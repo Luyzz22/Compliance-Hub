@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { stubAdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceBuild";
 import { buildAdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiPortfolioBuild";
 import { ADVISOR_KPI_TRENDS_VERSION } from "@/lib/advisorKpiTrendsBuild";
 import { stubAdvisorSlaEvaluation } from "@/lib/advisorSlaEvaluate";
@@ -75,6 +76,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
       periodLabel: "2026-04",
       compareToBaseline: true,
       attentionTopN: 5,
+      aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
     });
     const md = kanzleiMonthlyReportMarkdownDe(r);
     expect(md).toContain("# Kanzlei-Portfolio-Report");
@@ -82,6 +84,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
     expect(md).toContain("## 4) Empfohlene Schwerpunkte");
     expect(md).not.toContain("## 5) Kanzlei-KPIs");
     expect(md).toContain("## 7) SLA & Eskalation (Wave 47)");
+    expect(md).toContain("## 8) AI-Governance (Wave 48)");
   });
 
   it("includes KPI section when snapshot provided", () => {
@@ -104,11 +107,13 @@ describe("kanzleiMonthlyReportMarkdown", () => {
         period_label_de: "Letzte 3 Monate",
         narrative_lines_de: ["Review-Deckung im Vergleich zum vorherigen History-Punkt gestiegen."],
       },
+      aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
     });
     const md = kanzleiMonthlyReportMarkdownDe(r);
     expect(md).toContain("## 5) Kanzlei-KPIs");
     expect(md).toContain("## 6) KPI-Trends (Wave 46)");
     expect(md).toContain("## 7) SLA & Eskalation (Wave 47)");
+    expect(md).toContain("## 8) AI-Governance (Wave 48)");
     expect(md).toContain("Review-Deckung im Vergleich zum vorherigen History-Punkt gestiegen.");
   });
 });

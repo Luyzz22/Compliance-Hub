@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import { upsertAdvisorKpiHistoryDaily } from "@/lib/advisorKpiHistoryStore";
 import { attachAdvisorKpiToPayload } from "@/lib/advisorKpiPortfolioAggregate";
 import { advisorKpiTrendsNarrativeBlock, buildAdvisorKpiTrendsDto } from "@/lib/advisorKpiTrendsBuild";
+import { computeAdvisorAiGovernanceFromBundle } from "@/lib/advisorAiGovernanceAggregate";
 import { computeKanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioAggregate";
+import { loadMappedTenantPillarSnapshots } from "@/lib/boardReadinessAggregate";
 import { readKanzleiMonthlyReportBaseline, writeKanzleiMonthlyReportBaseline } from "@/lib/kanzleiMonthlyReportBaseline";
 import { buildKanzleiMonthlyReport } from "@/lib/kanzleiMonthlyReportBuild";
 import { kanzleiMonthlyReportMarkdownDe } from "@/lib/kanzleiMonthlyReportMarkdown";
@@ -37,7 +39,11 @@ export async function GET(req: Request) {
   const kpiOff = url.searchParams.get("kpi") === "0";
 
   const now = new Date();
-  const payload = await computeKanzleiPortfolioPayload(now);
+  const bundle = await loadMappedTenantPillarSnapshots(now);
+  const [payload, aiGovernance] = await Promise.all([
+    computeKanzleiPortfolioPayload(now, { preloadedBundle: bundle }),
+    Promise.resolve(computeAdvisorAiGovernanceFromBundle(bundle)),
+  ]);
   const baseline = await readKanzleiMonthlyReportBaseline();
 
   const advisorKpiSnapshot = kpiOff
@@ -61,6 +67,7 @@ export async function GET(req: Request) {
     attentionTopN,
     advisorKpiSnapshot,
     kpiTrendsNarrative,
+    aiGovernance,
   });
   const markdown_de = kanzleiMonthlyReportMarkdownDe(report);
 
