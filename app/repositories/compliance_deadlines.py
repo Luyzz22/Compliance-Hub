@@ -124,6 +124,12 @@ class ComplianceDeadlineRepository:
         return True
 
     def seed_dach_defaults(self, tenant_id: str) -> list[ComplianceDeadlineResponse]:
+        """Idempotent: skips defaults whose title already exists for this tenant."""
+        existing_stmt = select(ComplianceDeadlineTable.title).where(
+            ComplianceDeadlineTable.tenant_id == tenant_id,
+        )
+        existing_titles = set(self._session.execute(existing_stmt).scalars().all())
+
         defaults = [
             ComplianceDeadlineCreate(
                 title="EU AI Act Full Applicability",
@@ -164,4 +170,8 @@ class ComplianceDeadlineRepository:
                 regulation_reference="Art. 41",
             ),
         ]
-        return [self.create(tenant_id, d) for d in defaults]
+        result: list[ComplianceDeadlineResponse] = []
+        for d in defaults:
+            if d.title not in existing_titles:
+                result.append(self.create(tenant_id, d))
+        return result

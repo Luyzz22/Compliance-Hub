@@ -8,8 +8,16 @@ from app.main import app
 
 client = TestClient(app)
 
-_HEADERS_A = {"x-api-key": "test-key", "x-tenant-id": "nis2-tenant-a"}
-_HEADERS_B = {"x-api-key": "test-key", "x-tenant-id": "nis2-tenant-b"}
+_HEADERS_A = {
+    "x-api-key": "test-key",
+    "x-tenant-id": "nis2-tenant-a",
+    "x-opa-user-role": "compliance_officer",
+}
+_HEADERS_B = {
+    "x-api-key": "test-key",
+    "x-tenant-id": "nis2-tenant-b",
+    "x-opa-user-role": "compliance_officer",
+}
 
 
 def _create_payload(**overrides: object) -> dict:
@@ -175,3 +183,35 @@ def test_nis2_incident_bsi_deadlines() -> None:
     # Detected time should be between before and after (with small tolerance)
     detected_utc = detected.replace(tzinfo=UTC)
     assert (before - timedelta(seconds=2)) <= detected_utc <= (after + timedelta(seconds=2))
+
+
+def test_nis2_incident_transition_creates_audit_log() -> None:
+    """Workflow transitions must create an audit log entry."""
+    from app.db import SessionLocal
+    from app.repositories.audit_logs import AuditLogRepository
+
+    create_resp = client.post(
+        "/api/v1/nis2-incidents",
+        json=_create_payload(title="Audit trail test"),
+        headers=_HEADERS_A,
+    )
+    inc_id = create_resp.json()["id"]
+
+    client.post(
+        f"/api/v1/nis2-incidents/{inc_id}/transition",
+        json={"target_status": "contained"},
+        headers=_HEADERS_A,
+    )
+
+    session = SessionLocal()
+    try:
+        audit_repo = AuditLogRepository(session)
+        logs = audit_repo.list_for_tenant("nis2-tenant-a", limit=50)
+        transition_logs = [
+            entry
+            for entry in logs
+            if entry.action == "nis2_incident.transition" and entry.entity_id == inc_id
+        ]
+        assert len(transition_logs) >= 1
+    finally:
+        session.close()

@@ -16,7 +16,7 @@ BASE = "/api/v1/compliance-calendar"
 
 
 def _headers(tenant: str = TENANT_A) -> dict[str, str]:
-    return {"x-api-key": API_KEY, "x-tenant-id": tenant}
+    return {"x-api-key": API_KEY, "x-tenant-id": tenant, "x-opa-user-role": "editor"}
 
 
 @pytest.fixture()
@@ -141,6 +141,22 @@ def test_seed_dach_defaults(client: TestClient) -> None:
     assert "NIS2 National Implementation Deadline" in titles
     categories = {d["category"] for d in items}
     assert categories == {"eu_ai_act", "iso_27001", "iso_42001", "dsgvo", "gobd", "nis2"}
+
+
+def test_seed_dach_defaults_is_idempotent(client: TestClient) -> None:
+    """Calling seed-defaults multiple times must not create duplicates."""
+    tenant = "cal-seed-idempotent"
+    r1 = client.post(f"{BASE}/seed-defaults", headers=_headers(tenant))
+    assert r1.status_code == 200
+    first_count = len(r1.json())
+
+    r2 = client.post(f"{BASE}/seed-defaults", headers=_headers(tenant))
+    assert r2.status_code == 200
+    assert len(r2.json()) == 0  # nothing new created
+
+    # Total remains the same
+    r3 = client.get(f"{BASE}/deadlines", headers=_headers(tenant))
+    assert len(r3.json()) == first_count
 
 
 # ── 7. Tenant isolation ───────────────────────────────────────────────────────

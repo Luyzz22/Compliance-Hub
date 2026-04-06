@@ -19,7 +19,7 @@ _API_KEY = "test-key-1"
 def _headers(
     tenant_id: str = _TENANT,
 ) -> dict[str, str]:
-    return {"x-api-key": _API_KEY, "x-tenant-id": tenant_id}
+    return {"x-api-key": _API_KEY, "x-tenant-id": tenant_id, "x-opa-user-role": "auditor"}
 
 
 @pytest.fixture(autouse=True)
@@ -197,3 +197,27 @@ def test_audit_log_gobd_tenant_isolation(
     ns = "urn:compliancehub:gobd:audit:v1"
     for entry in root.findall(f"{{{ns}}}Entry"):
         assert entry.attrib["tenantId"] == _TENANT
+
+
+def test_audit_log_no_update_or_delete_endpoints(
+    client: TestClient,
+    audit_repo: AuditLogRepository,
+) -> None:
+    """Audit logs are append-only: PUT, PATCH, DELETE must return 405 Method Not Allowed."""
+    audit_repo.record_event(
+        tenant_id=_TENANT,
+        actor="immutable-actor",
+        action="create",
+        entity_type="test",
+        entity_id="t-1",
+        before=None,
+        after="{}",
+    )
+    for method in ("put", "patch", "delete"):
+        resp = getattr(client, method)(
+            "/api/v1/audit-logs",
+            headers=_headers(),
+        )
+        assert resp.status_code == 405, (
+            f"Audit log must be append-only: {method.upper()} should return 405"
+        )
