@@ -45,6 +45,8 @@ class ComplianceDeadlineResponse(BaseModel):
     owner: str | None = None
     regulation_reference: str | None = None
     recurrence_months: int | None = None
+    source_type: str | None = None
+    source_id: str | None = None
     escalation_level: EscalationLevel
     days_remaining: int
     created_at_utc: datetime

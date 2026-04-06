@@ -52,6 +52,10 @@ class AuditLogRepository:
             previous_hash=row.previous_hash,
             entry_hash=row.entry_hash,
             created_at_utc=row.created_at_utc,
+            actor_role=row.actor_role,
+            outcome=row.outcome,
+            correlation_id=row.correlation_id,
+            metadata_json=row.metadata_json,
         )
 
     def get_last_hash(self, tenant_id: str) -> str | None:
@@ -75,6 +79,11 @@ class AuditLogRepository:
         after: str | None,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        *,
+        actor_role: str | None = None,
+        outcome: str | None = None,
+        correlation_id: str | None = None,
+        metadata_json: str | None = None,
     ) -> AuditLog:
         created_at = datetime.now(UTC)
         previous_hash = self.get_last_hash(tenant_id)
@@ -101,6 +110,10 @@ class AuditLogRepository:
             previous_hash=previous_hash,
             entry_hash=entry_hash,
             created_at_utc=created_at,
+            actor_role=actor_role,
+            outcome=outcome,
+            correlation_id=correlation_id,
+            metadata_json=metadata_json,
         )
         self._session.add(row)
         self._session.commit()

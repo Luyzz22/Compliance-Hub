@@ -5,9 +5,11 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.main import app, get_audit_log_repository
+from app.models_db import AuditLogTable
 from app.repositories.audit_logs import AuditLogRepository
 from app.security import get_settings
 
@@ -18,6 +20,8 @@ _API_KEY = "test-key-1"
 
 def _headers(
     tenant_id: str = _TENANT,
+    *,
+    opa_role: str = "contributor",
 ) -> dict[str, str]:
     return {"x-api-key": _API_KEY, "x-tenant-id": tenant_id, "x-opa-user-role": "auditor"}
 
@@ -108,7 +112,7 @@ def test_audit_log_gobd_xml_export(
 
     resp = client.get(
         "/api/v1/audit-logs/export/gobd-xml",
-        headers=_headers(),
+        headers=_headers(opa_role="auditor"),
     )
     assert resp.status_code == 200
     assert "application/xml" in resp.headers["content-type"]
@@ -164,6 +168,47 @@ def test_audit_log_captures_ip_and_user_agent(
     assert entry.user_agent == "Mozilla/5.0 TestAgent"
 
 
+def test_gobd_export_forbidden_without_export_permission(
+    client: TestClient,
+    audit_repo: AuditLogRepository,
+) -> None:
+    audit_repo.record_event(
+        tenant_id=_TENANT,
+        actor="actor",
+        action="create",
+        entity_type="risk",
+        entity_id="risk-x",
+        before=None,
+        after="{}",
+    )
+    resp = client.get(
+        "/api/v1/audit-logs/export/gobd-xml",
+        headers=_headers(opa_role="contributor"),
+    )
+    assert resp.status_code == 403
+
+
+def test_audit_log_append_only_delete_blocked(
+    audit_repo: AuditLogRepository,
+) -> None:
+    entry = audit_repo.record_event(
+        tenant_id=_TENANT,
+        actor="del-test",
+        action="create",
+        entity_type="x",
+        entity_id="y",
+        before=None,
+        after="{}",
+    )
+    session: Session = audit_repo._session
+    row = session.get(AuditLogTable, entry.id)
+    assert row is not None
+    session.delete(row)
+    with pytest.raises(ValueError, match="append-only"):
+        session.commit()
+    session.rollback()
+
+
 def test_audit_log_gobd_tenant_isolation(
     client: TestClient,
     audit_repo: AuditLogRepository,
@@ -190,7 +235,7 @@ def test_audit_log_gobd_tenant_isolation(
 
     resp = client.get(
         "/api/v1/audit-logs/export/gobd-xml",
-        headers=_headers(_TENANT),
+        headers=_headers(_TENANT, opa_role="auditor"),
     )
     assert resp.status_code == 200
     root = ET.fromstring(resp.text)

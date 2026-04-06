@@ -67,3 +67,12 @@ def _override_session() -> Iterator[None]:
     app.dependency_overrides[get_session] = get_session
     yield
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def _clear_ai_act_evidence_store() -> Iterator[None]:
+    from app.services.rag.evidence_store import clear_for_tests
+
+    clear_for_tests()
+    yield
+    clear_for_tests()
