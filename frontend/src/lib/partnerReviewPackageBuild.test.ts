@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { stubAdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceBuild";
+import { buildAdvisorEvidenceHooksPortfolioDto } from "@/lib/advisorEvidenceHookBuild";
 import { buildPartnerReviewPackage } from "@/lib/partnerReviewPackageBuild";
 import { partnerReviewPackageMarkdownDe } from "@/lib/partnerReviewPackageMarkdown";
 import { stubAdvisorSlaEvaluation } from "@/lib/advisorSlaEvaluate";
@@ -80,6 +81,10 @@ function mkPayload(rows: KanzleiPortfolioRow[]): KanzleiPortfolioPayload {
   };
 }
 
+function evidenceHooksFor(p: KanzleiPortfolioPayload) {
+  return buildAdvisorEvidenceHooksPortfolioDto(p, [], { generatedAt: new Date(p.generated_at) });
+}
+
 describe("partnerReviewPackageBuild", () => {
   it("builds Part A with reminder counts from payload", () => {
     const p = mkPayload([baseRow({ tenant_id: "a", review_stale: true })]);
@@ -100,6 +105,7 @@ describe("partnerReviewPackageBuild", () => {
       compareToBaseline: false,
       attentionTopN: 5,
       aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+      evidenceHooks: evidenceHooksFor(p),
     });
     expect(pkg.part_e_advisor_kpis).toBeNull();
     expect(pkg.part_f_kpi_trends).toBeNull();
@@ -124,6 +130,7 @@ describe("partnerReviewPackageBuild", () => {
         compareToBaseline: true,
         attentionTopN: 3,
         aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+        evidenceHooks: evidenceHooksFor(p),
       },
     );
     expect(pkg.meta.compared_to_baseline).toBe(true);
@@ -136,6 +143,7 @@ describe("partnerReviewPackageBuild", () => {
       compareToBaseline: false,
       attentionTopN: 3,
       aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+      evidenceHooks: evidenceHooksFor(p),
     });
     const md = partnerReviewPackageMarkdownDe(pkg);
     expect(md).toContain("## A) Portfolio-Überblick");
@@ -146,6 +154,8 @@ describe("partnerReviewPackageBuild", () => {
     expect(md).toContain("Keine SLA-Abweichungen – bestehende Kadenz beibehalten.");
     expect(md).toContain("## H) AI-Governance-Steuerung (Wave 48)");
     expect(md).toContain("## I) Cross-Regulation-Matrix (Wave 49)");
+    expect(md).toContain("## J) Enterprise Evidence Hooks (Wave 50)");
     expect(md).toContain("wave49-v1");
+    expect(md).toContain("wave50-v1");
   });
 });

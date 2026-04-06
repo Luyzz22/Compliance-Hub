@@ -15,6 +15,7 @@ Kompaktes **Portfolio-Artefakt** für interne Partnerrunden, vierteljährliche M
 | **G – SLA-Lagebild** | Wave 47 – SLA-Befunde, Eskalationssignale und kurze Nächste-Schritte; siehe `wave47-sla-and-escalations.md`. |
 | **H – AI-Governance** | Wave 48 – EU AI Act / ISO 42001 Steuerungsüberblick; siehe `wave48-ai-governance-view.md`. |
 | **I – Cross-Regulation** | Wave 49 – Vier-Säulen-Matrix; siehe `wave49-cross-regulation-matrix.md`. |
+| **J – Enterprise Evidence Hooks** | Wave 50 – SAP-/ERP-/DATEV-Evidenz-Metadaten, Portfolio-Lücken; siehe `wave50-enterprise-evidence-hooks.md`. |
 
 ## API
 
@@ -57,6 +58,7 @@ Die API liefert zusätzlich `meta.prioritization_rationale_de` als Kurzliste fü
 
 ## Siehe auch
 
+- `docs/advisors/wave50-enterprise-evidence-hooks.md`
 - `docs/advisors/wave49-cross-regulation-matrix.md`
 - `docs/advisors/wave48-ai-governance-view.md`
 - `docs/advisors/wave47-sla-and-escalations.md`
