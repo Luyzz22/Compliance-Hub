@@ -17,6 +17,8 @@ class Permission(StrEnum):
     MANAGE_INCIDENTS = "manage_incidents"
     VIEW_AUDIT_LOG = "view_audit_log"
     EXPORT_AUDIT_LOG = "export_audit_log"
+    VIEW_COMPLIANCE_CALENDAR = "view_compliance_calendar"
+    MANAGE_COMPLIANCE_CALENDAR = "manage_compliance_calendar"
     VIEW_COMPLIANCE_STATUS = "view_compliance_status"
     EDIT_COMPLIANCE_STATUS = "edit_compliance_status"
     MANAGE_POLICIES = "manage_policies"
@@ -34,6 +36,7 @@ _VIEWER_PERMS = frozenset(
         Permission.VIEW_AI_SYSTEMS,
         Permission.VIEW_COMPLIANCE_STATUS,
         Permission.VIEW_BOARD_REPORTS,
+        Permission.VIEW_COMPLIANCE_CALENDAR,
     }
 )
 
@@ -56,6 +59,7 @@ _EDITOR_PERMS = _CONTRIBUTOR_PERMS | frozenset(
 _AUDITOR_PERMS = _CONTRIBUTOR_PERMS | frozenset(
     {
         Permission.EXPORT_AUDIT_LOG,
+        Permission.VIEW_COMPLIANCE_CALENDAR,
     }
 )
 
@@ -64,6 +68,7 @@ _COMPLIANCE_OFFICER_PERMS = _EDITOR_PERMS | frozenset(
         Permission.MANAGE_INCIDENTS,
         Permission.MANAGE_POLICIES,
         Permission.GENERATE_BOARD_REPORTS,
+        Permission.MANAGE_COMPLIANCE_CALENDAR,
     }
 )
 
@@ -76,6 +81,7 @@ _BOARD_MEMBER_PERMS = frozenset(
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_BOARD_REPORTS,
         Permission.VIEW_COMPLIANCE_STATUS,
+        Permission.VIEW_COMPLIANCE_CALENDAR,
     }
 )
 

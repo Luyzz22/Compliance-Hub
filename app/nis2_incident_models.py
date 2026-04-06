@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class NIS2IncidentType(StrEnum):
@@ -64,6 +65,10 @@ class NIS2IncidentResponse(BaseModel):
     estimated_impact: str | None = None
     bsi_notification_deadline: datetime | None = None
     bsi_report_deadline: datetime | None = None
+    final_report_deadline: datetime | None = None
+    notification_deadline_overdue: bool = False
+    report_deadline_overdue: bool = False
+    final_report_deadline_overdue: bool = False
     detected_at: datetime
     contained_at: datetime | None = None
     eradicated_at: datetime | None = None
@@ -75,3 +80,22 @@ class NIS2IncidentResponse(BaseModel):
 class NIS2IncidentTransition(BaseModel):
     target_status: NIS2WorkflowStatus
     notes: str | None = None
+
+
+class NIS2IncidentDeadlinesOverride(BaseModel):
+    """Regulatory deadline override (audited). At least one deadline must be supplied."""
+
+    bsi_notification_deadline: datetime | None = None
+    bsi_report_deadline: datetime | None = None
+    final_report_deadline: datetime | None = None
+    reason: str = Field(min_length=8, max_length=2000)
+
+    @model_validator(mode="after")
+    def at_least_one_deadline(self) -> Self:
+        if (
+            self.bsi_notification_deadline is None
+            and self.bsi_report_deadline is None
+            and self.final_report_deadline is None
+        ):
+            raise ValueError("At least one deadline must be provided")
+        return self

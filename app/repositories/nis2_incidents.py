@@ -16,6 +16,7 @@ from app.models_db import NIS2IncidentTable
 from app.nis2_incident_models import (
     VALID_TRANSITIONS,
     NIS2IncidentCreate,
+    NIS2IncidentDeadlinesOverride,
     NIS2IncidentResponse,
     NIS2IncidentTransition,
     NIS2WorkflowStatus,
@@ -28,6 +29,20 @@ class NIS2IncidentRepository:
 
     @staticmethod
     def _to_response(row: NIS2IncidentTable) -> NIS2IncidentResponse:
+        now = datetime.now(UTC)
+        closed = row.closed_at is not None
+
+        def _as_utc(dt: datetime | None) -> datetime | None:
+            if dt is None:
+                return None
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=UTC)
+            return dt.astimezone(UTC)
+
+        def _deadline_overdue(deadline: datetime | None) -> bool:
+            d = _as_utc(deadline)
+            return bool(d is not None and not closed and now > d)
+
         return NIS2IncidentResponse(
             id=row.id,
             tenant_id=row.tenant_id,
@@ -42,6 +57,10 @@ class NIS2IncidentRepository:
             estimated_impact=row.estimated_impact,
             bsi_notification_deadline=row.bsi_notification_deadline,
             bsi_report_deadline=row.bsi_report_deadline,
+            final_report_deadline=row.final_report_deadline,
+            notification_deadline_overdue=_deadline_overdue(row.bsi_notification_deadline),
+            report_deadline_overdue=_deadline_overdue(row.bsi_report_deadline),
+            final_report_deadline_overdue=_deadline_overdue(row.final_report_deadline),
             detected_at=row.detected_at,
             contained_at=row.contained_at,
             eradicated_at=row.eradicated_at,
@@ -57,6 +76,7 @@ class NIS2IncidentRepository:
         created_by: str | None = None,
     ) -> NIS2IncidentResponse:
         now = datetime.now(UTC)
+        report_deadline = now + timedelta(hours=72)
         row = NIS2IncidentTable(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
@@ -70,7 +90,8 @@ class NIS2IncidentRepository:
             personal_data_affected=data.personal_data_affected,
             estimated_impact=data.estimated_impact,
             bsi_notification_deadline=now + timedelta(hours=24),
-            bsi_report_deadline=now + timedelta(hours=72),
+            bsi_report_deadline=report_deadline,
+            final_report_deadline=report_deadline + timedelta(days=30),
             detected_at=now,
             created_by=created_by,
             created_at_utc=now,
@@ -137,6 +158,32 @@ class NIS2IncidentRepository:
         attr = timestamp_map.get(target)
         if attr:
             setattr(row, attr, now)
+
+        self._session.commit()
+        self._session.refresh(row)
+        return self._to_response(row)
+
+    def override_deadlines(
+        self,
+        tenant_id: str,
+        incident_id: str,
+        body: NIS2IncidentDeadlinesOverride,
+    ) -> NIS2IncidentResponse:
+        stmt = select(NIS2IncidentTable).where(
+            NIS2IncidentTable.tenant_id == tenant_id,
+            NIS2IncidentTable.id == incident_id,
+        )
+        row = self._session.execute(stmt).scalar_one_or_none()
+        if row is None:
+            raise LookupError(f"NIS2 incident {incident_id} not found")
+
+        if body.bsi_notification_deadline is not None:
+            row.bsi_notification_deadline = body.bsi_notification_deadline
+        if body.bsi_report_deadline is not None:
+            row.bsi_report_deadline = body.bsi_report_deadline
+        if body.final_report_deadline is not None:
+            row.final_report_deadline = body.final_report_deadline
+        row.updated_at_utc = datetime.now(UTC)
 
         self._session.commit()
         self._session.refresh(row)

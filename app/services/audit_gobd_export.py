@@ -27,6 +27,9 @@ def generate_gobd_xml(entries: list[AuditLog]) -> str:
             "createdAt": entry.created_at_utc.isoformat(),
             "entryHash": entry.entry_hash or "",
             "previousHash": entry.previous_hash or "",
+            "actorRole": entry.actor_role or "",
+            "outcome": entry.outcome or "",
+            "correlationId": entry.correlation_id or "",
         }
         el = SubElement(root, "Entry", attrs)
         before_el = SubElement(el, "Before")

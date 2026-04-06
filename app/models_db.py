@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column
 
@@ -431,6 +432,10 @@ class AuditLogTable(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+    actor_role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class UsageEventTable(Base):
@@ -866,6 +871,9 @@ class NIS2IncidentTable(Base):
     bsi_report_deadline: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    final_report_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     contained_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     eradicated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -884,6 +892,18 @@ class ComplianceDeadlineTable(Base):
     """Regulatory compliance deadlines per tenant."""
 
     __tablename__ = "compliance_deadlines"
+    __table_args__ = (
+        Index("idx_compliance_deadlines_tenant_due_date", "tenant_id", "due_date"),
+        Index(
+            "uq_compliance_deadlines_tenant_source",
+            "tenant_id",
+            "source_type",
+            "source_id",
+            unique=True,
+            sqlite_where=text("source_type IS NOT NULL AND source_id IS NOT NULL"),
+            postgresql_where=text("source_type IS NOT NULL AND source_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -894,6 +914,8 @@ class ComplianceDeadlineTable(Base):
     owner: Mapped[str | None] = mapped_column(String(320), nullable=True)
     regulation_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
     recurrence_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )

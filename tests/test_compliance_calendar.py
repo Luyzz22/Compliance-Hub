@@ -15,8 +15,12 @@ API_KEY = "test-key"
 BASE = "/api/v1/compliance-calendar"
 
 
-def _headers(tenant: str = TENANT_A) -> dict[str, str]:
-    return {"x-api-key": API_KEY, "x-tenant-id": tenant}
+def _headers(tenant: str = TENANT_A, *, opa_role: str = "tenant_admin") -> dict[str, str]:
+    return {
+        "x-api-key": API_KEY,
+        "x-tenant-id": tenant,
+        "x-opa-user-role": opa_role,
+    }
 
 
 @pytest.fixture()
@@ -141,6 +145,25 @@ def test_seed_dach_defaults(client: TestClient) -> None:
     assert "NIS2 National Implementation Deadline" in titles
     categories = {d["category"] for d in items}
     assert categories == {"eu_ai_act", "iso_27001", "iso_42001", "dsgvo", "gobd", "nis2"}
+
+
+def test_seed_dach_defaults_idempotent(client: TestClient) -> None:
+    tenant = "cal-seed-idempotent"
+    r1 = client.post(f"{BASE}/seed-defaults", headers=_headers(tenant))
+    r2 = client.post(f"{BASE}/seed-defaults", headers=_headers(tenant))
+    assert r1.status_code == 200 and r2.status_code == 200
+    lst = client.get(f"{BASE}/deadlines", headers=_headers(tenant, opa_role="viewer"))
+    assert lst.status_code == 200
+    assert len(lst.json()) == 6
+
+
+def test_compliance_calendar_mutations_forbidden_for_contributor(client: TestClient) -> None:
+    r = client.post(
+        f"{BASE}/deadlines",
+        json={"title": "X", "category": "custom", "due_date": "2031-01-01"},
+        headers=_headers(opa_role="contributor"),
+    )
+    assert r.status_code == 403
 
 
 # ── 7. Tenant isolation ───────────────────────────────────────────────────────

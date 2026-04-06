@@ -17,6 +17,7 @@ def test_viewer_has_view_dashboard_permission() -> None:
     assert has_permission(EnterpriseRole.VIEWER, Permission.VIEW_AI_SYSTEMS)
     assert has_permission(EnterpriseRole.VIEWER, Permission.VIEW_COMPLIANCE_STATUS)
     assert has_permission(EnterpriseRole.VIEWER, Permission.VIEW_BOARD_REPORTS)
+    assert has_permission(EnterpriseRole.VIEWER, Permission.VIEW_COMPLIANCE_CALENDAR)
 
 
 def test_viewer_cannot_edit() -> None:
@@ -30,6 +31,7 @@ def test_compliance_officer_can_manage_incidents() -> None:
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.MANAGE_INCIDENTS)
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.MANAGE_POLICIES)
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.GENERATE_BOARD_REPORTS)
+    assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.MANAGE_COMPLIANCE_CALENDAR)
     # Also inherits editor/contributor perms
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.EDIT_AI_SYSTEMS)
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.VIEW_DASHBOARD)
@@ -69,6 +71,7 @@ def test_board_member_has_restricted_view() -> None:
             Permission.VIEW_DASHBOARD,
             Permission.VIEW_BOARD_REPORTS,
             Permission.VIEW_COMPLIANCE_STATUS,
+            Permission.VIEW_COMPLIANCE_CALENDAR,
         }
     )
 

@@ -20,6 +20,10 @@ class AuditLog(BaseModel):
     previous_hash: str | None = None
     entry_hash: str | None = None
     created_at_utc: datetime
+    actor_role: str | None = None
+    outcome: str | None = None
+    correlation_id: str | None = None
+    metadata_json: str | None = None
 
 
 class AuditEventBase(BaseModel):
