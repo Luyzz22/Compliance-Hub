@@ -1487,280 +1487,6 @@ def create_ai_governance_action(
     "/api/v1/ai-governance/actions",
     response_model=list[AIGovernanceActionRead],
 )
-def post_ai_governance_action_drafts(
-    body: AIGovernanceActionDraftRequest,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-) -> AIGovernanceActionDraftResponse:
-    """Governance-Action-Entwürfe aus Lücken (LLM, ohne Persistenz)."""
-    tenant_id = auth_context.tenant_id
-    require_tenant_llm_features(tenant_id, session, FeatureFlag.llm_action_drafts)
-    try:
-        out = generate_action_drafts(body, tenant_id, session=session)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
-    except llm_client_mod.LLMConfigurationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-    except llm_client_mod.LLMProviderHTTPError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
-        ) from exc
-    usage_event_logger.log_usage_event(
-        session,
-        tenant_id,
-        usage_event_logger.LLM_ACTION_DRAFT_REQUESTED,
-        {"requirement_count": len(body.requirements)},
-    )
-    return out
-
-
-@app.get(
-    "/api/v1/nis2-kritis/kpi-drilldown",
-    response_model=Nis2KritisKpiDrilldown,
-    tags=["nis2-kritis"],
-)
-def get_nis2_kritis_kpi_drilldown(
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
-    top_n: Annotated[
-        int,
-        Query(ge=1, le=50, description="Top-N schwächste Systeme je KPI-Typ"),
-    ] = 5,
-) -> Nis2KritisKpiDrilldown:
-    """Histogramm + Worst-Offenders je NIS2-/KRITIS-KPI-Typ (mandantenisoliert)."""
-    return build_nis2_kritis_kpi_drilldown(
-        auth_context.tenant_id,
-        nis2_repo,
-        top_n=top_n,
-    )
-
-
-@app.get("/api/v1/audit-logs", response_model=list[AuditLog])
-def list_audit_logs(
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-) -> list[AuditLog]:
-    return audit_repo.list_for_tenant(tenant_id=tenant_id)
-
-
-@app.get("/api/v1/audit-logs/export/gobd-xml")
-def export_audit_logs_gobd_xml(
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
-) -> Response:
-    """GoBD §14 compliant XML export of the audit trail."""
-    entries = audit_repo.list_for_tenant(tenant_id=tenant_id, limit=10_000)
-    xml = generate_gobd_xml(entries)
-    return Response(
-        content=xml,
-        media_type="application/xml; charset=utf-8",
-        headers={
-            "Content-Disposition": (f'attachment; filename="audit-trail-{tenant_id}.xml"'),
-        },
-    )
-
-
-@app.get("/api/v1/audit-events", response_model=list[AuditEvent])
-def list_audit_events(
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
-    entity_type: str | None = None,
-    entity_id: str | None = None,
-    limit: int = Query(default=100, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
-) -> list[AuditEvent]:
-    tenant_id = auth_context.tenant_id
-    if entity_type is not None and entity_id is not None:
-        return audit_repo.list_events_for_entity(
-            tenant_id=tenant_id,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            limit=limit,
-            offset=offset,
-        )
-    return audit_repo.list_events_for_tenant(
-        tenant_id=tenant_id,
-        limit=limit,
-        offset=offset,
-    )
-
-
-@app.get("/api/v1/audit-events/ai-systems/{ai_system_id}", response_model=list[AuditEvent])
-def list_ai_system_audit_events(
-    ai_system_id: str,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
-    limit: int = Query(default=100, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
-) -> list[AuditEvent]:
-    return audit_repo.list_events_for_entity(
-        tenant_id=auth_context.tenant_id,
-        entity_type="ai_system",
-        entity_id=ai_system_id,
-        limit=limit,
-        offset=offset,
-    )
-
-
-def _enterprise_status_payload() -> dict[str, object]:
-    return {
-        "status": "ok",
-        "product": "ComplianceHub",
-        "region": "DACH",
-        "version": APP_VERSION,
-        "environment": APP_ENVIRONMENT,
-        "features_enabled": [
-            "document_intake",
-            "ai_system_registry",
-            "audit_logging",
-        ],
-        "compliance_profiles": [
-            "EU_AI_ACT_FOUNDATION",
-            "GDPR_MINIMAL",
-        ],
-    }
-
-
-@app.get("/api/v1/enterprise/status")
-def enterprise_status() -> dict[str, object]:
-    return _enterprise_status_payload()
-
-
-@app.get("/api/v1/compliance/reports/ai-systems", response_model=AISystemComplianceReport)
-def get_aisystem_compliance_report(
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-) -> AISystemComplianceReport:
-    summary = repository.compliance_summary_for_tenant(tenant_id)
-    return AISystemComplianceReport(**summary)
-
-
-@app.get("/api/v1/ai-governance/board-kpis", response_model=AIBoardKpiSummary)
-def get_ai_governance_board_kpis(
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-    ai_repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-    violation_repository: Annotated[ViolationRepository, Depends(get_violation_repository)],
-    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
-) -> AIBoardKpiSummary:
-    out = compute_ai_board_kpis(
-        tenant_id=auth_context.tenant_id,
-        ai_system_repository=ai_repository,
-        violation_repository=violation_repository,
-        nis2_kritis_kpi_repository=nis2_repo,
-    )
-    usage_event_logger.log_usage_event(
-        session,
-        auth_context.tenant_id,
-        usage_event_logger.BOARD_VIEW_OPENED,
-        {"surface": "board_kpis"},
-    )
-    return out
-
-
-@app.get(
-    "/api/v1/ai-governance/compliance/overview",
-    response_model=AIComplianceOverview,
-)
-def get_ai_compliance_overview(
-    request: Request,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
-    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
-    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
-) -> AIComplianceOverview:
-    """Board-fähiger EU AI Act / ISO 42001 Readiness-Überblick."""
-    tid = auth_context.tenant_id
-    workspace_telemetry.log_workspace_feature_used(
-        session,
-        tid,
-        workspace_mode=workspace_mode_for_telemetry(session, tid),
-        feature_name="ai_governance_playbook",
-        request_path=request.url.path,
-        route=workspace_telemetry.route_template_from_request(request),
-        method=request.method,
-    )
-    return compute_ai_compliance_overview(
-        tenant_id=tid,
-        ai_repo=ai_repo,
-        cls_repo=cls_repo,
-        gap_repo=gap_repo,
-        nis2_kritis_kpi_repository=nis2_repo,
-    )
-
-
-@app.get(
-    "/api/v1/ai-governance/readiness/eu-ai-act",
-    response_model=EUAIActReadinessOverview,
-)
-def get_eu_ai_act_readiness(
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
-    gap_repo: Annotated[ComplianceGapRepository, Depends(get_compliance_gap_repository)],
-    nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
-    action_repo: Annotated[
-        AIGovernanceActionRepository,
-        Depends(get_ai_governance_action_repository),
-    ],
-) -> EUAIActReadinessOverview:
-    """Readiness bis Stichtag High-Risk inkl. Gaps, Vorschläge und offene Maßnahmen."""
-    return compute_eu_ai_act_readiness_overview(
-        tenant_id=auth_context.tenant_id,
-        ai_repo=ai_repo,
-        cls_repo=cls_repo,
-        gap_repo=gap_repo,
-        nis2_repo=nis2_repo,
-        action_repo=action_repo,
-    )
-
-
-@app.post(
-    "/api/v1/ai-governance/actions",
-    response_model=AIGovernanceActionRead,
-    status_code=status.HTTP_201_CREATED,
-)
-def create_ai_governance_action(
-    body: AIGovernanceActionCreate,
-    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
-    session: Annotated[Session, Depends(get_session)],
-    action_repo: Annotated[
-        AIGovernanceActionRepository,
-        Depends(get_ai_governance_action_repository),
-    ],
-    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
-) -> AIGovernanceActionRead:
-    tenant_id = auth_context.tenant_id
-    if body.related_ai_system_id:
-        if ai_repo.get_by_id(tenant_id, body.related_ai_system_id) is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="AISystem not found",
-            )
-    created = action_repo.create(tenant_id, body)
-    usage_event_logger.log_usage_event(
-        session,
-        tenant_id,
-        usage_event_logger.GOVERNANCE_ACTION_CREATED,
-        {"action_id": created.id},
-    )
-    return created
-
-
-@app.get(
-    "/api/v1/ai-governance/actions",
-    response_model=list[AIGovernanceActionRead],
-)
 def list_ai_governance_actions(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     action_repo: Annotated[
@@ -2549,18 +2275,28 @@ def create_nis2_incident(
     role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_INCIDENTS))],
     repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_INCIDENTS))],
 ) -> NIS2IncidentResponse:
     """Create a new NIS2 Art. 21 compliant incident."""
-    result = repo.create(tenant_id=tenant_id, data=body)
-    audit_repo.record_event(
+    actor = actor_id_from_request(request)
+    result = repo.create(tenant_id=tenant_id, data=body, created_by=actor)
+    record_governance_audit(
+        audit_repo,
         tenant_id=tenant_id,
-        actor="api",
-        action="nis2_incident.create",
+        actor_id=actor,
+        actor_role=role,
+        action="nis2.incident.create",
         entity_type="nis2_incident",
         entity_id=result.id,
+        outcome="success",
         before=None,
-        after=result.model_dump_json(),
+        after=json.dumps({"workflow_status": result.workflow_status.value}),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={
+            "incident_type": body.incident_type.value,
+            "severity": body.severity,
+        },
     )
     return result
 
@@ -2573,7 +2309,6 @@ def list_nis2_incidents(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_INCIDENTS))],
     repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_INCIDENTS))],
 ) -> list[NIS2IncidentResponse]:
     """List NIS2 incidents for the authenticated tenant."""
     return repo.list_for_tenant(tenant_id=tenant_id)
@@ -2588,7 +2323,6 @@ def get_nis2_incident(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_INCIDENTS))],
     repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_INCIDENTS))],
 ) -> NIS2IncidentResponse:
     """Get a single NIS2 incident by ID (tenant-isolated)."""
     result = repo.get(tenant_id=tenant_id, incident_id=incident_id)
@@ -2609,10 +2343,11 @@ def transition_nis2_incident(
     role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_INCIDENTS))],
     repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_INCIDENTS))],
 ) -> NIS2IncidentResponse:
     """Transition a NIS2 incident to the next workflow state."""
-    before = repo.get(tenant_id=tenant_id, incident_id=incident_id)
+    prev = repo.get(tenant_id=tenant_id, incident_id=incident_id)
+    if prev is None:
+        raise HTTPException(status_code=404, detail="NIS2 incident not found")
     try:
         result = repo.transition(
             tenant_id=tenant_id,
@@ -2620,15 +2355,99 @@ def transition_nis2_incident(
             transition=body,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
-    audit_repo.record_event(
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
         tenant_id=tenant_id,
-        actor="api",
-        action="nis2_incident.transition",
+        actor_id=actor,
+        actor_role=role,
+        action="nis2.incident.transition",
         entity_type="nis2_incident",
         entity_id=incident_id,
-        before=before.model_dump_json() if before else None,
-        after=result.model_dump_json(),
+        outcome="success",
+        before=json.dumps({"workflow_status": prev.workflow_status.value}),
+        after=json.dumps(
+            {
+                "workflow_status": result.workflow_status.value,
+                "target_status": body.target_status.value,
+            }
+        ),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"notes_present": body.notes is not None},
+    )
+    return result
+
+
+@app.patch(
+    "/api/v1/nis2-incidents/{incident_id}/deadlines",
+    response_model=NIS2IncidentResponse,
+)
+def patch_nis2_incident_deadlines(
+    incident_id: str,
+    body: NIS2IncidentDeadlinesOverride,
+    request: Request,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_INCIDENTS))],
+    repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> NIS2IncidentResponse:
+    """Override regulatory deadlines (audited; requires documented reason)."""
+    prev = repo.get(tenant_id=tenant_id, incident_id=incident_id)
+    if prev is None:
+        raise HTTPException(status_code=404, detail="NIS2 incident not found")
+    before = json.dumps(
+        {
+            "bsi_notification_deadline": prev.bsi_notification_deadline.isoformat()
+            if prev.bsi_notification_deadline
+            else None,
+            "bsi_report_deadline": prev.bsi_report_deadline.isoformat()
+            if prev.bsi_report_deadline
+            else None,
+            "final_report_deadline": prev.final_report_deadline.isoformat()
+            if prev.final_report_deadline
+            else None,
+        }
+    )
+    try:
+        result = repo.override_deadlines(
+            tenant_id=tenant_id,
+            incident_id=incident_id,
+            body=body,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="NIS2 incident not found") from None
+    after = json.dumps(
+        {
+            "bsi_notification_deadline": result.bsi_notification_deadline.isoformat()
+            if result.bsi_notification_deadline
+            else None,
+            "bsi_report_deadline": result.bsi_report_deadline.isoformat()
+            if result.bsi_report_deadline
+            else None,
+            "final_report_deadline": result.final_report_deadline.isoformat()
+            if result.final_report_deadline
+            else None,
+        }
+    )
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
+        tenant_id=tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action="nis2.incident.deadlines.override",
+        entity_type="nis2_incident",
+        entity_id=incident_id,
+        outcome="success",
+        before=before,
+        after=after,
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"reason": body.reason},
     )
     return result
 
@@ -4868,20 +4687,31 @@ def create_compliance_deadline(
     ],
     repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.EDIT_COMPLIANCE_STATUS))
-    ],
 ) -> ComplianceDeadlineResponse:
     """Create a new regulatory compliance deadline."""
     result = repo.create(tenant_id=tenant_id, data=body)
-    audit_repo.record_event(
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
         tenant_id=tenant_id,
-        actor="api",
-        action="compliance_deadline.create",
+        actor_id=actor,
+        actor_role=role,
+        action="compliance_calendar.deadline.create",
         entity_type="compliance_deadline",
         entity_id=result.id,
+        outcome="success",
         before=None,
-        after=result.model_dump_json(),
+        after=json.dumps(
+            {
+                "title": result.title,
+                "due_date": str(result.due_date),
+                "category": result.category.value,
+            }
+        ),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata=None,
     )
     return result
 
@@ -4894,9 +4724,6 @@ def list_compliance_deadlines(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_COMPLIANCE_CALENDAR))],
     repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.VIEW_COMPLIANCE_STATUS))
-    ],
 ) -> list[ComplianceDeadlineResponse]:
     """List compliance deadlines for the authenticated tenant."""
     return repo.list_for_tenant(tenant_id=tenant_id)
@@ -4911,9 +4738,6 @@ def get_compliance_deadline(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_COMPLIANCE_CALENDAR))],
     repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.VIEW_COMPLIANCE_STATUS))
-    ],
 ) -> ComplianceDeadlineResponse:
     """Get a single compliance deadline by ID (tenant-isolated)."""
     result = repo.get(tenant_id=tenant_id, deadline_id=deadline_id)
@@ -4936,23 +4760,43 @@ def update_compliance_deadline(
     ],
     repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.EDIT_COMPLIANCE_STATUS))
-    ],
 ) -> ComplianceDeadlineResponse:
     """Partially update a compliance deadline."""
-    before = repo.get(tenant_id=tenant_id, deadline_id=deadline_id)
+    prev = repo.get(tenant_id=tenant_id, deadline_id=deadline_id)
+    if prev is None:
+        raise HTTPException(status_code=404, detail="Compliance deadline not found")
+    before = json.dumps(
+        {
+            "title": prev.title,
+            "due_date": str(prev.due_date),
+            "category": prev.category.value,
+        }
+    )
     result = repo.update(tenant_id=tenant_id, deadline_id=deadline_id, data=body)
     if result is None:
         raise HTTPException(status_code=404, detail="Compliance deadline not found")
-    audit_repo.record_event(
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
         tenant_id=tenant_id,
-        actor="api",
-        action="compliance_deadline.update",
+        actor_id=actor,
+        actor_role=role,
+        action="compliance_calendar.deadline.update",
         entity_type="compliance_deadline",
         entity_id=deadline_id,
-        before=before.model_dump_json() if before else None,
-        after=result.model_dump_json(),
+        outcome="success",
+        before=before,
+        after=json.dumps(
+            {
+                "title": result.title,
+                "due_date": str(result.due_date),
+                "category": result.category.value,
+            }
+        ),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"patch_fields": list(body.model_dump(exclude_unset=True).keys())},
     )
     return result
 
@@ -4970,23 +4814,32 @@ def delete_compliance_deadline(
     ],
     repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.EDIT_COMPLIANCE_STATUS))
-    ],
 ) -> Response:
     """Delete a compliance deadline."""
-    before = repo.get(tenant_id=tenant_id, deadline_id=deadline_id)
+    prev = repo.get(tenant_id=tenant_id, deadline_id=deadline_id)
+    if prev is None:
+        raise HTTPException(status_code=404, detail="Compliance deadline not found")
     deleted = repo.delete(tenant_id=tenant_id, deadline_id=deadline_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Compliance deadline not found")
-    audit_repo.record_event(
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
         tenant_id=tenant_id,
-        actor="api",
-        action="compliance_deadline.delete",
+        actor_id=actor,
+        actor_role=role,
+        action="compliance_calendar.deadline.delete",
         entity_type="compliance_deadline",
         entity_id=deadline_id,
-        before=before.model_dump_json() if before else None,
+        outcome="success",
+        before=json.dumps(
+            {"title": prev.title, "due_date": str(prev.due_date), "category": prev.category.value}
+        ),
         after=None,
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata=None,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -5002,9 +4855,7 @@ def seed_compliance_defaults(
         EnterpriseRole, Depends(require_permission(Permission.MANAGE_COMPLIANCE_CALENDAR))
     ],
     repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.EDIT_COMPLIANCE_STATUS))
-    ],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> list[ComplianceDeadlineResponse]:
     """Pre-populate DACH-region regulatory deadlines for a tenant."""
     result = repo.seed_dach_defaults(tenant_id=tenant_id)
@@ -5033,9 +4884,6 @@ def export_compliance_calendar_ical(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_COMPLIANCE_CALENDAR))],
     repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.VIEW_COMPLIANCE_STATUS))
-    ],
 ) -> Response:
     """Export all compliance deadlines as an iCal (.ics) calendar file."""
     deadlines = repo.list_for_tenant(tenant_id=tenant_id)

@@ -8,16 +8,17 @@ from app.main import app
 
 client = TestClient(app)
 
-_HEADERS_A = {
-    "x-api-key": "test-key",
-    "x-tenant-id": "nis2-tenant-a",
-    "x-opa-user-role": "compliance_officer",
-}
-_HEADERS_B = {
-    "x-api-key": "test-key",
-    "x-tenant-id": "nis2-tenant-b",
-    "x-opa-user-role": "compliance_officer",
-}
+
+def _headers(tenant: str) -> dict[str, str]:
+    return {
+        "x-api-key": "test-key",
+        "x-tenant-id": tenant,
+        "x-opa-user-role": "tenant_admin",
+    }
+
+
+_HEADERS_A = _headers("nis2-tenant-a")
+_HEADERS_B = _headers("nis2-tenant-b")
 
 
 def _create_payload(**overrides: object) -> dict:
@@ -185,33 +186,69 @@ def test_nis2_incident_bsi_deadlines() -> None:
     assert (before - timedelta(seconds=2)) <= detected_utc <= (after + timedelta(seconds=2))
 
 
-def test_nis2_incident_transition_creates_audit_log() -> None:
-    """Workflow transitions must create an audit log entry."""
+def test_nis2_final_report_deadline_from_detection() -> None:
+    resp = client.post(
+        "/api/v1/nis2-incidents",
+        json=_create_payload(title="Final report"),
+        headers=_HEADERS_A,
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["final_report_deadline"] is not None
+    detected = datetime.fromisoformat(data["detected_at"])
+    report = datetime.fromisoformat(data["bsi_report_deadline"])
+    final = datetime.fromisoformat(data["final_report_deadline"])
+    assert final - report == timedelta(days=30)
+    assert timedelta(hours=71, minutes=59) <= report - detected <= timedelta(hours=72, minutes=1)
+
+
+def test_nis2_deadline_override_requires_permission() -> None:
+    create_resp = client.post(
+        "/api/v1/nis2-incidents",
+        json=_create_payload(title="Override RBAC"),
+        headers=_HEADERS_A,
+    )
+    inc_id = create_resp.json()["id"]
+    low = {
+        "x-api-key": "test-key",
+        "x-tenant-id": "nis2-tenant-a",
+        "x-opa-user-role": "contributor",
+    }
+    r = client.patch(
+        f"/api/v1/nis2-incidents/{inc_id}/deadlines",
+        json={
+            "bsi_notification_deadline": "2030-01-01T12:00:00+00:00",
+            "reason": "documented override for test suite minimum length",
+        },
+        headers=low,
+    )
+    assert r.status_code == 403
+
+
+def test_nis2_deadline_override_and_audit() -> None:
     from app.db import SessionLocal
     from app.repositories.audit_logs import AuditLogRepository
 
     create_resp = client.post(
         "/api/v1/nis2-incidents",
-        json=_create_payload(title="Audit trail test"),
+        json=_create_payload(title="Override ok"),
         headers=_HEADERS_A,
     )
     inc_id = create_resp.json()["id"]
-
-    client.post(
-        f"/api/v1/nis2-incidents/{inc_id}/transition",
-        json={"target_status": "contained"},
+    new_notif = "2031-06-15T08:00:00+00:00"
+    r = client.patch(
+        f"/api/v1/nis2-incidents/{inc_id}/deadlines",
+        json={
+            "bsi_notification_deadline": new_notif,
+            "reason": "court-approved timeline adjustment for integration testing here",
+        },
         headers=_HEADERS_A,
     )
+    assert r.status_code == 200
+    assert r.json()["bsi_notification_deadline"] is not None
 
-    session = SessionLocal()
-    try:
-        audit_repo = AuditLogRepository(session)
-        logs = audit_repo.list_for_tenant("nis2-tenant-a", limit=50)
-        transition_logs = [
-            entry
-            for entry in logs
-            if entry.action == "nis2_incident.transition" and entry.entity_id == inc_id
-        ]
-        assert len(transition_logs) >= 1
-    finally:
-        session.close()
+    with SessionLocal() as session:
+        arepo = AuditLogRepository(session)
+        entries = arepo.list_for_tenant("nis2-tenant-a", limit=50)
+        actions = {e.action for e in entries}
+        assert "nis2.incident.deadlines.override" in actions

@@ -201,54 +201,29 @@ class ComplianceDeadlineRepository:
         return True
 
     def seed_dach_defaults(self, tenant_id: str) -> list[ComplianceDeadlineResponse]:
-        """Idempotent: skips defaults whose title already exists for this tenant."""
-        existing_stmt = select(ComplianceDeadlineTable.title).where(
-            ComplianceDeadlineTable.tenant_id == tenant_id,
-        )
-        existing_titles = set(self._session.execute(existing_stmt).scalars().all())
-
-        defaults = [
-            ComplianceDeadlineCreate(
-                title="EU AI Act Full Applicability",
-                category=DeadlineCategory.EU_AI_ACT,
-                due_date=date(2026, 8, 2),
-                regulation_reference="Art. 113",
-            ),
-            ComplianceDeadlineCreate(
-                title="ISO 27001 Re-Certification",
-                category=DeadlineCategory.ISO_27001,
-                due_date=date(2027, 1, 1),
-                recurrence_months=36,
-            ),
-            ComplianceDeadlineCreate(
-                title="ISO 42001 Initial Certification",
-                category=DeadlineCategory.ISO_42001,
-                due_date=date(2027, 1, 1),
-                recurrence_months=36,
-            ),
-            ComplianceDeadlineCreate(
-                title="DSGVO Art. 33 72h Notification Requirement",
-                category=DeadlineCategory.DSGVO,
-                due_date=date(2099, 12, 31),
-                regulation_reference="Art. 33",
-                description="Ongoing obligation – 72-hour breach notification window.",
-            ),
-            ComplianceDeadlineCreate(
-                title="GoBD §147 Retention Period End",
-                category=DeadlineCategory.GOBD,
-                due_date=date(2036, 12, 31),
-                regulation_reference="§147 AO",
-                recurrence_months=120,
-            ),
-            ComplianceDeadlineCreate(
-                title="NIS2 National Implementation Deadline",
-                category=DeadlineCategory.NIS2,
-                due_date=date(2025, 10, 17),
-                regulation_reference="Art. 41",
-            ),
-        ]
-        result: list[ComplianceDeadlineResponse] = []
-        for d in defaults:
-            if d.title not in existing_titles:
-                result.append(self.create(tenant_id, d))
-        return result
+        """Idempotent: one row per catalog *source_id* per tenant (unique partial index)."""
+        out: list[ComplianceDeadlineResponse] = []
+        for source_id, payload in _catalog_defaults():
+            existing = self._get_by_source(tenant_id, _SEED_SOURCE_TYPE, source_id)
+            if existing is not None:
+                out.append(self._to_domain(existing))
+                continue
+            row = ComplianceDeadlineTable(
+                id=str(uuid.uuid4()),
+                tenant_id=tenant_id,
+                title=payload.title,
+                description=payload.description,
+                category=payload.category.value,
+                due_date=payload.due_date.isoformat(),
+                owner=payload.owner,
+                regulation_reference=payload.regulation_reference,
+                recurrence_months=payload.recurrence_months,
+                source_type=_SEED_SOURCE_TYPE,
+                source_id=source_id,
+                created_at_utc=datetime.now(UTC),
+            )
+            self._session.add(row)
+            self._session.commit()
+            self._session.refresh(row)
+            out.append(self._to_domain(row))
+        return out
