@@ -172,9 +172,6 @@ def test_nis2_incident_bsi_deadlines() -> None:
     report_delta = report - detected
     assert timedelta(hours=71, minutes=59) <= report_delta <= timedelta(hours=72, minutes=1)
 
-    # Detected time should be between before and after
-    assert before <= detected.replace(tzinfo=UTC) <= after or (
-        before - timedelta(seconds=2)
-        <= detected.replace(tzinfo=UTC)
-        <= after + timedelta(seconds=2)
-    )
+    # Detected time should be between before and after (with small tolerance)
+    detected_utc = detected.replace(tzinfo=UTC)
+    assert (before - timedelta(seconds=2)) <= detected_utc <= (after + timedelta(seconds=2))
