@@ -5,11 +5,12 @@
 import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
+import type { CrossRegulationMatrixDto } from "@/lib/advisorCrossRegulationTypes";
 import type { AdvisorSlaEvaluationDto } from "@/lib/advisorSlaTypes";
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 
-export const KANZLEI_MONTHLY_REPORT_VERSION = "wave48-v1";
+export const KANZLEI_MONTHLY_REPORT_VERSION = "wave49-v1";
 
 export type KanzleiAttentionBand = "low" | "medium" | "high";
 
@@ -94,4 +95,6 @@ export type KanzleiMonthlyReportDto = {
   section_7_advisor_sla: AdvisorSlaEvaluationDto;
   /** Wave 48 – AI-Governance-Posture (EU AI Act / ISO 42001, heuristisch). */
   section_8_ai_governance: AdvisorAiGovernancePortfolioDto;
+  /** Wave 49 – Cross-Regulation-Matrix (vier Säulen). */
+  section_9_cross_regulation_matrix: CrossRegulationMatrixDto;
 };

@@ -8,6 +8,7 @@ import type { KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzlei
 import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
+import { buildCrossRegulationMatrixFromPayload } from "@/lib/advisorCrossRegulationBuild";
 import type {
   KanzleiAttentionBand,
   KanzleiMonthlyBaselineTenant,
@@ -361,5 +362,6 @@ export function buildKanzleiMonthlyReport(
     section_6_kpi_trends: opts.kpiTrendsNarrative ?? null,
     section_7_advisor_sla: payload.advisor_sla,
     section_8_ai_governance: opts.aiGovernance,
+    section_9_cross_regulation_matrix: buildCrossRegulationMatrixFromPayload(payload),
   };
 }

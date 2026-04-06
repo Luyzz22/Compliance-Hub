@@ -13,6 +13,7 @@ Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine
 | **5–6) KPIs & Trends** | Wave 45–46: siehe `wave45-advisor-kpis.md` / `wave46-kpi-trends.md` |
 | **7) SLA & Eskalation** | Wave 47: leichte Regeln, Befunde und Eskalationssignale aus KPI, Queue und Remindern – siehe `wave47-sla-and-escalations.md` |
 | **8) AI-Governance** | Wave 48: EU AI Act / ISO 42001 Portfolio-Posture – siehe `wave48-ai-governance-view.md` |
+| **9) Cross-Regulation** | Wave 49: Vier-Säulen-Matrix – siehe `wave49-cross-regulation-matrix.md` |
 
 ## API (intern, Lead-Admin)
 
@@ -70,6 +71,7 @@ Listen sind auf **12 Einträge** pro Kategorie begrenzt (Lesbarkeit).
 
 ## Siehe auch
 
+- `docs/advisors/wave49-cross-regulation-matrix.md`
 - `docs/advisors/wave48-ai-governance-view.md`
 - `docs/advisors/wave47-sla-and-escalations.md`
 - `docs/advisors/wave45-advisor-kpis.md`

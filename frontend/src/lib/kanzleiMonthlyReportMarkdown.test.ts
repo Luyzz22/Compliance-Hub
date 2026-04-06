@@ -85,6 +85,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
     expect(md).not.toContain("## 5) Kanzlei-KPIs");
     expect(md).toContain("## 7) SLA & Eskalation (Wave 47)");
     expect(md).toContain("## 8) AI-Governance (Wave 48)");
+    expect(md).toContain("## 9) Cross-Regulation-Matrix (Wave 49)");
   });
 
   it("includes KPI section when snapshot provided", () => {
@@ -114,6 +115,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
     expect(md).toContain("## 6) KPI-Trends (Wave 46)");
     expect(md).toContain("## 7) SLA & Eskalation (Wave 47)");
     expect(md).toContain("## 8) AI-Governance (Wave 48)");
+    expect(md).toContain("## 9) Cross-Regulation-Matrix (Wave 49)");
     expect(md).toContain("Review-Deckung im Vergleich zum vorherigen History-Punkt gestiegen.");
   });
 });

@@ -5,11 +5,12 @@
 import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
+import type { CrossRegulationMatrixDto } from "@/lib/advisorCrossRegulationTypes";
 import type { AdvisorSlaEvaluationDto } from "@/lib/advisorSlaTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 import type { KanzleiMonthlyChangeLine } from "@/lib/kanzleiMonthlyReportTypes";
 
-export const PARTNER_REVIEW_PACKAGE_VERSION = "wave48-v1";
+export const PARTNER_REVIEW_PACKAGE_VERSION = "wave49-v1";
 
 export type PartnerReviewPackageMeta = {
   version: typeof PARTNER_REVIEW_PACKAGE_VERSION;
@@ -73,4 +74,6 @@ export type PartnerReviewPackageDto = {
   part_g_sla_lagebild: AdvisorSlaEvaluationDto;
   /** Wave 48 – AI-Governance-Steuerung (EU AI Act / ISO 42001). */
   part_h_ai_governance: AdvisorAiGovernancePortfolioDto;
+  /** Wave 49 – Cross-Regulation-Matrix. */
+  part_i_cross_regulation_matrix: CrossRegulationMatrixDto;
 };

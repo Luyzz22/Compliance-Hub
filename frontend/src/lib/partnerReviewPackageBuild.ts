@@ -9,6 +9,7 @@ import {
   summarizeKanzleiMonthlyReportSection1,
 } from "@/lib/kanzleiMonthlyReportBuild";
 import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
+import { buildCrossRegulationMatrixFromPayload } from "@/lib/advisorCrossRegulationBuild";
 import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { KanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioTypes";
@@ -160,5 +161,6 @@ export function buildPartnerReviewPackage(
     part_f_kpi_trends: opts.kpiTrendsNarrative ?? null,
     part_g_sla_lagebild: payload.advisor_sla,
     part_h_ai_governance: opts.aiGovernance,
+    part_i_cross_regulation_matrix: buildCrossRegulationMatrixFromPayload(payload),
   };
 }

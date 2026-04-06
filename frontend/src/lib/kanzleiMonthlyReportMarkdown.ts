@@ -3,6 +3,10 @@
  */
 
 import { GTM_READINESS_LABELS_DE } from "@/lib/gtmAccountReadiness";
+import {
+  CROSS_REGULATION_PILLAR_LABEL_DE,
+  CROSS_REGULATION_PILLAR_ORDER,
+} from "@/lib/advisorCrossRegulationTypes";
 import type { KanzleiMonthlyReportDto } from "@/lib/kanzleiMonthlyReportTypes";
 
 function readinessDe(code: string): string {
@@ -167,6 +171,26 @@ export function kanzleiMonthlyReportMarkdownDe(r: KanzleiMonthlyReportDto): stri
       const name = t.mandant_label ?? t.tenant_id;
       parts.push(`- **${name}** (\`${t.tenant_id}\`): ${t.priority_hint_de}`);
     }
+  }
+
+  const cr = r.section_9_cross_regulation_matrix;
+  const crt = cr.totals;
+  parts.push(`## 9) Cross-Regulation-Matrix (Wave 49)`);
+  parts.push(`_${cr.disclaimer_de}_`);
+  parts.push(
+    `- Mandanten mit **≥2** prioritären Säulen: **${crt.mandanten_multi_pillar_priority}** · mit **≥2** Säulen unter Druck (Priorität/Nacharbeit): **${crt.mandanten_multi_pillar_stress}** · Schema ${cr.version}.`,
+  );
+  for (const pk of CROSS_REGULATION_PILLAR_ORDER) {
+    const c = crt.per_pillar[pk];
+    const lab = CROSS_REGULATION_PILLAR_LABEL_DE[pk];
+    parts.push(
+      `- **${lab}:** OK **${c.ok}** · Nacharbeit **${c.needs_attention}** · Priorität **${c.priority}** · unbekannt **${c.unknown}**`,
+    );
+  }
+  parts.push(`### Top Querschnittsfälle (Map once, comply many)`);
+  for (const t of cr.top_cases.slice(0, 8)) {
+    const name = t.mandant_label ?? t.tenant_id;
+    parts.push(`- **${name}** (\`${t.tenant_id}\`): ${t.hint_de}`);
   }
 
   parts.push(`---`);
