@@ -19,6 +19,7 @@ import {
 } from "@/lib/advisorMandantReminderTypes";
 import { isDueThisCalendarWeek, isDueTodayOrOverdue } from "@/lib/advisorMandantReminderRules";
 import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
+import type { AdvisorEvidenceHooksPortfolioDto } from "@/lib/advisorEvidenceHookTypes";
 import { buildCrossRegulationMatrixFromPayload } from "@/lib/advisorCrossRegulationBuild";
 import {
   CROSS_REGULATION_PILLAR_LABEL_DE,
@@ -353,18 +354,24 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [manualRemBusy, setManualRemBusy] = useState(false);
   const [crossRegFilter, setCrossRegFilter] = useState<CrossRegMatrixFilter>("all");
 
+  const [evidenceHooks, setEvidenceHooks] = useState<AdvisorEvidenceHooksPortfolioDto | null>(null);
+  const [evidenceHooksErr, setEvidenceHooksErr] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     setAiGovernanceError(null);
     try {
-      const [rPf, rAg] = await Promise.all([
+      const [rPf, rAg, rEh] = await Promise.all([
         fetch("/api/internal/advisor/kanzlei-portfolio", { credentials: "include" }),
         fetch("/api/internal/advisor/ai-governance-overview", { credentials: "include" }),
+        fetch("/api/internal/advisor/evidence-hooks?markdown=0", { credentials: "include" }),
       ]);
       if (rPf.status === 401) {
         setPayload(null);
         setAiGovernance(null);
+        setEvidenceHooks(null);
+        setEvidenceHooksErr(null);
         setLoadError("unauthorized");
         return;
       }
@@ -372,6 +379,8 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
         setLoadError(`HTTP ${rPf.status}`);
         setPayload(null);
         setAiGovernance(null);
+        setEvidenceHooks(null);
+        setEvidenceHooksErr(null);
         return;
       }
       const data = (await rPf.json()) as { ok?: boolean; kanzlei_portfolio?: KanzleiPortfolioPayload };
@@ -387,10 +396,24 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
         setAiGovernance(null);
         setAiGovernanceError(`AI-Governance: HTTP ${rAg.status}`);
       }
+
+      if (rEh.ok) {
+        const ehData = (await rEh.json()) as { evidence_hooks?: AdvisorEvidenceHooksPortfolioDto };
+        setEvidenceHooks(ehData.evidence_hooks ?? null);
+        setEvidenceHooksErr(null);
+      } else if (rEh.status === 401) {
+        setEvidenceHooks(null);
+        setEvidenceHooksErr("Evidence Hooks: nicht angemeldet.");
+      } else {
+        setEvidenceHooks(null);
+        setEvidenceHooksErr(`Evidence Hooks: HTTP ${rEh.status}`);
+      }
     } catch {
       setLoadError("Netzwerkfehler");
       setPayload(null);
       setAiGovernance(null);
+      setEvidenceHooks(null);
+      setEvidenceHooksErr(null);
     } finally {
       setLoading(false);
     }
@@ -756,8 +779,8 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             Operatives Cockpit für gemappte Mandanten: Readiness, Prüfpunkte, Export-Kadenz, Reviews,
-            Attention-Queue, Playbook, Reports, Reminders, Kanzlei-KPIs, SLA, AI-Governance und
-            Cross-Regulation-Matrix (vier Säulen – Steuerung, keine Rechtsautomatik).
+            Attention-Queue, Playbook, Reports, Reminders, Kanzlei-KPIs, SLA, AI-Governance,
+            Cross-Regulation-Matrix und Enterprise Evidence Hooks (SAP/ERP-Metadaten, keine Live-Integration).
           </p>
           {payload ? (
             <p className="mt-3 text-xs tabular-nums text-slate-500">
@@ -828,6 +851,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       {aiGovernanceError && payload && !aiGovernance ? (
         <p className="text-xs text-amber-800">{aiGovernanceError}</p>
       ) : null}
+      {evidenceHooksErr && payload ? <p className="text-xs text-amber-800">{evidenceHooksErr}</p> : null}
 
       {payload?.advisor_sla ? (
         <section
@@ -1125,6 +1149,75 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
               ))}
             </ul>
           </div>
+        </section>
+      ) : null}
+
+      {evidenceHooks && payload ? (
+        <section
+          id="kanzlei-enterprise-evidence-hooks"
+          className="rounded-xl border border-amber-200/85 bg-white p-4 shadow-sm ring-1 ring-amber-950/[0.05]"
+        >
+          <div className="min-w-0 max-w-2xl">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-amber-900/85">
+              Enterprise Evidence Hooks
+            </p>
+            <h2 className="mt-0.5 text-sm font-semibold tracking-tight text-slate-900">
+              Wave 50 – ERP-/SAP-Evidenz (Metadaten)
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">{evidenceHooks.disclaimer_de}</p>
+            <p className="mt-1.5 text-[10px] text-slate-500">
+              Stand {new Date(evidenceHooks.generated_at).toLocaleString("de-DE")} · {evidenceHooks.version}
+            </p>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">Ohne SAP/BTP-Touchpoint</span>
+              <div className="mt-0.5 tabular-nums text-slate-700">
+                {evidenceHooks.summary.mandanten_without_sap_touchpoint} Mandanten
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">Ohne DATEV-Export (Historie)</span>
+              <div className="mt-0.5 tabular-nums text-slate-700">
+                {evidenceHooks.summary.mandanten_without_datev_export} Mandanten
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">Hooks verbunden / geplant</span>
+              <div className="mt-0.5 tabular-nums text-slate-700">
+                {evidenceHooks.summary.by_status.connected} · {evidenceHooks.summary.by_status.planned}
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">Upsell-Kandidaten</span>
+              <div className="mt-0.5 tabular-nums text-slate-700">
+                {evidenceHooks.summary.mandanten_enterprise_upsell_candidates} (Governance + Druck)
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Top Lücken</p>
+            <ul className="mt-1 space-y-1.5 text-[11px] text-slate-700">
+              {evidenceHooks.top_gaps.slice(0, 5).map((g) => (
+                <li key={g.tenant_id} className="flex flex-wrap items-start justify-between gap-2">
+                  <span>
+                    <span className="font-medium text-slate-900">{g.mandant_label ?? g.tenant_id}</span>
+                    <span className="ml-1 font-mono text-[10px] text-slate-400">{g.tenant_id}</span>
+                    <span className="block text-slate-600">{g.hint_de}</span>
+                  </span>
+                  <a
+                    className="shrink-0 text-[10px] font-medium text-amber-900 underline"
+                    href={g.links.mandant_export_page}
+                  >
+                    Export
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="mt-2 text-[10px] text-slate-500">
+            DATEV deckt den Kanzlei-Kanal; SAP/ERP-Hooks markieren Enterprise-Readiness ohne Integrationsausbau.
+          </p>
         </section>
       ) : null}
 

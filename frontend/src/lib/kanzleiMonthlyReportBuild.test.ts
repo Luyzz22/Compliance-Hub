@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { stubAdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceBuild";
+import { buildAdvisorEvidenceHooksPortfolioDto } from "@/lib/advisorEvidenceHookBuild";
 import {
   attentionBand,
   buildKanzleiMonthlyReport,
@@ -82,6 +83,10 @@ function payload(rows: KanzleiPortfolioRow[]): KanzleiPortfolioPayload {
   };
 }
 
+function evidenceHooksFor(p: KanzleiPortfolioPayload) {
+  return buildAdvisorEvidenceHooksPortfolioDto(p, [], { generatedAt: new Date(p.generated_at) });
+}
+
 describe("kanzleiMonthlyReportBuild", () => {
   it("attentionBand buckets scores", () => {
     expect(attentionBand(10)).toBe("low");
@@ -105,6 +110,7 @@ describe("kanzleiMonthlyReportBuild", () => {
         compareToBaseline: true,
         attentionTopN: 5,
         aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+        evidenceHooks: evidenceHooksFor(p),
       },
     );
     expect(r.compared_to_baseline).toBe(true);
@@ -124,6 +130,7 @@ describe("kanzleiMonthlyReportBuild", () => {
         compareToBaseline: false,
         attentionTopN: 5,
         aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+        evidenceHooks: evidenceHooksFor(p),
       },
     );
     expect(r.compared_to_baseline).toBe(false);

@@ -193,6 +193,29 @@ export function kanzleiMonthlyReportMarkdownDe(r: KanzleiMonthlyReportDto): stri
     parts.push(`- **${name}** (\`${t.tenant_id}\`): ${t.hint_de}`);
   }
 
+  const eh = r.section_10_enterprise_evidence_hooks;
+  const ehs = eh.summary;
+  parts.push(`## 10) Enterprise Evidence Hooks (Wave 50)`);
+  parts.push(`_${eh.disclaimer_de}_`);
+  parts.push(
+    `- Hook-Zeilen gesamt: **${ehs.total_hook_rows}** · SAP/BTP ohne Touchpoint (verbunden/geplant): **${ehs.mandanten_without_sap_touchpoint}** · ohne DATEV-Export in Historie: **${ehs.mandanten_without_datev_export}** · Upsell-Kandidaten: **${ehs.mandanten_enterprise_upsell_candidates}** · Schema ${eh.version}.`,
+  );
+  parts.push(
+    `- Status: verbunden **${ehs.by_status.connected}**, geplant **${ehs.by_status.planned}**, nicht verbunden **${ehs.by_status.not_connected}**, Fehler **${ehs.by_status.error}**`,
+  );
+  parts.push(`### Wo Systemevidenz die Postur stärken kann`);
+  parts.push(
+    `- **DATEV (Kanzlei):** Bundle-Export und Kadenz – Ergänzung zu Readiness-Export, Fokus GoBD/E-Rechnung im Steuerumfeld.`,
+  );
+  parts.push(
+    `- **SAP/ERP (Mittelstand/Enterprise):** Beleg- und Buchungskontext – spätere Anbindung (z. B. BTP) als Evidenzpfad, aktuell nur Metadaten-Hooks.`,
+  );
+  parts.push(`### Top Lücken (Kurz)`);
+  for (const g of eh.top_gaps.slice(0, 6)) {
+    const name = g.mandant_label ?? g.tenant_id;
+    parts.push(`- **${name}** (\`${g.tenant_id}\`): ${g.hint_de}`);
+  }
+
   parts.push(`---`);
   parts.push(
     `Hinweis: Portfolio-Report für interne Kanzlei-Arbeit; keine Board-Tischreife. Daten aus Live-API und lokaler Historie – Änderungslogik bewusst grob (siehe Doku Wave 42).`,

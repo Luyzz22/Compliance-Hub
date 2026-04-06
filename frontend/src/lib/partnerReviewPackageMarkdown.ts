@@ -222,6 +222,30 @@ export function partnerReviewPackageMarkdownDe(pkg: PartnerReviewPackageDto): st
   }
   lines.push("");
 
+  const eh = pkg.part_j_enterprise_evidence_hooks;
+  const ehs = eh.summary;
+  lines.push("## J) Enterprise Evidence Hooks (Wave 50)");
+  lines.push("");
+  lines.push(`_${eh.disclaimer_de}_`);
+  lines.push("");
+  lines.push(
+    `- Portfolio: **${ehs.total_hook_rows}** Hook-Zeilen · SAP/BTP ohne aktiven Touchpoint: **${ehs.mandanten_without_sap_touchpoint}** · ohne DATEV-Export-Historie: **${ehs.mandanten_without_datev_export}** · Upsell-Kandidaten (Governance + Druck): **${ehs.mandanten_enterprise_upsell_candidates}** · ${eh.version}`,
+  );
+  lines.push(
+    `- Status: verbunden ${ehs.by_status.connected}, geplant ${ehs.by_status.planned}, nicht verbunden ${ehs.by_status.not_connected}, Fehler ${ehs.by_status.error}`,
+  );
+  lines.push("");
+  lines.push("### Beratungsnutzen");
+  lines.push(
+    "- DATEV und Readiness-Export liefern den Kanzlei-Kanal; ERP-/SAP-Hooks zeigen, wo echte Systemlandschaft die Nachweise ergänzen könnte – ohne Integrationsversprechen.",
+  );
+  lines.push("");
+  lines.push("### Beispiel-Mandanten (Lücken)");
+  for (const g of eh.top_gaps.slice(0, 5)) {
+    lines.push(`- **${lineLabel(g)}:** ${g.hint_de}`);
+  }
+  lines.push("");
+
   lines.push("---");
   lines.push("");
   lines.push("### Priorisierung (Kurz)");

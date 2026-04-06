@@ -48,8 +48,8 @@ Panel **`#kanzlei-cross-regulation-panel`**: kompakte Tabelle Mandant × Säule 
 
 ## Reports
 
-- **Kanzlei-Monatsreport:** Abschnitt **9) Cross-Regulation-Matrix**.
-- **Partner-Review-Paket:** Teil **I)**.
+- **Kanzlei-Monatsreport:** Abschnitt **9) Cross-Regulation-Matrix**; Abschnitt **10) Enterprise Evidence Hooks** (Wave 50, SAP/ERP-Metadaten) siehe `wave50-enterprise-evidence-hooks.md`.
+- **Partner-Review-Paket:** Teil **I)**; Teil **J)** Evidence Hooks (Wave 50).
 
 ## Wortlaut (advisor-safe)
 
@@ -59,11 +59,12 @@ Panel **`#kanzlei-cross-regulation-panel`**: kompakte Tabelle Mandant × Säule 
 ## Grenzen
 
 - Keine Rechtsmeinung, kein Ersatz für Mandanten-Audit oder externe Beratung.
-- Keine SAP/ERP-Anbindung in dieser Wave.
+- Keine SAP/ERP-Anbindung in dieser Wave; **Evidenz-Anknüpfungspunkte** (Metadaten, kein ETL) in Wave 50: `docs/advisors/wave50-enterprise-evidence-hooks.md`.
 - NIS2/KRITIS-Labeling ist **kommunikativ** (DACH-Kontext); fachliche Tiefe bleibt in Mandanten-Workspace und Board-Readiness.
 
 ## Siehe auch
 
+- `docs/advisors/wave50-enterprise-evidence-hooks.md`
 - `docs/advisors/wave48-ai-governance-view.md`
 - `docs/advisors/wave39-kanzlei-portfolio-cockpit.md`
 - `docs/advisors/wave41-kanzlei-review-playbook-and-queue.md`

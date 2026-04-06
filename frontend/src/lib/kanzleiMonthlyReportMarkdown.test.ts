@@ -4,6 +4,7 @@ import { stubAdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceBu
 import { buildAdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiPortfolioBuild";
 import { ADVISOR_KPI_TRENDS_VERSION } from "@/lib/advisorKpiTrendsBuild";
 import { stubAdvisorSlaEvaluation } from "@/lib/advisorSlaEvaluate";
+import { buildAdvisorEvidenceHooksPortfolioDto } from "@/lib/advisorEvidenceHookBuild";
 import { buildKanzleiMonthlyReport } from "@/lib/kanzleiMonthlyReportBuild";
 import { kanzleiMonthlyReportMarkdownDe } from "@/lib/kanzleiMonthlyReportMarkdown";
 import type { KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
@@ -69,6 +70,10 @@ function minimalPayload(): KanzleiPortfolioPayload {
   };
 }
 
+function evidenceHooksFor(p: KanzleiPortfolioPayload) {
+  return buildAdvisorEvidenceHooksPortfolioDto(p, [], { generatedAt: new Date(p.generated_at) });
+}
+
 describe("kanzleiMonthlyReportMarkdown", () => {
   it("includes section headings", () => {
     const p = minimalPayload();
@@ -77,6 +82,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
       compareToBaseline: true,
       attentionTopN: 5,
       aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+      evidenceHooks: evidenceHooksFor(p),
     });
     const md = kanzleiMonthlyReportMarkdownDe(r);
     expect(md).toContain("# Kanzlei-Portfolio-Report");
@@ -86,6 +92,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
     expect(md).toContain("## 7) SLA & Eskalation (Wave 47)");
     expect(md).toContain("## 8) AI-Governance (Wave 48)");
     expect(md).toContain("## 9) Cross-Regulation-Matrix (Wave 49)");
+    expect(md).toContain("## 10) Enterprise Evidence Hooks (Wave 50)");
   });
 
   it("includes KPI section when snapshot provided", () => {
@@ -109,6 +116,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
         narrative_lines_de: ["Review-Deckung im Vergleich zum vorherigen History-Punkt gestiegen."],
       },
       aiGovernance: stubAdvisorAiGovernancePortfolioDto(p.generated_at),
+      evidenceHooks: evidenceHooksFor(p),
     });
     const md = kanzleiMonthlyReportMarkdownDe(r);
     expect(md).toContain("## 5) Kanzlei-KPIs");
@@ -116,6 +124,7 @@ describe("kanzleiMonthlyReportMarkdown", () => {
     expect(md).toContain("## 7) SLA & Eskalation (Wave 47)");
     expect(md).toContain("## 8) AI-Governance (Wave 48)");
     expect(md).toContain("## 9) Cross-Regulation-Matrix (Wave 49)");
+    expect(md).toContain("## 10) Enterprise Evidence Hooks (Wave 50)");
     expect(md).toContain("Review-Deckung im Vergleich zum vorherigen History-Punkt gestiegen.");
   });
 });

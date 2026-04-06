@@ -14,6 +14,7 @@ Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine
 | **7) SLA & Eskalation** | Wave 47: leichte Regeln, Befunde und Eskalationssignale aus KPI, Queue und Remindern – siehe `wave47-sla-and-escalations.md` |
 | **8) AI-Governance** | Wave 48: EU AI Act / ISO 42001 Portfolio-Posture – siehe `wave48-ai-governance-view.md` |
 | **9) Cross-Regulation** | Wave 49: Vier-Säulen-Matrix – siehe `wave49-cross-regulation-matrix.md` |
+| **10) Enterprise Evidence Hooks** | Wave 50: SAP-/ERP-/DATEV-Evidenz-Metadaten und Portfolio-Lücken – siehe `wave50-enterprise-evidence-hooks.md` |
 
 ## API (intern, Lead-Admin)
 
@@ -32,7 +33,7 @@ Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine
 | `kpi_window_days` | `90` | Wave 45–46: Fenster für KPI-Abschnitt 5 und History-Schreiben für Abschnitt 6 (7–365) |
 | `kpi` | `1` | `kpi=0` schaltet Abschnitt 5 und 6 ab |
 
-**Antwort:** `{ ok, report, markdown_de, baseline_updated }` – `report` ist strukturiertes JSON (`wave46-v1` inkl. optionalen Abschnitten 5–6), `markdown_de` für Kopieren in E-Mails oder Arbeitsmappen.
+**Antwort:** `{ ok, report, markdown_de, baseline_updated }` – `report` ist strukturiertes JSON (Schema aktuell `wave50-v1`, inkl. optionaler Abschnitte 5–6 und Evidence Hooks 10), `markdown_de` für Kopieren in E-Mails oder Arbeitsmappen.
 
 **Wave 46:** Abschnitt **6) KPI-Trends** – Kurzsätze aus persistierter KPI-History (rolling 3 Monate). Siehe `wave46-kpi-trends.md`.
 
@@ -71,6 +72,7 @@ Listen sind auf **12 Einträge** pro Kategorie begrenzt (Lesbarkeit).
 
 ## Siehe auch
 
+- `docs/advisors/wave50-enterprise-evidence-hooks.md`
 - `docs/advisors/wave49-cross-regulation-matrix.md`
 - `docs/advisors/wave48-ai-governance-view.md`
 - `docs/advisors/wave47-sla-and-escalations.md`

@@ -9,6 +9,7 @@ import {
   summarizeKanzleiMonthlyReportSection1,
 } from "@/lib/kanzleiMonthlyReportBuild";
 import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
+import type { AdvisorEvidenceHooksPortfolioDto } from "@/lib/advisorEvidenceHookTypes";
 import { buildCrossRegulationMatrixFromPayload } from "@/lib/advisorCrossRegulationBuild";
 import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
@@ -108,6 +109,8 @@ export type BuildPartnerReviewPackageOptions = {
   kpiTrendsNarrative?: AdvisorKpiTrendsNarrativeBlock | null;
   /** Wave 48 – AI-Governance-Überblick. */
   aiGovernance: AdvisorAiGovernancePortfolioDto;
+  /** Wave 50 – Evidence-Hooks-Lagebild. */
+  evidenceHooks: AdvisorEvidenceHooksPortfolioDto;
 };
 
 export function buildPartnerReviewPackage(
@@ -162,5 +165,6 @@ export function buildPartnerReviewPackage(
     part_g_sla_lagebild: payload.advisor_sla,
     part_h_ai_governance: opts.aiGovernance,
     part_i_cross_regulation_matrix: buildCrossRegulationMatrixFromPayload(payload),
+    part_j_enterprise_evidence_hooks: opts.evidenceHooks,
   };
 }
