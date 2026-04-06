@@ -842,3 +842,39 @@ class TenantOperationalMonitoringSnapshotTable(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
+
+class NIS2IncidentTable(Base):
+    """NIS2 Art. 21 compliant incident response records — multi-tenant."""
+
+    __tablename__ = "nis2_incidents"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    incident_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    workflow_status: Mapped[str] = mapped_column(String(20), nullable=False, default="detected")
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    affected_systems_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    kritis_relevant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    personal_data_affected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    estimated_impact: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bsi_notification_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    bsi_report_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    contained_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    eradicated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    recovered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )

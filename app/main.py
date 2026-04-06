@@ -178,6 +178,11 @@ from app.models import (
     EInvoiceFormat,
 )
 from app.models_db import Base, TenantApiKeyDB
+from app.nis2_incident_models import (
+    NIS2IncidentCreate,
+    NIS2IncidentResponse,
+    NIS2IncidentTransition,
+)
 from app.nis2_kritis_models import (
     Nis2KritisKpi,
     Nis2KritisKpiDrilldown,
@@ -228,6 +233,7 @@ from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
 from app.repositories.evidence_files import EvidenceFileRepository
 from app.repositories.incidents import IncidentRepository
+from app.repositories.nis2_incidents import NIS2IncidentRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository
 from app.repositories.tenant_ai_governance_setup import TenantAIGovernanceSetupRepository
@@ -268,7 +274,6 @@ from app.services.advisor_tenant_report_markdown import render_tenant_report_mar
 from app.services.ai_act_docs import build_ai_act_doc_list_response, upsert_ai_act_doc
 from app.services.ai_act_docs_ai_assist import generate_ai_act_doc_draft
 from app.services.ai_act_docs_export import render_ai_act_documentation_markdown
-from app.services.audit_gobd_export import generate_gobd_xml
 from app.services.ai_action_drafts import generate_action_drafts
 from app.services.ai_board_alerts import compute_board_alerts
 from app.services.ai_compliance_board_report import (
@@ -293,6 +298,7 @@ from app.services.ai_kpi_service import (
     upsert_kpi_value,
 )
 from app.services.ai_system_import import import_ai_systems_from_file
+from app.services.audit_gobd_export import generate_gobd_xml
 from app.services.board_kpi_export import board_kpi_export_csv, build_board_kpi_export_envelope
 from app.services.board_kpi_export_jobs import get_kpi_job, register_kpi_export_job
 from app.services.board_report_audit_records import (
@@ -527,6 +533,12 @@ def get_incident_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> IncidentRepository:
     return IncidentRepository(session)
+
+
+def get_nis2_incident_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> NIS2IncidentRepository:
+    return NIS2IncidentRepository(session)
 
 
 def get_classification_repository(
@@ -1477,9 +1489,7 @@ def export_audit_logs_gobd_xml(
         content=xml,
         media_type="application/xml; charset=utf-8",
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="audit-trail-{tenant_id}.xml"'
-            ),
+            "Content-Disposition": (f'attachment; filename="audit-trail-{tenant_id}.xml"'),
         },
     )
 
@@ -2448,6 +2458,74 @@ def get_ai_governance_incidents_by_system(
         incident_repository=incident_repository,
         ai_system_repository=ai_repository,
     )
+
+
+# ── NIS2 Incident Response Workflow endpoints ──────────────────────────────────
+
+
+@app.post(
+    "/api/v1/nis2-incidents",
+    response_model=NIS2IncidentResponse,
+    status_code=201,
+)
+def create_nis2_incident(
+    body: NIS2IncidentCreate,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
+) -> NIS2IncidentResponse:
+    """Create a new NIS2 Art. 21 compliant incident."""
+    return repo.create(tenant_id=tenant_id, data=body)
+
+
+@app.get(
+    "/api/v1/nis2-incidents",
+    response_model=list[NIS2IncidentResponse],
+)
+def list_nis2_incidents(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
+) -> list[NIS2IncidentResponse]:
+    """List NIS2 incidents for the authenticated tenant."""
+    return repo.list_for_tenant(tenant_id=tenant_id)
+
+
+@app.get(
+    "/api/v1/nis2-incidents/{incident_id}",
+    response_model=NIS2IncidentResponse,
+)
+def get_nis2_incident(
+    incident_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
+) -> NIS2IncidentResponse:
+    """Get a single NIS2 incident by ID (tenant-isolated)."""
+    result = repo.get(tenant_id=tenant_id, incident_id=incident_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="NIS2 incident not found")
+    return result
+
+
+@app.post(
+    "/api/v1/nis2-incidents/{incident_id}/transition",
+    response_model=NIS2IncidentResponse,
+)
+def transition_nis2_incident(
+    incident_id: str,
+    body: NIS2IncidentTransition,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
+) -> NIS2IncidentResponse:
+    """Transition a NIS2 incident to the next workflow state."""
+    try:
+        return repo.transition(
+            tenant_id=tenant_id,
+            incident_id=incident_id,
+            transition=body,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="NIS2 incident not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @app.get(
