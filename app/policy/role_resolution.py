@@ -12,6 +12,11 @@ ALLOWED_OPA_ROLES = frozenset(
         "tenant_admin",
         "tenant_user",
         "viewer",
+        "contributor",
+        "editor",
+        "ciso",
+        "board_member",
+        "super_admin",
     },
 )
 

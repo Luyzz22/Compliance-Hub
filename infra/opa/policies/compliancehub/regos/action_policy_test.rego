@@ -129,3 +129,95 @@ test_viewer_readiness_denied {
 		"risk_score": 0.1,
 	}
 }
+
+# ── Enterprise RBAC role tests ─────────────────────────────────────────
+
+test_ciso_generate_board_report_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "ciso",
+		"action": "generate_board_report",
+		"risk_score": 0.5,
+	}
+}
+
+test_ciso_manage_incidents_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "ciso",
+		"action": "manage_incidents",
+		"risk_score": 0.5,
+	}
+}
+
+test_board_member_view_board_report_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "board_member",
+		"action": "view_board_report",
+		"risk_score": 0.3,
+	}
+}
+
+test_board_member_edit_denied {
+	not compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "board_member",
+		"action": "edit_ai_system",
+		"risk_score": 0.3,
+	}
+}
+
+test_editor_edit_ai_system_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "editor",
+		"action": "edit_ai_system",
+		"risk_score": 0.3,
+	}
+}
+
+test_editor_edit_compliance_status_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "editor",
+		"action": "edit_compliance_status",
+		"risk_score": 0.3,
+	}
+}
+
+test_contributor_view_ai_systems_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "contributor",
+		"action": "view_ai_systems",
+		"risk_score": 0.3,
+	}
+}
+
+test_contributor_view_risk_register_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "contributor",
+		"action": "view_risk_register",
+		"risk_score": 0.3,
+	}
+}
+
+test_super_admin_any_action_allowed {
+	compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "super_admin",
+		"action": "some_arbitrary_action",
+		"risk_score": 0.9,
+	}
+}
+
+test_super_admin_denied_on_denylist {
+	not compliancehub.allow_action with input as {
+		"tenant_id": "t1",
+		"user_role": "super_admin",
+		"action": "auto_delete_data",
+		"risk_score": 0.1,
+	}
+}
