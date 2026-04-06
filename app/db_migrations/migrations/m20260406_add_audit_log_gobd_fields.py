@@ -24,9 +24,7 @@ _COLUMNS = [
 
 def satisfied(engine: Engine) -> bool:
     """True if all four GoBD columns already exist."""
-    return all(
-        column_exists(engine, "audit_logs", col) for col, _ in _COLUMNS
-    )
+    return all(column_exists(engine, "audit_logs", col) for col, _ in _COLUMNS)
 
 
 def apply(engine: Engine) -> bool:
@@ -38,10 +36,6 @@ def apply(engine: Engine) -> bool:
     with engine.begin() as conn:
         for col, col_type in _COLUMNS:
             if not column_exists(engine, "audit_logs", col):
-                conn.execute(
-                    text(
-                        f"ALTER TABLE audit_logs ADD COLUMN {col} {col_type}"
-                    )
-                )
+                conn.execute(text(f"ALTER TABLE audit_logs ADD COLUMN {col} {col_type}"))
     logger.info("db_migration applied: %s", MIGRATION_ID)
     return True
