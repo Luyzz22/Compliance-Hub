@@ -34,5 +34,5 @@ def generate_gobd_xml(entries: list[AuditLog]) -> str:
         after_el = SubElement(el, "After")
         after_el.text = entry.after or ""
 
-    xml_bytes: bytes = tostring(root, encoding="unicode")
-    return '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_bytes
+    xml_str: str = tostring(root, encoding="unicode")
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_str
