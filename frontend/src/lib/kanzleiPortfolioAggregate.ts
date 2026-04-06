@@ -21,7 +21,10 @@ import {
   isNonEmptyUnparsableIso,
   maxIsoTimestamps,
 } from "@/lib/mandantHistoryMerge";
-import type { TenantPillarSnapshot } from "@/lib/boardReadinessAggregate";
+import type {
+  MappedTenantPillarSnapshotBundle,
+  TenantPillarSnapshot,
+} from "@/lib/boardReadinessAggregate";
 import { loadMappedTenantPillarSnapshots } from "@/lib/boardReadinessAggregate";
 import { worstTraffic } from "@/lib/boardReadinessThresholds";
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
@@ -343,9 +346,17 @@ function assemblePortfolioPayloadWithoutSla(
   };
 }
 
-export async function computeKanzleiPortfolioPayload(now: Date = new Date()): Promise<KanzleiPortfolioPayload> {
+export type ComputeKanzleiPortfolioOptions = {
+  /** Vermeidet doppeltes Laden wenn Snapshots bereits für AI-Governance o. ä. geholt wurden. */
+  preloadedBundle?: MappedTenantPillarSnapshotBundle;
+};
+
+export async function computeKanzleiPortfolioPayload(
+  now: Date = new Date(),
+  opts?: ComputeKanzleiPortfolioOptions,
+): Promise<KanzleiPortfolioPayload> {
   const [bundle, historyByTenant] = await Promise.all([
-    loadMappedTenantPillarSnapshots(now),
+    opts?.preloadedBundle ?? loadMappedTenantPillarSnapshots(now),
     readAdvisorMandantHistoryMap(),
   ]);
   const nowMs = bundle.nowMs;

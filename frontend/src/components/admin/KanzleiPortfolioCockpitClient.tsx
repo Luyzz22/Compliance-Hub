@@ -18,6 +18,7 @@ import {
   type MandantReminderApiEntry,
 } from "@/lib/advisorMandantReminderTypes";
 import { isDueThisCalendarWeek, isDueTodayOrOverdue } from "@/lib/advisorMandantReminderRules";
+import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
 import type { AdvisorSlaDeepLinkId } from "@/lib/advisorSlaTypes";
 import type {
   KanzleiAttentionQueueItem,
@@ -276,7 +277,9 @@ function ReminderRowItem({
 
 export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [payload, setPayload] = useState<KanzleiPortfolioPayload | null>(null);
+  const [aiGovernance, setAiGovernance] = useState<AdvisorAiGovernancePortfolioDto | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [aiGovernanceError, setAiGovernanceError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [readinessFilter, setReadinessFilter] = useState<KanzleiPortfolioReadinessFilter>("all");
@@ -323,21 +326,41 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    setAiGovernanceError(null);
     try {
-      const r = await fetch("/api/internal/advisor/kanzlei-portfolio", { credentials: "include" });
-      if (r.status === 401) {
+      const [rPf, rAg] = await Promise.all([
+        fetch("/api/internal/advisor/kanzlei-portfolio", { credentials: "include" }),
+        fetch("/api/internal/advisor/ai-governance-overview", { credentials: "include" }),
+      ]);
+      if (rPf.status === 401) {
         setPayload(null);
+        setAiGovernance(null);
         setLoadError("unauthorized");
         return;
       }
-      if (!r.ok) {
-        setLoadError(`HTTP ${r.status}`);
+      if (!rPf.ok) {
+        setLoadError(`HTTP ${rPf.status}`);
+        setPayload(null);
+        setAiGovernance(null);
         return;
       }
-      const data = (await r.json()) as { ok?: boolean; kanzlei_portfolio?: KanzleiPortfolioPayload };
+      const data = (await rPf.json()) as { ok?: boolean; kanzlei_portfolio?: KanzleiPortfolioPayload };
       setPayload(data.kanzlei_portfolio ?? null);
+
+      if (rAg.ok) {
+        const agData = (await rAg.json()) as { ai_governance_overview?: AdvisorAiGovernancePortfolioDto };
+        setAiGovernance(agData.ai_governance_overview ?? null);
+      } else if (rAg.status === 401) {
+        setAiGovernance(null);
+        setAiGovernanceError("AI-Governance: nicht angemeldet.");
+      } else {
+        setAiGovernance(null);
+        setAiGovernanceError(`AI-Governance: HTTP ${rAg.status}`);
+      }
     } catch {
       setLoadError("Netzwerkfehler");
+      setPayload(null);
+      setAiGovernance(null);
     } finally {
       setLoading(false);
     }
@@ -674,14 +697,15 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
               Intern · Mandanten-Steering
             </span>
-            <span className="text-[11px] text-slate-400">Waves 39–46</span>
+            <span className="text-[11px] text-slate-400">Waves 39–48</span>
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.65rem]">
             Kanzlei-Portfolio
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             Operatives Cockpit für gemappte Mandanten: Readiness, Prüfpunkte, Export-Kadenz, Reviews,
-            Attention-Queue, Playbook, Reports, Reminders und Kanzlei-KPIs inkl. Trend-Verlauf.
+            Attention-Queue, Playbook, Reports, Reminders, Kanzlei-KPIs, SLA-Signale und AI-Governance-Fokus
+            (EU AI Act / ISO 42001, heuristisch).
           </p>
           {payload ? (
             <p className="mt-3 text-xs tabular-nums text-slate-500">
@@ -711,6 +735,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             ·{" "}
             <code className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
               /sla-status
+            </code>{" "}
+            ·{" "}
+            <code className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
+              /ai-governance-overview
             </code>
           </p>
         </div>
@@ -740,6 +768,9 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
 
       {loadError && loadError !== "unauthorized" ? (
         <p className="text-sm text-red-600">{loadError}</p>
+      ) : null}
+      {aiGovernanceError && payload && !aiGovernance ? (
+        <p className="text-xs text-amber-800">{aiGovernanceError}</p>
       ) : null}
 
       {payload?.advisor_sla ? (
@@ -830,6 +861,101 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
               ))}
             </ul>
           ) : null}
+        </section>
+      ) : null}
+
+      {aiGovernance ? (
+        <section
+          id="kanzlei-ai-governance-panel"
+          className="rounded-xl border border-cyan-200/80 bg-white p-4 shadow-sm ring-1 ring-cyan-950/[0.06]"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 max-w-2xl">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-cyan-800/90">AI Governance</p>
+              <h2 className="mt-0.5 text-sm font-semibold tracking-tight text-slate-900">
+                EU AI Act & ISO 42001 – Portfolio-Fokus
+              </h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                {aiGovernance.disclaimer_de}
+              </p>
+              <p className="mt-1.5 text-[10px] text-slate-500">
+                Stand {new Date(aiGovernance.generated_at).toLocaleString("de-DE")} · Schema{" "}
+                {aiGovernance.version}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">AI-Act-/Register-Hinweis</span>
+              <div className="mt-0.5 tabular-nums text-slate-700">
+                {aiGovernance.summary.count_likely_ai_act_relevance} Mandanten (Heuristik)
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">High-Risk im Dashboard</span>
+              <div className="mt-0.5 tabular-nums text-slate-700">
+                {aiGovernance.summary.count_potential_high_risk_exposure} Mandanten
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">ISO-42001 Nachholbedarf</span>
+              <div className="mt-0.5 tabular-nums text-slate-700">
+                {aiGovernance.summary.count_weak_iso42001} Mandanten (schwach/mittel)
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">Post-Market / Reporting</span>
+              <div className="mt-0.5 tabular-nums text-slate-700">
+                {aiGovernance.summary.count_weak_post_market} mit Lücke (HR-Kontext)
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">Human Oversight</span>
+              <div className="mt-0.5 tabular-nums text-slate-700">
+                {aiGovernance.summary.count_weak_human_oversight} Prüfbedarf
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-800">
+              <span className="font-semibold text-slate-900">EU AI Act Ampel-Buckets</span>
+              <div className="mt-0.5 text-slate-700">
+                S {aiGovernance.summary.bucket_ai_act.strong} · M {aiGovernance.summary.bucket_ai_act.medium} · W{" "}
+                {aiGovernance.summary.bucket_ai_act.weak}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Top Mandanten für Beraterkapazität
+            </p>
+            <ul className="mt-2 space-y-2">
+              {aiGovernance.top_attention.slice(0, 6).map((t) => (
+                <li
+                  key={t.tenant_id}
+                  className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-slate-100 bg-white px-2 py-1.5 text-[11px]"
+                >
+                  <div className="min-w-0">
+                    <span className="font-medium text-slate-900">{t.mandant_label ?? t.tenant_id}</span>
+                    <span className="ml-1 font-mono text-[10px] text-slate-400">{t.tenant_id}</span>
+                    <p className="mt-0.5 text-slate-600">{t.priority_hint_de}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-1 text-[10px]">
+                    <a className="text-cyan-800 underline" href={t.links.mandant_export_page}>
+                      Export
+                    </a>
+                    <a className="text-cyan-800 underline" href={t.links.board_readiness_admin}>
+                      Board Readiness
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="mt-3 text-[10px] text-slate-500">
+            <a className="font-medium text-slate-700 underline" href="#kanzlei-kpi-table">
+              Zur Mandantentabelle
+            </a>{" "}
+            (Säulenfilter EU AI Act / ISO 42001) · Keine automatische Rechtsbewertung.
+          </p>
         </section>
       ) : null}
 

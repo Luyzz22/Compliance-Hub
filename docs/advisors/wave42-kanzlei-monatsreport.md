@@ -2,7 +2,7 @@
 
 Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine und wiederkehrende Status-Mails – **kein** Board-Pack, **kein** Mandanten-Einzelreport. Fokus: **Ist-Zustand**, **Top-Aufmerksamkeit**, **grobe Veränderungen** seit einem gespeicherten Stichtag, **Handlungsschwerpunkte**.
 
-## Report-Struktur (Kern 1–4; KPI, Trends und SLA optional)
+## Report-Struktur (Kern 1–4; KPI, Trends, SLA und AI-Governance optional)
 
 | Abschnitt | Inhalt |
 |-----------|--------|
@@ -12,6 +12,7 @@ Portfolio-weiter **Sammelbericht** für interne Kanzlei-Reviews, Partner-Termine
 | **4) Empfohlene Schwerpunkte** | Regelbasierte Bullet-Liste (EU AI Act, ISO 42001, NIS2, DSGVO, Export-/Review-Kadenz, API-Lesbarkeit, „viele Lücken ohne Export“) |
 | **5–6) KPIs & Trends** | Wave 45–46: siehe `wave45-advisor-kpis.md` / `wave46-kpi-trends.md` |
 | **7) SLA & Eskalation** | Wave 47: leichte Regeln, Befunde und Eskalationssignale aus KPI, Queue und Remindern – siehe `wave47-sla-and-escalations.md` |
+| **8) AI-Governance** | Wave 48: EU AI Act / ISO 42001 Portfolio-Posture – siehe `wave48-ai-governance-view.md` |
 
 ## API (intern, Lead-Admin)
 
@@ -69,6 +70,7 @@ Listen sind auf **12 Einträge** pro Kategorie begrenzt (Lesbarkeit).
 
 ## Siehe auch
 
+- `docs/advisors/wave48-ai-governance-view.md`
 - `docs/advisors/wave47-sla-and-escalations.md`
 - `docs/advisors/wave45-advisor-kpis.md`
 - `docs/advisors/wave44-partner-review-package.md`

@@ -35,8 +35,8 @@ Antwort: `{ ok, advisor_kpi_portfolio }` – vollständiger Snapshot inkl. `stri
 
 ## Einbindung Monatsreport & Partner-Paket
 
-- **Monatsreport:** Abschnitt **5) Kanzlei-KPIs** im Markdown/JSON, sofern KPIs nicht abgeschaltet werden. Query: `kpi_window_days`, `kpi=0` schaltet den Block ab. **Wave 46:** Abschnitt **6) KPI-Trends** (rolling 3 Monate), wenn KPIs an sind.
-- **Partner-Review-Paket:** Abschnitt **E) Kanzlei-KPIs**; `kpi=0` optional. **Wave 46:** Abschnitt **F) KPI-Trends**. **Wave 47:** Abschnitt **G) SLA-Lagebild** (Regeln & Eskalation aus KPI, Queue, Remindern) – siehe `wave47-sla-and-escalations.md`.
+- **Monatsreport:** Abschnitt **5) Kanzlei-KPIs** im Markdown/JSON, sofern KPIs nicht abgeschaltet werden. Query: `kpi_window_days`, `kpi=0` schaltet den Block ab. **Wave 46:** Abschnitt **6) KPI-Trends** (rolling 3 Monate), wenn KPIs an sind. **Wave 47/48:** Abschnitte **7) SLA** und **8) AI-Governance** unabhängig von `kpi`.
+- **Partner-Review-Paket:** Abschnitt **E) Kanzlei-KPIs**; `kpi=0` optional. **Wave 46:** Abschnitt **F) KPI-Trends**. **Wave 47:** Abschnitt **G) SLA-Lagebild** (Regeln & Eskalation aus KPI, Queue, Remindern) – siehe `wave47-sla-and-escalations.md`. **Wave 48:** Monatsreport **8)**, Partner-Paket **H)** – AI-Governance; siehe `wave48-ai-governance-view.md`.
 
 ## Grenzen (bewusst)
 

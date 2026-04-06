@@ -74,6 +74,7 @@ Bei `portfolio_red` **oder** `partner_attention_required`: bis zu **drei** Auto-
 
 ## Siehe auch
 
+- `docs/advisors/wave48-ai-governance-view.md`
 - `docs/advisors/wave45-advisor-kpis.md`
 - `docs/advisors/wave46-kpi-trends.md`
 - `docs/advisors/wave43-reminders-and-followups.md`

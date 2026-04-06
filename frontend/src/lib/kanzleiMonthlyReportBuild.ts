@@ -7,6 +7,7 @@ import { GTM_READINESS_LABELS_DE, type GtmReadinessClass } from "@/lib/gtmAccoun
 import type { KanzleiPortfolioPayload, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
 import type { AdvisorKpiTrendsNarrativeBlock } from "@/lib/advisorKpiTrendsBuild";
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
+import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
 import type {
   KanzleiAttentionBand,
   KanzleiMonthlyBaselineTenant,
@@ -308,6 +309,8 @@ export type BuildMonthlyReportOptions = {
   advisorKpiSnapshot?: AdvisorKpiPortfolioSnapshot | null;
   /** Wave 46 – optionaler Trend-Kurzblock (Abschnitt 6). */
   kpiTrendsNarrative?: AdvisorKpiTrendsNarrativeBlock | null;
+  /** Wave 48 – AI-Governance-Überblick (Abschnitt 8). */
+  aiGovernance: AdvisorAiGovernancePortfolioDto;
 };
 
 export function buildKanzleiMonthlyReport(
@@ -357,5 +360,6 @@ export function buildKanzleiMonthlyReport(
     section_5_advisor_kpis: opts.advisorKpiSnapshot ?? null,
     section_6_kpi_trends: opts.kpiTrendsNarrative ?? null,
     section_7_advisor_sla: payload.advisor_sla,
+    section_8_ai_governance: opts.aiGovernance,
   };
 }

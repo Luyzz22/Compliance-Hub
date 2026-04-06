@@ -13,6 +13,7 @@ Kompaktes **Portfolio-Artefakt** für interne Partnerrunden, vierteljährliche M
 | **E – Kanzlei-KPIs** | Wave 45 – gleicher KPI-Snapshot wie Monatsreport. |
 | **F – KPI-Trends (Kurz)** | Wave 46 – Kurzsätze aus persistierter History (rolling 3 Monate); siehe `wave46-kpi-trends.md`. |
 | **G – SLA-Lagebild** | Wave 47 – SLA-Befunde, Eskalationssignale und kurze Nächste-Schritte; siehe `wave47-sla-and-escalations.md`. |
+| **H – AI-Governance** | Wave 48 – EU AI Act / ISO 42001 Steuerungsüberblick; siehe `wave48-ai-governance-view.md`. |
 
 ## API
 
@@ -55,6 +56,7 @@ Die API liefert zusätzlich `meta.prioritization_rationale_de` als Kurzliste fü
 
 ## Siehe auch
 
+- `docs/advisors/wave48-ai-governance-view.md`
 - `docs/advisors/wave47-sla-and-escalations.md`
 - `docs/advisors/wave46-kpi-trends.md`
 - `docs/advisors/wave45-advisor-kpis.md`
