@@ -72,6 +72,7 @@ Listen sind auf **12 Einträge** pro Kategorie begrenzt (Lesbarkeit).
 
 ## Siehe auch
 
+- `docs/advisors/wave51-board-ready-evidence-pack.md`
 - `docs/advisors/wave50-enterprise-evidence-hooks.md`
 - `docs/advisors/wave49-cross-regulation-matrix.md`
 - `docs/advisors/wave48-ai-governance-view.md`

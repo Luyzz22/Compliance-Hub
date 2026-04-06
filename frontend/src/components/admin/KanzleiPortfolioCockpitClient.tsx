@@ -20,6 +20,7 @@ import {
 import { isDueThisCalendarWeek, isDueTodayOrOverdue } from "@/lib/advisorMandantReminderRules";
 import type { AdvisorAiGovernancePortfolioDto } from "@/lib/advisorAiGovernanceTypes";
 import type { AdvisorEvidenceHooksPortfolioDto } from "@/lib/advisorEvidenceHookTypes";
+import type { BoardReadyEvidencePackDto } from "@/lib/boardReadyEvidencePackTypes";
 import { buildCrossRegulationMatrixFromPayload } from "@/lib/advisorCrossRegulationBuild";
 import {
   CROSS_REGULATION_PILLAR_LABEL_DE,
@@ -336,6 +337,12 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
   const [partnerDto, setPartnerDto] = useState<PartnerReviewPackageDto | null>(null);
   const [partnerCompare, setPartnerCompare] = useState(true);
   const [partnerTopN, setPartnerTopN] = useState(8);
+
+  const [boardPackLoading, setBoardPackLoading] = useState(false);
+  const [boardPackErr, setBoardPackErr] = useState<string | null>(null);
+  const [boardPackMd, setBoardPackMd] = useState<string | null>(null);
+  const [boardPackDto, setBoardPackDto] = useState<BoardReadyEvidencePackDto | null>(null);
+  const [boardPackKpiOff, setBoardPackKpiOff] = useState(false);
 
   const [kpiSnapshot, setKpiSnapshot] = useState<AdvisorKpiPortfolioSnapshot | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
@@ -671,6 +678,63 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
     URL.revokeObjectURL(url);
   }, [partnerMd]);
 
+  const fetchBoardReadyEvidencePack = useCallback(async () => {
+    setBoardPackLoading(true);
+    setBoardPackErr(null);
+    try {
+      const q = new URLSearchParams();
+      const w = Math.min(365, Math.max(7, kpiWindowDays));
+      q.set("kpi_window_days", String(w));
+      if (boardPackKpiOff) q.set("kpi", "0");
+      const r = await fetch(`/api/internal/advisor/board-ready-evidence-pack?${q}`, { credentials: "include" });
+      if (r.status === 401) {
+        setBoardPackErr("Nicht angemeldet (Admin-Secret).");
+        setBoardPackMd(null);
+        setBoardPackDto(null);
+        return;
+      }
+      if (!r.ok) {
+        setBoardPackErr(`HTTP ${r.status}`);
+        setBoardPackMd(null);
+        setBoardPackDto(null);
+        return;
+      }
+      const data = (await r.json()) as {
+        ok?: boolean;
+        board_ready_evidence_pack?: BoardReadyEvidencePackDto;
+        markdown_de?: string;
+      };
+      setBoardPackDto(data.board_ready_evidence_pack ?? null);
+      setBoardPackMd(data.markdown_de ?? null);
+    } catch {
+      setBoardPackErr("Netzwerkfehler");
+      setBoardPackMd(null);
+      setBoardPackDto(null);
+    } finally {
+      setBoardPackLoading(false);
+    }
+  }, [boardPackKpiOff, kpiWindowDays]);
+
+  const copyBoardPackMd = useCallback(async () => {
+    if (!boardPackMd) return;
+    try {
+      await navigator.clipboard.writeText(boardPackMd);
+    } catch {
+      /* ignore */
+    }
+  }, [boardPackMd]);
+
+  const downloadBoardPackMd = useCallback(() => {
+    if (!boardPackMd) return;
+    const blob = new Blob([boardPackMd], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `board-ready-evidence-pack-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [boardPackMd]);
+
   const patchReminderStatus = useCallback(
     async (reminderId: string, status: "done" | "dismissed") => {
       setReminderPatchBusyId(reminderId);
@@ -772,7 +836,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
               Intern · Mandanten-Steering
             </span>
-            <span className="text-[11px] text-slate-400">Waves 39–49</span>
+            <span className="text-[11px] text-slate-400">Waves 39–51</span>
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.65rem]">
             Kanzlei-Portfolio
@@ -780,7 +844,8 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             Operatives Cockpit für gemappte Mandanten: Readiness, Prüfpunkte, Export-Kadenz, Reviews,
             Attention-Queue, Playbook, Reports, Reminders, Kanzlei-KPIs, SLA, AI-Governance,
-            Cross-Regulation-Matrix und Enterprise Evidence Hooks (SAP/ERP-Metadaten, keine Live-Integration).
+            Cross-Regulation-Matrix, Enterprise Evidence Hooks und optional das Board-Ready Evidence Pack für
+            GF-/Board-nahe Kurzgespräche (Markdown, keine Rechtsberatung).
           </p>
           {payload ? (
             <p className="mt-3 text-xs tabular-nums text-slate-500">
@@ -818,6 +883,14 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
             ·{" "}
             <code className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
               /cross-regulation-matrix
+            </code>{" "}
+            ·{" "}
+            <code className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
+              /evidence-hooks
+            </code>{" "}
+            ·{" "}
+            <code className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
+              /board-ready-evidence-pack
             </code>
           </p>
         </div>
@@ -1628,6 +1701,65 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
           {partnerMd ? (
             <pre className="mt-3 max-h-[min(50vh,420px)] overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 font-mono text-[11px] leading-relaxed text-slate-800">
               {partnerMd}
+            </pre>
+          ) : null}
+        </section>
+      ) : null}
+
+      {payload ? (
+        <section className="rounded-xl border border-slate-300 bg-slate-50/80 p-4 shadow-sm ring-1 ring-slate-950/[0.04]">
+          <h2 className="text-sm font-semibold text-slate-900">Board-Ready Evidence Pack (Wave 51)</h2>
+          <p className="mt-1 text-[11px] text-slate-600">
+            Kompakte Markdown-Fassung für Geschäftsführung, Bereichsleitung oder board-nahe Gespräche – keine
+            Rechtsberatung, keine PDF-Engine. Bündelt Portfolio, Querschnittsmatrix, KI-Governance, SLA, Evidence
+            Hooks und optional Kanzlei-KPIs.{" "}
+            <code className="rounded bg-white px-1">GET /api/internal/advisor/board-ready-evidence-pack</code> ·{" "}
+            <code className="rounded bg-white px-1">kpi_window_days</code> ·{" "}
+            <code className="rounded bg-white px-1">kpi=0</code> ohne KPI-Stichprobe in Abschnitt A.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+              <input
+                type="checkbox"
+                checked={boardPackKpiOff}
+                onChange={(e) => setBoardPackKpiOff(e.target.checked)}
+              />
+              KPI-Stichprobe in Pack ausblenden
+            </label>
+            <button
+              type="button"
+              disabled={boardPackLoading}
+              onClick={() => void fetchBoardReadyEvidencePack()}
+              className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-900 disabled:opacity-50"
+            >
+              {boardPackLoading ? "Erzeuge…" : "Board-Ready Pack erstellen"}
+            </button>
+            <button
+              type="button"
+              disabled={!boardPackMd}
+              onClick={() => void copyBoardPackMd()}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Markdown kopieren
+            </button>
+            <button
+              type="button"
+              disabled={!boardPackMd}
+              onClick={() => downloadBoardPackMd()}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Als Markdown speichern
+            </button>
+          </div>
+          {boardPackErr ? <p className="mt-2 text-xs text-red-600">{boardPackErr}</p> : null}
+          {boardPackDto ? (
+            <p className="mt-2 font-mono text-[10px] text-slate-500">
+              Schema {boardPackDto.meta.version} · Signalquellen: {boardPackDto.meta.included_signals_de.length}
+            </p>
+          ) : null}
+          {boardPackMd ? (
+            <pre className="mt-3 max-h-[min(50vh,420px)] overflow-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 font-mono text-[11px] leading-relaxed text-slate-800">
+              {boardPackMd}
             </pre>
           ) : null}
         </section>

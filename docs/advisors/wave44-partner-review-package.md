@@ -58,6 +58,7 @@ Die API liefert zusätzlich `meta.prioritization_rationale_de` als Kurzliste fü
 
 ## Siehe auch
 
+- `docs/advisors/wave51-board-ready-evidence-pack.md`
 - `docs/advisors/wave50-enterprise-evidence-hooks.md`
 - `docs/advisors/wave49-cross-regulation-matrix.md`
 - `docs/advisors/wave48-ai-governance-view.md`
