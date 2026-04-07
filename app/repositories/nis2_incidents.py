@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.governance_taxonomy import NIS2DeadlinePolicy
 from app.models_db import NIS2IncidentTable
 from app.nis2_incident_models import (
     VALID_TRANSITIONS,
@@ -76,7 +77,7 @@ class NIS2IncidentRepository:
         created_by: str | None = None,
     ) -> NIS2IncidentResponse:
         now = datetime.now(UTC)
-        report_deadline = now + timedelta(hours=72)
+        report_deadline = now + timedelta(hours=NIS2DeadlinePolicy.REPORT_HOURS)
         row = NIS2IncidentTable(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
@@ -89,9 +90,10 @@ class NIS2IncidentRepository:
             kritis_relevant=data.kritis_relevant,
             personal_data_affected=data.personal_data_affected,
             estimated_impact=data.estimated_impact,
-            bsi_notification_deadline=now + timedelta(hours=24),
+            bsi_notification_deadline=now + timedelta(hours=NIS2DeadlinePolicy.NOTIFICATION_HOURS),
             bsi_report_deadline=report_deadline,
-            final_report_deadline=report_deadline + timedelta(days=30),
+            final_report_deadline=report_deadline
+            + timedelta(days=NIS2DeadlinePolicy.FINAL_REPORT_DAYS_AFTER_REPORT),
             detected_at=now,
             created_by=created_by,
             created_at_utc=now,
