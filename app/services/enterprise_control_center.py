@@ -129,9 +129,7 @@ def build_enterprise_control_center(
         if status not in {ControlCenterStatus.overdue, ControlCenterStatus.due_soon}:
             continue
         deadline_phrase = (
-            "ist überfällig"
-            if status == ControlCenterStatus.overdue
-            else "steht kurzfristig an"
+            "ist überfällig" if status == ControlCenterStatus.overdue else "steht kurzfristig an"
         )
         items.append(
             EnterpriseControlCenterItem(
@@ -181,8 +179,7 @@ def build_enterprise_control_center(
                     status=ControlCenterStatus.blocked,
                     title="Board-Readiness: Owner fehlt",
                     summary_de=(
-                        f"Für High-Risk-System {s.name} ist kein "
-                        "verantwortlicher Owner hinterlegt."
+                        f"Für High-Risk-System {s.name} ist kein verantwortlicher Owner hinterlegt."
                     ),
                     due_at=None,
                     tenant_id=tenant_id,
