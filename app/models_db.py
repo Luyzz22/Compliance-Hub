@@ -203,10 +203,22 @@ class AISystemInventoryProfileDB(Base):
     provider_type: Mapped[str] = mapped_column(String(32), nullable=False, default="external")
     use_case: Mapped[str] = mapped_column(String(500), nullable=False)
     business_process: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    eu_ai_act_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="review_needed")
-    iso_42001_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="review_needed")
+    eu_ai_act_scope: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="review_needed",
+    )
+    iso_42001_scope: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="review_needed",
+    )
     nis2_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="review_needed")
-    dsgvo_special_risk: Mapped[str] = mapped_column(String(32), nullable=False, default="review_needed")
+    dsgvo_special_risk: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="review_needed",
+    )
     register_status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
     register_metadata: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     authority_reporting_flags: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

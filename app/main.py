@@ -336,8 +336,8 @@ from app.services.ai_kpi_service import (
     upsert_kpi_value,
 )
 from app.services.ai_system_import import import_ai_systems_from_file
-from app.services.authority_ai_export import build_authority_export
 from app.services.audit_gobd_export import generate_gobd_xml
+from app.services.authority_ai_export import build_authority_export
 from app.services.board_kpi_export import board_kpi_export_csv, build_board_kpi_export_envelope
 from app.services.board_kpi_export_jobs import get_kpi_job, register_kpi_export_job
 from app.services.board_report_audit_records import (
@@ -1168,7 +1168,10 @@ def get_ai_system_inventory_profile(
     return inv_repo.get_profile(auth_context.tenant_id, ai_system_id)
 
 
-@app.put("/api/v1/ai-systems/{ai_system_id}/inventory-profile", response_model=AISystemInventoryProfileRead)
+@app.put(
+    "/api/v1/ai-systems/{ai_system_id}/inventory-profile",
+    response_model=AISystemInventoryProfileRead,
+)
 def put_ai_system_inventory_profile(
     ai_system_id: str,
     body: AISystemInventoryProfileUpsert,
@@ -1230,7 +1233,12 @@ def put_ki_register_entry(
 ) -> KIRegisterEntryRead:
     if ai_repo.get_by_id(auth_context.tenant_id, ai_system_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI system not found")
-    row = inv_repo.upsert_register_entry(auth_context.tenant_id, ai_system_id, body, auth_context.api_key)
+    row = inv_repo.upsert_register_entry(
+        auth_context.tenant_id,
+        ai_system_id,
+        body,
+        auth_context.api_key,
+    )
     audit_repo.log_event(
         tenant_id=auth_context.tenant_id,
         actor_type="api_key",
@@ -4371,7 +4379,10 @@ def export_authority_ai_act(
     audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
     audit_log_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
     scope: Annotated[AuthorityExportScope, Query()] = AuthorityExportScope.initial,
-    _rbac: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))] = EnterpriseRole.AUDITOR,
+    _rbac: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.EXPORT_AUDIT_LOG)),
+    ] = EnterpriseRole.AUDITOR,
 ) -> AuthorityExportResponse:
     result = build_authority_export(
         tenant_id=auth_context.tenant_id,

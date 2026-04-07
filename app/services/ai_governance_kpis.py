@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 
 from app.ai_governance_models import AIBoardKpiSummary, AIGovernanceKpiSummary
 from app.datetime_compat import UTC
-from app.repositories.ai_systems import AISystemRepository
 from app.repositories.ai_inventory import AISystemInventoryRepository
+from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
 from app.repositories.policies import PolicyRepository

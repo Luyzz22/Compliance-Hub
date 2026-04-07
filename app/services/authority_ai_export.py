@@ -60,6 +60,8 @@ def build_authority_export(
     ]
     for row in rows:
         markdown_lines.append(
-            f"- `{row.system_id}` {row.name}: {row.ai_act_category}, Register={row.register_status}, Scope={row.eu_ai_act_scope}"
+            f"- `{row.system_id}` {row.name}: {row.ai_act_category}, "
+            f"Register={row.register_status}, Scope={row.eu_ai_act_scope}"
         )
-    return AuthorityExportResponse(export=envelope, markdown_de="\n".join(markdown_lines).strip() + "\n")
+    markdown = "\n".join(markdown_lines).strip() + "\n"
+    return AuthorityExportResponse(export=envelope, markdown_de=markdown)

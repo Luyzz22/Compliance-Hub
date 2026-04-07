@@ -4,7 +4,6 @@ from app.ai_inventory_models import WizardDecisionResponse
 from app.classification_models import ClassificationQuestionnaire
 from app.services.classification_engine import classify_ai_system
 
-
 DECISION_VERSION = "eu_ai_act_v1"
 
 

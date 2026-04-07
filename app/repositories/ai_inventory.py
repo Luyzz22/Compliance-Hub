@@ -166,13 +166,21 @@ class AISystemInventoryRepository:
 
     def posture_summary(self, tenant_id: str, total_systems: int) -> KIRegisterPostureSummary:
         entries = self.list_latest_register_entries(tenant_id)
-        counts = {KiRegisterStatus.registered.value: 0, KiRegisterStatus.planned.value: 0, "partial": 0}
+        counts = {
+            KiRegisterStatus.registered.value: 0,
+            KiRegisterStatus.planned.value: 0,
+            "partial": 0,
+        }
         for e in entries:
             if e.status in counts:
                 counts[e.status] += 1
             elif e.status == KiRegisterStatus.partial.value:
                 counts["partial"] += 1
-        known = counts[KiRegisterStatus.registered.value] + counts[KiRegisterStatus.planned.value] + counts["partial"]
+        known = (
+            counts[KiRegisterStatus.registered.value]
+            + counts[KiRegisterStatus.planned.value]
+            + counts["partial"]
+        )
         return KIRegisterPostureSummary(
             registered=counts[KiRegisterStatus.registered.value],
             planned=counts[KiRegisterStatus.planned.value],

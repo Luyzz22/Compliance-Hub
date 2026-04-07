@@ -137,7 +137,8 @@ def render_board_report_markdown(report: AIBoardGovernanceReport) -> str:
         f"Supplier-Risikoregister (von {s.total_systems_with_suppliers} mit Lieferantenbezug)."
     )
     lines.append(
-        f"- KI-Register-Posture: registriert {k.ki_register_registered}, geplant {k.ki_register_planned}, "
+        f"- KI-Register-Posture: registriert {k.ki_register_registered}, "
+        f"geplant {k.ki_register_planned}, "
         f"teilweise {k.ki_register_partial}, unbekannt {k.ki_register_unknown}."
     )
     if report.alerts:
