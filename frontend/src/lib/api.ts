@@ -2799,18 +2799,57 @@ export async function fetchEnterpriseConnectorCandidates(
 }
 
 export type ConnectorConnectionStatusDto = "not_configured" | "connected" | "degraded";
-export type ConnectorSyncStatusDto = "idle" | "running" | "success" | "failed";
+
+export type SyncRunLifecycleDto =
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "partial_success"
+  | "failed"
+  | "cancelled";
+
+export type ConnectorFailureCategoryDto =
+  | "auth_config"
+  | "source_unavailable"
+  | "payload_validation"
+  | "normalization_mapping"
+  | "internal_processing";
+
+export type ConnectorInstanceSyncStateDto =
+  | "idle"
+  | "running"
+  | "succeeded"
+  | "partial_success"
+  | "failed";
 
 export interface ConnectorSyncResultDto {
   sync_run_id: string;
   tenant_id: string;
   connector_instance_id: string;
-  sync_status: ConnectorSyncStatusDto;
+  sync_status: SyncRunLifecycleDto;
   started_at_utc: string;
   finished_at_utc: string | null;
+  duration_ms: number | null;
+  records_received: number;
+  records_normalized: number;
+  records_rejected: number;
   records_ingested: number;
+  failure_category: ConnectorFailureCategoryDto | null;
+  retry_of_sync_run_id: string | null;
+  retry_recommended: boolean;
+  operator_next_step_de: string;
   last_error: string | null;
   summary_de: string;
+}
+
+export interface ConnectorHealthSnapshotDto {
+  connection_status: ConnectorConnectionStatusDto;
+  last_terminal_sync: SyncRunLifecycleDto | null;
+  last_finished_at_utc: string | null;
+  last_failure_category: ConnectorFailureCategoryDto | null;
+  evidence_record_count: number;
+  has_material_connector_issue: boolean;
+  material_issue_summary_de: string | null;
 }
 
 export interface ConnectorRuntimeStatusDto {
@@ -2820,12 +2859,13 @@ export interface ConnectorRuntimeStatusDto {
     tenant_id: string;
     source_system_type: IntegrationBlueprintSourceSystemTypeDto;
     connection_status: ConnectorConnectionStatusDto;
-    sync_status: ConnectorSyncStatusDto;
+    sync_status: ConnectorInstanceSyncStateDto;
     last_sync_at: string | null;
     last_error: string | null;
     enabled_evidence_domains: IntegrationBlueprintEvidenceDomainDto[];
   };
   last_sync_result: ConnectorSyncResultDto | null;
+  health: ConnectorHealthSnapshotDto;
 }
 
 export interface ConnectorManualSyncDto {
@@ -2842,6 +2882,33 @@ export async function fetchConnectorRuntimeStatus(tenantId: string): Promise<Con
 export async function triggerConnectorManualSync(tenantId: string): Promise<ConnectorManualSyncDto> {
   return tenantApiFetch("/api/internal/enterprise/connector-runtime/manual-sync", tenantId, {
     method: "POST",
+  }) as Promise<ConnectorManualSyncDto>;
+}
+
+export interface ConnectorSyncHistoryResponseDto {
+  tenant_id: string;
+  runs: ConnectorSyncResultDto[];
+}
+
+export async function fetchConnectorSyncRunHistory(
+  tenantId: string,
+  limit = 30,
+): Promise<ConnectorSyncHistoryResponseDto> {
+  const qs = `?limit=${encodeURIComponent(String(limit))}`;
+  return tenantApiFetch(
+    `/api/internal/enterprise/connector-runtime/sync-runs${qs}`,
+    tenantId,
+  ) as Promise<ConnectorSyncHistoryResponseDto>;
+}
+
+export async function triggerConnectorRetrySync(
+  tenantId: string,
+  syncRunId?: string | null,
+): Promise<ConnectorManualSyncDto> {
+  return tenantApiFetch("/api/internal/enterprise/connector-runtime/retry-sync", tenantId, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sync_run_id: syncRunId ?? null }),
   }) as Promise<ConnectorManualSyncDto>;
 }
 
