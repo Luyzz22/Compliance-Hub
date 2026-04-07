@@ -65,6 +65,12 @@ export default function SettingsPage() {
             SSO (Azure AD, SAP IAS) und rollenbasierte Workspace-Zugriffe – Platzhalter für
             Enterprise-Onboarding.
           </p>
+          <Link
+            href="/auth/profile"
+            className={`${CH_BTN_SECONDARY} mt-4 inline-flex text-xs`}
+          >
+            Benutzerprofil verwalten
+          </Link>
         </article>
 
         {featureDemoSeeding() ? (
