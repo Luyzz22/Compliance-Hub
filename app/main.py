@@ -181,6 +181,10 @@ from app.demo_tenant_guard import (
     workspace_mode_for_telemetry,
 )
 from app.enterprise_control_center_models import EnterpriseControlCenterResponse
+from app.enterprise_integration_blueprint_models import (
+    EnterpriseIntegrationBlueprintResponse,
+    EnterpriseIntegrationBlueprintUpsert,
+)
 from app.enterprise_onboarding_models import (
     EnterpriseOnboardingReadinessResponse,
     EnterpriseOnboardingReadinessUpsert,
@@ -283,6 +287,9 @@ from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_deadlines import ComplianceDeadlineRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
 from app.repositories.enterprise_onboarding import EnterpriseOnboardingRepository
+from app.repositories.enterprise_integration_blueprints import (
+    EnterpriseIntegrationBlueprintRepository,
+)
 from app.repositories.evidence_files import EvidenceFileRepository
 from app.repositories.incidents import IncidentRepository
 from app.repositories.nis2_incidents import NIS2IncidentRepository
@@ -390,6 +397,9 @@ from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_s
 from app.services.demo_governance_maturity_seed import seed_demo_governance_maturity_layer
 from app.services.demo_tenant_seeder import seed_demo_tenant
 from app.services.enterprise_control_center import build_enterprise_control_center
+from app.services.enterprise_integration_blueprint import (
+    build_enterprise_integration_blueprint_response,
+)
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
 from app.services.eu_ai_act_wizard_decision import evaluate_wizard_decision
 from app.services.evidence_service import (
@@ -721,6 +731,12 @@ def get_enterprise_onboarding_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> EnterpriseOnboardingRepository:
     return EnterpriseOnboardingRepository(session)
+
+
+def get_enterprise_integration_blueprint_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> EnterpriseIntegrationBlueprintRepository:
+    return EnterpriseIntegrationBlueprintRepository(session)
 
 
 def _ensure_tenant_path_matches_auth(tenant_id: str, auth: AuthContext) -> None:
@@ -5389,6 +5405,91 @@ def get_advisor_metrics(
 
 
 @app.get(
+    "/api/internal/enterprise/integration-blueprints",
+    response_model=EnterpriseIntegrationBlueprintResponse,
+    tags=["internal", "enterprise"],
+)
+def get_enterprise_integration_blueprints(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    onboarding_repo: Annotated[
+        EnterpriseOnboardingRepository,
+        Depends(get_enterprise_onboarding_repository),
+    ],
+    blueprint_repo: Annotated[
+        EnterpriseIntegrationBlueprintRepository,
+        Depends(get_enterprise_integration_blueprint_repository),
+    ],
+    include_markdown: bool = Query(False),
+) -> EnterpriseIntegrationBlueprintResponse:
+    onboarding = onboarding_repo.get(auth.tenant_id)
+    return build_enterprise_integration_blueprint_response(
+        tenant_id=auth.tenant_id,
+        blueprint_rows=blueprint_repo.list_for_tenant(auth.tenant_id),
+        onboarding=onboarding,
+        include_markdown=include_markdown,
+    )
+
+
+@app.put(
+    "/api/internal/enterprise/integration-blueprints",
+    response_model=EnterpriseIntegrationBlueprintResponse,
+    tags=["internal", "enterprise"],
+)
+def put_enterprise_integration_blueprints(
+    body: EnterpriseIntegrationBlueprintUpsert,
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.MANAGE_ONBOARDING_READINESS)),
+    ],
+    onboarding_repo: Annotated[
+        EnterpriseOnboardingRepository,
+        Depends(get_enterprise_onboarding_repository),
+    ],
+    blueprint_repo: Annotated[
+        EnterpriseIntegrationBlueprintRepository,
+        Depends(get_enterprise_integration_blueprint_repository),
+    ],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> EnterpriseIntegrationBlueprintResponse:
+    actor = actor_id_from_request(request)
+    saved = blueprint_repo.upsert(auth.tenant_id, body, actor=actor)
+    onboarding = onboarding_repo.get(auth.tenant_id)
+    response = build_enterprise_integration_blueprint_response(
+        tenant_id=auth.tenant_id,
+        blueprint_rows=blueprint_repo.list_for_tenant(auth.tenant_id),
+        onboarding=onboarding,
+        include_markdown=False,
+    )
+    record_governance_audit(
+        audit_repo,
+        tenant_id=auth.tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action=GovernanceAuditAction.ENTERPRISE_INTEGRATION_BLUEPRINT_UPSERT.value,
+        entity_type=GovernanceAuditEntity.ENTERPRISE_INTEGRATION_BLUEPRINT.value,
+        entity_id=saved.blueprint_id,
+        outcome="success",
+        before=None,
+        after=json.dumps(
+            {
+                "source_system_type": saved.source_system_type.value,
+                "integration_status": saved.integration_status.value,
+                "domains": [d.value for d in saved.evidence_domains],
+                "blockers": len(saved.blockers),
+            }
+        ),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"security_prerequisites": len(saved.security_prerequisites)},
+    )
+    return response
+
+
+@app.get(
     "/api/internal/enterprise/control-center",
     response_model=EnterpriseControlCenterResponse,
     tags=["internal", "enterprise"],
@@ -5439,6 +5540,10 @@ def get_authority_audit_preparation_pack(
         EnterpriseOnboardingRepository,
         Depends(get_enterprise_onboarding_repository),
     ],
+    blueprint_repo: Annotated[
+        EnterpriseIntegrationBlueprintRepository,
+        Depends(get_enterprise_integration_blueprint_repository),
+    ],
     focus: Annotated[PreparationPackFocus, Query()] = PreparationPackFocus.mixed,
     client_tenant_id: str | None = Query(default=None),
 ) -> AuthorityAuditPreparationPackResponse:
@@ -5455,6 +5560,7 @@ def get_authority_audit_preparation_pack(
         ai_repo=ai_repo,
         inventory_repo=inv_repo,
         onboarding_repo=onboarding_repo,
+        blueprint_repo=blueprint_repo,
     )
     actor = actor_id_from_request(request)
     record_governance_audit(

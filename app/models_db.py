@@ -71,6 +71,33 @@ class EnterpriseOnboardingReadinessDB(Base):
     updated_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
 
 
+class EnterpriseIntegrationBlueprintDB(Base):
+    """Metadata-first integration blueprint rows per tenant and source system."""
+
+    __tablename__ = "enterprise_integration_blueprints"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "blueprint_id", name="uq_enterprise_integration_blueprint"),
+        Index("ix_enterprise_integration_blueprints_tenant_source", "tenant_id", "source_system_type"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    blueprint_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    source_system_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    updated_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
+
+
 class TenantApiKeyDB(Base):
     """API-Schlüssel pro Mandant (Hash-only, Klartext nur bei Erstellung)."""
 

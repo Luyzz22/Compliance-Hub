@@ -15,9 +15,13 @@ from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.compliance_deadlines import ComplianceDeadlineRepository
 from app.repositories.enterprise_onboarding import EnterpriseOnboardingRepository
+from app.repositories.enterprise_integration_blueprints import EnterpriseIntegrationBlueprintRepository
 from app.repositories.nis2_incidents import NIS2IncidentRepository
 from app.services.ai_compliance_board_report import list_ai_compliance_board_reports
 from app.services.enterprise_control_center import build_enterprise_control_center
+from app.services.enterprise_integration_blueprint import (
+    build_enterprise_integration_blueprint_response,
+)
 
 
 def build_authority_audit_preparation_pack(
@@ -31,6 +35,7 @@ def build_authority_audit_preparation_pack(
     ai_repo: AISystemRepository,
     inventory_repo: AISystemInventoryRepository,
     onboarding_repo: EnterpriseOnboardingRepository | None = None,
+    blueprint_repo: EnterpriseIntegrationBlueprintRepository | None = None,
 ) -> AuthorityAuditPreparationPackResponse:
     now = datetime.now(UTC)
     cc = build_enterprise_control_center(
@@ -62,6 +67,14 @@ def build_authority_audit_preparation_pack(
     register = inventory_repo.posture_summary(tenant_id, total_systems=len(systems))
     board_reports = list_ai_compliance_board_reports(session, tenant_id, limit=1)
     onboarding = onboarding_repo.get(tenant_id) if onboarding_repo is not None else None
+    blueprint_posture = None
+    if blueprint_repo is not None:
+        blueprint_posture = build_enterprise_integration_blueprint_response(
+            tenant_id=tenant_id,
+            blueprint_rows=blueprint_repo.list_for_tenant(tenant_id),
+            onboarding=onboarding,
+            include_markdown=False,
+        )
 
     sec_a = PreparationPackSection(
         title_de="A. Executive Compliance Posture Snapshot",
@@ -166,6 +179,37 @@ def build_authority_audit_preparation_pack(
         sec_f.due_items.append(
             f"Onboarding-Blocker klären ({len(onboarding.blockers)} offen) für Enterprise-Rollout."
         )
+    if blueprint_posture is not None and blueprint_posture.blockers:
+        sec_f.due_items.append(
+            "Integrations-Blueprint-Blocker vor Connector-Builds adressieren."
+        )
+
+    sec_g = PreparationPackSection(
+        title_de="G. Integration Blueprint Posture (SAP/ERP Readiness)",
+        summary_de=(
+            "Integration-Blueprint wurde noch nicht gepflegt."
+            if blueprint_posture is None
+            else (
+                f"Readiness={blueprint_posture.readiness_status.value}; "
+                f"Blueprints={len(blueprint_posture.blueprint_rows)}; "
+                f"Blocker={len(blueprint_posture.blockers)}."
+            )
+        ),
+        evidence_items=(
+            []
+            if blueprint_posture is None
+            else [
+                f"{c.source_system_type.value}: {c.score}/100 ({c.recommendation_de})"
+                for c in blueprint_posture.top_enterprise_integration_candidates[:3]
+            ]
+        ),
+        missing_items=(
+            []
+            if blueprint_posture is None
+            else [b for b in blueprint_posture.blockers[:8]]
+        ),
+        due_items=[],
+    )
 
     markdown_lines = [
         "# Authority & Audit Preparation Pack (Arbeitsstand)",
@@ -199,6 +243,9 @@ def build_authority_audit_preparation_pack(
     )
     for action in sec_f.due_items:
         markdown_lines.append(f"- {action}")
+    markdown_lines.extend(["", "## G) Integration Blueprint", sec_g.summary_de])
+    for row in sec_g.evidence_items:
+        markdown_lines.append(f"- {row}")
 
     return AuthorityAuditPreparationPackResponse(
         tenant_id=tenant_id,
@@ -212,6 +259,7 @@ def build_authority_audit_preparation_pack(
             "ai_inventory_register",
             "board_reports",
             "enterprise_onboarding_readiness",
+            "enterprise_integration_blueprint",
         ],
         section_a_executive_posture=sec_a,
         section_b_open_critical_missing_evidence=sec_b,
@@ -219,6 +267,7 @@ def build_authority_audit_preparation_pack(
         section_d_nis2_incident_deadline_status=sec_d,
         section_e_ai_act_register_authority_status=sec_e,
         section_f_recommended_next_preparation_actions=sec_f,
+        section_g_integration_blueprint_posture=sec_g,
         top_urgent_items=urgent,
         markdown_de="\n".join(markdown_lines).strip() + "\n",
     )

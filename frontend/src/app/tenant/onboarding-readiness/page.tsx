@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
-import { fetchEnterpriseOnboardingReadiness } from "@/lib/api";
+import {
+  fetchEnterpriseIntegrationBlueprints,
+  fetchEnterpriseOnboardingReadiness,
+} from "@/lib/api";
 import {
   CH_BTN_SECONDARY,
   CH_CARD,
@@ -13,6 +16,7 @@ import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 export default async function TenantOnboardingReadinessPage() {
   const tenantId = await getWorkspaceTenantIdServer();
   const data = await fetchEnterpriseOnboardingReadiness(tenantId);
+  const blueprint = await fetchEnterpriseIntegrationBlueprints(tenantId, false);
 
   return (
     <div className={CH_SHELL}>
@@ -87,6 +91,24 @@ export default async function TenantOnboardingReadinessPage() {
             ) : null}
           </ul>
         </article>
+      </section>
+
+      <section className={CH_CARD}>
+        <p className={CH_SECTION_LABEL}>Integration Blueprint Reuse</p>
+        <p className="mt-2 text-sm text-slate-700">
+          Aktuelle Integrations-Posture: <span className="font-semibold">{blueprint.readiness_status}</span>
+          {" · "}Top-Kandidaten: {blueprint.top_enterprise_integration_candidates.length}
+        </p>
+        <ul className="mt-3 space-y-2 text-xs text-slate-700">
+          {blueprint.top_enterprise_integration_candidates.slice(0, 3).map((item) => (
+            <li key={item.blueprint_id} className="rounded border border-slate-200 px-3 py-2">
+              {item.source_system_type} ({item.score}/100) - {item.recommendation_de}
+            </li>
+          ))}
+          {blueprint.top_enterprise_integration_candidates.length === 0 ? (
+            <li className="text-xs text-slate-500">Noch keine priorisierten Integrationskandidaten.</li>
+          ) : null}
+        </ul>
       </section>
     </div>
   );
