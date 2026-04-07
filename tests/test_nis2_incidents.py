@@ -176,16 +176,24 @@ def test_nis2_incident_bsi_deadlines() -> None:
 
     # Notification deadline is ~24 hours after detection
     notif_delta = notif - detected
-    assert timedelta(hours=23, minutes=59) <= notif_delta <= timedelta(
-        hours=NIS2DeadlinePolicy.NOTIFICATION_HOURS,
-        minutes=1,
+    assert (
+        timedelta(hours=23, minutes=59)
+        <= notif_delta
+        <= timedelta(
+            hours=NIS2DeadlinePolicy.NOTIFICATION_HOURS,
+            minutes=1,
+        )
     )
 
     # Report deadline is ~72 hours after detection
     report_delta = report - detected
-    assert timedelta(hours=71, minutes=59) <= report_delta <= timedelta(
-        hours=NIS2DeadlinePolicy.REPORT_HOURS,
-        minutes=1,
+    assert (
+        timedelta(hours=71, minutes=59)
+        <= report_delta
+        <= timedelta(
+            hours=NIS2DeadlinePolicy.REPORT_HOURS,
+            minutes=1,
+        )
     )
 
     # Detected time should be between before and after (with small tolerance)
@@ -206,9 +214,13 @@ def test_nis2_final_report_deadline_from_detection() -> None:
     report = datetime.fromisoformat(data["bsi_report_deadline"])
     final = datetime.fromisoformat(data["final_report_deadline"])
     assert final - report == timedelta(days=NIS2DeadlinePolicy.FINAL_REPORT_DAYS_AFTER_REPORT)
-    assert timedelta(hours=71, minutes=59) <= report - detected <= timedelta(
-        hours=NIS2DeadlinePolicy.REPORT_HOURS,
-        minutes=1,
+    assert (
+        timedelta(hours=71, minutes=59)
+        <= report - detected
+        <= timedelta(
+            hours=NIS2DeadlinePolicy.REPORT_HOURS,
+            minutes=1,
+        )
     )
 
 
