@@ -13,5 +13,6 @@ class EnterpriseRole(StrEnum):
     COMPLIANCE_OFFICER = "compliance_officer"
     CISO = "ciso"
     BOARD_MEMBER = "board_member"
+    COMPLIANCE_ADMIN = "compliance_admin"
     TENANT_ADMIN = "tenant_admin"
     SUPER_ADMIN = "super_admin"

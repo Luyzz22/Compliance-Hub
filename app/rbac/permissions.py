@@ -87,6 +87,8 @@ _BOARD_MEMBER_PERMS = frozenset(
     }
 )
 
+_COMPLIANCE_ADMIN_PERMS = _COMPLIANCE_OFFICER_PERMS
+
 _TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
     {
         Permission.MANAGE_TENANT_SETTINGS,
@@ -104,6 +106,7 @@ ROLE_PERMISSIONS: dict[EnterpriseRole, frozenset[Permission]] = {
     EnterpriseRole.EDITOR: _EDITOR_PERMS,
     EnterpriseRole.AUDITOR: _AUDITOR_PERMS,
     EnterpriseRole.COMPLIANCE_OFFICER: _COMPLIANCE_OFFICER_PERMS,
+    EnterpriseRole.COMPLIANCE_ADMIN: _COMPLIANCE_ADMIN_PERMS,
     EnterpriseRole.CISO: _CISO_PERMS,
     EnterpriseRole.BOARD_MEMBER: _BOARD_MEMBER_PERMS,
     EnterpriseRole.TENANT_ADMIN: _TENANT_ADMIN_PERMS,

@@ -6879,3 +6879,300 @@ def seed_eu_ai_act_demo_endpoint(
     from app.services.eu_ai_act_seed import seed_eu_ai_act_demo
 
     return seed_eu_ai_act_demo(session)
+
+
+# ── Identity & Auth Endpoints ─────────────────────────────────────────────────
+
+from app.repositories.users import UserRepository  # noqa: E402
+from app.services.identity_service import IdentityService  # noqa: E402
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    display_name: str | None = None
+    company: str | None = None
+    language: str = "de"
+    timezone: str = "Europe/Berlin"
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+
+class ProfileUpdateRequest(BaseModel):
+    display_name: str | None = None
+    company: str | None = None
+    language: str | None = None
+    timezone: str | None = None
+
+
+class RoleAssignRequest(BaseModel):
+    user_id: str
+    tenant_id: str
+    role: str
+
+
+@app.post(
+    "/api/v1/auth/register", status_code=status.HTTP_201_CREATED, tags=["identity"]
+)
+def register_user(
+    body: RegisterRequest,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    repo = UserRepository(session)
+    svc = IdentityService(repo)
+    result = svc.register(
+        email=body.email,
+        password=body.password,
+        display_name=body.display_name,
+        company=body.company,
+        language=body.language,
+        timezone_str=body.timezone,
+    )
+    if "error" in result:
+        code = (
+            status.HTTP_409_CONFLICT
+            if result["error"] == "email_taken"
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=code, detail=result["detail"])
+    # Audit log for registration
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id="system",
+        actor=result["email"],
+        action="user.registered",
+        entity_type="user",
+        entity_id=result["user_id"],
+        before=None,
+        after=result["email"],
+    )
+    return result
+
+
+@app.post("/api/v1/auth/verify-email", tags=["identity"])
+def verify_email(
+    token: str = Query(...),
+    session: Session = Depends(get_session),
+) -> dict:
+    repo = UserRepository(session)
+    svc = IdentityService(repo)
+    result = svc.verify_email(token)
+    if "error" in result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"]
+        )
+    # Audit log
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id="system",
+        actor=result["email"],
+        action="user.email_verified",
+        entity_type="user",
+        entity_id=result["user_id"],
+        before=None,
+        after="verified",
+    )
+    return result
+
+
+@app.post("/api/v1/auth/login", tags=["identity"])
+def login_user(
+    body: LoginRequest,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    repo = UserRepository(session)
+    svc = IdentityService(repo)
+    result = svc.login(email=body.email, password=body.password)
+    if "error" in result:
+        code_map = {
+            "invalid_credentials": status.HTTP_401_UNAUTHORIZED,
+            "account_disabled": status.HTTP_403_FORBIDDEN,
+            "account_locked": status.HTTP_429_TOO_MANY_REQUESTS,
+        }
+        raise HTTPException(
+            status_code=code_map.get(result["error"], status.HTTP_400_BAD_REQUEST),
+            detail=result["detail"],
+        )
+    # Audit log
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id="system",
+        actor=result["email"],
+        action="user.login",
+        entity_type="user",
+        entity_id=result["user_id"],
+        before=None,
+        after=None,
+    )
+    return result
+
+
+@app.post("/api/v1/auth/password-reset/request", tags=["identity"])
+def request_password_reset(
+    body: PasswordResetRequest,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    repo = UserRepository(session)
+    svc = IdentityService(repo)
+    result = svc.request_password_reset(email=body.email)
+    # Audit log (does not leak whether email exists)
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id="system",
+        actor=body.email,
+        action="user.password_reset_requested",
+        entity_type="user",
+        entity_id="",
+        before=None,
+        after=None,
+    )
+    return {"message": result["message"]}
+
+
+@app.post("/api/v1/auth/password-reset/confirm", tags=["identity"])
+def confirm_password_reset(
+    body: PasswordResetConfirm,
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    repo = UserRepository(session)
+    svc = IdentityService(repo)
+    result = svc.reset_password(token=body.token, new_password=body.new_password)
+    if "error" in result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"]
+        )
+    # Audit log
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id="system",
+        actor=result.get("user_id", ""),
+        action="user.password_reset",
+        entity_type="user",
+        entity_id=result.get("user_id", ""),
+        before=None,
+        after=None,
+    )
+    return {"message": result["message"]}
+
+
+@app.get("/api/v1/auth/profile/{user_id}", tags=["identity"])
+def get_user_profile(
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    repo = UserRepository(session)
+    svc = IdentityService(repo)
+    profile = svc.get_profile(user_id)
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return profile
+
+
+@app.put("/api/v1/auth/profile/{user_id}", tags=["identity"])
+def update_user_profile(
+    user_id: str,
+    body: ProfileUpdateRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    repo = UserRepository(session)
+    svc = IdentityService(repo)
+    profile = svc.update_profile(
+        user_id,
+        display_name=body.display_name,
+        company=body.company,
+        language=body.language,
+        timezone_str=body.timezone,
+    )
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    # Audit log
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor=user_id,
+        action="user.profile_updated",
+        entity_type="user",
+        entity_id=user_id,
+        before=None,
+        after=str(body.model_dump(exclude_none=True)),
+    )
+    return profile
+
+
+@app.post("/api/v1/auth/roles/assign", tags=["identity"])
+def assign_user_role(
+    body: RoleAssignRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))
+    ],
+) -> dict:
+    repo = UserRepository(session)
+    svc = IdentityService(repo)
+    result = svc.assign_role(
+        user_id=body.user_id,
+        tenant_id=body.tenant_id,
+        role=body.role,
+        assigned_by=None,
+    )
+    if "error" in result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=result["detail"]
+        )
+    # Audit log
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="admin",
+        action="user.role_assigned",
+        entity_type="user_tenant_role",
+        entity_id=body.user_id,
+        before=None,
+        after=f"role={body.role} tenant={body.tenant_id}",
+    )
+    return result
+
+
+@app.get("/api/v1/auth/users", tags=["identity"])
+def list_tenant_users(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))
+    ],
+) -> list[dict]:
+    repo = UserRepository(session)
+    role_assignments = repo.list_users_for_tenant(tenant_id)
+    result = []
+    for ra in role_assignments:
+        user = repo.get_by_id(ra.user_id)
+        if user:
+            result.append(
+                {
+                    "user_id": user.id,
+                    "email": user.email,
+                    "display_name": user.display_name,
+                    "role": ra.role,
+                    "tenant_id": ra.tenant_id,
+                }
+            )
+    return result

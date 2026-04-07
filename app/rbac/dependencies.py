@@ -22,6 +22,7 @@ _LEGACY_ROLE_MAP: dict[str, EnterpriseRole] = {
     "editor": EnterpriseRole.EDITOR,
     "ciso": EnterpriseRole.CISO,
     "board_member": EnterpriseRole.BOARD_MEMBER,
+    "compliance_admin": EnterpriseRole.COMPLIANCE_ADMIN,
     "super_admin": EnterpriseRole.SUPER_ADMIN,
 }
 
