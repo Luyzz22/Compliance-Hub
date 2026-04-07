@@ -13,6 +13,9 @@ This document supports review of the GoBD-style audit log, API-key enterprise RB
 
 ## 2. Audit event model (governance)
 
+Canonical governance event names are centralized in `app/governance_taxonomy.py` and should be
+used by enterprise-critical mutation endpoints to avoid drift in action/entity labels over time.
+
 Hash-chain fields (`previous_hash`, `entry_hash`) intentionally cover the **legacy payload** only (tenant, action, entity, before/after text, timestamp, previous hash) so existing chains remain verifiable. Extended fields are **stored for query and export** but are not yet mixed into the hash input.
 
 Recommended populated fields for critical mutations (when applicable):
@@ -43,6 +46,7 @@ Missing or unknown `x-opa-user-role` resolves to **contributor** (conservative f
 - **Technical workflow (IR):** `detected → contained → eradicated → recovered → closed` with deterministic transitions.
 - **Regulatory clock (authoritative start):** `detected_at` (set at creation). Notification and report deadlines are initialised from this instant.
 - **Default offsets:** early notification **+24h**, detailed report **+72h** from `detected_at`; **final_report_deadline** defaults to **+30 days after** the 72h report deadline (placeholder product default—adjust per legal/process).
+  The numeric defaults are centralized in `NIS2DeadlinePolicy` (`app/governance_taxonomy.py`).
 - **Overdue flags** on the API compare `datetime.now(UTC)` to each open deadline until `closed_at` is set.
 - **Overrides:** `PATCH /api/v1/nis2-incidents/{id}/deadlines` requires `MANAGE_INCIDENTS`, a minimum-length **reason**, at least one deadline field, and emits a governance audit entry.
 
