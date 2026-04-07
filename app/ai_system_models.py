@@ -60,6 +60,14 @@ class AISystemCreate(BaseModel):
     has_incident_runbook: bool = False
     has_supplier_risk_register: bool = False
     has_backup_runbook: bool = False
+    # KI-Register Pflichtfelder
+    intended_purpose: str | None = None
+    training_data_provenance: str | None = None
+    fria_reference: str | None = None
+    provider_name: str | None = None
+    deployer_name: str | None = None
+    provider_responsibilities: str | None = None
+    deployer_responsibilities: str | None = None
 
 
 class AISystemUpdate(BaseModel):
@@ -75,6 +83,14 @@ class AISystemUpdate(BaseModel):
     has_incident_runbook: bool | None = None
     has_supplier_risk_register: bool | None = None
     has_backup_runbook: bool | None = None
+    # KI-Register Pflichtfelder
+    intended_purpose: str | None = None
+    training_data_provenance: str | None = None
+    fria_reference: str | None = None
+    provider_name: str | None = None
+    deployer_name: str | None = None
+    provider_responsibilities: str | None = None
+    deployer_responsibilities: str | None = None
 
 
 class AISystem(BaseModel):
@@ -93,6 +109,17 @@ class AISystem(BaseModel):
     has_supplier_risk_register: bool = False
     has_backup_runbook: bool = False
     status: AISystemStatus = AISystemStatus.draft
+    # KI-Register Pflichtfelder
+    intended_purpose: str | None = None
+    training_data_provenance: str | None = None
+    fria_reference: str | None = None
+    provider_name: str | None = None
+    deployer_name: str | None = None
+    provider_responsibilities: str | None = None
+    deployer_responsibilities: str | None = None
+    pms_status: str = "pending"
+    pms_next_review_date: datetime | None = None
+    pms_last_review_date: datetime | None = None
     created_at_utc: datetime = Field(default_factory=lambda: datetime.utcnow())
     updated_at_utc: datetime = Field(default_factory=lambda: datetime.utcnow())
 

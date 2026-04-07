@@ -163,6 +163,21 @@ class AISystemTable(Base):
     has_supplier_risk_register: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     has_backup_runbook: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="draft")
+    # ── KI-Register Pflichtfelder (EU AI Act) ─────────────────
+    intended_purpose: Mapped[str | None] = mapped_column(Text, nullable=True)
+    training_data_provenance: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fria_reference: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    provider_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    deployer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_responsibilities: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deployer_responsibilities: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pms_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    pms_next_review_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    pms_last_review_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,
