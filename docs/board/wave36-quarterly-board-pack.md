@@ -18,6 +18,18 @@ Leichtgewichtiger **Board-/Advisory-Pack** aus den bestehenden Board-Readiness-D
 
 Implementierung: `frontend/src/lib/boardPackTypes.ts`, `frontend/src/lib/boardPackGenerate.ts`.
 
+## Phase-3-Erweiterung (EU AI Act Operationalisierung)
+
+Board-nahe KPIs berücksichtigen zusätzlich die KI-Register-Posture:
+
+- `ki_register_registered`
+- `ki_register_planned`
+- `ki_register_partial`
+- `ki_register_unknown`
+
+Diese Kennzahlen fließen in die Board-Markdown-Sektion ein und unterstützen die
+Steuerung zwischen "bereits registriert", "in Vorbereitung" und "unklar/offen".
+
 ## API
 
 `GET /api/admin/board-readiness/board-pack`

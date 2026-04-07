@@ -1823,6 +1823,11 @@ export interface AdvisorClientGovernanceSnapshotDto {
     high_risk_count: number;
     nis2_critical_count: number;
     by_risk_level: Record<string, number>;
+    ki_register_registered: number;
+    ki_register_planned: number;
+    ki_register_partial: number;
+    ki_register_unknown: number;
+    advisor_attention_items: number;
   };
   kpi_summary: {
     high_risk_systems_in_scope: number;

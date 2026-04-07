@@ -136,6 +136,10 @@ def render_board_report_markdown(report: AIBoardGovernanceReport) -> str:
         f"- Lieferanten-Risiko: {s.systems_without_supplier_risk_register} Systeme ohne "
         f"Supplier-Risikoregister (von {s.total_systems_with_suppliers} mit Lieferantenbezug)."
     )
+    lines.append(
+        f"- KI-Register-Posture: registriert {k.ki_register_registered}, geplant {k.ki_register_planned}, "
+        f"teilweise {k.ki_register_partial}, unbekannt {k.ki_register_unknown}."
+    )
     if report.alerts:
         critical = sum(1 for a in report.alerts if a.severity == "critical")
         lines.append(f"- **{len(report.alerts)} Alert(s)** (davon {critical} kritisch).")
@@ -183,6 +187,10 @@ def render_board_report_markdown(report: AIBoardGovernanceReport) -> str:
         [
             f"| NIS2 / KRITIS KPI Mittelwert (0–100) | {nis2_k_mean} |",
             f"| NIS2 / KRITIS KPI Systemabdeckung (alle 3 Typen) | {nis2_k_cov} |",
+            f"| KI-Register registriert | {k.ki_register_registered} |",
+            f"| KI-Register geplant | {k.ki_register_planned} |",
+            f"| KI-Register teilweise | {k.ki_register_partial} |",
+            f"| KI-Register unbekannt | {k.ki_register_unknown} |",
             "",
         ]
     )

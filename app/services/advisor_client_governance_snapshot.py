@@ -31,6 +31,7 @@ from app.llm_models import LLMTaskType
 from app.readiness_score_models import ReadinessScoreResponse
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_compliance_board_reports import AiComplianceBoardReportRepository
+from app.repositories.ai_inventory import AISystemInventoryRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.tenant_ai_governance_setup import TenantAIGovernanceSetupRepository
 from app.repositories.tenant_registry import TenantRegistryRepository
@@ -156,6 +157,7 @@ def build_client_governance_snapshot(
     )
 
     ai_repo = AISystemRepository(session)
+    inv_repo = AISystemInventoryRepository(session)
     systems = ai_repo.list_for_tenant(client_tenant_id)
     high_risk = 0
     nis2_crit = 0
@@ -170,12 +172,30 @@ def build_client_governance_snapshot(
             high_risk += 1
         if s.criticality == AISystemCriticality.very_high:
             nis2_crit += 1
+    posture = inv_repo.posture_summary(client_tenant_id, len(systems))
+    attention_items = 0
+    for s in systems:
+        profile = inv_repo.get_profile(client_tenant_id, s.id)
+        if not (s.owner_email and s.owner_email.strip()):
+            attention_items += 1
+            continue
+        if profile is None or profile.eu_ai_act_scope == "review_needed":
+            attention_items += 1
+            continue
+        reg = inv_repo.get_latest_register_entry(client_tenant_id, s.id)
+        if reg is None or reg.status in {"planned", "partial"}:
+            attention_items += 1
 
     ai_sum = AiSystemsSummarySnapshot(
         total_count=len(systems),
         high_risk_count=high_risk,
         nis2_critical_count=nis2_crit,
         by_risk_level=by_rl,
+        ki_register_registered=posture.registered,
+        ki_register_planned=posture.planned,
+        ki_register_partial=posture.partial,
+        ki_register_unknown=posture.unknown,
+        advisor_attention_items=attention_items,
     )
 
     kpi_snap = KpiSummarySnapshot(

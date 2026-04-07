@@ -175,6 +175,69 @@ class AISystemTable(Base):
     )
 
 
+class AISystemInventoryProfileDB(Base):
+    __tablename__ = "ai_system_inventory_profiles"
+
+    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    provider_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_type: Mapped[str] = mapped_column(String(32), nullable=False, default="external")
+    use_case: Mapped[str] = mapped_column(String(500), nullable=False)
+    business_process: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    eu_ai_act_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="review_needed")
+    iso_42001_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="review_needed")
+    nis2_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="review_needed")
+    dsgvo_special_risk: Mapped[str] = mapped_column(String(32), nullable=False, default="review_needed")
+    register_status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    register_metadata: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    authority_reporting_flags: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    created_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
+    updated_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
+
+
+class AIRegisterEntryDB(Base):
+    __tablename__ = "ai_register_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "ai_system_id",
+            "version",
+            name="uq_ai_register_entries_tenant_system_version",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    authority_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    national_register_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reportable_incident: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    reportable_change: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    fields_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    created_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
+
 class Nis2KritisKpiDB(Base):
     """NIS2 / KRITIS-orientierte KPIs pro KI-System (mandantenfähig)."""
 
