@@ -71,7 +71,11 @@ def build_enterprise_integration_blueprint_response(
     dedup_blockers = list(dict.fromkeys(b.strip() for b in blockers if b and b.strip()))
     candidates = _rank_candidates(rows)
     readiness = _overall_readiness(rows, dedup_blockers)
-    markdown = _build_markdown(tenant_id, rows, candidates, dedup_blockers) if include_markdown else None
+    markdown = (
+        _build_markdown(tenant_id, rows, candidates, dedup_blockers)
+        if include_markdown
+        else None
+    )
     return EnterpriseIntegrationBlueprintResponse(
         tenant_id=tenant_id,
         generated_at_utc=now,
@@ -140,7 +144,11 @@ def _baseline_blueprints_from_onboarding(
         for item in onboarding.integration_readiness:
             inferred_types.append(SourceSystemType(item.target_type.value))
     if not inferred_types:
-        inferred_types = [SourceSystemType.sap_s4hana, SourceSystemType.datev, SourceSystemType.generic_api]
+        inferred_types = [
+            SourceSystemType.sap_s4hana,
+            SourceSystemType.datev,
+            SourceSystemType.generic_api,
+        ]
     out: list[EnterpriseIntegrationBlueprintRow] = []
     for idx, source in enumerate(dict.fromkeys(inferred_types)):
         out.append(
@@ -148,7 +156,9 @@ def _baseline_blueprints_from_onboarding(
                 blueprint_id=f"default-{source.value}-{idx + 1}",
                 tenant_id=tenant_id,
                 source_system_type=source,
-                evidence_domains=list(_SOURCE_DOMAIN_BASELINE.get(source, (EvidenceDomain.workflow_evidence,))),
+                evidence_domains=list(
+                    _SOURCE_DOMAIN_BASELINE.get(source, (EvidenceDomain.workflow_evidence,))
+                ),
                 onboarding_readiness_ref="enterprise_onboarding_readiness",
                 security_prerequisites=list(_DEFAULT_SECURITY_PREREQS),
                 data_owner=None,
@@ -198,7 +208,10 @@ def _build_markdown(
     lines.extend(["", "## Naechste Umsetzungsschritte"])
     lines.extend(
         [
-            "- Schnittstellenvertrag je Source-System (Objekte, Felder, Aktualisierungszyklus) festziehen.",
+            (
+                "- Schnittstellenvertrag je Source-System "
+                "(Objekte, Felder, Aktualisierungszyklus) festziehen."
+            ),
             "- Evidence-Domain-Mapping mit Fachbereich und Revision validieren.",
             "- Build-Wave fuer priorisierten Connector planen (BTP/API, Testtenant, Audit-Trace).",
         ]

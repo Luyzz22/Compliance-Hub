@@ -14,8 +14,10 @@ from app.repositories.ai_inventory import AISystemInventoryRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.compliance_deadlines import ComplianceDeadlineRepository
+from app.repositories.enterprise_integration_blueprints import (
+    EnterpriseIntegrationBlueprintRepository,
+)
 from app.repositories.enterprise_onboarding import EnterpriseOnboardingRepository
-from app.repositories.enterprise_integration_blueprints import EnterpriseIntegrationBlueprintRepository
 from app.repositories.nis2_incidents import NIS2IncidentRepository
 from app.services.ai_compliance_board_report import list_ai_compliance_board_reports
 from app.services.enterprise_control_center import build_enterprise_control_center

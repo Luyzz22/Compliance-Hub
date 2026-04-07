@@ -77,7 +77,11 @@ class EnterpriseIntegrationBlueprintDB(Base):
     __tablename__ = "enterprise_integration_blueprints"
     __table_args__ = (
         UniqueConstraint("tenant_id", "blueprint_id", name="uq_enterprise_integration_blueprint"),
-        Index("ix_enterprise_integration_blueprints_tenant_source", "tenant_id", "source_system_type"),
+        Index(
+            "ix_enterprise_integration_blueprints_tenant_source",
+            "tenant_id",
+            "source_system_type",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
