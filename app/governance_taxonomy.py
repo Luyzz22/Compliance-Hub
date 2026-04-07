@@ -10,6 +10,7 @@ class GovernanceAuditEntity(StrEnum):
     COMPLIANCE_DEADLINE = "compliance_deadline"
     COMPLIANCE_CALENDAR = "compliance_calendar"
     AUTHORITY_EXPORT = "authority_export"
+    AUTHORITY_AUDIT_PREPARATION_PACK = "authority_audit_preparation_pack"
 
 
 class GovernanceAuditAction(StrEnum):
@@ -24,6 +25,7 @@ class GovernanceAuditAction(StrEnum):
     COMPLIANCE_CALENDAR_SEED_DEFAULTS = "compliance_calendar.seed_defaults"
     AUTHORITY_EXPORT_GENERATED = "generated"
     AUTHORITY_EXPORT_API_ACTION = "export_authority_ai_act"
+    AUTHORITY_AUDIT_PACK_GENERATED = "authority_audit_pack.generated"
 
 
 class NIS2DeadlinePolicy:

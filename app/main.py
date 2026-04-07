@@ -129,6 +129,10 @@ from app.auth_dependencies import (
     get_optional_opa_user_role_header,
     require_path_tenant_matches_auth,
 )
+from app.authority_audit_preparation_pack_models import (
+    AuthorityAuditPreparationPackResponse,
+    PreparationPackFocus,
+)
 from app.classification_models import (
     ClassificationOverrideRequest,
     ClassificationQuestionnaire,
@@ -340,6 +344,9 @@ from app.services.ai_kpi_service import (
 from app.services.ai_system_import import import_ai_systems_from_file
 from app.services.audit_gobd_export import generate_gobd_xml
 from app.services.authority_ai_export import build_authority_export
+from app.services.authority_audit_preparation_pack import (
+    build_authority_audit_preparation_pack,
+)
 from app.services.board_kpi_export import board_kpi_export_csv, build_board_kpi_export_envelope
 from app.services.board_kpi_export_jobs import get_kpi_job, register_kpi_export_job
 from app.services.board_report_audit_records import (
@@ -5335,6 +5342,66 @@ def get_enterprise_control_center(
         ai_repo=ai_repo,
         include_markdown=include_markdown,
     )
+
+
+@app.get(
+    "/api/internal/enterprise/authority-audit-pack",
+    response_model=AuthorityAuditPreparationPackResponse,
+    tags=["internal", "enterprise"],
+)
+def get_authority_audit_preparation_pack(
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    session: Annotated[Session, Depends(get_session)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+    incident_repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
+    deadline_repo: Annotated[
+        ComplianceDeadlineRepository,
+        Depends(get_compliance_deadline_repository),
+    ],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    inv_repo: Annotated[AISystemInventoryRepository, Depends(get_ai_inventory_repository)],
+    focus: Annotated[PreparationPackFocus, Query()] = PreparationPackFocus.mixed,
+    client_tenant_id: str | None = Query(default=None),
+) -> AuthorityAuditPreparationPackResponse:
+    effective_tenant_id = client_tenant_id or auth.tenant_id
+    if effective_tenant_id != auth.tenant_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant mismatch")
+    pack = build_authority_audit_preparation_pack(
+        tenant_id=effective_tenant_id,
+        session=session,
+        focus=focus,
+        audit_repo=audit_repo,
+        incident_repo=incident_repo,
+        deadline_repo=deadline_repo,
+        ai_repo=ai_repo,
+        inventory_repo=inv_repo,
+    )
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
+        tenant_id=effective_tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action=GovernanceAuditAction.AUTHORITY_AUDIT_PACK_GENERATED.value,
+        entity_type=GovernanceAuditEntity.AUTHORITY_AUDIT_PREPARATION_PACK.value,
+        entity_id=focus.value,
+        outcome="success",
+        before=None,
+        after=json.dumps(
+            {
+                "focus": focus.value,
+                "critical": pack.section_a_executive_posture.summary_de,
+                "source_sections": pack.source_sections,
+            }
+        ),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"top_urgent_items": len(pack.top_urgent_items)},
+    )
+    return pack
 
 
 # ---------------------------------------------------------------------------
