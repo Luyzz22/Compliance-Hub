@@ -171,10 +171,11 @@ class TestRegistrationFlow:
         assert "user_id" in data
 
     def test_register_duplicate_email(self) -> None:
-        client.post(
+        first = client.post(
             "/api/v1/auth/register",
             json={"email": "dup@example.com", "password": "StrongPass123"},
         )
+        assert first.status_code == 201
         resp = client.post(
             "/api/v1/auth/register",
             json={"email": "dup@example.com", "password": "StrongPass123"},

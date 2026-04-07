@@ -54,7 +54,7 @@ def apply(engine: Engine) -> bool:
                 text("""
                 CREATE TABLE IF NOT EXISTS user_tenant_roles (
                     id VARCHAR(36) PRIMARY KEY,
-                    user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+                    user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     tenant_id VARCHAR(255) NOT NULL,
                     role VARCHAR(64) NOT NULL DEFAULT 'viewer',
                     assigned_by VARCHAR(36),

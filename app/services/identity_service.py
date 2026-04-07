@@ -28,8 +28,12 @@ def _verify_password(password: str, hashed: str) -> bool:
     return _hash_password(password) == hashed
 
 
+# 48 bytes → 64-character URL-safe base64 token (sufficient entropy for verification/reset).
+_TOKEN_BYTES = 48
+
+
 def _generate_token() -> str:
-    return secrets.token_urlsafe(48)
+    return secrets.token_urlsafe(_TOKEN_BYTES)
 
 
 def validate_password_strength(password: str) -> str | None:
