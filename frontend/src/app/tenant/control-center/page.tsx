@@ -4,6 +4,7 @@ import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { PreparationPackPreview } from "@/components/tenant/PreparationPackPreview";
 import {
   fetchAuthorityAuditPreparationPack,
+  fetchEnterpriseConnectorCandidates,
   fetchEnterpriseControlCenter,
   fetchEnterpriseIntegrationBlueprints,
   type ControlCenterSeverityDto,
@@ -37,6 +38,7 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
       : "mixed";
   const data = await fetchEnterpriseControlCenter(tenantId, true);
   const blueprint = await fetchEnterpriseIntegrationBlueprints(tenantId, false);
+  const candidates = await fetchEnterpriseConnectorCandidates(tenantId, false);
   const prepPack = shouldGeneratePack
     ? await fetchAuthorityAuditPreparationPack(tenantId, focus)
     : null;
@@ -108,6 +110,51 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
             <li className="text-sm text-slate-500">Keine akuten Punkte.</li>
           ) : null}
         </ul>
+      </section>
+
+      <section className={CH_CARD}>
+        <div className="flex items-center justify-between gap-2">
+          <p className={CH_SECTION_LABEL}>Connector Candidates</p>
+          <span className="text-xs text-slate-500">
+            {new Date(candidates.generated_at_utc).toLocaleString("de-DE")}
+          </span>
+        </div>
+        <p className="mt-2 text-xs text-slate-600">
+          Explainable Scoring: Readiness, Blocker, strategischer Wert und Compliance-Impact.
+        </p>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <article className="rounded border border-slate-200 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Top Kandidaten
+            </p>
+            <ul className="mt-2 space-y-2 text-xs text-slate-700">
+              {candidates.top_priorities.slice(0, 4).map((row) => (
+                <li key={`${row.tenant_id}-${row.connector_type}`} className="rounded border border-slate-100 px-2 py-1">
+                  <p className="font-medium text-slate-900">
+                    {row.connector_type} · {row.recommended_priority} · {row.score_total}/100
+                  </p>
+                  <p>{row.rationale_summary_de}</p>
+                </li>
+              ))}
+            </ul>
+          </article>
+          <article className="rounded border border-slate-200 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Größte Blocker
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-slate-700">
+              {candidates.candidate_rows
+                .slice()
+                .sort((a, b) => b.blocker_score - a.blocker_score)
+                .slice(0, 4)
+                .map((row) => (
+                  <li key={`${row.connector_type}-blocker`} className="rounded border border-amber-200 bg-amber-50 px-2 py-1">
+                    {row.connector_type}: Blocker {row.blocker_score}/100 · {row.rationale_factors_de[1] ?? "—"}
+                  </li>
+                ))}
+            </ul>
+          </article>
+        </div>
       </section>
 
       <section className={CH_CARD}>

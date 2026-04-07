@@ -212,6 +212,7 @@ def _build_markdown(
             ),
             "- Evidence-Domain-Mapping mit Fachbereich und Revision validieren.",
             "- Build-Wave fuer priorisierten Connector planen (BTP/API, Testtenant, Audit-Trace).",
+            "- Wave-56 Connector-Candidate-Scoring fuer Prioritaetsabgleich heranziehen.",
         ]
     )
     return "\n".join(lines).strip() + "\n"

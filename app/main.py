@@ -180,6 +180,7 @@ from app.demo_tenant_guard import (
     tenant_mutation_blocked_meta,
     workspace_mode_for_telemetry,
 )
+from app.enterprise_connector_candidate_models import EnterpriseConnectorCandidatesResponse
 from app.enterprise_control_center_models import EnterpriseControlCenterResponse
 from app.enterprise_integration_blueprint_models import (
     EnterpriseIntegrationBlueprintResponse,
@@ -396,6 +397,9 @@ from app.services.cross_regulation_llm_gap_assistant import (
 from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded
 from app.services.demo_governance_maturity_seed import seed_demo_governance_maturity_layer
 from app.services.demo_tenant_seeder import seed_demo_tenant
+from app.services.enterprise_connector_candidate_scoring import (
+    build_connector_candidates_response,
+)
 from app.services.enterprise_control_center import build_enterprise_control_center
 from app.services.enterprise_integration_blueprint import (
     build_enterprise_integration_blueprint_response,
@@ -5427,6 +5431,52 @@ def get_enterprise_integration_blueprints(
         tenant_id=auth.tenant_id,
         blueprint_rows=blueprint_repo.list_for_tenant(auth.tenant_id),
         onboarding=onboarding,
+        include_markdown=include_markdown,
+    )
+
+
+@app.get(
+    "/api/internal/enterprise/connector-candidates",
+    response_model=EnterpriseConnectorCandidatesResponse,
+    tags=["internal", "enterprise"],
+)
+def get_enterprise_connector_candidates(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    session: Annotated[Session, Depends(get_session)],
+    onboarding_repo: Annotated[
+        EnterpriseOnboardingRepository,
+        Depends(get_enterprise_onboarding_repository),
+    ],
+    blueprint_repo: Annotated[
+        EnterpriseIntegrationBlueprintRepository,
+        Depends(get_enterprise_integration_blueprint_repository),
+    ],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+    incident_repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
+    deadline_repo: Annotated[
+        ComplianceDeadlineRepository,
+        Depends(get_compliance_deadline_repository),
+    ],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    include_markdown: bool = Query(False),
+) -> EnterpriseConnectorCandidatesResponse:
+    onboarding = onboarding_repo.get(auth.tenant_id)
+    blueprints = build_enterprise_integration_blueprint_response(
+        tenant_id=auth.tenant_id,
+        blueprint_rows=blueprint_repo.list_for_tenant(auth.tenant_id),
+        onboarding=onboarding,
+        include_markdown=False,
+    ).blueprint_rows
+    return build_connector_candidates_response(
+        tenant_id=auth.tenant_id,
+        session=session,
+        onboarding=onboarding,
+        blueprints=blueprints,
+        audit_repo=audit_repo,
+        incident_repo=incident_repo,
+        deadline_repo=deadline_repo,
+        ai_repo=ai_repo,
         include_markdown=include_markdown,
     )
 
