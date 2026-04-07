@@ -2598,3 +2598,57 @@ export async function fetchAdvisorMetrics(
   }
   return res.json() as Promise<AdvisorMetricsDto>;
 }
+
+export type ControlCenterSeverityDto = "critical" | "warning" | "info";
+export type ControlCenterStatusDto = "open" | "due_soon" | "overdue" | "blocked" | "ok";
+export type ControlCenterSectionDto =
+  | "audit"
+  | "incidents_reporting"
+  | "regulatory_deadlines"
+  | "register_export_obligations"
+  | "board_readiness";
+
+export interface EnterpriseControlCenterItemDto {
+  section: ControlCenterSectionDto;
+  severity: ControlCenterSeverityDto;
+  status: ControlCenterStatusDto;
+  title: string;
+  summary_de: string;
+  due_at: string | null;
+  tenant_id: string;
+  source_type: string;
+  source_id: string;
+  action_label: string;
+  action_href: string;
+}
+
+export interface EnterpriseControlCenterSectionGroupDto {
+  section: ControlCenterSectionDto;
+  label_de: string;
+  items: EnterpriseControlCenterItemDto[];
+}
+
+export interface EnterpriseControlCenterResponseDto {
+  tenant_id: string;
+  generated_at_utc: string;
+  summary_counts: {
+    critical: number;
+    warning: number;
+    info: number;
+    total_open: number;
+  };
+  grouped_sections: EnterpriseControlCenterSectionGroupDto[];
+  top_urgent_items: EnterpriseControlCenterItemDto[];
+  markdown_de?: string | null;
+}
+
+export async function fetchEnterpriseControlCenter(
+  tenantId: string,
+  includeMarkdown = false,
+): Promise<EnterpriseControlCenterResponseDto> {
+  const qs = includeMarkdown ? "?include_markdown=true" : "";
+  return tenantApiFetch(
+    `/api/internal/enterprise/control-center${qs}`,
+    tenantId,
+  ) as Promise<EnterpriseControlCenterResponseDto>;
+}
