@@ -1,9 +1,12 @@
 import Link from "next/link";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { PreparationPackPreview } from "@/components/tenant/PreparationPackPreview";
 import {
+  fetchAuthorityAuditPreparationPack,
   fetchEnterpriseControlCenter,
   type ControlCenterSeverityDto,
+  type PreparationPackFocusDto,
 } from "@/lib/api";
 import {
   CH_BTN_SECONDARY,
@@ -19,9 +22,22 @@ function severityClass(sev: ControlCenterSeverityDto): string {
   return "border-slate-300 bg-slate-50 text-slate-700";
 }
 
-export default async function TenantControlCenterPage() {
+type PageProps = {
+  searchParams?: Promise<{ generate_pack?: string; focus?: string }>;
+};
+
+export default async function TenantControlCenterPage({ searchParams }: PageProps) {
   const tenantId = await getWorkspaceTenantIdServer();
+  const qp = (await searchParams) ?? {};
+  const shouldGeneratePack = qp.generate_pack === "1";
+  const focus =
+    qp.focus === "audit" || qp.focus === "authority" || qp.focus === "mixed"
+      ? (qp.focus as PreparationPackFocusDto)
+      : "mixed";
   const data = await fetchEnterpriseControlCenter(tenantId, true);
+  const prepPack = shouldGeneratePack
+    ? await fetchAuthorityAuditPreparationPack(tenantId, focus)
+    : null;
 
   return (
     <div className={CH_SHELL}>
@@ -30,9 +46,17 @@ export default async function TenantControlCenterPage() {
         title="Enterprise Control Center"
         description="Kompakter operativer Steuerungsblick auf kritische Governance-Signale, Fristen und Readiness-Blocker."
         actions={
-          <Link href="/tenant/compliance-overview" className={`${CH_BTN_SECONDARY} text-sm`}>
-            Zur Compliance-Übersicht
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/tenant/compliance-overview" className={`${CH_BTN_SECONDARY} text-sm`}>
+              Zur Compliance-Übersicht
+            </Link>
+            <Link
+              href={`/tenant/control-center?generate_pack=1&focus=${focus}`}
+              className={`${CH_BTN_SECONDARY} text-sm`}
+            >
+              Preparation Pack erstellen
+            </Link>
+          </div>
         }
       />
 
@@ -80,6 +104,18 @@ export default async function TenantControlCenterPage() {
           ) : null}
         </ul>
       </section>
+
+      {prepPack ? (
+        <section className={CH_CARD}>
+          <div className="mb-3 flex items-center justify-between">
+            <p className={CH_SECTION_LABEL}>Authority & Audit Preparation Pack</p>
+            <span className="text-xs text-slate-500">
+              Fokus: {prepPack.focus} · {new Date(prepPack.generated_at_utc).toLocaleString("de-DE")}
+            </span>
+          </div>
+          <PreparationPackPreview markdown={prepPack.markdown_de} />
+        </section>
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-2">
         {data.grouped_sections.map((group) => (

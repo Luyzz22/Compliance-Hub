@@ -2652,3 +2652,38 @@ export async function fetchEnterpriseControlCenter(
     tenantId,
   ) as Promise<EnterpriseControlCenterResponseDto>;
 }
+
+export type PreparationPackFocusDto = "audit" | "authority" | "mixed";
+
+export interface AuthorityAuditPreparationPackSectionDto {
+  title_de: string;
+  summary_de: string;
+  evidence_items: string[];
+  missing_items: string[];
+  due_items: string[];
+}
+
+export interface AuthorityAuditPreparationPackResponseDto {
+  tenant_id: string;
+  generated_at_utc: string;
+  focus: PreparationPackFocusDto;
+  source_sections: string[];
+  section_a_executive_posture: AuthorityAuditPreparationPackSectionDto;
+  section_b_open_critical_missing_evidence: AuthorityAuditPreparationPackSectionDto;
+  section_c_audit_trail_readiness: AuthorityAuditPreparationPackSectionDto;
+  section_d_nis2_incident_deadline_status: AuthorityAuditPreparationPackSectionDto;
+  section_e_ai_act_register_authority_status: AuthorityAuditPreparationPackSectionDto;
+  section_f_recommended_next_preparation_actions: AuthorityAuditPreparationPackSectionDto;
+  markdown_de: string;
+}
+
+export async function fetchAuthorityAuditPreparationPack(
+  tenantId: string,
+  focus: PreparationPackFocusDto = "mixed",
+): Promise<AuthorityAuditPreparationPackResponseDto> {
+  const qs = new URLSearchParams({ focus });
+  return tenantApiFetch(
+    `/api/internal/enterprise/authority-audit-pack?${qs.toString()}`,
+    tenantId,
+  ) as Promise<AuthorityAuditPreparationPackResponseDto>;
+}
