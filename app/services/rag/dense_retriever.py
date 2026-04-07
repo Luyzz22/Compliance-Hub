@@ -47,6 +47,17 @@ class DenseIndex:
                 "Install with: pip install sentence-transformers"
             )
             self._available = False
+        except Exception as exc:
+            # Network/proxy/model-download errors must not break request or tests:
+            # hybrid mode should degrade to BM25-only retrieval.
+            logger.warning(
+                "Dense retrieval disabled due to model load error for %s: %s",
+                self.model_name,
+                exc,
+            )
+            self._model = None
+            self._embeddings = None
+            self._available = False
 
     @property
     def is_available(self) -> bool:

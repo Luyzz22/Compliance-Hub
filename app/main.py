@@ -286,10 +286,10 @@ from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_deadlines import ComplianceDeadlineRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
-from app.repositories.enterprise_onboarding import EnterpriseOnboardingRepository
 from app.repositories.enterprise_integration_blueprints import (
     EnterpriseIntegrationBlueprintRepository,
 )
+from app.repositories.enterprise_onboarding import EnterpriseOnboardingRepository
 from app.repositories.evidence_files import EvidenceFileRepository
 from app.repositories.incidents import IncidentRepository
 from app.repositories.nis2_incidents import NIS2IncidentRepository
