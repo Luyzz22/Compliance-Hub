@@ -90,7 +90,8 @@ def test_run_all_ledgerless_reports_unsatisfied_without_ddl(tmp_path) -> None:
     assert "20260327_add_tenant_ai_governance_setup_notes" in ids
     assert "20260328_add_ai_runtime_events_tenant_system_time_idx" in ids
     assert "20260329_add_ai_runtime_events_event_subtype" in ids
-    assert len(ids) == 4
+    assert "20260407_add_ai_systems_ki_register_fields" in ids
+    assert len(ids) == 5
     cols = {c["name"] for c in inspect(engine).get_columns("tenants")}
     assert "kritis_sector" not in cols
     engine.dispose()

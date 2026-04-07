@@ -161,6 +161,7 @@ from app.demo_tenant_guard import (
     workspace_mode_for_telemetry,
 )
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
+from app.eu_ai_act_wizard_models import WizardQuestionnaireRequest, WizardResult
 from app.evidence.models import AiEvidenceEventDetail, AiEvidenceEventListResponse
 from app.evidence.queries import (
     EvidenceQueryParams,
@@ -181,6 +182,11 @@ from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturityBoardSummaryParseResult
 from app.incident_drilldown_models import TenantIncidentDrilldownOut
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
+from app.ki_register_models import (
+    BoardAggregation,
+    KIRegisterListResponse,
+    KIRegisterUpdateRequest,
+)
 from app.llm.context import LlmCallContext
 from app.llm_models import LLMTaskType
 from app.models import (
@@ -5519,3 +5525,126 @@ def record_screen_view_api(
         }
     )
     return {"status": "recorded"}
+
+
+# ─── EU AI Act Wizard ───────────────────────────────────────────────────────────
+
+
+@app.post(
+    "/api/v1/eu-ai-act/wizard",
+    tags=["eu-ai-act-wizard"],
+    summary="EU AI Act Wizard: Klassifikation + Pflichten-Mapping",
+)
+def run_eu_ai_act_wizard(
+    body: WizardQuestionnaireRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+) -> WizardResult:
+    """Entscheidungsbaum entlang Anhang III + Art. 6/9/10/13/29 mit Rollen-Mapping."""
+    from app.eu_ai_act_wizard_engine import run_wizard
+
+    return run_wizard(body)
+
+
+# ─── KI-Register ────────────────────────────────────────────────────────────────
+
+
+@app.get(
+    "/api/v1/ki-register",
+    tags=["ki-register"],
+    summary="KI-Register: Alle KI-Systeme eines Mandanten",
+)
+def list_ki_register_endpoint(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+) -> KIRegisterListResponse:
+    from app.services.ki_register_service import list_ki_register
+
+    return list_ki_register(auth.tenant_id, ai_repo, cls_repo)
+
+
+@app.patch(
+    "/api/v1/ki-register/{ai_system_id}",
+    tags=["ki-register"],
+    summary="KI-Register: Pflichtfelder aktualisieren",
+)
+def update_ki_register_entry(
+    ai_system_id: str,
+    body: KIRegisterUpdateRequest,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+) -> dict[str, str]:
+    from app.ai_system_models import AISystemUpdate
+
+    system = ai_repo.get_by_id(auth.tenant_id, ai_system_id)
+    if system is None:
+        raise HTTPException(status_code=404, detail="AI system not found")
+    update_data = body.model_dump(exclude_unset=True)
+    if update_data:
+        ai_repo.update(auth.tenant_id, ai_system_id, AISystemUpdate(**update_data))
+    return {"status": "updated", "ai_system_id": ai_system_id}
+
+
+# ─── Authority Export (JSON + XML) ──────────────────────────────────────────────
+
+
+@app.get(
+    "/api/v1/ki-register/export",
+    tags=["ki-register"],
+    summary="KI-Register-Export für nationale Aufsichtsbehörden (JSON oder XML)",
+)
+def export_ki_register(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    fmt: str = Query(default="json", description="Export-Format: json | xml"),
+) -> Response:
+    from app.services.ki_register_service import authority_export_xml, build_authority_export
+
+    export = build_authority_export(auth.tenant_id, ai_repo, cls_repo, fmt=fmt)
+    if fmt == "xml":
+        xml_str = authority_export_xml(export)
+        return Response(content=xml_str, media_type="application/xml")
+    return Response(
+        content=export.model_dump_json(indent=2),
+        media_type="application/json",
+    )
+
+
+# ─── Board Aggregation ──────────────────────────────────────────────────────────
+
+
+@app.get(
+    "/api/v1/ki-register/board-aggregation",
+    tags=["ki-register"],
+    summary="Board-Reporting: High-Risk nach Use-Case, Rollen-Verteilung, offene Maßnahmen",
+)
+def get_ki_register_board_aggregation(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    cls_repo: Annotated[ClassificationRepository, Depends(get_classification_repository)],
+    action_repo: Annotated[
+        AIGovernanceActionRepository,
+        Depends(get_ai_governance_action_repository),
+    ],
+) -> BoardAggregation:
+    from app.services.ki_register_service import build_board_aggregation
+
+    return build_board_aggregation(auth.tenant_id, ai_repo, cls_repo, action_repo)
+
+
+# ─── EU AI Act Seed ─────────────────────────────────────────────────────────────
+
+
+@app.post(
+    "/api/internal/eu-ai-act/seed-demo",
+    tags=["eu-ai-act-wizard"],
+    summary="Seed: Beispiel-Tenant mit 2-3 KI-Systemen (idempotent)",
+)
+def seed_eu_ai_act_demo_endpoint(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+) -> dict[str, int]:
+    from app.services.eu_ai_act_seed import seed_eu_ai_act_demo
+
+    return seed_eu_ai_act_demo(session)
