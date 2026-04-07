@@ -182,9 +182,7 @@ def build_authority_audit_preparation_pack(
             f"Onboarding-Blocker klären ({len(onboarding.blockers)} offen) für Enterprise-Rollout."
         )
     if blueprint_posture is not None and blueprint_posture.blockers:
-        sec_f.due_items.append(
-            "Integrations-Blueprint-Blocker vor Connector-Builds adressieren."
-        )
+        sec_f.due_items.append("Integrations-Blueprint-Blocker vor Connector-Builds adressieren.")
 
     sec_g = PreparationPackSection(
         title_de="G. Integration Blueprint Posture (SAP/ERP Readiness)",
@@ -206,9 +204,7 @@ def build_authority_audit_preparation_pack(
             ]
         ),
         missing_items=(
-            []
-            if blueprint_posture is None
-            else [b for b in blueprint_posture.blockers[:8]]
+            [] if blueprint_posture is None else [b for b in blueprint_posture.blockers[:8]]
         ),
         due_items=[],
     )

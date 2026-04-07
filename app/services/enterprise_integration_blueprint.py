@@ -72,9 +72,7 @@ def build_enterprise_integration_blueprint_response(
     candidates = _rank_candidates(rows)
     readiness = _overall_readiness(rows, dedup_blockers)
     markdown = (
-        _build_markdown(tenant_id, rows, candidates, dedup_blockers)
-        if include_markdown
-        else None
+        _build_markdown(tenant_id, rows, candidates, dedup_blockers) if include_markdown else None
     )
     return EnterpriseIntegrationBlueprintResponse(
         tenant_id=tenant_id,
