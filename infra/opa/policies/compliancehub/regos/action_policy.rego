@@ -92,3 +92,57 @@ allow_action {
 	input.user_role == "tenant_admin"
 	input.action == "view_ai_evidence"
 }
+
+# ── Enterprise RBAC roles ──────────────────────────────────────────────
+
+# CISO — all compliance_officer + board reporting
+allow_action {
+	not denylisted
+	input.user_role == "ciso"
+	input.action == "generate_board_report"
+}
+
+allow_action {
+	not denylisted
+	input.user_role == "ciso"
+	input.action == "manage_incidents"
+}
+
+# Board member — restricted to board views
+allow_action {
+	not denylisted
+	input.user_role == "board_member"
+	input.action == "view_board_report"
+}
+
+# Editor — editing AI systems and compliance data
+allow_action {
+	not denylisted
+	input.user_role == "editor"
+	input.action == "edit_ai_system"
+}
+
+allow_action {
+	not denylisted
+	input.user_role == "editor"
+	input.action == "edit_compliance_status"
+}
+
+# Contributor — read access to most data
+allow_action {
+	not denylisted
+	input.user_role == "contributor"
+	input.action == "view_ai_systems"
+}
+
+allow_action {
+	not denylisted
+	input.user_role == "contributor"
+	input.action == "view_risk_register"
+}
+
+# Super Admin — all actions
+allow_action {
+	not denylisted
+	input.user_role == "super_admin"
+}

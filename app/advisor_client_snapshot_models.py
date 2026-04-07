@@ -44,6 +44,15 @@ class AiSystemsSummarySnapshot(BaseModel):
         description="KI-Systeme mit criticality very_high",
     )
     by_risk_level: dict[str, int] = Field(default_factory=dict)
+    ki_register_registered: int = Field(default=0, ge=0)
+    ki_register_planned: int = Field(default=0, ge=0)
+    ki_register_partial: int = Field(default=0, ge=0)
+    ki_register_unknown: int = Field(default=0, ge=0)
+    advisor_attention_items: int = Field(
+        default=0,
+        ge=0,
+        description="Systeme mit fehlenden Register-/Scope-/Owner-Angaben.",
+    )
 
 
 class KpiSummarySnapshot(BaseModel):

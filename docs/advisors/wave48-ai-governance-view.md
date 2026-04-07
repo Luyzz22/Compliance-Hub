@@ -37,6 +37,9 @@ Zusammenfassung (`summary`):
 
 - `GET /api/internal/advisor/ai-governance-overview`  
   Antwort: `ai_governance_overview` (JSON), `markdown_de` (Kurz-Markdown für E-Mail/Wiki).
+- `GET /api/v1/ki-register/posture` und Snapshot-Felder in `ai_systems_summary`:
+  - `ki_register_registered`, `ki_register_planned`, `ki_register_partial`, `ki_register_unknown`
+  - `advisor_attention_items` (fehlende Register-/Scope-/Owner-Angaben)
 
 Monatsreport und Partner-Paket laden Snapshots **einmal** und nutzen `computeAdvisorAiGovernanceFromBundle` neben `computeKanzleiPortfolioPayload({ preloadedBundle })`, um doppelte Mandanten-Runden zu vermeiden.
 

@@ -60,6 +60,11 @@ const { fetchSnap, postMd, fetchAdvisorReadiness, minimalSnapshot } = vi.hoisted
       high_risk_count: 1,
       nis2_critical_count: 0,
       by_risk_level: {},
+      ki_register_registered: 1,
+      ki_register_planned: 1,
+      ki_register_partial: 0,
+      ki_register_unknown: 1,
+      advisor_attention_items: 2,
     },
     kpi_summary: {
       high_risk_systems_in_scope: 1,

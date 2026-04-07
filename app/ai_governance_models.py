@@ -93,6 +93,10 @@ class AIBoardKpiSummary(BaseModel):
         le=1.0,
         description="Anteil KI-Systeme mit allen drei KPI-Typen gepflegt.",
     )
+    ki_register_registered: int = Field(default=0, ge=0)
+    ki_register_planned: int = Field(default=0, ge=0)
+    ki_register_partial: int = Field(default=0, ge=0)
+    ki_register_unknown: int = Field(default=0, ge=0)
 
 
 class AIKpiAlertMetadata(BaseModel):

@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column
 
@@ -187,6 +188,82 @@ class AISystemTable(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
+
+class AISystemInventoryProfileDB(Base):
+    __tablename__ = "ai_system_inventory_profiles"
+
+    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    provider_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_type: Mapped[str] = mapped_column(String(32), nullable=False, default="external")
+    use_case: Mapped[str] = mapped_column(String(500), nullable=False)
+    business_process: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    eu_ai_act_scope: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="review_needed",
+    )
+    iso_42001_scope: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="review_needed",
+    )
+    nis2_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="review_needed")
+    dsgvo_special_risk: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="review_needed",
+    )
+    register_status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    register_metadata: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    authority_reporting_flags: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    created_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
+    updated_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
+
+
+class AIRegisterEntryDB(Base):
+    __tablename__ = "ai_register_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "ai_system_id",
+            "version",
+            name="uq_ai_register_entries_tenant_system_version",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    authority_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    national_register_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reportable_incident: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    reportable_change: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    fields_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    created_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
 
 
 class Nis2KritisKpiDB(Base):
@@ -437,11 +514,19 @@ class AuditLogTable(Base):
     entity_id: Mapped[str] = mapped_column(String(255), nullable=False)
     before: Mapped[str | None] = mapped_column(Text, nullable=True)
     after: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    previous_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    entry_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,
         nullable=False,
     )
+    actor_role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class UsageEventTable(Base):
@@ -852,4 +937,76 @@ class TenantOperationalMonitoringSnapshotTable(Base):
         DateTime(timezone=True),
         default=datetime.utcnow,
         nullable=False,
+    )
+
+
+class NIS2IncidentTable(Base):
+    """NIS2 Art. 21 compliant incident response records — multi-tenant."""
+
+    __tablename__ = "nis2_incidents"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    incident_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    workflow_status: Mapped[str] = mapped_column(String(20), nullable=False, default="detected")
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    affected_systems_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    kritis_relevant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    personal_data_affected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    estimated_impact: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bsi_notification_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    bsi_report_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    final_report_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    contained_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    eradicated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    recovered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class ComplianceDeadlineTable(Base):
+    """Regulatory compliance deadlines per tenant."""
+
+    __tablename__ = "compliance_deadlines"
+    __table_args__ = (
+        Index("idx_compliance_deadlines_tenant_due_date", "tenant_id", "due_date"),
+        Index(
+            "uq_compliance_deadlines_tenant_source",
+            "tenant_id",
+            "source_type",
+            "source_id",
+            unique=True,
+            sqlite_where=text("source_type IS NOT NULL AND source_id IS NOT NULL"),
+            postgresql_where=text("source_type IS NOT NULL AND source_id IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    due_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    owner: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    regulation_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    recurrence_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )

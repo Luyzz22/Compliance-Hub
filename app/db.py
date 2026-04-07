@@ -23,6 +23,9 @@ def create_db_engine(database_url: str | None = None) -> Engine:
 engine = create_db_engine()
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
+# Register append-only enforcement for AuditLogTable (import for side effects).
+from app import audit_append_only as _audit_append_only  # noqa: E402, F401
+
 
 def get_session() -> Generator[Session, None, None]:
     session = SessionLocal()

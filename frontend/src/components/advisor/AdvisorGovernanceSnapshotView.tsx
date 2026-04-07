@@ -472,6 +472,13 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
               <li>Gesamt: {snap.ai_systems_summary.total_count}</li>
               <li>High-Risk: {snap.ai_systems_summary.high_risk_count}</li>
               <li>NIS2-kritisch (criticality very_high): {snap.ai_systems_summary.nis2_critical_count}</li>
+              <li>
+                KI-Register: registriert {snap.ai_systems_summary.ki_register_registered} · geplant{" "}
+                {snap.ai_systems_summary.ki_register_planned} · teilweise{" "}
+                {snap.ai_systems_summary.ki_register_partial} · unbekannt{" "}
+                {snap.ai_systems_summary.ki_register_unknown}
+              </li>
+              <li>Advisor-Aufmerksamkeit: {snap.ai_systems_summary.advisor_attention_items}</li>
             </ul>
           </section>
 

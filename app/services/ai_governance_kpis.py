@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from app.ai_governance_models import AIBoardKpiSummary, AIGovernanceKpiSummary
 from app.datetime_compat import UTC
+from app.repositories.ai_inventory import AISystemInventoryRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit import AuditRepository
 from app.repositories.nis2_kritis_kpis import Nis2KritisKpiRepository
@@ -96,6 +97,7 @@ def compute_ai_board_kpis(
     ai_system_repository: AISystemRepository,
     violation_repository: ViolationRepository,
     nis2_kritis_kpi_repository: Nis2KritisKpiRepository,
+    inventory_repository: AISystemInventoryRepository | None = None,
 ) -> AIBoardKpiSummary:
     ai_systems = ai_system_repository.list_for_tenant(tenant_id)
     violations = violation_repository.list_violations_for_tenant(tenant_id)
@@ -187,6 +189,11 @@ def compute_ai_board_kpis(
 
     mean_nis2, nis2_coverage = nis2_kritis_kpi_repository.aggregate_for_tenant(tenant_id)
     mean_rounded = round(mean_nis2, 2) if mean_nis2 is not None else None
+    posture = (
+        inventory_repository.posture_summary(tenant_id, total_systems)
+        if inventory_repository is not None
+        else None
+    )
 
     return AIBoardKpiSummary(
         tenant_id=tenant_id,
@@ -210,4 +217,8 @@ def compute_ai_board_kpis(
         complaints_last_quarter=0,
         nis2_kritis_kpi_mean_percent=mean_rounded,
         nis2_kritis_systems_full_coverage_ratio=round(nis2_coverage, 4),
+        ki_register_registered=posture.registered if posture else 0,
+        ki_register_planned=posture.planned if posture else 0,
+        ki_register_partial=posture.partial if posture else 0,
+        ki_register_unknown=posture.unknown if posture else total_systems,
     )

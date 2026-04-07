@@ -62,7 +62,11 @@ def test_audit_log_created_when_ai_system_created(client: TestClient) -> None:
 
     logs_response = client.get(
         "/api/v1/audit-logs",
-        headers={"x-api-key": "test-key-1", "x-tenant-id": "tenant-a"},
+        headers={
+            "x-api-key": "test-key-1",
+            "x-tenant-id": "tenant-a",
+            "x-opa-user-role": "contributor",
+        },
     )
 
     assert logs_response.status_code == 200
@@ -105,7 +109,11 @@ def test_audit_logs_are_tenant_isolated(client: TestClient) -> None:
 
     logs_tenant_a = client.get(
         "/api/v1/audit-logs",
-        headers={"x-api-key": "test-key-1", "x-tenant-id": "tenant-a"},
+        headers={
+            "x-api-key": "test-key-1",
+            "x-tenant-id": "tenant-a",
+            "x-opa-user-role": "contributor",
+        },
     )
     assert logs_tenant_a.status_code == 200
 
