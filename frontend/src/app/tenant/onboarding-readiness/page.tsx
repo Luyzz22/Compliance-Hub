@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
+  fetchEnterpriseConnectorCandidates,
   fetchEnterpriseIntegrationBlueprints,
   fetchEnterpriseOnboardingReadiness,
 } from "@/lib/api";
@@ -17,6 +18,7 @@ export default async function TenantOnboardingReadinessPage() {
   const tenantId = await getWorkspaceTenantIdServer();
   const data = await fetchEnterpriseOnboardingReadiness(tenantId);
   const blueprint = await fetchEnterpriseIntegrationBlueprints(tenantId, false);
+  const candidates = await fetchEnterpriseConnectorCandidates(tenantId, false);
 
   return (
     <div className={CH_SHELL}>
@@ -108,6 +110,26 @@ export default async function TenantOnboardingReadinessPage() {
           {blueprint.top_enterprise_integration_candidates.length === 0 ? (
             <li className="text-xs text-slate-500">Noch keine priorisierten Integrationskandidaten.</li>
           ) : null}
+        </ul>
+      </section>
+
+      <section className={CH_CARD}>
+        <p className={CH_SECTION_LABEL}>Connector Candidate Scoring</p>
+        <p className="mt-2 text-sm text-slate-700">
+          Empfohlener Erst-Connector:{" "}
+          <span className="font-semibold">
+            {candidates.candidate_rows[0]?.connector_type ?? "—"}
+          </span>
+          {" · "}
+          Priorität: {candidates.candidate_rows[0]?.recommended_priority ?? "—"}
+        </p>
+        <ul className="mt-3 space-y-2 text-xs text-slate-700">
+          {candidates.candidate_rows.slice(0, 3).map((row) => (
+            <li key={`cand-${row.connector_type}`} className="rounded border border-slate-200 px-3 py-2">
+              {row.connector_type}: Score {row.score_total}/100 · Readiness {row.readiness_score}
+              {" · "}Blocker {row.blocker_score} · {row.rationale_summary_de}
+            </li>
+          ))}
         </ul>
       </section>
     </div>

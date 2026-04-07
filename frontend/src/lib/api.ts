@@ -2754,6 +2754,50 @@ export async function fetchEnterpriseIntegrationBlueprints(
   ) as Promise<EnterpriseIntegrationBlueprintResponseDto>;
 }
 
+export type ConnectorCandidatePriorityDto = "high" | "medium" | "low" | "not_now";
+export type ConnectorComplexityBandDto = "low" | "medium" | "high";
+
+export interface EnterpriseConnectorCandidateRowDto {
+  tenant_id: string;
+  connector_type: IntegrationBlueprintSourceSystemTypeDto;
+  readiness_score: number;
+  blocker_score: number;
+  strategic_value_score: number;
+  compliance_impact_score: number;
+  estimated_implementation_complexity: number;
+  complexity_band: ConnectorComplexityBandDto;
+  recommended_priority: ConnectorCandidatePriorityDto;
+  rationale_summary_de: string;
+  rationale_factors_de: string[];
+  score_total: number;
+}
+
+export interface EnterpriseConnectorCandidatesResponseDto {
+  tenant_id: string;
+  generated_at_utc: string;
+  scoring_weights: {
+    readiness_weight: number;
+    blocker_weight: number;
+    strategic_value_weight: number;
+    compliance_impact_weight: number;
+  };
+  candidate_rows: EnterpriseConnectorCandidateRowDto[];
+  top_priorities: EnterpriseConnectorCandidateRowDto[];
+  grouped_priorities_by_connector_type: Record<string, EnterpriseConnectorCandidateRowDto[]>;
+  markdown_de?: string | null;
+}
+
+export async function fetchEnterpriseConnectorCandidates(
+  tenantId: string,
+  includeMarkdown = false,
+): Promise<EnterpriseConnectorCandidatesResponseDto> {
+  const qs = includeMarkdown ? "?include_markdown=true" : "";
+  return tenantApiFetch(
+    `/api/internal/enterprise/connector-candidates${qs}`,
+    tenantId,
+  ) as Promise<EnterpriseConnectorCandidatesResponseDto>;
+}
+
 export type IdentityProviderTypeDto =
   | "azure_ad"
   | "saml_generic"
