@@ -14,13 +14,11 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.db import engine
 from app.main import app
-from app.models_db import UserDB, UserTenantRoleDB
 from app.rbac.permissions import Permission, has_permission
 from app.rbac.roles import EnterpriseRole
 from app.repositories.users import UserRepository

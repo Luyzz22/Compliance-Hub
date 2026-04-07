@@ -67,15 +67,16 @@ def test_migrate_adds_kritis_sector_idempotent(tmp_path) -> None:
         assert loaded.kritis_sector == "energy"
 
     post = run_all_db_migrations(engine)
-    assert post.applied_ddl == []
-    assert post.ledger_backfilled == ["20260326_add_tenants_kritis_sector"]
+    # New migrations (e.g. users/roles) may apply DDL on first run.
+    assert "20260326_add_tenants_kritis_sector" not in post.applied_ddl
+    assert "20260326_add_tenants_kritis_sector" in post.ledger_backfilled
     assert "tenants.kritis_sector" not in list_orm_columns_missing_in_db(
         engine, require_all_tables=False
     )
 
     again = run_all_db_migrations(engine)
     assert again.applied_ddl == []
-    assert again.skipped_ledger == ["20260326_add_tenants_kritis_sector"]
+    assert "20260326_add_tenants_kritis_sector" in again.skipped_ledger
     engine.dispose()
 
 
@@ -86,8 +87,8 @@ def test_run_all_migrations_reports_applied_once(tmp_path) -> None:
 
     engine = create_engine(url, future=True, connect_args={"check_same_thread": False})
     first = run_all_db_migrations(engine)
-    assert first.applied_ddl == ["20260326_add_tenants_kritis_sector"]
+    assert "20260326_add_tenants_kritis_sector" in first.applied_ddl
     second = run_all_db_migrations(engine)
     assert second.applied_ddl == []
-    assert second.skipped_ledger == ["20260326_add_tenants_kritis_sector"]
+    assert "20260326_add_tenants_kritis_sector" in second.skipped_ledger
     engine.dispose()

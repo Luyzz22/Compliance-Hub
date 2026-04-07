@@ -6923,9 +6923,7 @@ class RoleAssignRequest(BaseModel):
     role: str
 
 
-@app.post(
-    "/api/v1/auth/register", status_code=status.HTTP_201_CREATED, tags=["identity"]
-)
+@app.post("/api/v1/auth/register", status_code=status.HTTP_201_CREATED, tags=["identity"])
 def register_user(
     body: RegisterRequest,
     session: Annotated[Session, Depends(get_session)],
@@ -6970,9 +6968,7 @@ def verify_email(
     svc = IdentityService(repo)
     result = svc.verify_email(token)
     if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"]
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"])
     # Audit log
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
@@ -7050,9 +7046,7 @@ def confirm_password_reset(
     svc = IdentityService(repo)
     result = svc.reset_password(token=body.token, new_password=body.new_password)
     if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"]
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"])
     # Audit log
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
@@ -7077,9 +7071,7 @@ def get_user_profile(
     svc = IdentityService(repo)
     profile = svc.get_profile(user_id)
     if profile is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return profile
 
 
@@ -7100,9 +7092,7 @@ def update_user_profile(
         timezone_str=body.timezone,
     )
     if profile is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     # Audit log
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
@@ -7122,9 +7112,7 @@ def assign_user_role(
     body: RoleAssignRequest,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     session: Annotated[Session, Depends(get_session)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
 ) -> dict:
     repo = UserRepository(session)
     svc = IdentityService(repo)
@@ -7135,9 +7123,7 @@ def assign_user_role(
         assigned_by=None,
     )
     if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=result["detail"]
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["detail"])
     # Audit log
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
@@ -7156,9 +7142,7 @@ def assign_user_role(
 def list_tenant_users(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     session: Annotated[Session, Depends(get_session)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
 ) -> list[dict]:
     repo = UserRepository(session)
     role_assignments = repo.list_users_for_tenant(tenant_id)
