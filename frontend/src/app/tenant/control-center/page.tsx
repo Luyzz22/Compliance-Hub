@@ -4,9 +4,11 @@ import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { PreparationPackPreview } from "@/components/tenant/PreparationPackPreview";
 import {
   fetchAuthorityAuditPreparationPack,
+  fetchConnectorRuntimeStatus,
   fetchEnterpriseConnectorCandidates,
   fetchEnterpriseControlCenter,
   fetchEnterpriseIntegrationBlueprints,
+  triggerConnectorManualSync,
   type ControlCenterSeverityDto,
   type PreparationPackFocusDto,
 } from "@/lib/api";
@@ -25,20 +27,23 @@ function severityClass(sev: ControlCenterSeverityDto): string {
 }
 
 type PageProps = {
-  searchParams?: Promise<{ generate_pack?: string; focus?: string }>;
+  searchParams?: Promise<{ generate_pack?: string; focus?: string; trigger_connector_sync?: string }>;
 };
 
 export default async function TenantControlCenterPage({ searchParams }: PageProps) {
   const tenantId = await getWorkspaceTenantIdServer();
   const qp = (await searchParams) ?? {};
   const shouldGeneratePack = qp.generate_pack === "1";
+  const shouldTriggerConnectorSync = qp.trigger_connector_sync === "1";
   const focus =
     qp.focus === "audit" || qp.focus === "authority" || qp.focus === "mixed"
       ? (qp.focus as PreparationPackFocusDto)
       : "mixed";
+  const syncResult = shouldTriggerConnectorSync ? await triggerConnectorManualSync(tenantId) : null;
   const data = await fetchEnterpriseControlCenter(tenantId, true);
   const blueprint = await fetchEnterpriseIntegrationBlueprints(tenantId, false);
   const candidates = await fetchEnterpriseConnectorCandidates(tenantId, false);
+  const connectorRuntime = await fetchConnectorRuntimeStatus(tenantId);
   const prepPack = shouldGeneratePack
     ? await fetchAuthorityAuditPreparationPack(tenantId, focus)
     : null;
@@ -62,6 +67,12 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
               className={`${CH_BTN_SECONDARY} text-sm`}
             >
               Preparation Pack erstellen
+            </Link>
+            <Link
+              href="/tenant/control-center?trigger_connector_sync=1"
+              className={`${CH_BTN_SECONDARY} text-sm`}
+            >
+              Connector Sync ausführen
             </Link>
           </div>
         }
@@ -110,6 +121,38 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
             <li className="text-sm text-slate-500">Keine akuten Punkte.</li>
           ) : null}
         </ul>
+      </section>
+
+      <section className={CH_CARD}>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className={CH_SECTION_LABEL}>First Live Connector Skeleton</p>
+          <span className="text-xs text-slate-500">
+            {connectorRuntime.connector_instance.source_system_type} ·{" "}
+            {connectorRuntime.connector_instance.connection_status}
+          </span>
+        </div>
+        <div className="rounded border border-slate-200 p-3 text-xs text-slate-700">
+          <p>
+            Sync-Status: <span className="font-semibold">{connectorRuntime.connector_instance.sync_status}</span>
+            {" · "}Domains:{" "}
+            {connectorRuntime.connector_instance.enabled_evidence_domains.join(", ") || "—"}
+          </p>
+          <p className="mt-1">
+            Letzter Sync:{" "}
+            {connectorRuntime.connector_instance.last_sync_at
+              ? new Date(connectorRuntime.connector_instance.last_sync_at).toLocaleString("de-DE")
+              : "noch keiner"}
+          </p>
+          <p className="mt-1">Letzter Fehler: {connectorRuntime.connector_instance.last_error ?? "—"}</p>
+          <p className="mt-1">
+            Letztes Ergebnis: {connectorRuntime.last_sync_result?.summary_de ?? "Kein Sync-Lauf vorhanden."}
+          </p>
+          {syncResult ? (
+            <p className="mt-2 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-900">
+              Manueller Sync durchgeführt: {syncResult.sync_result.records_ingested} Records ingested.
+            </p>
+          ) : null}
+        </div>
       </section>
 
       <section className={CH_CARD}>

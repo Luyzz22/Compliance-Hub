@@ -181,6 +181,11 @@ from app.demo_tenant_guard import (
     workspace_mode_for_telemetry,
 )
 from app.enterprise_connector_candidate_models import EnterpriseConnectorCandidatesResponse
+from app.enterprise_connector_runtime_models import (
+    ConnectorManualSyncResponse,
+    ConnectorRuntimeStatusResponse,
+    ConnectorSyncResult,
+)
 from app.enterprise_control_center_models import EnterpriseControlCenterResponse
 from app.enterprise_integration_blueprint_models import (
     EnterpriseIntegrationBlueprintResponse,
@@ -287,6 +292,7 @@ from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_deadlines import ComplianceDeadlineRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
+from app.repositories.enterprise_connector_runtime import EnterpriseConnectorRuntimeRepository
 from app.repositories.enterprise_integration_blueprints import (
     EnterpriseIntegrationBlueprintRepository,
 )
@@ -399,6 +405,10 @@ from app.services.demo_governance_maturity_seed import seed_demo_governance_matu
 from app.services.demo_tenant_seeder import seed_demo_tenant
 from app.services.enterprise_connector_candidate_scoring import (
     build_connector_candidates_response,
+)
+from app.services.enterprise_connector_runtime import (
+    build_connector_runtime_status,
+    run_manual_connector_sync,
 )
 from app.services.enterprise_control_center import build_enterprise_control_center
 from app.services.enterprise_integration_blueprint import (
@@ -741,6 +751,12 @@ def get_enterprise_integration_blueprint_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> EnterpriseIntegrationBlueprintRepository:
     return EnterpriseIntegrationBlueprintRepository(session)
+
+
+def get_enterprise_connector_runtime_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> EnterpriseConnectorRuntimeRepository:
+    return EnterpriseConnectorRuntimeRepository(session)
 
 
 def _ensure_tenant_path_matches_auth(tenant_id: str, auth: AuthContext) -> None:
@@ -5479,6 +5495,104 @@ def get_enterprise_connector_candidates(
         ai_repo=ai_repo,
         include_markdown=include_markdown,
     )
+
+
+@app.get(
+    "/api/internal/enterprise/connector-runtime",
+    response_model=ConnectorRuntimeStatusResponse,
+    tags=["internal", "enterprise"],
+)
+def get_enterprise_connector_runtime(
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    runtime_repo: Annotated[
+        EnterpriseConnectorRuntimeRepository,
+        Depends(get_enterprise_connector_runtime_repository),
+    ],
+) -> ConnectorRuntimeStatusResponse:
+    return build_connector_runtime_status(
+        auth.tenant_id,
+        actor=actor_id_from_request(request),
+        repo=runtime_repo,
+    )
+
+
+@app.get(
+    "/api/internal/enterprise/connector-runtime/last-sync",
+    response_model=ConnectorSyncResult | None,
+    tags=["internal", "enterprise"],
+)
+def get_enterprise_connector_runtime_last_sync(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    runtime_repo: Annotated[
+        EnterpriseConnectorRuntimeRepository,
+        Depends(get_enterprise_connector_runtime_repository),
+    ],
+) -> ConnectorSyncResult | None:
+    return runtime_repo.get_last_sync_result(auth.tenant_id)
+
+
+@app.post(
+    "/api/internal/enterprise/connector-runtime/manual-sync",
+    response_model=ConnectorManualSyncResponse,
+    tags=["internal", "enterprise"],
+)
+def post_enterprise_connector_runtime_manual_sync(
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.MANAGE_ONBOARDING_READINESS)),
+    ],
+    runtime_repo: Annotated[
+        EnterpriseConnectorRuntimeRepository,
+        Depends(get_enterprise_connector_runtime_repository),
+    ],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> ConnectorManualSyncResponse:
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
+        tenant_id=auth.tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action=GovernanceAuditAction.ENTERPRISE_CONNECTOR_SYNC_TRIGGERED.value,
+        entity_type=GovernanceAuditEntity.ENTERPRISE_CONNECTOR_RUNTIME.value,
+        entity_id=auth.tenant_id,
+        outcome="success",
+        before=None,
+        after=json.dumps({"manual_sync": True}),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"source_system_type": "generic_api"},
+    )
+    result = run_manual_connector_sync(auth.tenant_id, actor=actor, repo=runtime_repo)
+    record_governance_audit(
+        audit_repo,
+        tenant_id=auth.tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action=GovernanceAuditAction.ENTERPRISE_CONNECTOR_SYNC_COMPLETED.value,
+        entity_type=GovernanceAuditEntity.ENTERPRISE_CONNECTOR_RUNTIME.value,
+        entity_id=result.sync_result.sync_run_id,
+        outcome=result.sync_result.sync_status.value,
+        before=None,
+        after=json.dumps(
+            {
+                "records_ingested": result.sync_result.records_ingested,
+                "status": result.sync_result.sync_status.value,
+                "domains": [d.value for d in result.connector_instance.enabled_evidence_domains],
+            }
+        ),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"summary": result.sync_result.summary_de},
+    )
+    return result
 
 
 @app.put(

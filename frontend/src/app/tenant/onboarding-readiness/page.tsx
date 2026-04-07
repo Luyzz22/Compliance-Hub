@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
+  fetchConnectorRuntimeStatus,
   fetchEnterpriseConnectorCandidates,
   fetchEnterpriseIntegrationBlueprints,
   fetchEnterpriseOnboardingReadiness,
@@ -19,6 +20,7 @@ export default async function TenantOnboardingReadinessPage() {
   const data = await fetchEnterpriseOnboardingReadiness(tenantId);
   const blueprint = await fetchEnterpriseIntegrationBlueprints(tenantId, false);
   const candidates = await fetchEnterpriseConnectorCandidates(tenantId, false);
+  const connectorRuntime = await fetchConnectorRuntimeStatus(tenantId);
 
   return (
     <div className={CH_SHELL}>
@@ -131,6 +133,10 @@ export default async function TenantOnboardingReadinessPage() {
             </li>
           ))}
         </ul>
+        <p className="mt-3 text-xs text-slate-600">
+          Live-Connector-Status: {connectorRuntime.connector_instance.source_system_type} ·{" "}
+          {connectorRuntime.connector_instance.sync_status}
+        </p>
       </section>
     </div>
   );

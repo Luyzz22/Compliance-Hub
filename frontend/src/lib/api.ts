@@ -2798,6 +2798,53 @@ export async function fetchEnterpriseConnectorCandidates(
   ) as Promise<EnterpriseConnectorCandidatesResponseDto>;
 }
 
+export type ConnectorConnectionStatusDto = "not_configured" | "connected" | "degraded";
+export type ConnectorSyncStatusDto = "idle" | "running" | "success" | "failed";
+
+export interface ConnectorSyncResultDto {
+  sync_run_id: string;
+  tenant_id: string;
+  connector_instance_id: string;
+  sync_status: ConnectorSyncStatusDto;
+  started_at_utc: string;
+  finished_at_utc: string | null;
+  records_ingested: number;
+  last_error: string | null;
+  summary_de: string;
+}
+
+export interface ConnectorRuntimeStatusDto {
+  tenant_id: string;
+  connector_instance: {
+    connector_instance_id: string;
+    tenant_id: string;
+    source_system_type: IntegrationBlueprintSourceSystemTypeDto;
+    connection_status: ConnectorConnectionStatusDto;
+    sync_status: ConnectorSyncStatusDto;
+    last_sync_at: string | null;
+    last_error: string | null;
+    enabled_evidence_domains: IntegrationBlueprintEvidenceDomainDto[];
+  };
+  last_sync_result: ConnectorSyncResultDto | null;
+}
+
+export interface ConnectorManualSyncDto {
+  tenant_id: string;
+  connector_instance: ConnectorRuntimeStatusDto["connector_instance"];
+  sync_result: ConnectorSyncResultDto;
+  normalized_records_preview: { record_id: string; domain: string; status: string }[];
+}
+
+export async function fetchConnectorRuntimeStatus(tenantId: string): Promise<ConnectorRuntimeStatusDto> {
+  return tenantApiFetch("/api/internal/enterprise/connector-runtime", tenantId) as Promise<ConnectorRuntimeStatusDto>;
+}
+
+export async function triggerConnectorManualSync(tenantId: string): Promise<ConnectorManualSyncDto> {
+  return tenantApiFetch("/api/internal/enterprise/connector-runtime/manual-sync", tenantId, {
+    method: "POST",
+  }) as Promise<ConnectorManualSyncDto>;
+}
+
 export type IdentityProviderTypeDto =
   | "azure_ad"
   | "saml_generic"

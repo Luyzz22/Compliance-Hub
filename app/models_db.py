@@ -102,6 +102,99 @@ class EnterpriseIntegrationBlueprintDB(Base):
     updated_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
 
 
+class EnterpriseConnectorInstanceDB(Base):
+    """First live connector skeleton runtime state per tenant."""
+
+    __tablename__ = "enterprise_connector_instances"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", name="uq_enterprise_connector_instance_tenant"),
+        Index(
+            "ix_enterprise_connector_instances_tenant_source",
+            "tenant_id",
+            "source_system_type",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    connector_instance_id: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_system_type: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="generic_api"
+    )
+    connection_status: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="not_configured"
+    )
+    sync_status: Mapped[str] = mapped_column(String(64), nullable=False, default="idle")
+    enabled_evidence_domains: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    updated_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
+
+
+class EnterpriseConnectorSyncRunDB(Base):
+    """Audit-friendly sync run results for connector skeleton."""
+
+    __tablename__ = "enterprise_connector_sync_runs"
+    __table_args__ = (
+        Index("ix_enterprise_connector_sync_runs_tenant_started", "tenant_id", "started_at_utc"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    sync_run_id: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    connector_instance_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    sync_status: Mapped[str] = mapped_column(String(64), nullable=False, default="running")
+    started_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    finished_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    records_ingested: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_de: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    details_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class EnterpriseConnectorEvidenceRecordDB(Base):
+    """Normalized external evidence records ingested by connector skeleton."""
+
+    __tablename__ = "enterprise_connector_evidence_records"
+    __table_args__ = (
+        Index(
+            "ix_enterprise_connector_evidence_records_tenant_domain",
+            "tenant_id",
+            "evidence_domain",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "connector_instance_id",
+            "evidence_domain",
+            "external_record_id",
+            name="uq_enterprise_connector_evidence_external",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    connector_instance_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    sync_run_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    evidence_domain: Mapped[str] = mapped_column(String(64), nullable=False)
+    external_record_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    normalized_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    ingested_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+
 class TenantApiKeyDB(Base):
     """API-Schlüssel pro Mandant (Hash-only, Klartext nur bei Erstellung)."""
 

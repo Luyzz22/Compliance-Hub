@@ -13,6 +13,7 @@ class GovernanceAuditEntity(StrEnum):
     AUTHORITY_AUDIT_PREPARATION_PACK = "authority_audit_preparation_pack"
     ENTERPRISE_ONBOARDING_READINESS = "enterprise_onboarding_readiness"
     ENTERPRISE_INTEGRATION_BLUEPRINT = "enterprise_integration_blueprint"
+    ENTERPRISE_CONNECTOR_RUNTIME = "enterprise_connector_runtime"
 
 
 class GovernanceAuditAction(StrEnum):
@@ -30,6 +31,8 @@ class GovernanceAuditAction(StrEnum):
     AUTHORITY_AUDIT_PACK_GENERATED = "authority_audit_pack.generated"
     ENTERPRISE_ONBOARDING_READINESS_UPSERT = "enterprise_onboarding_readiness.upsert"
     ENTERPRISE_INTEGRATION_BLUEPRINT_UPSERT = "enterprise_integration_blueprint.upsert"
+    ENTERPRISE_CONNECTOR_SYNC_TRIGGERED = "enterprise_connector.sync.triggered"
+    ENTERPRISE_CONNECTOR_SYNC_COMPLETED = "enterprise_connector.sync.completed"
 
 
 class NIS2DeadlinePolicy:
