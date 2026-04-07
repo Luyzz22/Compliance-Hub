@@ -81,8 +81,7 @@ def build_authority_audit_preparation_pack(
     sec_b = PreparationPackSection(
         title_de="B. Open Critical Items / Missing Evidence",
         summary_de=(
-            "Kritische offene Punkte und fehlende Nachweise fuer "
-            "Audit-/Behoerdenvorbereitung."
+            "Kritische offene Punkte und fehlende Nachweise fuer Audit-/Behoerdenvorbereitung."
         ),
         evidence_items=[f"{i.title} -> {i.action_label}" for i in critical[:8]],
         missing_items=[i.summary_de for i in critical[:8]],
@@ -139,9 +138,7 @@ def build_authority_audit_preparation_pack(
             "Authority-Export ueber dedizierten Endpoint verfuegbar",
         ],
         missing_items=(
-            ["KI-Register-Status fuer unbekannte Systeme klaeren"]
-            if register.unknown > 0
-            else []
+            ["KI-Register-Status fuer unbekannte Systeme klaeren"] if register.unknown > 0 else []
         ),
         due_items=[],
     )
