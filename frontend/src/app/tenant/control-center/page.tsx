@@ -50,6 +50,9 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
             <Link href="/tenant/compliance-overview" className={`${CH_BTN_SECONDARY} text-sm`}>
               Zur Compliance-Übersicht
             </Link>
+            <Link href="/tenant/onboarding-readiness" className={`${CH_BTN_SECONDARY} text-sm`}>
+              Onboarding Readiness
+            </Link>
             <Link
               href={`/tenant/control-center?generate_pack=1&focus=${focus}`}
               className={`${CH_BTN_SECONDARY} text-sm`}

@@ -56,6 +56,21 @@ class TenantAIGovernanceSetupDB(Base):
     )
 
 
+class EnterpriseOnboardingReadinessDB(Base):
+    """Enterprise onboarding readiness profile per tenant."""
+
+    __tablename__ = "enterprise_onboarding_readiness"
+
+    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+    updated_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
+
+
 class TenantApiKeyDB(Base):
     """API-Schlüssel pro Mandant (Hash-only, Klartext nur bei Erstellung)."""
 

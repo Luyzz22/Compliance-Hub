@@ -2687,3 +2687,53 @@ export async function fetchAuthorityAuditPreparationPack(
     tenantId,
   ) as Promise<AuthorityAuditPreparationPackResponseDto>;
 }
+
+export type IdentityProviderTypeDto =
+  | "azure_ad"
+  | "saml_generic"
+  | "sap_ias"
+  | "google_workspace"
+  | "okta"
+  | "other";
+export type ReadinessStatusDto = "not_started" | "planned" | "configured" | "validated";
+
+export interface EnterpriseOnboardingReadinessDto {
+  tenant_id: string;
+  updated_at_utc: string;
+  updated_by: string;
+  enterprise_name: string | null;
+  tenant_structure: {
+    entity_code: string;
+    name: string;
+    entity_type: string;
+    parent_entity_code: string | null;
+  }[];
+  advisor_visibility_enabled: boolean;
+  sso_readiness: {
+    provider_type: IdentityProviderTypeDto;
+    onboarding_status: ReadinessStatusDto;
+    role_mapping_status: ReadinessStatusDto;
+    identity_domain: string | null;
+    metadata_hint: string | null;
+    role_mapping_rules: { external_group_or_claim: string; mapped_role: string; notes: string | null }[];
+  };
+  integration_readiness: {
+    target_type: string;
+    readiness_status: string;
+    owner: string | null;
+    notes: string | null;
+    blocker: string | null;
+    evidence_ref: string | null;
+  }[];
+  rollout_notes: string | null;
+  blockers: { key: string; title_de: string; severity: string }[];
+}
+
+export async function fetchEnterpriseOnboardingReadiness(
+  tenantId: string,
+): Promise<EnterpriseOnboardingReadinessDto> {
+  return tenantApiFetch(
+    "/api/internal/enterprise/onboarding-readiness",
+    tenantId,
+  ) as Promise<EnterpriseOnboardingReadinessDto>;
+}

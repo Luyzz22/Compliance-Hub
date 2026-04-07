@@ -27,6 +27,7 @@ class Permission(StrEnum):
     MANAGE_TENANT_SETTINGS = "manage_tenant_settings"
     MANAGE_USERS = "manage_users"
     MANAGE_API_KEYS = "manage_api_keys"
+    MANAGE_ONBOARDING_READINESS = "manage_onboarding_readiness"
     PROVISION_TENANT = "provision_tenant"
 
 
@@ -69,6 +70,7 @@ _COMPLIANCE_OFFICER_PERMS = _EDITOR_PERMS | frozenset(
         Permission.MANAGE_POLICIES,
         Permission.GENERATE_BOARD_REPORTS,
         Permission.MANAGE_COMPLIANCE_CALENDAR,
+        Permission.MANAGE_ONBOARDING_READINESS,
     }
 )
 
@@ -90,6 +92,7 @@ _TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
         Permission.MANAGE_TENANT_SETTINGS,
         Permission.MANAGE_USERS,
         Permission.MANAGE_API_KEYS,
+        Permission.MANAGE_ONBOARDING_READINESS,
     }
 )
 

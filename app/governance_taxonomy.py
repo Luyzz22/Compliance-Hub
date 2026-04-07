@@ -11,6 +11,7 @@ class GovernanceAuditEntity(StrEnum):
     COMPLIANCE_CALENDAR = "compliance_calendar"
     AUTHORITY_EXPORT = "authority_export"
     AUTHORITY_AUDIT_PREPARATION_PACK = "authority_audit_preparation_pack"
+    ENTERPRISE_ONBOARDING_READINESS = "enterprise_onboarding_readiness"
 
 
 class GovernanceAuditAction(StrEnum):
@@ -26,6 +27,7 @@ class GovernanceAuditAction(StrEnum):
     AUTHORITY_EXPORT_GENERATED = "generated"
     AUTHORITY_EXPORT_API_ACTION = "export_authority_ai_act"
     AUTHORITY_AUDIT_PACK_GENERATED = "authority_audit_pack.generated"
+    ENTERPRISE_ONBOARDING_READINESS_UPSERT = "enterprise_onboarding_readiness.upsert"
 
 
 class NIS2DeadlinePolicy:
