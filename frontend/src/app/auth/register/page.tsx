@@ -56,7 +56,7 @@ export default function RegisterPage() {
         }
         if (code === "weak_password") {
           throw new Error(
-            "Das Passwort ist zu schwach. Mindestens 8 Zeichen, Groß-/Kleinbuchstaben und eine Zahl.",
+            "Das Passwort ist zu schwach. Mindestens 10 Zeichen, Groß-/Kleinbuchstaben und eine Zahl.",
           );
         }
         throw new Error(
@@ -136,7 +136,7 @@ export default function RegisterPage() {
                 id="reg-password"
                 type="password"
                 required
-                minLength={8}
+                minLength={10}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
