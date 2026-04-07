@@ -181,6 +181,10 @@ from app.demo_tenant_guard import (
     workspace_mode_for_telemetry,
 )
 from app.enterprise_control_center_models import EnterpriseControlCenterResponse
+from app.enterprise_onboarding_models import (
+    EnterpriseOnboardingReadinessResponse,
+    EnterpriseOnboardingReadinessUpsert,
+)
 from app.eu_ai_act_readiness_models import EUAIActReadinessOverview
 from app.eu_ai_act_wizard_models import WizardQuestionnaireRequest, WizardResult
 from app.evidence.models import AiEvidenceEventDetail, AiEvidenceEventListResponse
@@ -278,6 +282,7 @@ from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.classifications import ClassificationRepository
 from app.repositories.compliance_deadlines import ComplianceDeadlineRepository
 from app.repositories.compliance_gap import ComplianceGapRepository
+from app.repositories.enterprise_onboarding import EnterpriseOnboardingRepository
 from app.repositories.evidence_files import EvidenceFileRepository
 from app.repositories.incidents import IncidentRepository
 from app.repositories.nis2_incidents import NIS2IncidentRepository
@@ -710,6 +715,12 @@ def get_tenant_ai_governance_setup_repository(
     session: Annotated[Session, Depends(get_session)],
 ) -> TenantAIGovernanceSetupRepository:
     return TenantAIGovernanceSetupRepository(session)
+
+
+def get_enterprise_onboarding_repository(
+    session: Annotated[Session, Depends(get_session)],
+) -> EnterpriseOnboardingRepository:
+    return EnterpriseOnboardingRepository(session)
 
 
 def _ensure_tenant_path_matches_auth(tenant_id: str, auth: AuthContext) -> None:
@@ -2730,6 +2741,68 @@ def put_tenant_ai_governance_setup(
     merged = apply_setup_patch(current, body)
     setup_repo.upsert_payload(tenant_id, merged)
     return build_setup_response(session, tenant_id, merged)
+
+
+@app.get(
+    "/api/internal/enterprise/onboarding-readiness",
+    response_model=EnterpriseOnboardingReadinessResponse,
+    tags=["internal", "enterprise"],
+)
+def get_enterprise_onboarding_readiness(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    repo: Annotated[EnterpriseOnboardingRepository, Depends(get_enterprise_onboarding_repository)],
+) -> EnterpriseOnboardingReadinessResponse:
+    row = repo.get(auth.tenant_id)
+    if row is not None:
+        return row
+    # Default baseline when tenant has not configured onboarding readiness yet.
+    baseline = EnterpriseOnboardingReadinessUpsert()
+    return repo.upsert(auth.tenant_id, baseline, actor="api_client")
+
+
+@app.put(
+    "/api/internal/enterprise/onboarding-readiness",
+    response_model=EnterpriseOnboardingReadinessResponse,
+    tags=["internal", "enterprise"],
+)
+def put_enterprise_onboarding_readiness(
+    body: EnterpriseOnboardingReadinessUpsert,
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.MANAGE_ONBOARDING_READINESS)),
+    ],
+    repo: Annotated[EnterpriseOnboardingRepository, Depends(get_enterprise_onboarding_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> EnterpriseOnboardingReadinessResponse:
+    actor = actor_id_from_request(request)
+    saved = repo.upsert(auth.tenant_id, body, actor=actor)
+    record_governance_audit(
+        audit_repo,
+        tenant_id=auth.tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action=GovernanceAuditAction.ENTERPRISE_ONBOARDING_READINESS_UPSERT.value,
+        entity_type=GovernanceAuditEntity.ENTERPRISE_ONBOARDING_READINESS.value,
+        entity_id=auth.tenant_id,
+        outcome="success",
+        before=None,
+        after=json.dumps(
+            {
+                "provider": saved.sso_readiness.provider_type.value,
+                "sso_status": saved.sso_readiness.onboarding_status.value,
+                "integration_targets": len(saved.integration_readiness),
+                "blockers": len(saved.blockers),
+            }
+        ),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"advisor_visibility_enabled": saved.advisor_visibility_enabled},
+    )
+    return saved
 
 
 @app.get(
@@ -5362,6 +5435,10 @@ def get_authority_audit_preparation_pack(
     ],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     inv_repo: Annotated[AISystemInventoryRepository, Depends(get_ai_inventory_repository)],
+    onboarding_repo: Annotated[
+        EnterpriseOnboardingRepository,
+        Depends(get_enterprise_onboarding_repository),
+    ],
     focus: Annotated[PreparationPackFocus, Query()] = PreparationPackFocus.mixed,
     client_tenant_id: str | None = Query(default=None),
 ) -> AuthorityAuditPreparationPackResponse:
@@ -5377,6 +5454,7 @@ def get_authority_audit_preparation_pack(
         deadline_repo=deadline_repo,
         ai_repo=ai_repo,
         inventory_repo=inv_repo,
+        onboarding_repo=onboarding_repo,
     )
     actor = actor_id_from_request(request)
     record_governance_audit(

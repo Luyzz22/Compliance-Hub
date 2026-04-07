@@ -14,6 +14,7 @@ from app.repositories.ai_inventory import AISystemInventoryRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.compliance_deadlines import ComplianceDeadlineRepository
+from app.repositories.enterprise_onboarding import EnterpriseOnboardingRepository
 from app.repositories.nis2_incidents import NIS2IncidentRepository
 from app.services.ai_compliance_board_report import list_ai_compliance_board_reports
 from app.services.enterprise_control_center import build_enterprise_control_center
@@ -29,6 +30,7 @@ def build_authority_audit_preparation_pack(
     deadline_repo: ComplianceDeadlineRepository,
     ai_repo: AISystemRepository,
     inventory_repo: AISystemInventoryRepository,
+    onboarding_repo: EnterpriseOnboardingRepository | None = None,
 ) -> AuthorityAuditPreparationPackResponse:
     now = datetime.now(UTC)
     cc = build_enterprise_control_center(
@@ -59,6 +61,7 @@ def build_authority_audit_preparation_pack(
     systems = ai_repo.list_for_tenant(tenant_id)
     register = inventory_repo.posture_summary(tenant_id, total_systems=len(systems))
     board_reports = list_ai_compliance_board_reports(session, tenant_id, limit=1)
+    onboarding = onboarding_repo.get(tenant_id) if onboarding_repo is not None else None
 
     sec_a = PreparationPackSection(
         title_de="A. Executive Compliance Posture Snapshot",
@@ -159,6 +162,10 @@ def build_authority_audit_preparation_pack(
     )
     if not board_reports:
         sec_f.due_items.append("Board-Report erzeugen und Freigabestatus dokumentieren")
+    if onboarding is not None and onboarding.blockers:
+        sec_f.due_items.append(
+            f"Onboarding-Blocker klären ({len(onboarding.blockers)} offen) für Enterprise-Rollout."
+        )
 
     markdown_lines = [
         "# Authority & Audit Preparation Pack (Arbeitsstand)",
@@ -204,6 +211,7 @@ def build_authority_audit_preparation_pack(
             "compliance_calendar",
             "ai_inventory_register",
             "board_reports",
+            "enterprise_onboarding_readiness",
         ],
         section_a_executive_posture=sec_a,
         section_b_open_critical_missing_evidence=sec_b,
