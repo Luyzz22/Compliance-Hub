@@ -59,3 +59,4 @@ def test_control_center_returns_compact_operational_view() -> None:
     sections = {g["section"] for g in body["grouped_sections"]}
     assert "incidents_reporting" in sections
     assert "regulatory_deadlines" in sections
+    assert "integrations_connectors" in sections

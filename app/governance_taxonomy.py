@@ -33,6 +33,7 @@ class GovernanceAuditAction(StrEnum):
     ENTERPRISE_INTEGRATION_BLUEPRINT_UPSERT = "enterprise_integration_blueprint.upsert"
     ENTERPRISE_CONNECTOR_SYNC_TRIGGERED = "enterprise_connector.sync.triggered"
     ENTERPRISE_CONNECTOR_SYNC_COMPLETED = "enterprise_connector.sync.completed"
+    ENTERPRISE_CONNECTOR_SYNC_RETRY_TRIGGERED = "enterprise_connector.sync.retry_triggered"
 
 
 class NIS2DeadlinePolicy:

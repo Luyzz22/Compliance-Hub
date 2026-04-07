@@ -18,6 +18,7 @@ class ControlCenterSection(StrEnum):
     regulatory_deadlines = "regulatory_deadlines"
     register_export_obligations = "register_export_obligations"
     board_readiness = "board_readiness"
+    integrations_connectors = "integrations_connectors"
 
 
 class ControlCenterStatus(StrEnum):

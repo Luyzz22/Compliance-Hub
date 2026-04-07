@@ -182,8 +182,11 @@ from app.demo_tenant_guard import (
 )
 from app.enterprise_connector_candidate_models import EnterpriseConnectorCandidatesResponse
 from app.enterprise_connector_runtime_models import (
+    ConnectorHealthSnapshot,
     ConnectorManualSyncResponse,
+    ConnectorRetrySyncBody,
     ConnectorRuntimeStatusResponse,
+    ConnectorSyncHistoryResponse,
     ConnectorSyncResult,
 )
 from app.enterprise_control_center_models import EnterpriseControlCenterResponse
@@ -408,6 +411,10 @@ from app.services.enterprise_connector_candidate_scoring import (
 )
 from app.services.enterprise_connector_runtime import (
     build_connector_runtime_status,
+    get_connector_health_snapshot,
+    get_latest_connector_failure,
+    list_connector_sync_history,
+    retry_connector_sync,
     run_manual_connector_sync,
 )
 from app.services.enterprise_control_center import build_enterprise_control_center
@@ -5534,6 +5541,71 @@ def get_enterprise_connector_runtime_last_sync(
     return runtime_repo.get_last_sync_result(auth.tenant_id)
 
 
+@app.get(
+    "/api/internal/enterprise/connector-runtime/health",
+    response_model=ConnectorHealthSnapshot,
+    tags=["internal", "enterprise"],
+)
+def get_enterprise_connector_runtime_health(
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    runtime_repo: Annotated[
+        EnterpriseConnectorRuntimeRepository,
+        Depends(get_enterprise_connector_runtime_repository),
+    ],
+) -> ConnectorHealthSnapshot:
+    return get_connector_health_snapshot(
+        auth.tenant_id,
+        actor=actor_id_from_request(request),
+        repo=runtime_repo,
+    )
+
+
+@app.get(
+    "/api/internal/enterprise/connector-runtime/sync-runs",
+    response_model=ConnectorSyncHistoryResponse,
+    tags=["internal", "enterprise"],
+)
+def get_enterprise_connector_runtime_sync_runs(
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    runtime_repo: Annotated[
+        EnterpriseConnectorRuntimeRepository,
+        Depends(get_enterprise_connector_runtime_repository),
+    ],
+    limit: int = Query(30, ge=1, le=100),
+) -> ConnectorSyncHistoryResponse:
+    return list_connector_sync_history(
+        auth.tenant_id,
+        actor=actor_id_from_request(request),
+        repo=runtime_repo,
+        limit=limit,
+    )
+
+
+@app.get(
+    "/api/internal/enterprise/connector-runtime/latest-failure",
+    response_model=ConnectorSyncResult | None,
+    tags=["internal", "enterprise"],
+)
+def get_enterprise_connector_runtime_latest_failure(
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    runtime_repo: Annotated[
+        EnterpriseConnectorRuntimeRepository,
+        Depends(get_enterprise_connector_runtime_repository),
+    ],
+) -> ConnectorSyncResult | None:
+    return get_latest_connector_failure(
+        auth.tenant_id,
+        actor=actor_id_from_request(request),
+        repo=runtime_repo,
+    )
+
+
 @app.post(
     "/api/internal/enterprise/connector-runtime/manual-sync",
     response_model=ConnectorManualSyncResponse,
@@ -5591,6 +5663,78 @@ def post_enterprise_connector_runtime_manual_sync(
         ip_address=client_ip_from_request(request),
         user_agent=user_agent_from_request(request),
         metadata={"summary": result.sync_result.summary_de},
+    )
+    return result
+
+
+@app.post(
+    "/api/internal/enterprise/connector-runtime/retry-sync",
+    response_model=ConnectorManualSyncResponse,
+    tags=["internal", "enterprise"],
+)
+def post_enterprise_connector_runtime_retry_sync(
+    body: ConnectorRetrySyncBody,
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.MANAGE_ONBOARDING_READINESS)),
+    ],
+    runtime_repo: Annotated[
+        EnterpriseConnectorRuntimeRepository,
+        Depends(get_enterprise_connector_runtime_repository),
+    ],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> ConnectorManualSyncResponse:
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
+        tenant_id=auth.tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action=GovernanceAuditAction.ENTERPRISE_CONNECTOR_SYNC_RETRY_TRIGGERED.value,
+        entity_type=GovernanceAuditEntity.ENTERPRISE_CONNECTOR_RUNTIME.value,
+        entity_id=body.sync_run_id or auth.tenant_id,
+        outcome="success",
+        before=None,
+        after=json.dumps({"retry_sync": True, "sync_run_id": body.sync_run_id}),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"source_system_type": "generic_api"},
+    )
+    result = retry_connector_sync(
+        auth.tenant_id,
+        actor=actor,
+        repo=runtime_repo,
+        sync_run_id=body.sync_run_id,
+    )
+    record_governance_audit(
+        audit_repo,
+        tenant_id=auth.tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action=GovernanceAuditAction.ENTERPRISE_CONNECTOR_SYNC_COMPLETED.value,
+        entity_type=GovernanceAuditEntity.ENTERPRISE_CONNECTOR_RUNTIME.value,
+        entity_id=result.sync_result.sync_run_id,
+        outcome=result.sync_result.sync_status.value,
+        before=None,
+        after=json.dumps(
+            {
+                "records_ingested": result.sync_result.records_ingested,
+                "status": result.sync_result.sync_status.value,
+                "retry_of_sync_run_id": result.sync_result.retry_of_sync_run_id,
+                "failure_category": (
+                    result.sync_result.failure_category.value
+                    if result.sync_result.failure_category
+                    else None
+                ),
+            }
+        ),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"summary": result.sync_result.summary_de, "retry": True},
     )
     return result
 
@@ -5679,6 +5823,7 @@ def get_enterprise_control_center(
         deadline_repo=deadline_repo,
         ai_repo=ai_repo,
         include_markdown=include_markdown,
+        connector_runtime_repo=EnterpriseConnectorRuntimeRepository(session),
     )
 
 

@@ -9,6 +9,7 @@ import {
   fetchEnterpriseControlCenter,
   fetchEnterpriseIntegrationBlueprints,
   triggerConnectorManualSync,
+  triggerConnectorRetrySync,
   type ControlCenterSeverityDto,
   type PreparationPackFocusDto,
 } from "@/lib/api";
@@ -27,7 +28,12 @@ function severityClass(sev: ControlCenterSeverityDto): string {
 }
 
 type PageProps = {
-  searchParams?: Promise<{ generate_pack?: string; focus?: string; trigger_connector_sync?: string }>;
+  searchParams?: Promise<{
+    generate_pack?: string;
+    focus?: string;
+    trigger_connector_sync?: string;
+    retry_connector_sync?: string;
+  }>;
 };
 
 export default async function TenantControlCenterPage({ searchParams }: PageProps) {
@@ -35,11 +41,13 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
   const qp = (await searchParams) ?? {};
   const shouldGeneratePack = qp.generate_pack === "1";
   const shouldTriggerConnectorSync = qp.trigger_connector_sync === "1";
+  const shouldRetryConnectorSync = qp.retry_connector_sync === "1";
   const focus =
     qp.focus === "audit" || qp.focus === "authority" || qp.focus === "mixed"
       ? (qp.focus as PreparationPackFocusDto)
       : "mixed";
   const syncResult = shouldTriggerConnectorSync ? await triggerConnectorManualSync(tenantId) : null;
+  const retryResult = shouldRetryConnectorSync ? await triggerConnectorRetrySync(tenantId) : null;
   const data = await fetchEnterpriseControlCenter(tenantId, true);
   const blueprint = await fetchEnterpriseIntegrationBlueprints(tenantId, false);
   const candidates = await fetchEnterpriseConnectorCandidates(tenantId, false);
@@ -73,6 +81,12 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
               className={`${CH_BTN_SECONDARY} text-sm`}
             >
               Connector Sync ausführen
+            </Link>
+            <Link
+              href="/tenant/control-center?retry_connector_sync=1"
+              className={`${CH_BTN_SECONDARY} text-sm`}
+            >
+              Connector Retry
             </Link>
           </div>
         }
@@ -132,9 +146,22 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
           </span>
         </div>
         <div className="rounded border border-slate-200 p-3 text-xs text-slate-700">
+          {connectorRuntime.health.has_material_connector_issue &&
+          connectorRuntime.health.material_issue_summary_de ? (
+            <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-amber-950">
+              {connectorRuntime.health.material_issue_summary_de}
+            </p>
+          ) : null}
           <p>
-            Sync-Status: <span className="font-semibold">{connectorRuntime.connector_instance.sync_status}</span>
-            {" · "}Domains:{" "}
+            Instanz-Sync: <span className="font-semibold">{connectorRuntime.connector_instance.sync_status}</span>
+            {" · "}Letzter Lauf (abgeschlossen):{" "}
+            <span className="font-semibold">
+              {connectorRuntime.health.last_terminal_sync ?? "—"}
+            </span>
+            {" · "}Evidence-Datensätze: {connectorRuntime.health.evidence_record_count}
+          </p>
+          <p className="mt-1">
+            Domains:{" "}
             {connectorRuntime.connector_instance.enabled_evidence_domains.join(", ") || "—"}
           </p>
           <p className="mt-1">
@@ -147,11 +174,32 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
           <p className="mt-1">
             Letztes Ergebnis: {connectorRuntime.last_sync_result?.summary_de ?? "Kein Sync-Lauf vorhanden."}
           </p>
-          {syncResult ? (
-            <p className="mt-2 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-900">
-              Manueller Sync durchgeführt: {syncResult.sync_result.records_ingested} Records ingested.
+          {connectorRuntime.last_sync_result?.failure_category ? (
+            <p className="mt-1 text-amber-900">
+              Fehlerkategorie:{" "}
+              <span className="font-semibold">{connectorRuntime.last_sync_result.failure_category}</span>
+              {" · "}
+              {connectorRuntime.last_sync_result.operator_next_step_de}
             </p>
           ) : null}
+          {syncResult ? (
+            <p className="mt-2 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-900">
+              Manueller Sync: {syncResult.sync_result.sync_status} · normalisiert{" "}
+              {syncResult.sync_result.records_normalized} / empfangen {syncResult.sync_result.records_received}.
+            </p>
+          ) : null}
+          {retryResult ? (
+            <p className="mt-2 rounded border border-cyan-200 bg-cyan-50 px-2 py-1 text-cyan-950">
+              Retry ausgeführt: {retryResult.sync_result.sync_status} · Retry von{" "}
+              {retryResult.sync_result.retry_of_sync_run_id ?? "—"}.
+            </p>
+          ) : null}
+          <p className="mt-2 text-slate-600">
+            Verlauf und Retry-Steuerung:{" "}
+            <Link className="font-semibold text-cyan-700 underline" href="/tenant/onboarding-readiness">
+              Onboarding Readiness
+            </Link>
+          </p>
         </div>
       </section>
 

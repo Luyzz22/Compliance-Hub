@@ -17,6 +17,7 @@ from app.enterprise_control_center_models import (
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.audit_logs import AuditLogRepository
 from app.repositories.compliance_deadlines import ComplianceDeadlineRepository
+from app.repositories.enterprise_connector_runtime import EnterpriseConnectorRuntimeRepository
 from app.repositories.nis2_incidents import NIS2IncidentRepository
 from app.services.ai_compliance_board_report import list_ai_compliance_board_reports
 
@@ -46,6 +47,7 @@ def build_enterprise_control_center(
     deadline_repo: ComplianceDeadlineRepository,
     ai_repo: AISystemRepository,
     include_markdown: bool,
+    connector_runtime_repo: EnterpriseConnectorRuntimeRepository | None = None,
 ) -> EnterpriseControlCenterResponse:
     now = datetime.now(UTC)
     items: list[EnterpriseControlCenterItem] = []
@@ -208,6 +210,28 @@ def build_enterprise_control_center(
             )
         )
 
+    if connector_runtime_repo is not None:
+        inst = connector_runtime_repo.get_or_create_instance(
+            tenant_id, actor="enterprise_control_center.snapshot"
+        )
+        health = connector_runtime_repo.build_health_snapshot(tenant_id, inst)
+        if health.has_material_connector_issue and health.material_issue_summary_de:
+            items.append(
+                EnterpriseControlCenterItem(
+                    section=ControlCenterSection.integrations_connectors,
+                    severity=ControlCenterSeverity.warning,
+                    status=ControlCenterStatus.open,
+                    title="Connector-Synchronisation eingeschränkt",
+                    summary_de=health.material_issue_summary_de,
+                    due_at=None,
+                    tenant_id=tenant_id,
+                    source_type="enterprise_connector",
+                    source_id=inst.connector_instance_id,
+                    action_label="Connector & Onboarding",
+                    action_href="/tenant/onboarding-readiness",
+                )
+            )
+
     grouped_map: dict[ControlCenterSection, list[EnterpriseControlCenterItem]] = defaultdict(list)
     for it in items:
         grouped_map[it.section].append(it)
@@ -218,6 +242,7 @@ def build_enterprise_control_center(
         ControlCenterSection.regulatory_deadlines: "Regulatorische Fristen",
         ControlCenterSection.register_export_obligations: "Register- und Exportpflichten",
         ControlCenterSection.board_readiness: "Board-Readiness",
+        ControlCenterSection.integrations_connectors: "Integrationen & Connectoren",
     }
     grouped_sections = [
         EnterpriseControlCenterSectionGroup(
