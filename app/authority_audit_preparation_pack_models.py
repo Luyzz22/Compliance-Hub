@@ -33,5 +33,6 @@ class AuthorityAuditPreparationPackResponse(BaseModel):
     section_d_nis2_incident_deadline_status: PreparationPackSection
     section_e_ai_act_register_authority_status: PreparationPackSection
     section_f_recommended_next_preparation_actions: PreparationPackSection
+    section_g_integration_blueprint_posture: PreparationPackSection
     top_urgent_items: list[EnterpriseControlCenterItem]
     markdown_de: str

@@ -5,6 +5,7 @@ import { PreparationPackPreview } from "@/components/tenant/PreparationPackPrevi
 import {
   fetchAuthorityAuditPreparationPack,
   fetchEnterpriseControlCenter,
+  fetchEnterpriseIntegrationBlueprints,
   type ControlCenterSeverityDto,
   type PreparationPackFocusDto,
 } from "@/lib/api";
@@ -35,6 +36,7 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
       ? (qp.focus as PreparationPackFocusDto)
       : "mixed";
   const data = await fetchEnterpriseControlCenter(tenantId, true);
+  const blueprint = await fetchEnterpriseIntegrationBlueprints(tenantId, false);
   const prepPack = shouldGeneratePack
     ? await fetchAuthorityAuditPreparationPack(tenantId, focus)
     : null;
@@ -106,6 +108,64 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
             <li className="text-sm text-slate-500">Keine akuten Punkte.</li>
           ) : null}
         </ul>
+      </section>
+
+      <section className={CH_CARD}>
+        <div className="flex items-center justify-between gap-2">
+          <p className={CH_SECTION_LABEL}>Integration Blueprint</p>
+          <span className="text-xs text-slate-500">
+            Status: {blueprint.readiness_status} · {new Date(blueprint.generated_at_utc).toLocaleString("de-DE")}
+          </span>
+        </div>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <article className="rounded border border-slate-200 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Top geplante Connectoren
+            </p>
+            <ul className="mt-2 space-y-2 text-sm text-slate-700">
+              {blueprint.top_enterprise_integration_candidates.slice(0, 3).map((cand) => (
+                <li key={cand.blueprint_id} className="rounded border border-slate-100 px-2 py-1">
+                  <p className="font-medium text-slate-900">
+                    {cand.source_system_type} · {cand.score}/100
+                  </p>
+                  <p className="text-xs text-slate-600">{cand.recommendation_de}</p>
+                </li>
+              ))}
+              {blueprint.top_enterprise_integration_candidates.length === 0 ? (
+                <li className="text-xs text-slate-500">Noch keine Connector-Kandidaten modelliert.</li>
+              ) : null}
+            </ul>
+          </article>
+          <article className="rounded border border-slate-200 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Fehlende Voraussetzungen und Blocker
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-slate-700">
+              {blueprint.blockers.slice(0, 5).map((blocker) => (
+                <li key={blocker} className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs">
+                  {blocker}
+                </li>
+              ))}
+              {blueprint.blockers.length === 0 ? (
+                <li className="text-xs text-slate-500">Keine dokumentierten Blocker.</li>
+              ) : null}
+            </ul>
+          </article>
+        </div>
+        <div className="mt-3 rounded border border-slate-200 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Systeme und Evidence-Domains
+          </p>
+          <ul className="mt-2 space-y-1 text-xs text-slate-700">
+            {blueprint.blueprint_rows.slice(0, 5).map((row) => (
+              <li key={row.blueprint_id}>
+                <span className="font-medium text-slate-900">{row.source_system_type}</span> ({row.integration_status})
+                {" -> "}
+                {row.evidence_domains.join(", ") || "keine Domains"}
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       {prepPack ? (

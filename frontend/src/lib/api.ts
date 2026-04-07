@@ -2674,6 +2674,7 @@ export interface AuthorityAuditPreparationPackResponseDto {
   section_d_nis2_incident_deadline_status: AuthorityAuditPreparationPackSectionDto;
   section_e_ai_act_register_authority_status: AuthorityAuditPreparationPackSectionDto;
   section_f_recommended_next_preparation_actions: AuthorityAuditPreparationPackSectionDto;
+  section_g_integration_blueprint_posture: AuthorityAuditPreparationPackSectionDto;
   markdown_de: string;
 }
 
@@ -2686,6 +2687,71 @@ export async function fetchAuthorityAuditPreparationPack(
     `/api/internal/enterprise/authority-audit-pack?${qs.toString()}`,
     tenantId,
   ) as Promise<AuthorityAuditPreparationPackResponseDto>;
+}
+
+export type IntegrationBlueprintSourceSystemTypeDto =
+  | "sap_btp"
+  | "sap_s4hana"
+  | "datev"
+  | "ms_dynamics"
+  | "generic_api";
+export type IntegrationBlueprintEvidenceDomainDto =
+  | "invoice"
+  | "approval"
+  | "access"
+  | "vendor"
+  | "ai_inventory"
+  | "policy_artifact"
+  | "workflow_evidence"
+  | "tax_export_context";
+export type IntegrationBlueprintStatusDto =
+  | "planned"
+  | "designing"
+  | "blocked"
+  | "ready_for_build";
+export type IntegrationBlueprintReadinessPostureDto =
+  | "integration_ready"
+  | "preparing"
+  | "blocked";
+
+export interface EnterpriseIntegrationBlueprintResponseDto {
+  tenant_id: string;
+  generated_at_utc: string;
+  readiness_status: IntegrationBlueprintReadinessPostureDto;
+  blueprint_rows: {
+    blueprint_id: string;
+    tenant_id: string;
+    source_system_type: IntegrationBlueprintSourceSystemTypeDto;
+    evidence_domains: IntegrationBlueprintEvidenceDomainDto[];
+    onboarding_readiness_ref: string | null;
+    security_prerequisites: string[];
+    data_owner: string | null;
+    technical_owner: string | null;
+    integration_status: IntegrationBlueprintStatusDto;
+    blockers: string[];
+    notes: string | null;
+  }[];
+  blockers: string[];
+  top_enterprise_integration_candidates: {
+    blueprint_id: string;
+    source_system_type: IntegrationBlueprintSourceSystemTypeDto;
+    score: number;
+    recommendation_de: string;
+    unlocked_evidence_domains: IntegrationBlueprintEvidenceDomainDto[];
+    blockers: string[];
+  }[];
+  markdown_de?: string | null;
+}
+
+export async function fetchEnterpriseIntegrationBlueprints(
+  tenantId: string,
+  includeMarkdown = false,
+): Promise<EnterpriseIntegrationBlueprintResponseDto> {
+  const qs = includeMarkdown ? "?include_markdown=true" : "";
+  return tenantApiFetch(
+    `/api/internal/enterprise/integration-blueprints${qs}`,
+    tenantId,
+  ) as Promise<EnterpriseIntegrationBlueprintResponseDto>;
 }
 
 export type IdentityProviderTypeDto =

@@ -27,6 +27,7 @@ def test_authority_audit_pack_returns_structured_sections() -> None:
     assert body["focus"] == "mixed"
     assert "section_a_executive_posture" in body
     assert "section_f_recommended_next_preparation_actions" in body
+    assert "section_g_integration_blueprint_posture" in body
     assert "markdown_de" in body
     assert body["source_sections"]
 
