@@ -234,6 +234,15 @@ export default async function TenantComplianceOverviewPage() {
           </article>
         ) : null}
         <article className={CH_CARD}>
+          <p className={CH_SECTION_LABEL}>Control Center</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Operative Priorisierung: kritische Governance-Ereignisse, Fristen und Readiness-Blocker.
+          </p>
+          <Link href="/tenant/control-center" className={`${CH_BTN_PRIMARY} mt-4 inline-flex text-xs`}>
+            Control Center öffnen
+          </Link>
+        </article>
+        <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Audit-Log</p>
           <p className="mt-2 text-sm text-slate-600">
             Unveränderliche Ereignisspur für Revision und Regulatorik.
