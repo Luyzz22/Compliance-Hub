@@ -265,6 +265,7 @@ class AIRegisterEntryDB(Base):
     )
     created_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
 
+
 class Nis2KritisKpiDB(Base):
     """NIS2 / KRITIS-orientierte KPIs pro KI-System (mandantenfähig)."""
 
