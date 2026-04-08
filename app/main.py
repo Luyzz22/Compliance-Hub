@@ -6884,6 +6884,13 @@ def seed_eu_ai_act_demo_endpoint(
 # ── Identity & Auth Endpoints ─────────────────────────────────────────────────
 
 from app.repositories.users import UserRepository  # noqa: E402
+from app.services.enterprise_iam_service import (  # noqa: E402
+    AccessReviewService,
+    IdentityProviderService,
+    SCIMProvisioningService,
+    SSOCallbackService,
+    UserLifecycleService,
+)
 from app.services.identity_service import IdentityService  # noqa: E402
 
 
@@ -7159,4 +7166,605 @@ def list_tenant_users(
                     "tenant_id": ra.tenant_id,
                 }
             )
+    return result
+
+
+# ── Enterprise IAM: Identity Providers ──────────────────────────────────────
+
+
+class IdPCreateRequest(BaseModel):
+    slug: str
+    display_name: str
+    protocol: str  # "saml" | "oidc"
+    issuer_url: str | None = None
+    metadata_url: str | None = None
+    client_id: str | None = None
+    attribute_mapping: dict | None = None
+    default_role: str = "viewer"
+
+
+class IdPUpdateRequest(BaseModel):
+    display_name: str | None = None
+    issuer_url: str | None = None
+    metadata_url: str | None = None
+    client_id: str | None = None
+    attribute_mapping: dict | None = None
+    default_role: str | None = None
+    enabled: bool | None = None
+
+
+@app.post(
+    "/api/v1/enterprise/identity-providers",
+    status_code=status.HTTP_201_CREATED,
+    tags=["enterprise-iam"],
+)
+def create_identity_provider(
+    body: IdPCreateRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_IDENTITY_PROVIDERS))
+    ],
+) -> dict:
+    svc = IdentityProviderService(session)
+    result = svc.create_provider(
+        tenant_id=tenant_id,
+        slug=body.slug,
+        display_name=body.display_name,
+        protocol=body.protocol,
+        issuer_url=body.issuer_url,
+        metadata_url=body.metadata_url,
+        client_id=body.client_id,
+        attribute_mapping=body.attribute_mapping,
+        default_role=body.default_role,
+    )
+    if "error" in result:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"])
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="admin",
+        action="idp.created",
+        entity_type="identity_provider",
+        entity_id=result["id"],
+        before=None,
+        after=result["slug"],
+    )
+    return result
+
+
+@app.get("/api/v1/enterprise/identity-providers", tags=["enterprise-iam"])
+def list_identity_providers(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_IDENTITY_PROVIDERS))
+    ],
+) -> list[dict]:
+    svc = IdentityProviderService(session)
+    return svc.list_providers(tenant_id)
+
+
+@app.get("/api/v1/enterprise/identity-providers/{provider_id}", tags=["enterprise-iam"])
+def get_identity_provider(
+    provider_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_IDENTITY_PROVIDERS))
+    ],
+) -> dict:
+    svc = IdentityProviderService(session)
+    result = svc.get_provider(tenant_id, provider_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Identity provider not found"
+        )
+    return result
+
+
+@app.put("/api/v1/enterprise/identity-providers/{provider_id}", tags=["enterprise-iam"])
+def update_identity_provider(
+    provider_id: str,
+    body: IdPUpdateRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_IDENTITY_PROVIDERS))
+    ],
+) -> dict:
+    svc = IdentityProviderService(session)
+    result = svc.update_provider(tenant_id, provider_id, **body.model_dump(exclude_none=True))
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Identity provider not found"
+        )
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="admin",
+        action="idp.updated",
+        entity_type="identity_provider",
+        entity_id=provider_id,
+        before=None,
+        after=str(body.model_dump(exclude_none=True)),
+    )
+    return result
+
+
+@app.delete(
+    "/api/v1/enterprise/identity-providers/{provider_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["enterprise-iam"],
+)
+def delete_identity_provider(
+    provider_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_IDENTITY_PROVIDERS))
+    ],
+) -> None:
+    svc = IdentityProviderService(session)
+    deleted = svc.delete_provider(tenant_id, provider_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Identity provider not found"
+        )
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="admin",
+        action="idp.deleted",
+        entity_type="identity_provider",
+        entity_id=provider_id,
+        before=None,
+        after=None,
+    )
+
+
+# ── Enterprise IAM: SSO Callback ────────────────────────────────────────────
+
+
+class SSOCallbackRequest(BaseModel):
+    provider_id: str
+    external_subject: str
+    external_email: str
+    external_attributes: dict | None = None
+
+
+@app.post("/api/v1/enterprise/sso/callback", tags=["enterprise-iam"])
+def sso_callback(
+    body: SSOCallbackRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+) -> dict:
+    svc = SSOCallbackService(session)
+    result = svc.process_sso_login(
+        provider_id=body.provider_id,
+        tenant_id=tenant_id,
+        external_subject=body.external_subject,
+        external_email=body.external_email,
+        external_attributes=body.external_attributes,
+    )
+    if "error" in result:
+        code_map = {
+            "provider_not_found": status.HTTP_404_NOT_FOUND,
+            "account_disabled": status.HTTP_403_FORBIDDEN,
+            "user_not_found": status.HTTP_404_NOT_FOUND,
+        }
+        raise HTTPException(
+            status_code=code_map.get(result["error"], status.HTTP_400_BAD_REQUEST),
+            detail=result["detail"],
+        )
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor=result["email"],
+        action="sso.login",
+        entity_type="user",
+        entity_id=result["user_id"],
+        before=None,
+        after=f"provider={result['sso_provider']}",
+    )
+    return result
+
+
+# ── Enterprise IAM: SCIM 2.0 Provisioning ───────────────────────────────────
+
+
+class SCIMProvisionRequest(BaseModel):
+    email: str
+    display_name: str | None = None
+    scim_external_id: str | None = None
+    role: str = "viewer"
+    sync_source: str | None = None
+
+
+class SCIMUpdateRequest(BaseModel):
+    display_name: str | None = None
+    role: str | None = None
+    scim_external_id: str | None = None
+
+
+@app.post(
+    "/api/v1/enterprise/scim/users",
+    status_code=status.HTTP_201_CREATED,
+    tags=["enterprise-iam"],
+)
+def scim_provision_user(
+    body: SCIMProvisionRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SCIM))],
+) -> dict:
+    svc = SCIMProvisioningService(session)
+    result = svc.provision_user(
+        tenant_id=tenant_id,
+        email=body.email,
+        display_name=body.display_name,
+        scim_external_id=body.scim_external_id,
+        role=body.role,
+        sync_source=body.sync_source,
+    )
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="system:scim",
+        action="scim.user_provisioned",
+        entity_type="user",
+        entity_id=result["user_id"],
+        before=None,
+        after=result["email"],
+    )
+    return result
+
+
+@app.put("/api/v1/enterprise/scim/users/{user_id}", tags=["enterprise-iam"])
+def scim_update_user(
+    user_id: str,
+    body: SCIMUpdateRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SCIM))],
+) -> dict:
+    svc = SCIMProvisioningService(session)
+    result = svc.update_user(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        display_name=body.display_name,
+        role=body.role,
+        scim_external_id=body.scim_external_id,
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="system:scim",
+        action="scim.user_updated",
+        entity_type="user",
+        entity_id=user_id,
+        before=None,
+        after=str(body.model_dump(exclude_none=True)),
+    )
+    return result
+
+
+@app.post("/api/v1/enterprise/scim/users/{user_id}/disable", tags=["enterprise-iam"])
+def scim_disable_user(
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SCIM))],
+) -> dict:
+    svc = SCIMProvisioningService(session)
+    result = svc.disable_user(tenant_id, user_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="system:scim",
+        action="scim.user_disabled",
+        entity_type="user",
+        entity_id=user_id,
+        before=None,
+        after="disabled",
+    )
+    return result
+
+
+@app.post("/api/v1/enterprise/scim/users/{user_id}/deprovision", tags=["enterprise-iam"])
+def scim_deprovision_user(
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SCIM))],
+) -> dict:
+    svc = SCIMProvisioningService(session)
+    result = svc.deprovision_user(tenant_id, user_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="system:scim",
+        action="scim.user_deprovisioned",
+        entity_type="user",
+        entity_id=user_id,
+        before=None,
+        after="deprovisioned",
+    )
+    return result
+
+
+@app.get("/api/v1/enterprise/scim/users/{user_id}/sync-state", tags=["enterprise-iam"])
+def scim_get_sync_state(
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SCIM))],
+) -> dict:
+    svc = SCIMProvisioningService(session)
+    result = svc.get_sync_state(tenant_id, user_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="SCIM sync state not found"
+        )
+    return result
+
+
+# ── Enterprise IAM: Access Reviews ──────────────────────────────────────────
+
+
+class AccessReviewCreateRequest(BaseModel):
+    target_user_id: str
+    target_role: str
+    reviewer_user_id: str | None = None
+    deadline_days: int = 90
+
+
+class AccessReviewDecisionRequest(BaseModel):
+    decision: str  # approved | revoked | escalated
+    reviewer_user_id: str
+    decision_note: str | None = None
+
+
+class AccessReviewBulkCreateRequest(BaseModel):
+    reviewer_user_id: str | None = None
+    deadline_days: int = 90
+
+
+@app.post(
+    "/api/v1/enterprise/access-reviews",
+    status_code=status.HTTP_201_CREATED,
+    tags=["enterprise-iam"],
+)
+def create_access_review(
+    body: AccessReviewCreateRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_ACCESS_REVIEWS))],
+) -> dict:
+    svc = AccessReviewService(session)
+    result = svc.create_review(
+        tenant_id=tenant_id,
+        target_user_id=body.target_user_id,
+        target_role=body.target_role,
+        reviewer_user_id=body.reviewer_user_id,
+        deadline_days=body.deadline_days,
+    )
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="admin",
+        action="access_review.created",
+        entity_type="access_review",
+        entity_id=result["id"],
+        before=None,
+        after=f"role={body.target_role} user={body.target_user_id}",
+    )
+    return result
+
+
+@app.get("/api/v1/enterprise/access-reviews", tags=["enterprise-iam"])
+def list_access_reviews(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_ACCESS_REVIEWS))],
+    status_filter: str | None = Query(None, alias="status"),
+) -> list[dict]:
+    svc = AccessReviewService(session)
+    return svc.list_reviews(tenant_id, status_filter=status_filter)
+
+
+@app.get("/api/v1/enterprise/access-reviews/overdue", tags=["enterprise-iam"])
+def list_overdue_access_reviews(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_ACCESS_REVIEWS))],
+) -> list[dict]:
+    svc = AccessReviewService(session)
+    return svc.list_overdue_reviews(tenant_id)
+
+
+@app.get("/api/v1/enterprise/access-reviews/{review_id}", tags=["enterprise-iam"])
+def get_access_review(
+    review_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_ACCESS_REVIEWS))],
+) -> dict:
+    svc = AccessReviewService(session)
+    result = svc.get_review(tenant_id, review_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access review not found")
+    return result
+
+
+@app.post("/api/v1/enterprise/access-reviews/{review_id}/decide", tags=["enterprise-iam"])
+def decide_access_review(
+    review_id: str,
+    body: AccessReviewDecisionRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_ACCESS_REVIEWS))],
+) -> dict:
+    svc = AccessReviewService(session)
+    result = svc.decide_review(
+        tenant_id=tenant_id,
+        review_id=review_id,
+        decision=body.decision,
+        reviewer_user_id=body.reviewer_user_id,
+        decision_note=body.decision_note,
+    )
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access review not found")
+    if "error" in result:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"])
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor=body.reviewer_user_id,
+        action=f"access_review.{body.decision}",
+        entity_type="access_review",
+        entity_id=review_id,
+        before=None,
+        after=f"decision={body.decision}",
+    )
+    return result
+
+
+@app.post(
+    "/api/v1/enterprise/access-reviews/bulk-create",
+    status_code=status.HTTP_201_CREATED,
+    tags=["enterprise-iam"],
+)
+def bulk_create_access_reviews(
+    body: AccessReviewBulkCreateRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_ACCESS_REVIEWS))],
+) -> list[dict]:
+    svc = AccessReviewService(session)
+    results = svc.create_reviews_for_privileged_roles(
+        tenant_id=tenant_id,
+        reviewer_user_id=body.reviewer_user_id,
+        deadline_days=body.deadline_days,
+    )
+    audit_repo = AuditLogRepository(session)
+    for r in results:
+        audit_repo.record_event(
+            tenant_id=tenant_id,
+            actor="admin",
+            action="access_review.bulk_created",
+            entity_type="access_review",
+            entity_id=r["id"],
+            before=None,
+            after=f"role={r['target_role']} user={r['target_user_id']}",
+        )
+    return results
+
+
+# ── Enterprise IAM: User Lifecycle ──────────────────────────────────────────
+
+
+class LifecycleJoinerRequest(BaseModel):
+    user_id: str
+    role: str = "viewer"
+
+
+class LifecycleMoverRequest(BaseModel):
+    user_id: str
+    new_role: str
+
+
+class LifecycleLeaverRequest(BaseModel):
+    user_id: str
+
+
+@app.post("/api/v1/enterprise/lifecycle/joiner", tags=["enterprise-iam"])
+def lifecycle_joiner(
+    body: LifecycleJoinerRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
+) -> dict:
+    svc = UserLifecycleService(session)
+    result = svc.joiner(tenant_id, body.user_id, role=body.role)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="admin",
+        action="lifecycle.joiner",
+        entity_type="user",
+        entity_id=body.user_id,
+        before=None,
+        after=f"role={body.role}",
+    )
+    return result
+
+
+@app.post("/api/v1/enterprise/lifecycle/mover", tags=["enterprise-iam"])
+def lifecycle_mover(
+    body: LifecycleMoverRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
+) -> dict:
+    svc = UserLifecycleService(session)
+    result = svc.mover(tenant_id, body.user_id, new_role=body.new_role)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="admin",
+        action="lifecycle.mover",
+        entity_type="user",
+        entity_id=body.user_id,
+        before=result.get("old_role"),
+        after=f"role={body.new_role}",
+    )
+    return result
+
+
+@app.post("/api/v1/enterprise/lifecycle/leaver", tags=["enterprise-iam"])
+def lifecycle_leaver(
+    body: LifecycleLeaverRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
+) -> dict:
+    svc = UserLifecycleService(session)
+    result = svc.leaver(tenant_id, body.user_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    audit_repo = AuditLogRepository(session)
+    audit_repo.record_event(
+        tenant_id=tenant_id,
+        actor="admin",
+        action="lifecycle.leaver",
+        entity_type="user",
+        entity_id=body.user_id,
+        before=result.get("old_role"),
+        after="disabled",
+    )
+    return result
+
+
+@app.get("/api/v1/enterprise/lifecycle/status/{user_id}", tags=["enterprise-iam"])
+def get_user_lifecycle_status(
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
+) -> dict:
+    svc = UserLifecycleService(session)
+    result = svc.get_user_status(tenant_id, user_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return result
