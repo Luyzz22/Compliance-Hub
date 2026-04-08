@@ -1155,3 +1155,61 @@ class ComplianceDeadlineTable(Base):
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+
+
+class UserDB(Base):
+    """Registered user for identity & auth (DSGVO data-sparse)."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    language: Mapped[str] = mapped_column(String(8), nullable=False, default="de")
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Europe/Berlin")
+    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    email_verification_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    password_reset_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    password_reset_expires: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    sso_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    sso_subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class UserTenantRoleDB(Base):
+    """Tenant-specific role assignment for a user (M:N with composite key)."""
+
+    __tablename__ = "user_tenant_roles"
+    __table_args__ = (UniqueConstraint("user_id", "tenant_id", name="uq_user_tenant_role"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=False, index=True
+    )
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(64), nullable=False, default="viewer")
+    assigned_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
