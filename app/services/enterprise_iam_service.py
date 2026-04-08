@@ -29,6 +29,9 @@ PRIVILEGED_ROLES = frozenset({"super_admin", "tenant_admin", "compliance_admin",
 ACCESS_REVIEW_PERIOD_DAYS = 90
 
 # Sentinel value for SSO/SCIM users who have no local password.
+# Downstream login logic (IdentityService.login) must reject local password authentication
+# for users whose password_hash equals this sentinel.  bcrypt.checkpw will never match it
+# because it is not a valid bcrypt hash, so local login attempts fail as expected.
 _NO_LOCAL_PASSWORD = "!SSO_OR_SCIM_NO_LOCAL_PASSWORD"
 
 # Valid role values for role mapping validation.
@@ -199,6 +202,7 @@ class SSOCallbackService:
         ).scalar_one_or_none()
 
         now = datetime.now(UTC)
+        is_new_link = False
 
         if ext_identity is not None:
             # Existing linked user — update attributes
@@ -216,6 +220,7 @@ class SSOCallbackService:
             ext_identity.updated_at_utc = now
             self._session.commit()
         else:
+            is_new_link = True
             # Try to match by email, or create new user
             email_norm = external_email.strip().lower()
             user = self._session.execute(
@@ -303,7 +308,7 @@ class SSOCallbackService:
             "tenant_id": tenant_id,
             "role": role,
             "sso_provider": idp.slug,
-            "is_new_user": ext_identity.created_at_utc == now,
+            "is_new_user": is_new_link,
         }
 
 
