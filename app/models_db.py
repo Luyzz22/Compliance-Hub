@@ -1213,3 +1213,121 @@ class UserTenantRoleDB(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+
+
+# ── Enterprise IAM: Identity Providers, SCIM, Access Reviews ────────────────
+
+
+class IdentityProviderDB(Base):
+    """External Identity Provider configuration (SAML 2.0 / OIDC) per tenant."""
+
+    __tablename__ = "identity_providers"
+    __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_idp_tenant_slug"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    slug: Mapped[str] = mapped_column(String(128), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    protocol: Mapped[str] = mapped_column(String(16), nullable=False)  # "saml" | "oidc"
+    issuer_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    metadata_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    client_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # attribute mapping stored as JSON: {"email": "...", "role": "...", "department": "..."}
+    attribute_mapping: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_role: Mapped[str] = mapped_column(String(64), nullable=False, default="viewer")
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class ExternalIdentityDB(Base):
+    """Link between external IdP subject and local user."""
+
+    __tablename__ = "external_identities"
+    __table_args__ = (
+        UniqueConstraint("provider_id", "external_subject", name="uq_ext_id_provider_subject"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    provider_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("identity_providers.id"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=False, index=True
+    )
+    external_subject: Mapped[str] = mapped_column(String(512), nullable=False)
+    external_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    external_attributes: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class SCIMSyncStateDB(Base):
+    """SCIM provisioning state per user+tenant (tracks sync lifecycle)."""
+
+    __tablename__ = "scim_sync_state"
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", name="uq_scim_sync_tenant_user"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=False, index=True
+    )
+    scim_external_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    provision_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="active"
+    )  # active | disabled | deprovisioned
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sync_source: Mapped[str | None] = mapped_column(String(128), nullable=True)  # e.g. "azure_ad"
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class AccessReviewDB(Base):
+    """Access review / recertification for privileged roles."""
+
+    __tablename__ = "access_reviews"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    target_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=False, index=True
+    )
+    target_role: Mapped[str] = mapped_column(String(64), nullable=False)
+    reviewer_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="pending"
+    )  # pending | approved | revoked | escalated
+    decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deadline_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
