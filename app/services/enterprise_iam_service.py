@@ -18,6 +18,7 @@ from app.models_db import (
     UserDB,
     UserTenantRoleDB,
 )
+from app.rbac.roles import EnterpriseRole
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,12 @@ PRIVILEGED_ROLES = frozenset({"super_admin", "tenant_admin", "compliance_admin",
 
 # Default access review period (days).
 ACCESS_REVIEW_PERIOD_DAYS = 90
+
+# Sentinel value for SSO/SCIM users who have no local password.
+_NO_LOCAL_PASSWORD = "!SSO_OR_SCIM_NO_LOCAL_PASSWORD"
+
+# Valid role values for role mapping validation.
+_VALID_ROLES = frozenset(r.value for r in EnterpriseRole)
 
 
 # ── Identity Provider Service ────────────────────────────────────────────────
@@ -219,7 +226,7 @@ class SSOCallbackService:
                 user = UserDB(
                     id=str(uuid.uuid4()),
                     email=email_norm,
-                    password_hash="",  # SSO-only user, no local password
+                    password_hash=_NO_LOCAL_PASSWORD,  # SSO-only user, no local password
                     display_name=external_email.split("@")[0],
                     email_verified=True,
                     is_active=True,
@@ -253,7 +260,17 @@ class SSOCallbackService:
             if role_attr and role_attr in external_attributes:
                 mapped_role = external_attributes[role_attr]
                 if isinstance(mapped_role, str) and mapped_role.strip():
-                    role = mapped_role.strip().lower()
+                    candidate = mapped_role.strip().lower()
+                    # Validate against known roles; fall back to default for invalid values
+                    if candidate in _VALID_ROLES:
+                        role = candidate
+                    else:
+                        logger.warning(
+                            "SSO role mapping: unknown role %r from IdP %s, using default %s",
+                            candidate,
+                            idp.slug,
+                            idp.default_role,
+                        )
 
         # Assign/update tenant role
         existing_role = self._session.execute(
@@ -319,7 +336,7 @@ class SCIMProvisioningService:
             user = UserDB(
                 id=str(uuid.uuid4()),
                 email=email_norm,
-                password_hash="",  # SCIM-provisioned, no local password
+                password_hash=_NO_LOCAL_PASSWORD,  # SCIM-provisioned, no local password
                 display_name=display_name,
                 email_verified=True,
                 is_active=True,

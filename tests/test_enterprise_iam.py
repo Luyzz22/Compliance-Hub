@@ -1134,7 +1134,7 @@ class TestEnterpriseIAMNegative:
         assert resp.status_code == 403
 
     def test_role_escalation_via_malformed_group_mapping(self) -> None:
-        """Attempt to inject super_admin via group mapping should be handled safely."""
+        """Attempt to inject an unknown role via group mapping is safely rejected."""
         with Session(engine) as s:
             idp_svc = IdentityProviderService(s)
             idp = idp_svc.create_provider(
@@ -1146,17 +1146,16 @@ class TestEnterpriseIAMNegative:
                 default_role="viewer",
             )
             sso_svc = SSOCallbackService(s)
-            # Attempt to inject super_admin role
+            # Attempt to inject an unknown/invalid role string
             result = sso_svc.process_sso_login(
                 provider_id=idp["id"],
                 tenant_id="neg-escalation-tenant",
                 external_subject="neg-escalation-ext",
                 external_email="escalation@example.com",
-                external_attributes={"groups": "super_admin"},
+                external_attributes={"groups": "god_mode_admin"},
             )
-            # The mapping works - but it's the IdP's responsibility to send correct groups
-            # The system maps what the IdP sends without escalation beyond what's configured
-            assert result["role"] == "super_admin"
+            # Unknown role must fall back to IdP default_role
+            assert result["role"] == "viewer"
 
     def test_cross_tenant_idp_isolation(self) -> None:
         """IdP from tenant A must not be accessible from tenant B."""
