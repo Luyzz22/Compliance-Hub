@@ -7818,9 +7818,7 @@ def create_sod_policy(
     body: SoDPolicyCreateRequest,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     session: Annotated[Session, Depends(get_session)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))],
 ) -> dict:
     svc = SoDService(session)
     result = svc.create_policy(
@@ -7835,9 +7833,7 @@ def create_sod_policy(
 def list_sod_policies(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     session: Annotated[Session, Depends(get_session)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))],
 ) -> list[dict]:
     return SoDService(session).list_policies(tenant_id)
 
@@ -7851,9 +7847,7 @@ def delete_sod_policy(
     policy_id: str,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     session: Annotated[Session, Depends(get_session)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))],
 ) -> None:
     if not SoDService(session).delete_policy(tenant_id, policy_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Policy not found")
@@ -7865,9 +7859,7 @@ def check_sod_conflicts(
     proposed_role: str,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     session: Annotated[Session, Depends(get_session)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))],
 ) -> dict:
     conflicts = SoDService(session).check_conflicts(tenant_id, user_id, proposed_role)
     has_blocking = any(c["severity"] == "block" for c in conflicts)
@@ -7949,9 +7941,7 @@ def mfa_step_up(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Step-up verification failed"
         )
     # Record privileged action
-    PrivilegedActionService(session).record(
-        tenant_id, user_id, body.action, step_up_verified=True
-    )
+    PrivilegedActionService(session).record(tenant_id, user_id, body.action, step_up_verified=True)
     return result
 
 
