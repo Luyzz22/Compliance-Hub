@@ -160,7 +160,6 @@ function UserMenu({ active }: { active: boolean }) {
         aria-expanded={open}
         aria-haspopup="true"
         aria-label="Konto-Menü"
-        title="Konto"
         onClick={() => setOpen((o) => !o)}
         className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
           active

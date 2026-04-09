@@ -57,7 +57,10 @@ export function EnterprisePageHeader({
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className={isLast ? CH_BREADCRUMB_CURRENT : CH_BREADCRUMB_LINK}>
+                  <span
+                    className={isLast ? CH_BREADCRUMB_CURRENT : CH_BREADCRUMB_LINK}
+                    {...(isLast ? { "aria-current": "page" as const } : {})}
+                  >
                     {crumb.label}
                   </span>
                 )}
