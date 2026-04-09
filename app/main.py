@@ -8724,3 +8724,82 @@ async def stripe_webhook(request: Request) -> dict:
         return result
     finally:
         session.close()
+
+
+# ── Phase 6: Feature-Gating, Customer Portal & Trial ────────────────────────
+
+
+@app.get(
+    "/api/v1/enterprise/billing/trial-status",
+    tags=["enterprise-billing"],
+)
+def get_trial_banner_status(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+) -> dict:
+    """Return trial status for the in-app trial banner."""
+    from app.services.stripe_billing_service import get_trial_status
+
+    session = next(get_session())
+    try:
+        return get_trial_status(session, tenant_id)
+    finally:
+        session.close()
+
+
+@app.post(
+    "/api/v1/enterprise/billing/portal-session",
+    tags=["enterprise-billing"],
+)
+def create_billing_portal_session(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_BILLING))],
+    return_url: str = Query(
+        default="https://app.compliancehub.de/billing",
+        description="URL to redirect to after portal session",
+    ),
+) -> dict:
+    """Create a Stripe Customer Portal session for self-service management."""
+    from app.services.stripe_billing_service import (
+        create_customer_portal_session,
+        get_tenant_subscription,
+    )
+
+    session = next(get_session())
+    try:
+        sub = get_tenant_subscription(session, tenant_id)
+        if sub is None or not sub.get("stripe_customer_id"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No Stripe customer found for this tenant",
+            )
+        return create_customer_portal_session(
+            tenant_id=tenant_id,
+            stripe_customer_id=sub["stripe_customer_id"],
+            return_url=return_url,
+        )
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/enterprise/billing/feature-check",
+    tags=["enterprise-billing"],
+)
+def check_feature_gate_endpoint(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+    feature: str = Query(..., description="Feature key to check, e.g. datev_export"),
+) -> dict:
+    """Check if a specific feature is accessible under the tenant's current plan.
+
+    Returns HTTP 402 if the feature requires a higher plan.
+    """
+    from app.services.feature_gating import check_feature_gate
+
+    session = next(get_session())
+    try:
+        check_feature_gate(session, tenant_id, feature)
+        return {"feature": feature, "accessible": True}
+    finally:
+        session.close()

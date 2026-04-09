@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -146,6 +146,24 @@ def handle_stripe_webhook_event(session: Session, event_type: str, event_data: d
                 sub.status = new_status
                 sub.updated_at_utc = datetime.utcnow()
 
+    elif event_type == "customer.subscription.trial_will_end":
+        logger.info("trial_will_end tenant=%s – sending reminder", tenant_id)
+
+    elif event_type == "invoice.payment_succeeded":
+        logger.info("payment_succeeded tenant=%s", tenant_id)
+
+    elif event_type == "customer.subscription.paused":
+        sub_id = event_data.get("stripe_subscription_id")
+        if sub_id:
+            sub = (
+                session.query(SubscriptionDB)
+                .filter(SubscriptionDB.stripe_subscription_id == sub_id)
+                .first()
+            )
+            if sub:
+                sub.status = "paused"
+                sub.updated_at_utc = datetime.utcnow()
+
     session.commit()
     logger.info("stripe_webhook_processed tenant=%s event_type=%s", tenant_id, event_type)
     return {"status": "processed", "event_type": event_type, "tenant_id": tenant_id}
@@ -166,3 +184,74 @@ def check_feature_access(session: Session, tenant_id: str, feature: str) -> bool
     if plan is None:
         return False
     return feature in plan["features"]
+
+
+def create_customer_portal_session(
+    tenant_id: str,
+    stripe_customer_id: str,
+    return_url: str,
+) -> dict:
+    """Create a Stripe Customer Portal session for self-service billing management.
+
+    In production, this calls ``stripe.billing_portal.Session.create()``.
+    For now returns a portal URL structure that the frontend can redirect to.
+    """
+    portal_url = f"https://billing.stripe.com/p/session/{stripe_customer_id}"
+    logger.info(
+        "customer_portal_session_created tenant=%s customer=%s",
+        tenant_id,
+        stripe_customer_id,
+    )
+    return {
+        "portal_url": portal_url,
+        "tenant_id": tenant_id,
+        "stripe_customer_id": stripe_customer_id,
+        "return_url": return_url,
+    }
+
+
+def get_trial_status(session: Session, tenant_id: str) -> dict:
+    """Return trial status information for the in-app trial banner.
+
+    Returns a dict with:
+    - ``is_trialing``: whether the tenant is currently in a trial
+    - ``days_remaining``: number of days left (0 if not trialing)
+    - ``trial_ends_at``: ISO timestamp of trial end (None if not trialing)
+    - ``plan_id``: current plan name
+    """
+    row = (
+        session.query(SubscriptionDB)
+        .filter(SubscriptionDB.tenant_id == tenant_id)
+        .order_by(SubscriptionDB.created_at_utc.desc())
+        .first()
+    )
+    if row is None:
+        return {
+            "is_trialing": False,
+            "days_remaining": 0,
+            "trial_ends_at": None,
+            "plan_id": None,
+        }
+
+    if row.status != "trialing" or row.trial_ends_at is None:
+        return {
+            "is_trialing": False,
+            "days_remaining": 0,
+            "trial_ends_at": None,
+            "plan_id": row.plan_id,
+        }
+
+    now = datetime.now(UTC)
+    trial_end = row.trial_ends_at
+    if trial_end.tzinfo is None:
+        trial_end = trial_end.replace(tzinfo=UTC)
+    remaining = (trial_end - now).days
+    if remaining < 0:
+        remaining = 0
+
+    return {
+        "is_trialing": remaining > 0,
+        "days_remaining": remaining,
+        "trial_ends_at": row.trial_ends_at.isoformat() if row.trial_ends_at else None,
+        "plan_id": row.plan_id,
+    }
