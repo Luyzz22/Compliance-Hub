@@ -32,6 +32,10 @@ class Permission(StrEnum):
     MANAGE_IDENTITY_PROVIDERS = "manage_identity_providers"
     MANAGE_SCIM = "manage_scim"
     MANAGE_ACCESS_REVIEWS = "manage_access_reviews"
+    MANAGE_SOD_POLICIES = "manage_sod_policies"
+    MANAGE_APPROVAL_WORKFLOWS = "manage_approval_workflows"
+    MANAGE_MFA = "manage_mfa"
+    VIEW_PRIVILEGED_EVENTS = "view_privileged_events"
 
 
 _VIEWER_PERMS = frozenset(
@@ -64,6 +68,7 @@ _AUDITOR_PERMS = _CONTRIBUTOR_PERMS | frozenset(
     {
         Permission.EXPORT_AUDIT_LOG,
         Permission.VIEW_COMPLIANCE_CALENDAR,
+        Permission.VIEW_PRIVILEGED_EVENTS,
     }
 )
 
@@ -101,6 +106,10 @@ _TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
         Permission.MANAGE_IDENTITY_PROVIDERS,
         Permission.MANAGE_SCIM,
         Permission.MANAGE_ACCESS_REVIEWS,
+        Permission.MANAGE_SOD_POLICIES,
+        Permission.MANAGE_APPROVAL_WORKFLOWS,
+        Permission.MANAGE_MFA,
+        Permission.VIEW_PRIVILEGED_EVENTS,
     }
 )
 

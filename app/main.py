@@ -6884,6 +6884,12 @@ def seed_eu_ai_act_demo_endpoint(
 # ── Identity & Auth Endpoints ─────────────────────────────────────────────────
 
 from app.repositories.users import UserRepository  # noqa: E402
+from app.services.enterprise_governance_service import (  # noqa: E402
+    ApprovalWorkflowService,
+    MFAService,
+    PrivilegedActionService,
+    SoDService,
+)
 from app.services.enterprise_iam_service import (  # noqa: E402
     AccessReviewService,
     IdentityProviderService,
@@ -7768,3 +7774,297 @@ def get_user_lifecycle_status(
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return result
+
+
+# ── Enterprise Governance: SoD, MFA, Approvals, Privileged Actions ──────────
+
+
+class SoDPolicyCreateRequest(BaseModel):
+    role_a: str
+    role_b: str
+    description: str | None = None
+    severity: str = "block"
+
+
+class MFAVerifyRequest(BaseModel):
+    token: str
+
+
+class StepUpRequest(BaseModel):
+    token: str
+    action: str
+
+
+class ApprovalCreateRequest(BaseModel):
+    request_type: str
+    target_user_id: str | None = None
+    payload: dict | None = None
+
+
+class ApprovalDecisionRequest(BaseModel):
+    decision: str
+    decision_note: str | None = None
+
+
+# ── SoD Endpoints ────────────────────────────────────────────────────────────
+
+
+@app.post(
+    "/api/v1/enterprise/governance/sod-policies",
+    status_code=status.HTTP_201_CREATED,
+    tags=["enterprise-governance"],
+)
+def create_sod_policy(
+    body: SoDPolicyCreateRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))],
+) -> dict:
+    svc = SoDService(session)
+    result = svc.create_policy(
+        tenant_id, body.role_a, body.role_b, description=body.description, severity=body.severity
+    )
+    if "error" in result:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=result["detail"])
+    return result
+
+
+@app.get("/api/v1/enterprise/governance/sod-policies", tags=["enterprise-governance"])
+def list_sod_policies(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))],
+) -> list[dict]:
+    return SoDService(session).list_policies(tenant_id)
+
+
+@app.delete(
+    "/api/v1/enterprise/governance/sod-policies/{policy_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["enterprise-governance"],
+)
+def delete_sod_policy(
+    policy_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))],
+) -> None:
+    if not SoDService(session).delete_policy(tenant_id, policy_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Policy not found")
+
+
+@app.post("/api/v1/enterprise/governance/sod-check", tags=["enterprise-governance"])
+def check_sod_conflicts(
+    user_id: str,
+    proposed_role: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SOD_POLICIES))],
+) -> dict:
+    conflicts = SoDService(session).check_conflicts(tenant_id, user_id, proposed_role)
+    has_blocking = any(c["severity"] == "block" for c in conflicts)
+    return {"conflicts": conflicts, "has_blocking": has_blocking}
+
+
+# ── MFA Endpoints ────────────────────────────────────────────────────────────
+
+
+@app.post(
+    "/api/v1/enterprise/governance/mfa/enroll",
+    status_code=status.HTTP_201_CREATED,
+    tags=["enterprise-governance"],
+)
+def enroll_mfa(
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
+) -> dict:
+    result = MFAService(session).enroll_totp(user_id)
+    if "error" in result:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=result["detail"])
+    return result
+
+
+@app.post("/api/v1/enterprise/governance/mfa/verify-enrollment", tags=["enterprise-governance"])
+def verify_mfa_enrollment(
+    user_id: str,
+    body: MFAVerifyRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
+) -> dict:
+    result = MFAService(session).verify_totp_enrollment(user_id, body.token)
+    if "error" in result:
+        sc = status.HTTP_400_BAD_REQUEST
+        if result["error"] == "invalid_token":
+            sc = status.HTTP_401_UNAUTHORIZED
+        raise HTTPException(status_code=sc, detail=result["detail"])
+    return result
+
+
+@app.get("/api/v1/enterprise/governance/mfa/status/{user_id}", tags=["enterprise-governance"])
+def get_mfa_status(
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
+) -> dict:
+    return MFAService(session).get_mfa_status(user_id)
+
+
+@app.post(
+    "/api/v1/enterprise/governance/mfa/backup-codes",
+    status_code=status.HTTP_201_CREATED,
+    tags=["enterprise-governance"],
+)
+def generate_backup_codes(
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
+) -> dict:
+    return MFAService(session).generate_backup_codes(user_id)
+
+
+@app.post("/api/v1/enterprise/governance/mfa/step-up", tags=["enterprise-governance"])
+def mfa_step_up(
+    body: StepUpRequest,
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
+) -> dict:
+    result = MFAService(session).step_up_challenge(user_id, body.token)
+    if not result.get("verified"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Step-up verification failed"
+        )
+    # Record privileged action
+    PrivilegedActionService(session).record(tenant_id, user_id, body.action, step_up_verified=True)
+    return result
+
+
+@app.post(
+    "/api/v1/enterprise/governance/mfa/reset",
+    tags=["enterprise-governance"],
+)
+def reset_mfa(
+    user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
+) -> dict:
+    return MFAService(session).reset_mfa(user_id)
+
+
+# ── Approval Workflow Endpoints ──────────────────────────────────────────────
+
+
+@app.post(
+    "/api/v1/enterprise/governance/approvals",
+    status_code=status.HTTP_201_CREATED,
+    tags=["enterprise-governance"],
+)
+def create_approval_request(
+    body: ApprovalCreateRequest,
+    requester_user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_APPROVAL_WORKFLOWS))
+    ],
+) -> dict:
+    return ApprovalWorkflowService(session).create_request(
+        tenant_id,
+        body.request_type,
+        requester_user_id,
+        target_user_id=body.target_user_id,
+        payload=body.payload,
+    )
+
+
+@app.get("/api/v1/enterprise/governance/approvals", tags=["enterprise-governance"])
+def list_approval_requests(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_APPROVAL_WORKFLOWS))
+    ],
+    status_filter: str | None = None,
+) -> list[dict]:
+    return ApprovalWorkflowService(session).list_all(tenant_id, status_filter=status_filter)
+
+
+@app.get("/api/v1/enterprise/governance/approvals/pending", tags=["enterprise-governance"])
+def list_pending_approvals(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_APPROVAL_WORKFLOWS))
+    ],
+) -> list[dict]:
+    return ApprovalWorkflowService(session).list_pending(tenant_id)
+
+
+@app.get(
+    "/api/v1/enterprise/governance/approvals/{request_id}",
+    tags=["enterprise-governance"],
+)
+def get_approval_request(
+    request_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_APPROVAL_WORKFLOWS))
+    ],
+) -> dict:
+    result = ApprovalWorkflowService(session).get_request(tenant_id, request_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
+    return result
+
+
+@app.post(
+    "/api/v1/enterprise/governance/approvals/{request_id}/decide",
+    tags=["enterprise-governance"],
+)
+def decide_approval_request(
+    request_id: str,
+    body: ApprovalDecisionRequest,
+    approver_user_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_APPROVAL_WORKFLOWS))
+    ],
+) -> dict:
+    result = ApprovalWorkflowService(session).decide(
+        tenant_id, request_id, approver_user_id, body.decision, decision_note=body.decision_note
+    )
+    if "error" in result:
+        sc = status.HTTP_400_BAD_REQUEST
+        if result["error"] == "self_approval":
+            sc = status.HTTP_403_FORBIDDEN
+        elif result["error"] == "not_found":
+            sc = status.HTTP_404_NOT_FOUND
+        raise HTTPException(status_code=sc, detail=result["detail"])
+    return result
+
+
+# ── Privileged Action Events ─────────────────────────────────────────────────
+
+
+@app.get("/api/v1/enterprise/governance/privileged-events", tags=["enterprise-governance"])
+def list_privileged_events(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.VIEW_PRIVILEGED_EVENTS))
+    ],
+    actor_user_id: str | None = None,
+    limit: int = 100,
+) -> list[dict]:
+    return PrivilegedActionService(session).list_events(
+        tenant_id, actor_user_id=actor_user_id, limit=limit
+    )
