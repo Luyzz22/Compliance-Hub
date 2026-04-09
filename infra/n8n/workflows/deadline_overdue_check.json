@@ -1,0 +1,87 @@
+{
+  "name": "ComplianceHub – Daily Overdue Check",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
+        }
+      },
+      "id": "daily-trigger",
+      "name": "Daily 06:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.COMPLIANCEHUB_API_BASE_URL }}/api/v1/compliance-calendar/deadlines",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.COMPLIANCEHUB_API_KEY }}" },
+            { "name": "x-tenant-id", "value": "={{ $env.COMPLIANCEHUB_TENANT_ID }}" },
+            { "name": "x-opa-user-role", "value": "tenant_admin" }
+          ]
+        }
+      },
+      "id": "fetch-deadlines",
+      "name": "Fetch All Deadlines",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const today = new Date().toISOString().split('T')[0];\nconst deadlines = $input.all();\nconst overdue = deadlines.filter(d => d.json.due_date < today && d.json.escalation_level !== 'overdue');\nreturn overdue.map(d => ({ json: { ...d.json, new_status: 'overdue' } }));"
+      },
+      "id": "filter-overdue",
+      "name": "Filter Overdue Deadlines",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.length }}",
+              "operation": "largerEqual",
+              "value2": 1
+            }
+          ]
+        }
+      },
+      "id": "has-overdue",
+      "name": "Has Overdue Items?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.COMPLIANCE_TEAM_EMAIL }}",
+        "subject": "🔴 ComplianceHub – Overdue Compliance Deadlines",
+        "text": "The following compliance deadlines are now OVERDUE:\n\n{{ JSON.stringify($json, null, 2) }}\n\nPlease take immediate action in the ComplianceHub Dashboard."
+      },
+      "id": "notify-overdue",
+      "name": "Notify Overdue",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1200, 200]
+    }
+  ],
+  "connections": {
+    "Daily 06:00 UTC": { "main": [[{ "node": "Fetch All Deadlines", "type": "main", "index": 0 }]] },
+    "Fetch All Deadlines": { "main": [[{ "node": "Filter Overdue Deadlines", "type": "main", "index": 0 }]] },
+    "Filter Overdue Deadlines": { "main": [[{ "node": "Has Overdue Items?", "type": "main", "index": 0 }]] },
+    "Has Overdue Items?": { "main": [[{ "node": "Notify Overdue", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["compliancehub", "compliance-calendar", "overdue-check"]
+}

@@ -1,0 +1,117 @@
+{
+  "name": "ComplianceHub – Deadline Escalation Reminders (30/14/7 days)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * *" }]
+        }
+      },
+      "id": "daily-escalation-trigger",
+      "name": "Daily 07:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.COMPLIANCEHUB_API_BASE_URL }}/api/v1/compliance-calendar/deadlines",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.COMPLIANCEHUB_API_KEY }}" },
+            { "name": "x-tenant-id", "value": "={{ $env.COMPLIANCEHUB_TENANT_ID }}" },
+            { "name": "x-opa-user-role", "value": "tenant_admin" }
+          ]
+        }
+      },
+      "id": "fetch-deadlines-esc",
+      "name": "Fetch All Deadlines",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const thresholds = [30, 14, 7];\nconst deadlines = $input.all();\nconst alerts = deadlines.filter(d => {\n  const remaining = d.json.days_remaining;\n  return thresholds.includes(remaining);\n});\nreturn alerts.map(d => ({\n  json: {\n    title: d.json.title,\n    due_date: d.json.due_date,\n    days_remaining: d.json.days_remaining,\n    escalation_level: d.json.escalation_level,\n    category: d.json.category,\n    owner: d.json.owner || 'Unassigned'\n  }\n}));"
+      },
+      "id": "filter-escalation",
+      "name": "Filter 30/14/7 Day Thresholds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.length }}",
+              "operation": "largerEqual",
+              "value2": 1
+            }
+          ]
+        }
+      },
+      "id": "has-escalations",
+      "name": "Has Escalation Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.COMPLIANCE_TEAM_EMAIL }}",
+        "subject": "⚠️ ComplianceHub – Deadline Escalation Alert",
+        "text": "The following compliance deadlines require attention:\n\n{{ JSON.stringify($json, null, 2) }}\n\nPlease review and take action in the ComplianceHub Dashboard."
+      },
+      "id": "send-escalation",
+      "name": "Send Escalation Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1200, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.COMPLIANCEHUB_N8N_WEBHOOK_URL }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "event_type", "value": "deadline_escalation" },
+            { "name": "deadlines", "value": "={{ JSON.stringify($json) }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.COMPLIANCEHUB_API_KEY }}" },
+            { "name": "x-tenant-id", "value": "={{ $env.COMPLIANCEHUB_TENANT_ID }}" }
+          ]
+        }
+      },
+      "id": "webhook-escalation",
+      "name": "Notify via Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 400]
+    }
+  ],
+  "connections": {
+    "Daily 07:00 UTC": { "main": [[{ "node": "Fetch All Deadlines", "type": "main", "index": 0 }]] },
+    "Fetch All Deadlines": { "main": [[{ "node": "Filter 30/14/7 Day Thresholds", "type": "main", "index": 0 }]] },
+    "Filter 30/14/7 Day Thresholds": { "main": [[{ "node": "Has Escalation Alerts?", "type": "main", "index": 0 }]] },
+    "Has Escalation Alerts?": { "main": [
+      [{ "node": "Send Escalation Email", "type": "main", "index": 0 }],
+      [{ "node": "Notify via Webhook", "type": "main", "index": 0 }]
+    ]}
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["compliancehub", "compliance-calendar", "deadline-escalation"]
+}
