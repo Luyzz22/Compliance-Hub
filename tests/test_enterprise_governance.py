@@ -151,7 +151,7 @@ class TestPrivilegedRoleDetection:
 class TestTOTPImplementation:
     def test_generate_secret_length(self) -> None:
         secret = _generate_totp_secret()
-        assert len(secret) == 40  # 20 bytes -> 40 hex chars
+        assert len(secret) == 40  # token_hex(20): 20 random bytes = 40 hex chars
 
     def test_current_totp_returns_6_digits(self) -> None:
         secret = _generate_totp_secret()
