@@ -2961,3 +2961,91 @@ export async function fetchEnterpriseOnboardingReadiness(
     tenantId,
   ) as Promise<EnterpriseOnboardingReadinessDto>;
 }
+
+// ─── Phase 3: Board KPI, DATEV Export, Gap Analysis ──────────────────────
+
+export interface BoardKpiReport {
+  tenant_id: string;
+  generated_at: string;
+  compliance_score: {
+    overall_score: number;
+    norm_scores: { norm: string; score: number; weight: number }[];
+    computed_at: string;
+  };
+  high_risk_ai_systems: number;
+  top_findings: {
+    id: string;
+    event_type: string;
+    detail: string | null;
+    created_at: string | null;
+  }[];
+  incident_statistics: {
+    total: number;
+    open: number;
+    closed: number;
+    escalated: number;
+  };
+  trend_data: { period: string; score: number; created_at: string }[];
+  upcoming_deadlines: {
+    deadline: string;
+    norm: string;
+    description: string;
+  }[];
+}
+
+export async function fetchBoardKpiReport(
+  tenantId: string,
+): Promise<BoardKpiReport> {
+  return tenantApiFetch(
+    "/api/v1/enterprise/board/kpi-report",
+    tenantId,
+  ) as Promise<BoardKpiReport>;
+}
+
+export interface GapReportSummary {
+  id: string;
+  status: string;
+  norm_scope: string;
+  summary: string | null;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export interface GapReportDetail extends GapReportSummary {
+  tenant_id: string;
+  gaps: unknown[];
+  llm_model: string | null;
+  llm_trace_id: string | null;
+  requested_by: string | null;
+}
+
+export async function fetchGapReports(
+  tenantId: string,
+): Promise<GapReportSummary[]> {
+  return tenantApiFetch(
+    "/api/v1/enterprise/gap-analysis/reports",
+    tenantId,
+  ) as Promise<GapReportSummary[]>;
+}
+
+export async function fetchGapReportDetail(
+  tenantId: string,
+  reportId: string,
+): Promise<GapReportDetail> {
+  const rid = encodeURIComponent(reportId);
+  return tenantApiFetch(
+    `/api/v1/enterprise/gap-analysis/reports/${rid}`,
+    tenantId,
+  ) as Promise<GapReportDetail>;
+}
+
+export async function triggerGapAnalysis(
+  tenantId: string,
+  norms: string = "eu_ai_act,iso_42001,nis2,dsgvo",
+): Promise<{ report_id: string; status: string; norm_scope: string }> {
+  return tenantApiFetch(
+    `/api/v1/enterprise/gap-analysis/run?norms=${encodeURIComponent(norms)}`,
+    tenantId,
+    { method: "POST" },
+  ) as Promise<{ report_id: string; status: string; norm_scope: string }>;
+}

@@ -1448,3 +1448,88 @@ class PrivilegedActionEventDB(Base):
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+
+
+class ComplianceScoreDB(Base):
+    """Aggregated compliance score snapshot per tenant (board-level KPI)."""
+
+    __tablename__ = "compliance_scores"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    score_type: Mapped[str] = mapped_column(String(64), nullable=False)  # overall | norm-specific
+    norm: Mapped[str | None] = mapped_column(
+        String(128), nullable=True
+    )  # e.g. eu_ai_act, iso_42001
+    score_value: Mapped[float] = mapped_column(Float, nullable=False)
+    weight: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    period: Mapped[str] = mapped_column(String(32), nullable=False)  # e.g. 2026-Q1
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class GapReportDB(Base):
+    """Persisted gap analysis report per tenant (RAG-powered)."""
+
+    __tablename__ = "gap_reports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="pending"
+    )  # pending | running | completed | failed
+    norm_scope: Mapped[str] = mapped_column(String(255), nullable=False)  # comma-separated norms
+    gaps_json: Mapped[str | None] = mapped_column(Text, nullable=True)  # structured JSON
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    llm_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    llm_trace_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    requested_by: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    completed_at_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class DatevExportLogDB(Base):
+    """Audit trail for DATEV EXTF exports."""
+
+    __tablename__ = "datev_export_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    export_type: Mapped[str] = mapped_column(String(64), nullable=False)  # extf_buchungen
+    period_from: Mapped[str] = mapped_column(String(10), nullable=False)  # YYYY-MM-DD
+    period_to: Mapped[str] = mapped_column(String(10), nullable=False)
+    record_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)  # SHA-256
+    exported_by: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    step_up_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class NormEmbeddingDB(Base):
+    """Chunked regulatory text with embedding vector (pgvector-ready, stores dim in JSON)."""
+
+    __tablename__ = "norm_embeddings"
+    __table_args__ = (
+        UniqueConstraint("norm", "article_ref", "chunk_index", name="uq_norm_embedding_chunk"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    norm: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    article_ref: Mapped[str] = mapped_column(String(128), nullable=False)  # e.g. Art. 9 Abs. 2
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    text_content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding_json: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON float array
+    embedding_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    valid_from: Mapped[str | None] = mapped_column(String(10), nullable=True)  # YYYY-MM-DD
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )

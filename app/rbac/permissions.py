@@ -36,6 +36,10 @@ class Permission(StrEnum):
     MANAGE_APPROVAL_WORKFLOWS = "manage_approval_workflows"
     MANAGE_MFA = "manage_mfa"
     VIEW_PRIVILEGED_EVENTS = "view_privileged_events"
+    EXPORT_DATEV = "export_datev"
+    VIEW_GAP_REPORTS = "view_gap_reports"
+    RUN_GAP_ANALYSIS = "run_gap_analysis"
+    VIEW_EXECUTIVE_DASHBOARD = "view_executive_dashboard"
 
 
 _VIEWER_PERMS = frozenset(
@@ -84,7 +88,13 @@ _COMPLIANCE_OFFICER_PERMS = _EDITOR_PERMS | frozenset(
 
 # CISO inherits all compliance_officer perms (VIEW_BOARD_REPORTS and
 # GENERATE_BOARD_REPORTS are already present via that chain).
-_CISO_PERMS = _COMPLIANCE_OFFICER_PERMS
+_CISO_PERMS = _COMPLIANCE_OFFICER_PERMS | frozenset(
+    {
+        Permission.VIEW_EXECUTIVE_DASHBOARD,
+        Permission.VIEW_GAP_REPORTS,
+        Permission.RUN_GAP_ANALYSIS,
+    }
+)
 
 _BOARD_MEMBER_PERMS = frozenset(
     {
@@ -92,10 +102,19 @@ _BOARD_MEMBER_PERMS = frozenset(
         Permission.VIEW_BOARD_REPORTS,
         Permission.VIEW_COMPLIANCE_STATUS,
         Permission.VIEW_COMPLIANCE_CALENDAR,
+        Permission.VIEW_EXECUTIVE_DASHBOARD,
+        Permission.VIEW_GAP_REPORTS,
     }
 )
 
-_COMPLIANCE_ADMIN_PERMS = _COMPLIANCE_OFFICER_PERMS
+_COMPLIANCE_ADMIN_PERMS = _COMPLIANCE_OFFICER_PERMS | frozenset(
+    {
+        Permission.VIEW_EXECUTIVE_DASHBOARD,
+        Permission.VIEW_GAP_REPORTS,
+        Permission.RUN_GAP_ANALYSIS,
+        Permission.EXPORT_DATEV,
+    }
+)
 
 _TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
     {
@@ -110,6 +129,7 @@ _TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
         Permission.MANAGE_APPROVAL_WORKFLOWS,
         Permission.MANAGE_MFA,
         Permission.VIEW_PRIVILEGED_EVENTS,
+        Permission.EXPORT_DATEV,
     }
 )
 

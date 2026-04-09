@@ -8068,3 +8068,176 @@ def list_privileged_events(
     return PrivilegedActionService(session).list_events(
         tenant_id, actor_user_id=actor_user_id, limit=limit
     )
+
+
+# ── Phase 3: Board KPI, DATEV EXTF Export, Gap Analysis ───────────────────
+
+
+@app.get(
+    "/api/v1/enterprise/board/kpi-report",
+    tags=["enterprise-board"],
+)
+def get_board_kpi_report(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.VIEW_EXECUTIVE_DASHBOARD))
+    ],
+) -> dict:
+    """Board-level KPI report with compliance score, incidents, trends, deadlines."""
+    from app.services.board_kpi_aggregation import build_board_kpi_report
+
+    return build_board_kpi_report(session, tenant_id)
+
+
+@app.post(
+    "/api/v1/enterprise/datev/export",
+    tags=["enterprise-datev"],
+)
+def create_datev_extf_export(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_DATEV))],
+    period_from: str = Query(..., description="Start date YYYY-MM-DD"),
+    period_to: str = Query(..., description="End date YYYY-MM-DD"),
+    skr: str = Query("SKR03", description="SKR03 or SKR04"),
+) -> Response:
+    """Generate DATEV EXTF ASCII export. Requires EXPORT_DATEV permission."""
+    import uuid as _uuid
+    from datetime import UTC
+    from datetime import datetime as _dt
+
+    from app.models_db import DatevExportLogDB
+    from app.services.datev_extf_export import (
+        DatevBookingRecord,
+        compute_checksum,
+        render_extf_export,
+        validate_records,
+    )
+
+    # In production, records come from the booking entries in the DB.
+    # For now, return an empty but valid EXTF export.
+    records: list[DatevBookingRecord] = []
+
+    errors = validate_records(records)
+    if errors:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=errors)
+
+    content = render_extf_export(
+        records,
+        datum_von=period_from.replace("-", ""),
+        datum_bis=period_to.replace("-", ""),
+    )
+    checksum = compute_checksum(content)
+
+    log_entry = DatevExportLogDB(
+        id=str(_uuid.uuid4()),
+        tenant_id=tenant_id,
+        export_type="extf_buchungen",
+        period_from=period_from,
+        period_to=period_to,
+        record_count=len(records),
+        checksum=checksum,
+        step_up_verified=False,
+        created_at_utc=_dt.now(UTC),
+    )
+    session.add(log_entry)
+    session.commit()
+
+    return Response(
+        content=content,
+        media_type="text/plain; charset=cp1252",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="EXTF_export_{period_from}_{period_to}.csv"'
+            ),
+            "X-Checksum-SHA256": checksum,
+        },
+    )
+
+
+@app.post(
+    "/api/v1/enterprise/gap-analysis/run",
+    tags=["enterprise-gap-analysis"],
+)
+def trigger_gap_analysis(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.RUN_GAP_ANALYSIS))],
+    norms: str = Query("eu_ai_act,iso_42001,nis2,dsgvo", description="Comma-separated norms"),
+) -> dict:
+    """Trigger RAG-powered gap analysis for the tenant."""
+    from app.services.gap_analysis_agent import run_gap_analysis
+
+    norm_list = [n.strip() for n in norms.split(",") if n.strip()]
+    report = run_gap_analysis(session, tenant_id=tenant_id, norms=norm_list)
+    session.commit()
+    return {
+        "report_id": report.id,
+        "status": report.status,
+        "norm_scope": report.norm_scope,
+    }
+
+
+@app.get(
+    "/api/v1/enterprise/gap-analysis/reports",
+    tags=["enterprise-gap-analysis"],
+)
+def list_gap_analysis_reports(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_GAP_REPORTS))],
+    limit: int = Query(20, ge=1, le=100),
+) -> list[dict]:
+    """List gap analysis reports for the tenant."""
+    from app.services.gap_analysis_agent import list_gap_reports
+
+    return list_gap_reports(session, tenant_id, limit=limit)
+
+
+@app.get(
+    "/api/v1/enterprise/gap-analysis/reports/{report_id}",
+    tags=["enterprise-gap-analysis"],
+)
+def get_gap_analysis_report(
+    report_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_GAP_REPORTS))],
+) -> dict:
+    """Get a specific gap analysis report."""
+    from app.services.gap_analysis_agent import get_gap_report
+
+    result = get_gap_report(session, tenant_id, report_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gap report not found")
+    return result
+
+
+@app.post(
+    "/api/v1/enterprise/rag/ingest",
+    tags=["enterprise-rag"],
+)
+def ingest_norm_text(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))
+    ],
+    norm: str = Query(..., description="Norm identifier, e.g. eu_ai_act"),
+    article_ref: str = Query(..., description="Article reference, e.g. Art. 9 Abs. 2"),
+    text_content: str = Query(..., description="Full article/paragraph text"),
+    valid_from: str | None = Query(None, description="Validity start YYYY-MM-DD"),
+) -> dict:
+    """Ingest regulatory text for RAG-based gap analysis."""
+    from app.services.rag_norm_ingestion import ingest_norm_chunks
+
+    rows = ingest_norm_chunks(
+        session,
+        norm=norm,
+        article_ref=article_ref,
+        text_content=text_content,
+        valid_from=valid_from,
+    )
+    session.commit()
+    return {"ingested_chunks": len(rows), "norm": norm, "article_ref": article_ref}
