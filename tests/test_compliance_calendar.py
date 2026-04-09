@@ -303,9 +303,7 @@ def test_system_deadlines_visible_to_all_tenants(
     for tenant in ["sys-vis-a", "sys-vis-b"]:
         r = client.get(f"{BASE}/deadlines", headers=_headers(tenant))
         assert r.status_code == 200
-        system_items = [
-            d for d in r.json() if d["is_system"] is True
-        ]
+        system_items = [d for d in r.json() if d["is_system"] is True]
         assert len(system_items) >= 8
 
 
