@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -241,8 +241,11 @@ def get_trial_status(session: Session, tenant_id: str) -> dict:
             "plan_id": row.plan_id,
         }
 
-    now = datetime.utcnow()
-    remaining = (row.trial_ends_at - now).days
+    now = datetime.now(UTC)
+    trial_end = row.trial_ends_at
+    if trial_end.tzinfo is None:
+        trial_end = trial_end.replace(tzinfo=UTC)
+    remaining = (trial_end - now).days
     if remaining < 0:
         remaining = 0
 

@@ -314,7 +314,7 @@ class TestTrialStatus:
                 "trial-banner-exp",
                 plan_id="enterprise",
                 status="trialing",
-                trial_ends_at=datetime.utcnow() - timedelta(days=1),
+                trial_ends_at=datetime.now(UTC) - timedelta(days=1),
             )
             result = get_trial_status(session, "trial-banner-exp")
             assert result["is_trialing"] is False
