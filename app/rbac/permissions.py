@@ -43,6 +43,7 @@ class Permission(StrEnum):
     GENERATE_PDF_REPORT = "generate_pdf_report"
     EXPORT_XRECHNUNG = "export_xrechnung"
     MANAGE_N8N_WEBHOOKS = "manage_n8n_webhooks"
+    MANAGE_BILLING = "manage_billing"
 
 
 _VIEWER_PERMS = frozenset(
@@ -140,6 +141,7 @@ _TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
         Permission.EXPORT_DATEV,
         Permission.EXPORT_XRECHNUNG,
         Permission.MANAGE_N8N_WEBHOOKS,
+        Permission.MANAGE_BILLING,
     }
 )
 

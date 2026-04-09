@@ -8444,17 +8444,27 @@ def receive_n8n_webhook(
         verify_hmac_signature,
     )
 
-    secret = os.environ.get("COMPLIANCEHUB_N8N_WEBHOOK_SECRET", "")
-    signature = request.headers.get("X-Hub-Signature-256", "")
+    secret = os.environ.get("COMPLIANCEHUB_N8N_WEBHOOK_SECRET", "").strip()
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Webhook secret not configured",
+        )
 
-    if secret and signature:
-        raw_body = json.dumps(body.model_dump(), default=str).encode("utf-8")
-        sig_value = signature.removeprefix("sha256=")
-        if not verify_hmac_signature(raw_body, secret, sig_value):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid HMAC signature",
-            )
+    signature = request.headers.get("X-Hub-Signature-256", "").strip()
+    if not signature:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing HMAC signature",
+        )
+
+    raw_body = json.dumps(body.model_dump(), default=str).encode("utf-8")
+    sig_value = signature.removeprefix("sha256=")
+    if not verify_hmac_signature(raw_body, secret, sig_value):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid HMAC signature",
+        )
 
     payload = build_webhook_payload(body.event_type, tenant_id, body.data)
     logger.info(
@@ -8519,3 +8529,192 @@ def trigger_n8n_workflow(
     if "error" in result:
         sanitized["error"] = "webhook_delivery_failed"
     return {"workflow_type": workflow_type, "result": sanitized}
+
+
+# ── Phase 5: Tenant Onboarding Wizard ────────────────────────────────────────
+
+
+@app.get(
+    "/api/v1/enterprise/onboarding/status",
+    tags=["enterprise-onboarding"],
+)
+def get_onboarding_status_endpoint(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+) -> dict:
+    """Get onboarding wizard status for the current tenant."""
+    from app.services.tenant_onboarding_wizard import get_onboarding_status
+
+    session = next(get_session())
+    try:
+        result = get_onboarding_status(session, tenant_id)
+        if result is None:
+            return {"status": "not_started", "tenant_id": tenant_id}
+        return result
+    finally:
+        session.close()
+
+
+@app.put(
+    "/api/v1/enterprise/onboarding/step/{step}",
+    tags=["enterprise-onboarding"],
+)
+def update_onboarding_step_endpoint(
+    step: int,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+    request_body: dict | None = None,
+) -> dict:
+    """Update onboarding wizard step for the current tenant."""
+    from app.services.tenant_onboarding_wizard import update_onboarding_step
+
+    if step < 1 or step > 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Step must be between 1 and 6",
+        )
+    session = next(get_session())
+    try:
+        step_data = request_body or {}
+        return update_onboarding_step(session, tenant_id, step, step_data)
+    finally:
+        session.close()
+
+
+@app.post(
+    "/api/v1/enterprise/onboarding/complete",
+    tags=["enterprise-onboarding"],
+)
+def complete_onboarding_endpoint(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+) -> dict:
+    """Mark onboarding as complete for the current tenant."""
+    from app.services.tenant_onboarding_wizard import complete_onboarding
+
+    session = next(get_session())
+    try:
+        return complete_onboarding(session, tenant_id)
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/enterprise/onboarding/templates",
+    tags=["enterprise-onboarding"],
+)
+def get_onboarding_templates(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+) -> dict:
+    """Get industry templates for onboarding wizard."""
+    from app.services.tenant_onboarding_wizard import INDUSTRY_TEMPLATES
+
+    return {"templates": INDUSTRY_TEMPLATES}
+
+
+# ── Phase 5: Subscription & Billing (Stripe) ─────────────────────────────────
+
+
+@app.get(
+    "/api/v1/enterprise/billing/plans",
+    tags=["enterprise-billing"],
+)
+def list_billing_plans(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
+) -> dict:
+    """List available subscription plans."""
+    from app.services.stripe_billing_service import get_plans
+
+    return {"plans": get_plans()}
+
+
+@app.get(
+    "/api/v1/enterprise/billing/subscription",
+    tags=["enterprise-billing"],
+)
+def get_billing_subscription(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+) -> dict:
+    """Get current subscription for the tenant."""
+    from app.services.stripe_billing_service import get_tenant_subscription
+
+    session = next(get_session())
+    try:
+        result = get_tenant_subscription(session, tenant_id)
+        if result is None:
+            return {"subscription": None, "tenant_id": tenant_id}
+        return {"subscription": result}
+    finally:
+        session.close()
+
+
+@app.post(
+    "/api/v1/enterprise/billing/subscribe",
+    tags=["enterprise-billing"],
+)
+def start_trial_subscription(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+    plan_name: str = Query(..., description="Plan name: starter, professional, or enterprise"),
+) -> dict:
+    """Start a trial subscription for the tenant."""
+    from app.services.stripe_billing_service import create_trial_subscription
+
+    session = next(get_session())
+    try:
+        result = create_trial_subscription(session, tenant_id, plan_name)
+        return {"subscription": result}
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    finally:
+        session.close()
+
+
+@app.post(
+    "/api/v1/enterprise/billing/stripe-webhook",
+    tags=["enterprise-billing"],
+)
+async def stripe_webhook(request: Request) -> dict:
+    """Receive and validate Stripe webhook calls (HMAC-authenticated)."""
+    from app.services.stripe_billing_service import (
+        handle_stripe_webhook_event,
+        verify_stripe_signature,
+    )
+
+    secret = os.environ.get("COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET", "").strip()
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Stripe webhook secret not configured",
+        )
+
+    signature = request.headers.get("Stripe-Signature", "").strip()
+    if not signature:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Stripe signature",
+        )
+
+    raw_body = await request.body()
+    if not verify_stripe_signature(raw_body, signature, secret):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Stripe signature",
+        )
+
+    body = json.loads(raw_body)
+    event_type = body.get("type", "unknown")
+    event_data = body.get("data", {})
+
+    session = next(get_session())
+    try:
+        result = handle_stripe_webhook_event(session, event_type, event_data)
+        return result
+    finally:
+        session.close()

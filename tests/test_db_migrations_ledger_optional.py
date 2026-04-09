@@ -100,7 +100,8 @@ def test_run_all_ledgerless_reports_unsatisfied_without_ddl(tmp_path) -> None:
     assert "20260412_governance_mfa_sod_approvals" in ids
     assert "20260413_phase3_reporting_datev_rag" in ids
     assert "20260414_phase4_pdf_xrechnung" in ids
-    assert len(ids) == 14
+    assert "20260415_phase5_onboarding_billing" in ids
+    assert len(ids) == 15
     cols = {c["name"] for c in inspect(engine).get_columns("tenants")}
     assert "kritis_sector" not in cols
     engine.dispose()
