@@ -1571,3 +1571,81 @@ class XRechnungExportDB(Base):
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+
+
+# ── Phase 5: Tenant Onboarding & Subscription Billing ────────────────────────
+
+
+class OnboardingStatusDB(Base):
+    """Tracks onboarding wizard progress per tenant."""
+
+    __tablename__ = "onboarding_status"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    current_step: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    total_steps: Mapped[int] = mapped_column(Integer, nullable=False, default=6)
+    step_data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+
+class SubscriptionPlanDB(Base):
+    """Available subscription plans."""
+
+    __tablename__ = "subscription_plans"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    max_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    features: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    price_monthly_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    stripe_price_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class SubscriptionDB(Base):
+    """Tenant subscription tracking."""
+
+    __tablename__ = "subscriptions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    plan_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="trialing")
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+
+class BillingEventDB(Base):
+    """Audit log for billing-related events."""
+
+    __tablename__ = "billing_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    stripe_event_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
