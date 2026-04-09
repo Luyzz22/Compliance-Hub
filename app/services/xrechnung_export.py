@@ -40,6 +40,7 @@ class XRechnungInvoice:
     seller_address: str
     buyer_name: str
     buyer_reference: str  # Leitweg-ID
+    buyer_address: str = ""
     line_items: list[dict] = field(default_factory=list)
     currency: str = "EUR"
     note: str | None = None
@@ -149,31 +150,36 @@ def generate_xrechnung_xml(invoice: XRechnungInvoice) -> str:
 
     # Customer party
     customer = _cac(root, "AccountingCustomerParty")
-    _build_party(customer, invoice.buyer_name, "")
+    _build_party(customer, invoice.buyer_name, invoice.buyer_address)
 
-    # Invoice lines — accumulate totals
+    # Invoice lines — accumulate totals per tax rate
     total_net = Decimal("0.00")
     total_tax = Decimal("0.00")
+    tax_breakdown: dict[str, tuple[Decimal, Decimal]] = {}  # rate → (taxable, tax)
     for idx, item in enumerate(invoice.line_items, 1):
         line_net, line_tax = _build_invoice_line(root, idx, item, invoice.currency)
         total_net += line_net
         total_tax += line_tax
+        rate_key = str(_dec(item.get("tax_percent", 19)))
+        prev_taxable, prev_tax = tax_breakdown.get(rate_key, (Decimal("0.00"), Decimal("0.00")))
+        tax_breakdown[rate_key] = (prev_taxable + line_net, prev_tax + line_tax)
 
     total_net = _dec(total_net)
     total_tax = _dec(total_tax)
     total_gross = _dec(total_net + total_tax)
 
-    # TaxTotal
+    # TaxTotal with per-rate subtotals
     tax_total = _cac(root, "TaxTotal")
     _cbc(tax_total, "TaxAmount", str(total_tax), currencyID=invoice.currency)
-    tax_subtotal = _cac(tax_total, "TaxSubtotal")
-    _cbc(tax_subtotal, "TaxableAmount", str(total_net), currencyID=invoice.currency)
-    _cbc(tax_subtotal, "TaxAmount", str(total_tax), currencyID=invoice.currency)
-    tax_cat = _cac(tax_subtotal, "TaxCategory")
-    _cbc(tax_cat, "ID", "S")
-    _cbc(tax_cat, "Percent", "19.00")
-    scheme = _cac(tax_cat, "TaxScheme")
-    _cbc(scheme, "ID", "VAT")
+    for rate_key, (taxable, tax_amt) in sorted(tax_breakdown.items()):
+        tax_subtotal = _cac(tax_total, "TaxSubtotal")
+        _cbc(tax_subtotal, "TaxableAmount", str(_dec(taxable)), currencyID=invoice.currency)
+        _cbc(tax_subtotal, "TaxAmount", str(_dec(tax_amt)), currencyID=invoice.currency)
+        tax_cat = _cac(tax_subtotal, "TaxCategory")
+        _cbc(tax_cat, "ID", "S")
+        _cbc(tax_cat, "Percent", rate_key)
+        scheme = _cac(tax_cat, "TaxScheme")
+        _cbc(scheme, "ID", "VAT")
 
     # LegalMonetaryTotal
     monetary = _cac(root, "LegalMonetaryTotal")
