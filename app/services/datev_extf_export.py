@@ -31,7 +31,7 @@ class DatevBookingRecord(BaseModel):
     konto: int = Field(..., ge=1, le=99999, description="Konto (SKR03/SKR04)")
     gegenkonto: int = Field(..., ge=1, le=99999, description="Gegenkonto")
     belegdatum: str = Field(..., pattern=r"^\d{4}$", description="DDMM format")
-    buchungstext: str = Field(..., max_length=60)
+    buchungstext: str = Field(...)
     beleg1: str = Field(default="", max_length=36)
     beleg2: str = Field(default="", max_length=36)
     kostenstelle: str = Field(default="", max_length=36)
@@ -40,10 +40,11 @@ class DatevBookingRecord(BaseModel):
         description="bussgeld|beratung|zertifizierung|versicherung",
     )
 
-    @field_validator("buchungstext")
+    @field_validator("buchungstext", mode="before")
     @classmethod
     def truncate_buchungstext(cls, v: str) -> str:
-        return v[:60]
+        """DATEV Buchungstext is limited to 60 characters."""
+        return str(v)[:60]
 
 
 # SKR03 default account mappings for GRC-relevant booking types
