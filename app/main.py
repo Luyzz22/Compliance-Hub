@@ -5031,6 +5031,20 @@ def list_compliance_deadlines(
 
 
 @app.get(
+    "/api/v1/compliance-calendar/deadlines/upcoming",
+    response_model=list[ComplianceDeadlineResponse],
+)
+def list_upcoming_compliance_deadlines(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_COMPLIANCE_CALENDAR))],
+    repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
+    days: int = 90,
+) -> list[ComplianceDeadlineResponse]:
+    """List upcoming compliance deadlines within a specified number of days."""
+    return repo.list_upcoming(tenant_id=tenant_id, days=days)
+
+
+@app.get(
     "/api/v1/compliance-calendar/deadlines/{deadline_id}",
     response_model=ComplianceDeadlineResponse,
 )
@@ -5063,6 +5077,8 @@ def update_compliance_deadline(
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> ComplianceDeadlineResponse:
     """Partially update a compliance deadline."""
+    if repo.is_system_deadline(deadline_id):
+        raise HTTPException(status_code=403, detail="System deadlines cannot be modified")
     prev = repo.get(tenant_id=tenant_id, deadline_id=deadline_id)
     if prev is None:
         raise HTTPException(status_code=404, detail="Compliance deadline not found")
@@ -5117,6 +5133,8 @@ def delete_compliance_deadline(
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> Response:
     """Delete a compliance deadline."""
+    if repo.is_system_deadline(deadline_id):
+        raise HTTPException(status_code=403, detail="System deadlines cannot be deleted")
     prev = repo.get(tenant_id=tenant_id, deadline_id=deadline_id)
     if prev is None:
         raise HTTPException(status_code=404, detail="Compliance deadline not found")
@@ -5194,6 +5212,41 @@ def export_compliance_calendar_ical(
         media_type="text/calendar",
         headers={"Content-Disposition": "attachment; filename=compliance-calendar.ics"},
     )
+
+
+@app.post(
+    "/api/v1/compliance-calendar/seed-system-deadlines",
+    response_model=list[ComplianceDeadlineResponse],
+)
+def seed_system_deadlines(
+    request: Request,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_COMPLIANCE_CALENDAR))
+    ],
+    repo: Annotated[ComplianceDeadlineRepository, Depends(get_compliance_deadline_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> list[ComplianceDeadlineResponse]:
+    """Idempotent: create global system deadlines (DACH region, visible to all tenants)."""
+    result = repo.seed_system_deadlines()
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
+        tenant_id=tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action=GovernanceAuditAction.COMPLIANCE_CALENDAR_SEED_DEFAULTS.value,
+        entity_type=GovernanceAuditEntity.COMPLIANCE_CALENDAR.value,
+        entity_id="system",
+        outcome="success",
+        before=None,
+        after=json.dumps({"system_deadline_count": len(result)}),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"seed_type": "system_deadlines"},
+    )
+    return result
 
 
 @app.get("/api/v1/audit-logs", response_model=list[AuditLog])

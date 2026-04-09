@@ -7,6 +7,7 @@ export const BOARD_NAV_ITEMS = [
   { href: "/board/eu-ai-act-readiness", label: "EU AI Act Readiness" },
   { href: "/board/incidents", label: "Incidents" },
   { href: "/board/suppliers", label: "Supplier Risk" },
+  { href: "/board/compliance-calendar", label: "Compliance Calendar" },
 ] as const;
 
 export const WORKSPACE_NAV_ITEMS = [
