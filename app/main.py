@@ -8241,3 +8241,263 @@ def ingest_norm_text(
     )
     session.commit()
     return {"ingested_chunks": len(rows), "norm": norm, "article_ref": article_ref}
+
+
+# ── Phase 4: PDF/A-3 Report, XRechnung 3.0, n8n Webhooks ─────────────────
+
+
+class XRechnungLineItem(BaseModel):
+    description: str
+    quantity: float = 1.0
+    unit_price: float
+    tax_percent: float = 19.0
+
+
+class XRechnungExportRequest(BaseModel):
+    invoice_id: str = Field(..., min_length=1)
+    issue_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
+    due_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
+    seller_name: str
+    seller_tax_id: str
+    seller_address: str
+    buyer_name: str
+    buyer_reference: str  # Leitweg-ID
+    buyer_address: str = ""
+    line_items: list[XRechnungLineItem]
+    currency: str = "EUR"
+    note: str | None = None
+
+
+class N8nWebhookRequest(BaseModel):
+    event_type: str
+    data: dict = Field(default_factory=dict)
+
+
+@app.get(
+    "/api/v1/enterprise/board/pdf-report",
+    tags=["enterprise-board"],
+)
+def get_board_pdf_report(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.GENERATE_PDF_REPORT))
+    ],
+) -> Response:
+    """Generate PDF/A-3 board report from KPI data. GoBD-konform, archivierungssicher."""
+    import uuid as _uuid
+    from datetime import UTC
+    from datetime import datetime as _dt
+
+    from app.models_db import ReportExportDB
+    from app.services.board_kpi_aggregation import build_board_kpi_report
+    from app.services.pdf_report_generator import generate_board_pdf_report
+
+    kpi_raw = build_board_kpi_report(session, tenant_id)
+
+    # Map KPI endpoint data to PDF generator input
+    kpi_data = {
+        "tenant_name": kpi_raw.get("tenant_id", tenant_id),
+        "reporting_period": _dt.now(UTC).strftime("%Y-%m"),
+        "overall_score": kpi_raw.get("compliance_score", {}).get("overall_score", 0.0),
+        "norm_scores": [],
+        "critical_findings": [
+            {
+                "title": f.get("event_type", "Finding"),
+                "norm": f.get("detail", ""),
+                "open_measures": [],
+            }
+            for f in kpi_raw.get("top_findings", [])[:5]
+        ],
+        "incidents": {
+            "nis2": kpi_raw.get("incident_statistics", {}),
+            "dsgvo": kpi_raw.get("incident_statistics", {}),
+        },
+        "deadlines": [
+            {
+                "regulation": d.get("norm", ""),
+                "deadline": d.get("deadline", ""),
+                "description": d.get("description", ""),
+            }
+            for d in kpi_raw.get("upcoming_deadlines", [])
+        ],
+    }
+
+    html_bytes = generate_board_pdf_report(kpi_data, tenant_id)
+    checksum = hashlib.sha256(html_bytes).hexdigest()
+
+    # Audit log
+    log_entry = ReportExportDB(
+        id=str(_uuid.uuid4()),
+        tenant_id=tenant_id,
+        report_type="pdf_board_report",
+        format="html_pdfa3",
+        file_size_bytes=len(html_bytes),
+        checksum=checksum,
+        created_at_utc=_dt.now(UTC),
+    )
+    session.add(log_entry)
+    session.commit()
+
+    return Response(
+        content=html_bytes,
+        media_type="text/html; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="board-report-{tenant_id}.html"'
+            ),
+            "X-Checksum-SHA256": checksum,
+            "X-PDFA-Version": "3",
+            "X-PDFA-Conformance": "B",
+        },
+    )
+
+
+@app.post(
+    "/api/v1/enterprise/xrechnung/export",
+    tags=["enterprise-xrechnung"],
+)
+def create_xrechnung_export(
+    body: XRechnungExportRequest,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_XRECHNUNG))],
+) -> Response:
+    """Generate XRechnung 3.0 / EN-16931 UBL 2.1 XML invoice."""
+    import uuid as _uuid
+    from datetime import UTC
+    from datetime import date as _date
+    from datetime import datetime as _dt
+
+    from app.models_db import XRechnungExportDB
+    from app.services.xrechnung_export import (
+        XRechnungInvoice,
+        generate_xrechnung_xml,
+        validate_xrechnung,
+    )
+
+    invoice = XRechnungInvoice(
+        invoice_id=body.invoice_id,
+        issue_date=_date.fromisoformat(body.issue_date),
+        due_date=_date.fromisoformat(body.due_date),
+        seller_name=body.seller_name,
+        seller_tax_id=body.seller_tax_id,
+        seller_address=body.seller_address,
+        buyer_name=body.buyer_name,
+        buyer_reference=body.buyer_reference,
+        buyer_address=body.buyer_address,
+        line_items=[item.model_dump() for item in body.line_items],
+        currency=body.currency,
+        note=body.note,
+    )
+
+    xml_content = generate_xrechnung_xml(invoice)
+    errors = validate_xrechnung(xml_content)
+
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"validation_errors": errors},
+        )
+
+    # Compute total for audit log
+    total_gross = sum(
+        item.quantity * item.unit_price * (1 + item.tax_percent / 100)
+        for item in body.line_items
+    )
+
+    log_entry = XRechnungExportDB(
+        id=str(_uuid.uuid4()),
+        tenant_id=tenant_id,
+        invoice_id=body.invoice_id,
+        buyer_reference=body.buyer_reference,
+        total_gross=round(total_gross, 2),
+        currency=body.currency,
+        validation_errors=len(errors),
+        created_at_utc=_dt.now(UTC),
+    )
+    session.add(log_entry)
+    session.commit()
+
+    return Response(
+        content=xml_content,
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="XRechnung_{body.invoice_id}.xml"'
+            ),
+        },
+    )
+
+
+@app.post(
+    "/api/v1/enterprise/n8n/webhook",
+    tags=["enterprise-n8n"],
+)
+def receive_n8n_webhook(
+    body: N8nWebhookRequest,
+    request: Request,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_N8N_WEBHOOKS))
+    ],
+) -> dict:
+    """Receive and validate n8n webhook calls (HMAC-authenticated)."""
+    from app.services.n8n_webhook_service import (
+        build_webhook_payload,
+        verify_hmac_signature,
+    )
+
+    secret = os.environ.get("COMPLIANCEHUB_N8N_WEBHOOK_SECRET", "")
+    signature = request.headers.get("X-Hub-Signature-256", "")
+
+    if secret and signature:
+        raw_body = json.dumps(body.model_dump(), default=str).encode("utf-8")
+        sig_value = signature.removeprefix("sha256=")
+        if not verify_hmac_signature(raw_body, secret, sig_value):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid HMAC signature",
+            )
+
+    payload = build_webhook_payload(body.event_type, tenant_id, body.data)
+    logger.info(
+        "n8n_webhook_received tenant=%s event=%s correlation=%s",
+        tenant_id,
+        body.event_type,
+        payload.get("correlation_id"),
+    )
+    return {"status": "accepted", "correlation_id": payload.get("correlation_id")}
+
+
+@app.post(
+    "/api/v1/enterprise/n8n/trigger",
+    tags=["enterprise-n8n"],
+)
+def trigger_n8n_workflow(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_N8N_WEBHOOKS))
+    ],
+    workflow_type: str = Query(..., description="Workflow type to trigger"),
+    webhook_url: str = Query(..., description="n8n webhook URL"),
+) -> dict:
+    """Trigger an n8n workflow via webhook."""
+    from app.services.n8n_webhook_service import (
+        N8nWorkflowType,
+        build_webhook_payload,
+        trigger_n8n_webhook,
+    )
+
+    # Validate workflow type
+    valid_types = [t.value for t in N8nWorkflowType]
+    if workflow_type not in valid_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid workflow_type. Must be one of: {valid_types}",
+        )
+
+    payload = build_webhook_payload(workflow_type, tenant_id, {"triggered_by": "api"})
+    secret = os.environ.get("COMPLIANCEHUB_N8N_WEBHOOK_SECRET")
+    result = trigger_n8n_webhook(webhook_url, payload, secret)
+    return {"workflow_type": workflow_type, "result": result}

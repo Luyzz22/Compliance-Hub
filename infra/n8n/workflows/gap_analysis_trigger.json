@@ -1,0 +1,64 @@
+{
+  "name": "ComplianceHub – Gap Analysis Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "compliancehub-gap-analysis",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.COMPLIANCEHUB_API_BASE_URL }}/api/v1/enterprise/gap-analysis/run",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.COMPLIANCEHUB_API_KEY }}" },
+            { "name": "x-tenant-id", "value": "={{ $json.body.tenant_id || $env.COMPLIANCEHUB_TENANT_ID }}" },
+            { "name": "x-opa-user-role", "value": "ciso" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "norms", "value": "={{ $json.body.norms || 'eu_ai_act,iso_42001,nis2,dsgvo' }}" }
+          ]
+        }
+      },
+      "id": "run-gap-analysis",
+      "name": "Run Gap Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.CISO_EMAIL }}",
+        "subject": "ComplianceHub – Gap Analysis Complete",
+        "text": "Gap analysis completed.\n\nReport ID: {{ $json.report_id }}\nStatus: {{ $json.status }}\nNorm Scope: {{ $json.norm_scope }}"
+      },
+      "id": "notify-ciso",
+      "name": "Notify CISO",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": { "main": [[{ "node": "Run Gap Analysis", "type": "main", "index": 0 }]] },
+    "Run Gap Analysis": { "main": [[{ "node": "Notify CISO", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["compliancehub", "gap-analysis", "webhook"]
+}

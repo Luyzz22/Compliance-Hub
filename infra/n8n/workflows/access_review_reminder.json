@@ -1,0 +1,64 @@
+{
+  "name": "ComplianceHub – Access Review Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 9 1 */3 *" }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Quarterly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.COMPLIANCEHUB_API_BASE_URL }}/api/v1/enterprise/n8n/webhook",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.COMPLIANCEHUB_API_KEY }}" },
+            { "name": "x-tenant-id", "value": "={{ $env.COMPLIANCEHUB_TENANT_ID }}" },
+            { "name": "x-opa-user-role", "value": "tenant_admin" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "event_type", "value": "access_review_reminder" },
+            { "name": "data", "value": "={{ JSON.stringify({ scope: 'privileged_roles', trigger: 'quarterly_schedule' }) }}" }
+          ]
+        }
+      },
+      "id": "trigger-review",
+      "name": "Trigger Access Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.IAM_ADMIN_EMAIL }}",
+        "subject": "🔐 ComplianceHub – Quarterly Access Review Required",
+        "text": "A quarterly access review for privileged roles has been triggered.\n\nPlease complete the review in the ComplianceHub Admin area.\n\nCorrelation ID: {{ $json.correlation_id }}"
+      },
+      "id": "send-reminder",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Quarterly Trigger": { "main": [[{ "node": "Trigger Access Review", "type": "main", "index": 0 }]] },
+    "Trigger Access Review": { "main": [[{ "node": "Send Reminder", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["compliancehub", "access-review", "iam"]
+}

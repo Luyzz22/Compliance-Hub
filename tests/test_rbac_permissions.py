@@ -74,6 +74,7 @@ def test_board_member_has_restricted_view() -> None:
             Permission.VIEW_COMPLIANCE_CALENDAR,
             Permission.VIEW_EXECUTIVE_DASHBOARD,
             Permission.VIEW_GAP_REPORTS,
+            Permission.GENERATE_PDF_REPORT,
         }
     )
 

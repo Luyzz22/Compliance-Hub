@@ -1,0 +1,115 @@
+{
+  "dataset_name": "compliancehub_gap_analysis_ground_truth",
+  "description": "Ground-truth evaluation dataset for gap analysis quality (min. 10 norm articles with expected outputs).",
+  "version": "1.0",
+  "entries": [
+    {
+      "id": "gt-001",
+      "norm": "eu_ai_act",
+      "article_ref": "Art. 6 Abs. 1",
+      "input": "High-risk AI system classification requirements",
+      "expected_gaps": ["Missing risk classification for deployed AI systems"],
+      "expected_severity": "critical",
+      "expected_measures": ["Implement AI system risk classification process per Annex III"]
+    },
+    {
+      "id": "gt-002",
+      "norm": "eu_ai_act",
+      "article_ref": "Art. 9",
+      "input": "Risk management system for high-risk AI",
+      "expected_gaps": ["No documented risk management system for AI operations"],
+      "expected_severity": "critical",
+      "expected_measures": ["Establish continuous risk management lifecycle for high-risk AI systems"]
+    },
+    {
+      "id": "gt-003",
+      "norm": "eu_ai_act",
+      "article_ref": "Art. 13",
+      "input": "Transparency and information to deployers",
+      "expected_gaps": ["Insufficient documentation for AI system deployers"],
+      "expected_severity": "high",
+      "expected_measures": ["Create deployer-facing documentation with usage instructions and limitations"]
+    },
+    {
+      "id": "gt-004",
+      "norm": "iso_42001",
+      "article_ref": "Clause 6.1",
+      "input": "Actions to address risks and opportunities in AI management",
+      "expected_gaps": ["AI-specific risk assessment not integrated into ISMS"],
+      "expected_severity": "high",
+      "expected_measures": ["Extend ISMS risk assessment to cover AI-specific threats and opportunities"]
+    },
+    {
+      "id": "gt-005",
+      "norm": "iso_42001",
+      "article_ref": "Clause 8.4",
+      "input": "AI system impact assessment",
+      "expected_gaps": ["No AI impact assessment process documented"],
+      "expected_severity": "high",
+      "expected_measures": ["Implement AI impact assessment process covering ethics, safety, and fairness"]
+    },
+    {
+      "id": "gt-006",
+      "norm": "nis2",
+      "article_ref": "Art. 21 Abs. 2",
+      "input": "Cybersecurity risk management measures",
+      "expected_gaps": ["Incident handling procedures incomplete for AI-related incidents"],
+      "expected_severity": "critical",
+      "expected_measures": ["Extend incident response plan to cover AI system compromise scenarios"]
+    },
+    {
+      "id": "gt-007",
+      "norm": "nis2",
+      "article_ref": "Art. 23",
+      "input": "Reporting obligations for significant incidents",
+      "expected_gaps": ["No automated incident reporting within 24h window"],
+      "expected_severity": "critical",
+      "expected_measures": ["Implement automated BSI notification pipeline with 24h/72h escalation"]
+    },
+    {
+      "id": "gt-008",
+      "norm": "dsgvo",
+      "article_ref": "Art. 35",
+      "input": "Data protection impact assessment (DPIA)",
+      "expected_gaps": ["DPIA not conducted for AI systems processing personal data"],
+      "expected_severity": "critical",
+      "expected_measures": ["Conduct DPIA for all AI systems processing personal data per Art. 35"]
+    },
+    {
+      "id": "gt-009",
+      "norm": "dsgvo",
+      "article_ref": "Art. 22",
+      "input": "Automated individual decision-making including profiling",
+      "expected_gaps": ["No human-in-the-loop mechanism for automated decisions"],
+      "expected_severity": "high",
+      "expected_measures": ["Implement right to human review for AI-based profiling decisions"]
+    },
+    {
+      "id": "gt-010",
+      "norm": "eu_ai_act",
+      "article_ref": "Art. 14",
+      "input": "Human oversight of high-risk AI systems",
+      "expected_gaps": ["Human oversight procedures not defined for high-risk systems"],
+      "expected_severity": "critical",
+      "expected_measures": ["Define human oversight roles, escalation paths, and override procedures"]
+    },
+    {
+      "id": "gt-011",
+      "norm": "iso_42001",
+      "article_ref": "Clause 9.1",
+      "input": "Monitoring, measurement, analysis and evaluation",
+      "expected_gaps": ["AI system performance monitoring not systematically tracked"],
+      "expected_severity": "medium",
+      "expected_measures": ["Implement KPI framework for AI system performance and compliance monitoring"]
+    },
+    {
+      "id": "gt-012",
+      "norm": "nis2",
+      "article_ref": "Art. 20",
+      "input": "Governance and accountability for cybersecurity",
+      "expected_gaps": ["Management body cybersecurity training not covering AI threats"],
+      "expected_severity": "high",
+      "expected_measures": ["Extend management cybersecurity training to include AI-specific threat vectors"]
+    }
+  ]
+}

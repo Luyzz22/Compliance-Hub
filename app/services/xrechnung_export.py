@@ -206,7 +206,7 @@ def validate_xrechnung(xml_content: str) -> list[str]:
     Checks that required UBL 2.1 / XRechnung elements are present.
     Returns a list of error messages (empty list means valid).
     """
-    from xml.etree.ElementTree import fromstring, ParseError
+    from xml.etree.ElementTree import ParseError, fromstring
 
     errors: list[str] = []
 

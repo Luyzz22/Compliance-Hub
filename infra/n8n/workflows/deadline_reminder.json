@@ -1,0 +1,77 @@
+{
+  "name": "ComplianceHub – Deadline Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 8 * * 1" }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Weekly Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.COMPLIANCEHUB_API_BASE_URL }}/api/v1/enterprise/board/kpi-report",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.COMPLIANCEHUB_API_KEY }}" },
+            { "name": "x-tenant-id", "value": "={{ $env.COMPLIANCEHUB_TENANT_ID }}" },
+            { "name": "x-opa-user-role", "value": "tenant_admin" }
+          ]
+        }
+      },
+      "id": "fetch-kpis",
+      "name": "Fetch KPI Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [],
+          "number": [
+            {
+              "value1": "={{ $json.upcoming_deadlines.length }}",
+              "operation": "largerEqual",
+              "value2": 1
+            }
+          ]
+        }
+      },
+      "id": "has-deadlines",
+      "name": "Has Upcoming Deadlines?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.COMPLIANCE_TEAM_EMAIL }}",
+        "subject": "⚠️ ComplianceHub – Upcoming Regulatory Deadlines",
+        "text": "The following regulatory deadlines are approaching:\n\n{{ JSON.stringify($json.upcoming_deadlines, null, 2) }}\n\nPlease review in the ComplianceHub Executive Dashboard."
+      },
+      "id": "send-reminder",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [960, 200]
+    }
+  ],
+  "connections": {
+    "Weekly Check": { "main": [[{ "node": "Fetch KPI Report", "type": "main", "index": 0 }]] },
+    "Fetch KPI Report": { "main": [[{ "node": "Has Upcoming Deadlines?", "type": "main", "index": 0 }]] },
+    "Has Upcoming Deadlines?": { "main": [[{ "node": "Send Reminder", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["compliancehub", "deadline-reminder"]
+}

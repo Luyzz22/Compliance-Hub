@@ -176,7 +176,8 @@ def generate_board_pdf_report(kpi_data: dict, tenant_id: str) -> bytes:
         h1, h2, h3 {{ color: #1a3a5c; }}
         .cover {{ text-align: center; margin-bottom: 60px; page-break-after: always; }}
         .cover h1 {{ font-size: 2em; }}
-        .score-badge {{ font-size: 1.5em; padding: 10px 20px; border-radius: 8px; display: inline-block; }}
+        .score-badge {{ font-size: 1.5em; padding: 10px 20px;
+            border-radius: 8px; display: inline-block; }}
         .score-badge.green {{ background: #d4edda; color: #155724; }}
         .score-badge.amber {{ background: #fff3cd; color: #856404; }}
         .score-badge.red {{ background: #f8d7da; color: #721c24; }}
@@ -188,7 +189,8 @@ def generate_board_pdf_report(kpi_data: dict, tenant_id: str) -> bytes:
         .heatmap-medium {{ background: #d4edda; }}
         .heatmap-low {{ background: #cce5ff; }}
         .signature-block {{ margin-top: 60px; display: flex; gap: 80px; }}
-        .signature-line {{ border-top: 1px solid #222; width: 250px; padding-top: 4px; text-align: center; }}
+        .signature-line {{ border-top: 1px solid #222; width: 250px;
+            padding-top: 4px; text-align: center; }}
         .finding {{ margin-bottom: 16px; }}
         @media print {{ .cover {{ page-break-after: always; }} }}
     </style>
