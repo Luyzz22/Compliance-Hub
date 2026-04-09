@@ -1331,3 +1331,120 @@ class AccessReviewDB(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+
+
+# ── Enterprise Governance: MFA, SoD, Approval Workflows, Privileged Actions ─
+
+
+class MFAFactorDB(Base):
+    """MFA factor enrollment (TOTP) per user."""
+
+    __tablename__ = "mfa_factors"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=False, index=True
+    )
+    factor_type: Mapped[str] = mapped_column(String(32), nullable=False, default="totp")  # totp
+    secret_encrypted: Mapped[str] = mapped_column(String(512), nullable=False)
+    verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class MFABackupCodeDB(Base):
+    """Single-use MFA backup code per user."""
+
+    __tablename__ = "mfa_backup_codes"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=False, index=True
+    )
+    code_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class SoDPolicyDB(Base):
+    """Segregation of Duties policy rule — defines conflicting role pairs."""
+
+    __tablename__ = "sod_policies"
+    __table_args__ = (UniqueConstraint("tenant_id", "role_a", "role_b", name="uq_sod_policy_pair"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    role_a: Mapped[str] = mapped_column(String(64), nullable=False)
+    role_b: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    severity: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="block"
+    )  # block | warn
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class ApprovalRequestDB(Base):
+    """Approval workflow request for sensitive operations (4-eye principle)."""
+
+    __tablename__ = "approval_requests"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    request_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    requester_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    target_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    payload: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="requested"
+    )  # requested | pending | approved | rejected | expired
+    approver_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
+class PrivilegedActionEventDB(Base):
+    """Audit log for privileged actions (governance-grade traceability)."""
+
+    __tablename__ = "privileged_action_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    actor_user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(128), nullable=False)
+    target_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    step_up_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    approval_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
