@@ -1,4 +1,8 @@
-"""Phase 7: Add is_system, status columns to compliance_deadlines; allow nullable tenant_id."""
+"""Phase 7: Add is_system, status columns to compliance_deadlines.
+
+NULL tenant_id for global system rows is enforced by migration
+``20260417_compliance_deadlines_tenant_id_nullable`` (DROP NOT NULL / SQLite rebuild).
+"""
 
 from __future__ import annotations
 
