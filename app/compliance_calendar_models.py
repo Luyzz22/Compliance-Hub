@@ -17,6 +17,13 @@ class DeadlineCategory(StrEnum):
     CUSTOM = "custom"
 
 
+class DeadlineStatus(StrEnum):
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    OVERDUE = "overdue"
+
+
 class EscalationLevel(StrEnum):
     NONE = "none"
     INFO = "info"
@@ -33,18 +40,21 @@ class ComplianceDeadlineCreate(BaseModel):
     owner: str | None = None
     regulation_reference: str | None = None
     recurrence_months: int | None = None
+    status: DeadlineStatus = DeadlineStatus.OPEN
 
 
 class ComplianceDeadlineResponse(BaseModel):
     id: str
-    tenant_id: str
+    tenant_id: str | None = None
     title: str
     description: str | None = None
     category: DeadlineCategory
     due_date: date
+    status: DeadlineStatus = DeadlineStatus.OPEN
     owner: str | None = None
     regulation_reference: str | None = None
     recurrence_months: int | None = None
+    is_system: bool = False
     source_type: str | None = None
     source_id: str | None = None
     escalation_level: EscalationLevel
@@ -57,3 +67,4 @@ class ComplianceDeadlineUpdate(BaseModel):
     description: str | None = None
     due_date: date | None = None
     owner: str | None = None
+    status: DeadlineStatus | None = None

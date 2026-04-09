@@ -1142,14 +1142,16 @@ class ComplianceDeadlineTable(Base):
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    tenant_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str] = mapped_column(String(32), nullable=False)
     due_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
     owner: Mapped[str | None] = mapped_column(String(320), nullable=True)
     regulation_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
     recurrence_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     source_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at_utc: Mapped[datetime] = mapped_column(

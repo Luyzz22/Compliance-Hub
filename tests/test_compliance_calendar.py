@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
-from app.compliance_calendar_models import EscalationLevel
+from app.compliance_calendar_models import DeadlineStatus, EscalationLevel
 from app.main import app
 from app.repositories.compliance_deadlines import _compute_escalation
 
@@ -256,3 +256,228 @@ def test_escalation_levels() -> None:
 
     level, _ = _compute_escalation(today + timedelta(days=30))
     assert level == EscalationLevel.INFO
+
+
+# ── 10. System deadlines ──────────────────────────────────────────────────────
+
+
+def test_seed_system_deadlines(client: TestClient) -> None:
+    r = client.post(
+        f"{BASE}/seed-system-deadlines",
+        headers=_headers("sys-seed-tenant"),
+    )
+    assert r.status_code == 200
+    items = r.json()
+    assert len(items) == 8
+    for item in items:
+        assert item["is_system"] is True
+        assert item["tenant_id"] is None
+    titles = {d["title"] for d in items}
+    assert "EU AI Act – Vollständige Anwendbarkeit" in titles
+    assert "EU AI Act – Verbotene Systeme" in titles
+    assert "EU AI Act – GPAI-Modelle" in titles
+    assert "DSGVO Art. 33 – 72h-Meldefrist" in titles
+    assert "GoBD §147 – 10-Jahre-Aufbewahrungsfrist" in titles
+    assert "KRITIS / BSI-KritisV – Registrierungsfristen" in titles
+
+
+def test_seed_system_deadlines_idempotent(client: TestClient) -> None:
+    t = "sys-seed-idem"
+    r1 = client.post(f"{BASE}/seed-system-deadlines", headers=_headers(t))
+    r2 = client.post(f"{BASE}/seed-system-deadlines", headers=_headers(t))
+    assert r1.status_code == 200 and r2.status_code == 200
+    assert len(r1.json()) == len(r2.json())
+
+
+def test_system_deadlines_visible_to_all_tenants(
+    client: TestClient,
+) -> None:
+    # Seed system deadlines
+    client.post(
+        f"{BASE}/seed-system-deadlines",
+        headers=_headers("sys-visible-seeder"),
+    )
+    # Both tenants can see system deadlines in their list
+    for tenant in ["sys-vis-a", "sys-vis-b"]:
+        r = client.get(f"{BASE}/deadlines", headers=_headers(tenant))
+        assert r.status_code == 200
+        system_items = [
+            d for d in r.json() if d["is_system"] is True
+        ]
+        assert len(system_items) >= 8
+
+
+def test_system_deadline_readable_by_id(client: TestClient) -> None:
+    client.post(
+        f"{BASE}/seed-system-deadlines",
+        headers=_headers("sys-read-seeder"),
+    )
+    r = client.get(
+        f"{BASE}/deadlines",
+        headers=_headers("sys-read-tenant"),
+    )
+    system_items = [d for d in r.json() if d["is_system"] is True]
+    assert len(system_items) > 0
+    sid = system_items[0]["id"]
+    r2 = client.get(
+        f"{BASE}/deadlines/{sid}",
+        headers=_headers("sys-read-tenant"),
+    )
+    assert r2.status_code == 200
+    assert r2.json()["is_system"] is True
+
+
+# ── 11. is_system guard (update/delete forbidden) ────────────────────────────
+
+
+def test_update_system_deadline_returns_403(client: TestClient) -> None:
+    client.post(
+        f"{BASE}/seed-system-deadlines",
+        headers=_headers("sys-guard-upd"),
+    )
+    r = client.get(f"{BASE}/deadlines", headers=_headers("sys-guard-upd"))
+    system_items = [d for d in r.json() if d["is_system"] is True]
+    sid = system_items[0]["id"]
+    r2 = client.patch(
+        f"{BASE}/deadlines/{sid}",
+        json={"title": "Hacked"},
+        headers=_headers("sys-guard-upd"),
+    )
+    assert r2.status_code == 403
+    assert "System deadlines" in r2.json()["detail"]
+
+
+def test_delete_system_deadline_returns_403(client: TestClient) -> None:
+    client.post(
+        f"{BASE}/seed-system-deadlines",
+        headers=_headers("sys-guard-del"),
+    )
+    r = client.get(f"{BASE}/deadlines", headers=_headers("sys-guard-del"))
+    system_items = [d for d in r.json() if d["is_system"] is True]
+    sid = system_items[0]["id"]
+    r2 = client.delete(
+        f"{BASE}/deadlines/{sid}",
+        headers=_headers("sys-guard-del"),
+    )
+    assert r2.status_code == 403
+    assert "System deadlines" in r2.json()["detail"]
+
+
+# ── 12. Upcoming endpoint ─────────────────────────────────────────────────────
+
+
+def test_upcoming_deadlines(client: TestClient) -> None:
+    tenant = "cal-upcoming-test"
+    today = date.today()
+    # Create one upcoming and one far-future deadline
+    client.post(
+        f"{BASE}/deadlines",
+        json={
+            "title": "Soon",
+            "category": "custom",
+            "due_date": (today + timedelta(days=10)).isoformat(),
+        },
+        headers=_headers(tenant),
+    )
+    client.post(
+        f"{BASE}/deadlines",
+        json={
+            "title": "Far Away",
+            "category": "custom",
+            "due_date": (today + timedelta(days=365)).isoformat(),
+        },
+        headers=_headers(tenant),
+    )
+    r = client.get(
+        f"{BASE}/deadlines/upcoming?days=30",
+        headers=_headers(tenant),
+    )
+    assert r.status_code == 200
+    titles = {d["title"] for d in r.json()}
+    assert "Soon" in titles
+    assert "Far Away" not in titles
+
+
+# ── 13. Status field ──────────────────────────────────────────────────────────
+
+
+def test_create_deadline_with_status(client: TestClient) -> None:
+    r = client.post(
+        f"{BASE}/deadlines",
+        json={
+            "title": "In Progress Deadline",
+            "category": "custom",
+            "due_date": "2030-01-01",
+            "status": "in_progress",
+        },
+        headers=_headers("cal-status-test"),
+    )
+    assert r.status_code == 201
+    assert r.json()["status"] == "in_progress"
+
+
+def test_update_deadline_status(client: TestClient) -> None:
+    cr = client.post(
+        f"{BASE}/deadlines",
+        json={
+            "title": "Status Update",
+            "category": "custom",
+            "due_date": "2030-01-01",
+        },
+        headers=_headers("cal-status-upd"),
+    )
+    did = cr.json()["id"]
+    r = client.patch(
+        f"{BASE}/deadlines/{did}",
+        json={"status": "completed"},
+        headers=_headers("cal-status-upd"),
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "completed"
+
+
+def test_overdue_status_auto_set(client: TestClient) -> None:
+    r = client.post(
+        f"{BASE}/deadlines",
+        json={
+            "title": "Overdue Auto",
+            "category": "custom",
+            "due_date": "2020-01-01",
+        },
+        headers=_headers("cal-overdue-auto"),
+    )
+    assert r.status_code == 201
+    assert r.json()["status"] == "overdue"
+
+
+# ── 14. iCal export contains no PII ──────────────────────────────────────────
+
+
+def test_ical_export_no_pii(client: TestClient) -> None:
+    tenant = "cal-ical-nopii"
+    client.post(
+        f"{BASE}/deadlines",
+        json={
+            "title": "PII Check",
+            "category": "dsgvo",
+            "due_date": "2027-01-01",
+            "owner": "john.doe@example.com",
+        },
+        headers=_headers(tenant),
+    )
+    r = client.get(f"{BASE}/export/ical", headers=_headers(tenant))
+    assert r.status_code == 200
+    body = r.text
+    # Owner email must not appear in iCal export
+    assert "john.doe@example.com" not in body
+    assert "ORGANIZER" not in body
+
+
+# ── 15. DeadlineStatus enum ──────────────────────────────────────────────────
+
+
+def test_deadline_status_enum_values() -> None:
+    assert DeadlineStatus.OPEN == "open"
+    assert DeadlineStatus.IN_PROGRESS == "in_progress"
+    assert DeadlineStatus.COMPLETED == "completed"
+    assert DeadlineStatus.OVERDUE == "overdue"
