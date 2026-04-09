@@ -125,6 +125,10 @@ def run_gap_analysis(
     requested_by: str | None = None,
 ) -> GapReportDB:
     """Execute gap analysis and persist report."""
+    import time
+
+    from app.services.langsmith_tracing import trace_gap_analysis
+
     target_norms = norms or ["eu_ai_act", "iso_42001", "nis2", "dsgvo"]
     norm_scope = ",".join(target_norms)
 
@@ -139,6 +143,8 @@ def run_gap_analysis(
     session.add(report)
     session.flush()
 
+    t0 = time.monotonic()
+    success = False
     try:
         compliance_status = _gather_tenant_compliance_status(session, tenant_id)
         norm_chunks = _gather_relevant_norm_chunks(session, target_norms)
@@ -151,10 +157,21 @@ def run_gap_analysis(
         report.llm_trace_id = result.get("_trace_id")
         report.status = "completed"
         report.completed_at_utc = datetime.now(UTC)
+        success = True
     except Exception:
         logger.exception("gap_analysis_failed tenant_id=%s", tenant_id)
         report.status = "failed"
         report.summary = "Analyse fehlgeschlagen — siehe Logs."
+    finally:
+        latency_ms = (time.monotonic() - t0) * 1000
+        trace_gap_analysis(
+            tenant_id=tenant_id,
+            norms=target_norms,
+            latency_ms=latency_ms,
+            token_estimate=len(norm_scope) * 10,  # rough estimate
+            model=GAP_ANALYSIS_LLM_MODEL,
+            success=success,
+        )
 
     session.flush()
     return report

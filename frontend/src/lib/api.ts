@@ -3049,3 +3049,64 @@ export async function triggerGapAnalysis(
     { method: "POST" },
   ) as Promise<{ report_id: string; status: string; norm_scope: string }>;
 }
+
+// ─── Phase 4: PDF Report, XRechnung, n8n ─────────────────────────────────
+
+/** Download-URL für PDF/A-3 Board Report. */
+export function getBoardPdfReportDownloadUrl(): string {
+  return "/api/v1/enterprise/board/pdf-report";
+}
+
+export interface XRechnungLineItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  tax_percent: number;
+}
+
+export interface XRechnungExportRequest {
+  invoice_id: string;
+  issue_date: string;
+  due_date: string;
+  seller_name: string;
+  seller_tax_id: string;
+  seller_address: string;
+  buyer_name: string;
+  buyer_reference: string;
+  buyer_address?: string;
+  line_items: XRechnungLineItem[];
+  currency?: string;
+  note?: string;
+}
+
+export async function exportXRechnung(
+  tenantId: string,
+  body: XRechnungExportRequest,
+): Promise<Response> {
+  const headers = tenantRequestHeaders(tenantId);
+  return fetch(`${API_BASE_URL}/api/v1/enterprise/xrechnung/export`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
+export interface N8nWebhookResponse {
+  status: string;
+  correlation_id: string;
+}
+
+export async function sendN8nWebhook(
+  tenantId: string,
+  eventType: string,
+  data: Record<string, unknown> = {},
+): Promise<N8nWebhookResponse> {
+  return tenantApiFetch(
+    "/api/v1/enterprise/n8n/webhook",
+    tenantId,
+    {
+      method: "POST",
+      body: JSON.stringify({ event_type: eventType, data }),
+    },
+  ) as Promise<N8nWebhookResponse>;
+}

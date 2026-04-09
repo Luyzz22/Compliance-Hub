@@ -258,10 +258,7 @@ def validate_xrechnung(xml_content: str) -> list[str]:
     # Validate ProfileID value
     prof_el = root.find(f".//{{{NS_CBC}}}ProfileID")
     if prof_el is not None and prof_el.text != XRECHNUNG_PROFILE_ID:
-        errors.append(
-            f"Invalid ProfileID: expected '{XRECHNUNG_PROFILE_ID}', "
-            f"got '{prof_el.text}'"
-        )
+        errors.append(f"Invalid ProfileID: expected '{XRECHNUNG_PROFILE_ID}', got '{prof_el.text}'")
 
     if errors:
         logger.warning("xrechnung_validation_failed errors=%d", len(errors))

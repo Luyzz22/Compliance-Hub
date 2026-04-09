@@ -72,7 +72,7 @@ def _build_heatmap_html(norm_scores: list[dict]) -> str:
     return (
         '<table class="heatmap-table" border="1" cellpadding="6" cellspacing="0">'
         f"<thead><tr><th>Norm</th>{header_cells}</tr></thead>"
-        f'<tbody>{"".join(rows)}</tbody></table>'
+        f"<tbody>{''.join(rows)}</tbody></table>"
     )
 
 
@@ -86,9 +86,7 @@ def _build_findings_html(findings: list[dict]) -> str:
         title = escape(str(f.get("title", "Untitled")))
         norm = escape(str(f.get("norm", "")))
         measures = f.get("open_measures", [])
-        measure_items = "".join(
-            f"<li>{escape(str(m))}</li>" for m in measures
-        )
+        measure_items = "".join(f"<li>{escape(str(m))}</li>" for m in measures)
         measure_list = f"<ul>{measure_items}</ul>" if measure_items else "<em>None</em>"
         items.append(
             f"<div class='finding'><h4>{idx}. {title} ({norm})</h4>"
@@ -157,8 +155,7 @@ def generate_board_pdf_report(kpi_data: dict, tenant_id: str) -> bytes:
 
     # Build PDF/A-3 metadata as HTML meta tags
     meta_tags = "\n    ".join(
-        f'<meta name="pdfa:{k}" content="{escape(v)}" />'
-        for k, v in PDF_A3_METADATA.items()
+        f'<meta name="pdfa:{k}" content="{escape(v)}" />' for k, v in PDF_A3_METADATA.items()
     )
 
     html = f"""<!DOCTYPE html>

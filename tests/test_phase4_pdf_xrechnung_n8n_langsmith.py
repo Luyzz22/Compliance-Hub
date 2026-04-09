@@ -313,10 +313,13 @@ class TestLangSmithTracing:
     def test_configure_langsmith_configured(self):
         from app.services.langsmith_tracing import configure_langsmith
 
-        with patch.dict(os.environ, {
-            "LANGSMITH_API_KEY": "test-key",
-            "LANGSMITH_PROJECT": "test-project",
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "LANGSMITH_API_KEY": "test-key",
+                "LANGSMITH_PROJECT": "test-project",
+            },
+        ):
             assert configure_langsmith() is True
 
     def test_create_run_returns_none_when_not_configured(self):

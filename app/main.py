@@ -8280,9 +8280,7 @@ class N8nWebhookRequest(BaseModel):
 def get_board_pdf_report(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     session: Annotated[Session, Depends(get_session)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.GENERATE_PDF_REPORT))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.GENERATE_PDF_REPORT))],
 ) -> Response:
     """Generate PDF/A-3 board report from KPI data. GoBD-konform, archivierungssicher."""
     import uuid as _uuid
@@ -8343,9 +8341,7 @@ def get_board_pdf_report(
         content=html_bytes,
         media_type="text/html; charset=utf-8",
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="board-report-{tenant_id}.html"'
-            ),
+            "Content-Disposition": (f'attachment; filename="board-report-{tenant_id}.html"'),
             "X-Checksum-SHA256": checksum,
             "X-PDFA-Version": "3",
             "X-PDFA-Conformance": "B",
@@ -8402,8 +8398,7 @@ def create_xrechnung_export(
 
     # Compute total for audit log
     total_gross = sum(
-        item.quantity * item.unit_price * (1 + item.tax_percent / 100)
-        for item in body.line_items
+        item.quantity * item.unit_price * (1 + item.tax_percent / 100) for item in body.line_items
     )
 
     log_entry = XRechnungExportDB(
@@ -8423,9 +8418,7 @@ def create_xrechnung_export(
         content=xml_content,
         media_type="application/xml; charset=utf-8",
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="XRechnung_{body.invoice_id}.xml"'
-            ),
+            "Content-Disposition": (f'attachment; filename="XRechnung_{body.invoice_id}.xml"'),
         },
     )
 
@@ -8438,9 +8431,7 @@ def receive_n8n_webhook(
     body: N8nWebhookRequest,
     request: Request,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_N8N_WEBHOOKS))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_N8N_WEBHOOKS))],
 ) -> dict:
     """Receive and validate n8n webhook calls (HMAC-authenticated)."""
     from app.services.n8n_webhook_service import (
@@ -8476,9 +8467,7 @@ def receive_n8n_webhook(
 )
 def trigger_n8n_workflow(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_N8N_WEBHOOKS))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_N8N_WEBHOOKS))],
     workflow_type: str = Query(..., description="Workflow type to trigger"),
     webhook_url: str = Query(..., description="n8n webhook URL"),
 ) -> dict:
