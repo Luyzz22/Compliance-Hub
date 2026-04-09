@@ -8540,7 +8540,9 @@ def trigger_n8n_workflow(
 )
 def get_onboarding_status_endpoint(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))
+    ],
 ) -> dict:
     """Get onboarding wizard status for the current tenant."""
     from app.services.tenant_onboarding_wizard import get_onboarding_status
@@ -8562,7 +8564,9 @@ def get_onboarding_status_endpoint(
 def update_onboarding_step_endpoint(
     step: int,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))
+    ],
     request_body: dict | None = None,
 ) -> dict:
     """Update onboarding wizard step for the current tenant."""
@@ -8587,7 +8591,9 @@ def update_onboarding_step_endpoint(
 )
 def complete_onboarding_endpoint(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))
+    ],
 ) -> dict:
     """Mark onboarding as complete for the current tenant."""
     from app.services.tenant_onboarding_wizard import complete_onboarding
@@ -8636,7 +8642,9 @@ def list_billing_plans(
 )
 def get_billing_subscription(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))
+    ],
 ) -> dict:
     """Get current subscription for the tenant."""
     from app.services.stripe_billing_service import get_tenant_subscription
@@ -8657,7 +8665,9 @@ def get_billing_subscription(
 )
 def start_trial_subscription(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))
+    ],
     plan_name: str = Query(..., description="Plan name: starter, professional, or enterprise"),
 ) -> dict:
     """Start a trial subscription for the tenant."""

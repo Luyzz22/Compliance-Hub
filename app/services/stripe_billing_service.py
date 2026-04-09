@@ -95,9 +95,7 @@ def get_tenant_subscription(session: Session, tenant_id: str) -> dict | None:
     return _sub_to_dict(row)
 
 
-def create_trial_subscription(
-    session: Session, tenant_id: str, plan_name: str
-) -> dict:
+def create_trial_subscription(session: Session, tenant_id: str, plan_name: str) -> dict:
     """Create a 14-day trial subscription for a tenant."""
     plan = PLAN_CATALOG.get(plan_name)
     if plan is None:
@@ -121,9 +119,7 @@ def create_trial_subscription(
     return _sub_to_dict(row)
 
 
-def handle_stripe_webhook_event(
-    session: Session, event_type: str, event_data: dict
-) -> dict:
+def handle_stripe_webhook_event(session: Session, event_type: str, event_data: dict) -> dict:
     """Process a Stripe webhook event and log it."""
     tenant_id = event_data.get("tenant_id", "unknown")
     event = BillingEventDB(
@@ -151,17 +147,13 @@ def handle_stripe_webhook_event(
                 sub.updated_at_utc = datetime.utcnow()
 
     session.commit()
-    logger.info(
-        "stripe_webhook_processed tenant=%s event_type=%s", tenant_id, event_type
-    )
+    logger.info("stripe_webhook_processed tenant=%s event_type=%s", tenant_id, event_type)
     return {"status": "processed", "event_type": event_type, "tenant_id": tenant_id}
 
 
 def verify_stripe_signature(payload: bytes, signature: str, secret: str) -> bool:
     """Verify Stripe webhook HMAC-SHA256 signature."""
-    expected = hmac.new(
-        secret.encode("utf-8"), payload, hashlib.sha256
-    ).hexdigest()
+    expected = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 

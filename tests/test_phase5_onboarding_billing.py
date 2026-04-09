@@ -216,9 +216,7 @@ class TestStripeWebhook:
             assert resp.status_code == 501
 
     def test_webhook_without_signature_returns_401(self):
-        with patch.dict(
-            os.environ, {"COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET": "whsec_test123"}
-        ):
+        with patch.dict(os.environ, {"COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET": "whsec_test123"}):
             resp = client.post(
                 "/api/v1/enterprise/billing/stripe-webhook",
                 content=b'{"type": "test"}',
@@ -228,9 +226,7 @@ class TestStripeWebhook:
             assert "Missing Stripe signature" in resp.json()["detail"]
 
     def test_webhook_invalid_signature_returns_401(self):
-        with patch.dict(
-            os.environ, {"COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET": "whsec_test123"}
-        ):
+        with patch.dict(os.environ, {"COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET": "whsec_test123"}):
             resp = client.post(
                 "/api/v1/enterprise/billing/stripe-webhook",
                 content=b'{"type": "test"}',
@@ -250,12 +246,8 @@ class TestStripeWebhook:
                 "data": {"tenant_id": _TENANT},
             }
         ).encode("utf-8")
-        sig = hmac.new(
-            secret.encode("utf-8"), payload, hashlib.sha256
-        ).hexdigest()
-        with patch.dict(
-            os.environ, {"COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET": secret}
-        ):
+        sig = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+        with patch.dict(os.environ, {"COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET": secret}):
             resp = client.post(
                 "/api/v1/enterprise/billing/stripe-webhook",
                 content=payload,

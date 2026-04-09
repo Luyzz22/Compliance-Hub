@@ -39,23 +39,17 @@ def _row_to_dict(row: OnboardingStatusDB) -> dict:
 def get_onboarding_status(session: Session, tenant_id: str) -> dict | None:
     """Return current onboarding status for a tenant, or None if not started."""
     row = (
-        session.query(OnboardingStatusDB)
-        .filter(OnboardingStatusDB.tenant_id == tenant_id)
-        .first()
+        session.query(OnboardingStatusDB).filter(OnboardingStatusDB.tenant_id == tenant_id).first()
     )
     if row is None:
         return None
     return _row_to_dict(row)
 
 
-def update_onboarding_step(
-    session: Session, tenant_id: str, step: int, step_data: dict
-) -> dict:
+def update_onboarding_step(session: Session, tenant_id: str, step: int, step_data: dict) -> dict:
     """Update onboarding progress; creates record if first call."""
     row = (
-        session.query(OnboardingStatusDB)
-        .filter(OnboardingStatusDB.tenant_id == tenant_id)
-        .first()
+        session.query(OnboardingStatusDB).filter(OnboardingStatusDB.tenant_id == tenant_id).first()
     )
     if row is None:
         row = OnboardingStatusDB(
@@ -82,9 +76,7 @@ def update_onboarding_step(
 def complete_onboarding(session: Session, tenant_id: str) -> dict:
     """Mark onboarding as completed for a tenant."""
     row = (
-        session.query(OnboardingStatusDB)
-        .filter(OnboardingStatusDB.tenant_id == tenant_id)
-        .first()
+        session.query(OnboardingStatusDB).filter(OnboardingStatusDB.tenant_id == tenant_id).first()
     )
     if row is None:
         row = OnboardingStatusDB(
