@@ -276,6 +276,8 @@ def test_seed_system_deadlines(client: TestClient) -> None:
     assert "EU AI Act – Vollständige Anwendbarkeit" in titles
     assert "EU AI Act – Verbotene Systeme" in titles
     assert "EU AI Act – GPAI-Modelle" in titles
+    assert "NIS2 / BSIG – BSI-Meldepflichten" in titles
+    assert "ISO 27001 / 42001 – Rezertifizierung" in titles
     assert "DSGVO Art. 33 – 72h-Meldefrist" in titles
     assert "GoBD §147 – 10-Jahre-Aufbewahrungsfrist" in titles
     assert "KRITIS / BSI-KritisV – Registrierungsfristen" in titles

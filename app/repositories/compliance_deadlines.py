@@ -258,7 +258,7 @@ class ComplianceDeadlineRepository:
         stmt = select(ComplianceDeadlineTable).where(
             or_(
                 ComplianceDeadlineTable.tenant_id == tenant_id,
-                ComplianceDeadlineTable.is_system == True,  # noqa: E712
+                ComplianceDeadlineTable.is_system.is_(True),
             ),
             ComplianceDeadlineTable.id == deadline_id,
         )
@@ -273,7 +273,7 @@ class ComplianceDeadlineRepository:
             .where(
                 or_(
                     ComplianceDeadlineTable.tenant_id == tenant_id,
-                    ComplianceDeadlineTable.is_system == True,  # noqa: E712
+                    ComplianceDeadlineTable.is_system.is_(True),
                 )
             )
             .order_by(ComplianceDeadlineTable.due_date)
@@ -293,7 +293,7 @@ class ComplianceDeadlineRepository:
             .where(
                 or_(
                     ComplianceDeadlineTable.tenant_id == tenant_id,
-                    ComplianceDeadlineTable.is_system == True,  # noqa: E712
+                    ComplianceDeadlineTable.is_system.is_(True),
                 ),
                 ComplianceDeadlineTable.due_date >= cutoff.isoformat(),
                 ComplianceDeadlineTable.due_date <= cutoff_end,
