@@ -76,6 +76,12 @@ export default function HomePage() {
                 Demo anfragen
               </TrackedContactLink>
               <Link
+                href="/auth/register"
+                className="inline-flex items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 px-5 py-2.5 text-sm font-semibold text-cyan-900 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-100"
+              >
+                Kostenlos starten
+              </Link>
+              <Link
                 href="/board/kpis"
                 className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
               >
@@ -297,8 +303,11 @@ export default function HomePage() {
             >
               Demo anfragen
             </TrackedContactLink>
-            <Link href="/tenant/compliance-overview" className={`${CH_BTN_SECONDARY} px-6 py-3`}>
-              Mandant öffnen
+            <Link href="/auth/register" className={`${CH_BTN_PRIMARY} px-6 py-3`}>
+              Jetzt registrieren
+            </Link>
+            <Link href="/auth/login" className={`${CH_BTN_SECONDARY} px-6 py-3`}>
+              Anmelden
             </Link>
             <Link href="/board/kpis" className={CH_BTN_SECONDARY}>
               Board-Ansicht

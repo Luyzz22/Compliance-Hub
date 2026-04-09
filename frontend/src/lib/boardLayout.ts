@@ -58,3 +58,29 @@ export function chKpiStatusFromRatio(ratio: number): {
     chipClass: "bg-emerald-100 text-emerald-900 ring-emerald-200/70",
   };
 }
+
+/** Breadcrumb separator and link style. */
+export const CH_BREADCRUMB_LINK =
+  "text-xs font-medium text-slate-500 hover:text-cyan-700 transition";
+
+export const CH_BREADCRUMB_CURRENT =
+  "text-xs font-semibold text-slate-800";
+
+export const CH_BREADCRUMB_SEPARATOR =
+  "text-xs text-slate-300 select-none";
+
+/** Auth page centered container. */
+export const CH_AUTH_SHELL =
+  "mx-auto min-w-0 max-w-md space-y-6";
+
+/** Muted section label for nav grouping. */
+export const CH_NAV_GROUP_LABEL =
+  "px-2 pb-2 text-[0.65rem] font-bold uppercase tracking-wider text-slate-400";
+
+/** Unified badge style for status/role. */
+export const CH_BADGE =
+  "inline-flex items-center rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ring-1 ring-inset";
+
+/** Skeleton loading placeholder. */
+export const CH_SKELETON =
+  "animate-pulse rounded-lg bg-slate-200/60";

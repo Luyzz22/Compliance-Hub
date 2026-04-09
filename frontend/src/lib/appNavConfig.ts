@@ -19,5 +19,30 @@ export const WORKSPACE_NAV_ITEMS = [
   { href: "/tenant/audit-log", label: "Audit-Log" },
 ] as const;
 
+/** Enterprise Reporting & Export module pages. */
+export const REPORTING_NAV_ITEMS = [
+  { href: "/board/executive-dashboard", label: "Executive Dashboard" },
+  { href: "/board/gap-analysis", label: "Gap Analysis" },
+  { href: "/board/ai-compliance-report", label: "AI Compliance Report" },
+  { href: "/board/datev-export", label: "DATEV Export" },
+  { href: "/board/xrechnung-export", label: "XRechnung Export" },
+  { href: "/board/n8n-workflows", label: "n8n Workflows" },
+] as const;
+
+/** Admin / internal management pages. */
+export const ADMIN_NAV_ITEMS = [
+  { href: "/admin/leads", label: "Leads" },
+  { href: "/admin/board-readiness", label: "Board Readiness" },
+  { href: "/admin/advisor-portfolio", label: "Advisor Portfolio" },
+  { href: "/admin/advisor-mandant-export", label: "Mandant Export" },
+  { href: "/admin/gtm", label: "GTM Command Center" },
+] as const;
+
+/** Auth-related navigation items. */
+export const AUTH_NAV_ITEMS = [
+  { href: "/auth/login", label: "Anmelden" },
+  { href: "/auth/register", label: "Registrieren" },
+] as const;
+
 export const BRAND_TAGLINE =
   "GRC · EU AI Act · NIS2 · ISO 42001";

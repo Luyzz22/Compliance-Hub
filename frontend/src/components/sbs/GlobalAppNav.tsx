@@ -6,7 +6,9 @@ import React, { useEffect, useRef, useState } from "react";
 
 import { isAdvisorNavEnabled } from "@/lib/api";
 import {
+  ADMIN_NAV_ITEMS,
   BOARD_NAV_ITEMS,
+  REPORTING_NAV_ITEMS,
   WORKSPACE_NAV_ITEMS,
 } from "@/lib/appNavConfig";
 
@@ -93,6 +95,14 @@ function DropdownLink({
   );
 }
 
+function DropdownSeparator({ label }: { label: string }) {
+  return (
+    <div className="border-t border-slate-100 px-3 pb-1 pt-2 text-[0.6rem] font-bold uppercase tracking-wider text-slate-400">
+      {label}
+    </div>
+  );
+}
+
 function SettingsIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -111,9 +121,77 @@ function SettingsIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function UserIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      {...props}
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M20 21a8 8 0 1 0-16 0" />
+    </svg>
+  );
+}
+
+function UserMenu({ active }: { active: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("click", onDoc);
+    return () => document.removeEventListener("click", onDoc);
+  }, []);
+
+  return (
+    <div className="relative ml-0.5 md:ml-1" ref={ref}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-label="Konto-Menü"
+        title="Konto"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
+          active
+            ? "bg-cyan-50 text-cyan-900 ring-1 ring-cyan-200/80"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        }`}
+      >
+        <UserIcon className="h-5 w-5" />
+      </button>
+      {open ? (
+        <div
+          className="absolute right-0 top-full z-50 mt-1 min-w-[14rem] rounded-xl border border-slate-200/90 bg-white py-1 shadow-lg shadow-slate-200/50"
+          role="menu"
+        >
+          <DropdownSeparator label="Konto" />
+          <DropdownLink href="/auth/login">Anmelden</DropdownLink>
+          <DropdownLink href="/auth/register">Registrieren</DropdownLink>
+          <DropdownLink href="/auth/profile">Profil</DropdownLink>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function GlobalAppNav() {
   const pathname = usePathname();
-  const boardActive = pathname.startsWith("/board");
+  const boardActive =
+    pathname.startsWith("/board") &&
+    !REPORTING_NAV_ITEMS.some(
+      (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
+    );
   const workspaceActive =
     pathname.startsWith("/tenant") || pathname.startsWith("/tenants");
   const homeActive = pathname === "/";
@@ -122,6 +200,12 @@ export function GlobalAppNav() {
   const settingsActive = pathname === "/settings";
   const advisorActive = pathname.startsWith("/advisor");
   const showAdvisorNav = isAdvisorNavEnabled();
+  const reportingActive = REPORTING_NAV_ITEMS.some(
+    (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
+  );
+  const adminActive = pathname.startsWith("/admin");
+  const authActive = pathname.startsWith("/auth");
+  const aiSystemsActive = pathname === "/ai-systems";
 
   return (
     <nav
@@ -149,6 +233,18 @@ export function GlobalAppNav() {
         <GlobalWorkspaceEvidenceNavBlock />
       </Dropdown>
 
+      <Dropdown label="Reporting" active={reportingActive}>
+        {REPORTING_NAV_ITEMS.map((item) => (
+          <DropdownLink key={item.href} href={item.href}>
+            {item.label}
+          </DropdownLink>
+        ))}
+      </Dropdown>
+
+      <Link href="/ai-systems" className={navLinkClass(aiSystemsActive)}>
+        AI Systems
+      </Link>
+
       <Link href="/incidents" className={navLinkClass(incidentsActive)}>
         Incidents
       </Link>
@@ -158,6 +254,14 @@ export function GlobalAppNav() {
           Advisor
         </Link>
       ) : null}
+
+      <Dropdown label="Admin" active={adminActive}>
+        {ADMIN_NAV_ITEMS.map((item) => (
+          <DropdownLink key={item.href} href={item.href}>
+            {item.label}
+          </DropdownLink>
+        ))}
+      </Dropdown>
 
       <Link
         href="/settings"
@@ -171,6 +275,9 @@ export function GlobalAppNav() {
       >
         <SettingsIcon className="h-5 w-5" />
       </Link>
+
+      <UserMenu active={authActive} />
     </nav>
   );
 }
+
