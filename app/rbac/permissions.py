@@ -40,6 +40,9 @@ class Permission(StrEnum):
     VIEW_GAP_REPORTS = "view_gap_reports"
     RUN_GAP_ANALYSIS = "run_gap_analysis"
     VIEW_EXECUTIVE_DASHBOARD = "view_executive_dashboard"
+    GENERATE_PDF_REPORT = "generate_pdf_report"
+    EXPORT_XRECHNUNG = "export_xrechnung"
+    MANAGE_N8N_WEBHOOKS = "manage_n8n_webhooks"
 
 
 _VIEWER_PERMS = frozenset(
@@ -93,6 +96,7 @@ _CISO_PERMS = _COMPLIANCE_OFFICER_PERMS | frozenset(
         Permission.VIEW_EXECUTIVE_DASHBOARD,
         Permission.VIEW_GAP_REPORTS,
         Permission.RUN_GAP_ANALYSIS,
+        Permission.GENERATE_PDF_REPORT,
     }
 )
 
@@ -104,6 +108,7 @@ _BOARD_MEMBER_PERMS = frozenset(
         Permission.VIEW_COMPLIANCE_CALENDAR,
         Permission.VIEW_EXECUTIVE_DASHBOARD,
         Permission.VIEW_GAP_REPORTS,
+        Permission.GENERATE_PDF_REPORT,
     }
 )
 
@@ -113,6 +118,9 @@ _COMPLIANCE_ADMIN_PERMS = _COMPLIANCE_OFFICER_PERMS | frozenset(
         Permission.VIEW_GAP_REPORTS,
         Permission.RUN_GAP_ANALYSIS,
         Permission.EXPORT_DATEV,
+        Permission.GENERATE_PDF_REPORT,
+        Permission.EXPORT_XRECHNUNG,
+        Permission.MANAGE_N8N_WEBHOOKS,
     }
 )
 
@@ -130,6 +138,8 @@ _TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
         Permission.MANAGE_MFA,
         Permission.VIEW_PRIVILEGED_EVENTS,
         Permission.EXPORT_DATEV,
+        Permission.EXPORT_XRECHNUNG,
+        Permission.MANAGE_N8N_WEBHOOKS,
     }
 )
 

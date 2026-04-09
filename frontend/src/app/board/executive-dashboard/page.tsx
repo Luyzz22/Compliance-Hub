@@ -6,6 +6,7 @@ import {
   TENANT_ID,
   type BoardKpiReport,
 } from "@/lib/api";
+import { PdfReportDownloadButton } from "./PdfReportDownloadButton";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   BOARD_PAGE_ROOT_CLASS,
@@ -80,6 +81,12 @@ export default async function ExecutiveDashboardPage() {
             </Link>
             <Link href="/board/datev-export" className={CH_PAGE_NAV_LINK}>
               DATEV Export
+            </Link>
+            <Link href="/board/xrechnung-export" className={CH_PAGE_NAV_LINK}>
+              XRechnung Export
+            </Link>
+            <Link href="/board/n8n-workflows" className={CH_PAGE_NAV_LINK}>
+              n8n Workflows
             </Link>
           </>
         }
@@ -231,6 +238,17 @@ export default async function ExecutiveDashboardPage() {
           </div>
         </section>
       )}
+      {/* ── PDF/A-3 Board Report Download ── */}
+      <section aria-label="PDF Report" className="mb-8">
+        <p className={CH_SECTION_LABEL}>Board Report (PDF/A-3)</p>
+        <div className={`${CH_CARD} mt-3`}>
+          <p className="mb-3 text-sm text-slate-600">
+            PDF/A-3 konformen Board-Report herunterladen – GoBD-archivierungssicher
+            mit allen KPIs, Heat-Map, Findings und Signaturblock.
+          </p>
+          <PdfReportDownloadButton />
+        </div>
+      </section>
     </div>
   );
 }

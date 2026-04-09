@@ -1,0 +1,67 @@
+{
+  "name": "ComplianceHub – DATEV Monthly Export",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 1 * *" }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.COMPLIANCEHUB_API_BASE_URL }}/api/v1/enterprise/datev/export",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.COMPLIANCEHUB_API_KEY }}" },
+            { "name": "x-tenant-id", "value": "={{ $env.COMPLIANCEHUB_TENANT_ID }}" },
+            { "name": "x-opa-user-role", "value": "tenant_admin" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "period_from", "value": "={{ DateTime.now().minus({months: 1}).startOf('month').toISODate() }}" },
+            { "name": "period_to", "value": "={{ DateTime.now().minus({months: 1}).endOf('month').toISODate() }}" },
+            { "name": "skr", "value": "SKR03" }
+          ]
+        },
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "id": "datev-export",
+      "name": "DATEV Export",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.DATEV_EXPORT_RECIPIENTS }}",
+        "subject": "ComplianceHub – DATEV Monthly Export",
+        "text": "Attached: Monthly DATEV EXTF export file.",
+        "options": { "attachments": "data" }
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": { "main": [[{ "node": "DATEV Export", "type": "main", "index": 0 }]] },
+    "DATEV Export": { "main": [[{ "node": "Send Email", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["compliancehub", "datev", "monthly-export"]
+}

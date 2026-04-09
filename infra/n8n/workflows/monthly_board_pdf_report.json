@@ -1,0 +1,59 @@
+{
+  "name": "ComplianceHub – Monthly Board PDF Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 1 * *" }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.COMPLIANCEHUB_API_BASE_URL }}/api/v1/enterprise/board/pdf-report",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.COMPLIANCEHUB_API_KEY }}" },
+            { "name": "x-tenant-id", "value": "={{ $env.COMPLIANCEHUB_TENANT_ID }}" },
+            { "name": "x-opa-user-role", "value": "tenant_admin" }
+          ]
+        },
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "id": "generate-pdf-report",
+      "name": "Generate PDF Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM }}",
+        "toEmail": "={{ $env.BOARD_REPORT_RECIPIENTS }}",
+        "subject": "ComplianceHub – Monthly Board Report",
+        "text": "Attached: Monthly Board Compliance Report (PDF/A-3).",
+        "options": { "attachments": "data" }
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": { "main": [[{ "node": "Generate PDF Report", "type": "main", "index": 0 }]] },
+    "Generate PDF Report": { "main": [[{ "node": "Send Email", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["compliancehub", "board-report", "pdf"]
+}

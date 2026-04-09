@@ -1533,3 +1533,41 @@ class NormEmbeddingDB(Base):
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+
+
+# ── Phase 4: PDF Reports & XRechnung Exports ─────────────────────────────────
+
+
+class ReportExportDB(Base):
+    """Audit log for generated PDF/A-3 board reports."""
+
+    __tablename__ = "report_exports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    report_type: Mapped[str] = mapped_column(String(64), nullable=False)  # pdf_board_report
+    format: Mapped[str] = mapped_column(String(32), nullable=False)  # html_pdfa3
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)  # SHA-256
+    requested_by: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class XRechnungExportDB(Base):
+    """Audit log for generated XRechnung 3.0 invoices."""
+
+    __tablename__ = "xrechnung_exports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    invoice_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    buyer_reference: Mapped[str] = mapped_column(String(255), nullable=False)  # Leitweg-ID
+    total_gross: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
+    validation_errors: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    exported_by: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
