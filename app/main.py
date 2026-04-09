@@ -8341,7 +8341,11 @@ def get_board_pdf_report(
         content=html_bytes,
         media_type="text/html; charset=utf-8",
         headers={
-            "Content-Disposition": (f'attachment; filename="board-report-{tenant_id}.html"'),
+            "Content-Disposition": (
+                'attachment; filename="board-report-'
+                + quote(re.sub(r"[^a-zA-Z0-9_-]", "_", tenant_id), safe="")
+                + '.html"'
+            ),
             "X-Checksum-SHA256": checksum,
             "X-PDFA-Version": "3",
             "X-PDFA-Conformance": "B",
@@ -8414,11 +8418,12 @@ def create_xrechnung_export(
     session.add(log_entry)
     session.commit()
 
+    safe_invoice_id = quote(re.sub(r"[^a-zA-Z0-9_-]", "_", body.invoice_id), safe="")
     return Response(
         content=xml_content,
         media_type="application/xml; charset=utf-8",
         headers={
-            "Content-Disposition": (f'attachment; filename="XRechnung_{body.invoice_id}.xml"'),
+            "Content-Disposition": f'attachment; filename="XRechnung_{safe_invoice_id}.xml"',
         },
     )
 
@@ -8472,11 +8477,31 @@ def trigger_n8n_workflow(
     webhook_url: str = Query(..., description="n8n webhook URL"),
 ) -> dict:
     """Trigger an n8n workflow via webhook."""
+    from urllib.parse import urlparse
+
     from app.services.n8n_webhook_service import (
         N8nWorkflowType,
         build_webhook_payload,
         trigger_n8n_webhook,
     )
+
+    # Validate webhook URL — must use https (or http for localhost dev)
+    parsed = urlparse(webhook_url)
+    if parsed.scheme not in ("https", "http"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="webhook_url must use https:// or http://",
+        )
+
+    # Restrict to configured allowed hosts if env var is set
+    allowed_hosts_raw = os.environ.get("COMPLIANCEHUB_N8N_ALLOWED_HOSTS", "")
+    if allowed_hosts_raw:
+        allowed = {h.strip().lower() for h in allowed_hosts_raw.split(",") if h.strip()}
+        if parsed.hostname and parsed.hostname.lower() not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="webhook_url host not in allowed list",
+            )
 
     # Validate workflow type
     valid_types = [t.value for t in N8nWorkflowType]
@@ -8489,4 +8514,8 @@ def trigger_n8n_workflow(
     payload = build_webhook_payload(workflow_type, tenant_id, {"triggered_by": "api"})
     secret = os.environ.get("COMPLIANCEHUB_N8N_WEBHOOK_SECRET")
     result = trigger_n8n_webhook(webhook_url, payload, secret)
-    return {"workflow_type": workflow_type, "result": result}
+    # Sanitize result — don't expose raw error details
+    sanitized = {"status_code": result.get("status_code")}
+    if "error" in result:
+        sanitized["error"] = "webhook_delivery_failed"
+    return {"workflow_type": workflow_type, "result": sanitized}

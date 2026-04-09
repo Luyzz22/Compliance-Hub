@@ -168,7 +168,7 @@ def run_gap_analysis(
             tenant_id=tenant_id,
             norms=target_norms,
             latency_ms=latency_ms,
-            token_estimate=len(norm_scope) * 10,  # rough estimate
+            token_estimate=len(norm_scope) * 10,  # rough heuristic: ~10 tokens per char of scope
             model=GAP_ANALYSIS_LLM_MODEL,
             success=success,
         )

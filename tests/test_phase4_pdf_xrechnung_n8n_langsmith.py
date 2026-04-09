@@ -531,8 +531,8 @@ class TestN8nWorkflowJsons:
     def test_workflow_files_exist_and_valid_json(self):
         import pathlib
 
-        workflow_dir = pathlib.Path(
-            "/home/runner/work/Compliance-Hub/Compliance-Hub/infra/n8n/workflows"
+        workflow_dir = (
+            pathlib.Path(__file__).resolve().parent.parent / "infra" / "n8n" / "workflows"
         )
         expected = [
             "monthly_board_pdf_report.json",
@@ -557,9 +557,11 @@ class TestLangSmithGroundTruth:
     def test_ground_truth_dataset_valid(self):
         import pathlib
 
-        path = pathlib.Path(
-            "/home/runner/work/Compliance-Hub/Compliance-Hub/data/langsmith/"
-            "gap_analysis_ground_truth.json"
+        path = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "data"
+            / "langsmith"
+            / "gap_analysis_ground_truth.json"
         )
         assert path.exists()
         data = json.loads(path.read_text())
