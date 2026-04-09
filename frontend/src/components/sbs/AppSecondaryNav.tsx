@@ -66,8 +66,6 @@ export function AppSecondaryNav() {
   const workspaceTenantId = useWorkspaceTenantIdClient();
   const { visible: evidenceVisible, href: evidenceHref, loading: evidenceLoading } =
     useAiActEvidenceNav(workspaceTenantId);
-  const evidenceActive =
-    pathname === evidenceHref || pathname.startsWith(`${evidenceHref}/`);
 
   const isReportingPage = REPORTING_NAV_ITEMS.some(
     (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),

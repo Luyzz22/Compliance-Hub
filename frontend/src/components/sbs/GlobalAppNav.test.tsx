@@ -34,4 +34,28 @@ describe("GlobalAppNav", () => {
     render(<GlobalAppNav />);
     expect(screen.queryByRole("link", { name: /^Advisor$/i })).toBeNull();
   });
+
+  it("renders Reporting dropdown button", () => {
+    isAdvisorNavEnabled.mockReturnValue(false);
+    render(<GlobalAppNav />);
+    expect(screen.getByRole("button", { name: /Reporting/i })).toBeTruthy();
+  });
+
+  it("renders Admin dropdown button", () => {
+    isAdvisorNavEnabled.mockReturnValue(false);
+    render(<GlobalAppNav />);
+    expect(screen.getByRole("button", { name: /Admin/i })).toBeTruthy();
+  });
+
+  it("renders AI Systems link", () => {
+    isAdvisorNavEnabled.mockReturnValue(false);
+    render(<GlobalAppNav />);
+    expect(screen.getByRole("link", { name: /AI Systems/i })).toBeTruthy();
+  });
+
+  it("renders user account menu button", () => {
+    isAdvisorNavEnabled.mockReturnValue(false);
+    render(<GlobalAppNav />);
+    expect(screen.getByRole("button", { name: /Konto/i })).toBeTruthy();
+  });
 });
