@@ -8642,9 +8642,7 @@ def list_billing_plans(
 )
 def get_billing_subscription(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_BILLING))],
 ) -> dict:
     """Get current subscription for the tenant."""
     from app.services.stripe_billing_service import get_tenant_subscription
@@ -8665,9 +8663,7 @@ def get_billing_subscription(
 )
 def start_trial_subscription(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TENANT_SETTINGS))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_BILLING))],
     plan_name: str = Query(..., description="Plan name: starter, professional, or enterprise"),
 ) -> dict:
     """Start a trial subscription for the tenant."""
