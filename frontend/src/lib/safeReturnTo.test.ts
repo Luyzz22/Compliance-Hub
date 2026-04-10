@@ -9,6 +9,12 @@ function safeReturnTo(raw: string | null): string {
   if (!raw) return fallback;
   if (!raw.startsWith("/") || raw.startsWith("//")) return fallback;
   if (/^[a-z]+:/i.test(raw)) return fallback;
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (decoded.includes("\n") || decoded.includes("\r")) return fallback;
+  } catch {
+    return fallback;
+  }
   return raw;
 }
 
@@ -49,5 +55,13 @@ describe("safeReturnTo (login returnTo validation)", () => {
     expect(safeReturnTo("/tenant/compliance-overview")).toBe(
       "/tenant/compliance-overview",
     );
+  });
+
+  it("blocks newline injection in encoded URL", () => {
+    expect(safeReturnTo("/board%0aSet-Cookie:evil")).toBe("/board");
+  });
+
+  it("blocks carriage return injection", () => {
+    expect(safeReturnTo("/board%0d%0aInjected:header")).toBe("/board");
   });
 });

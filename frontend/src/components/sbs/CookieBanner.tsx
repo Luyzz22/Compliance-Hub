@@ -1,17 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import React, { useSyncExternalStore } from "react";
+import React, { useCallback, useSyncExternalStore } from "react";
 
 const COOKIE_CONSENT_KEY = "ch_cookie_consent";
 
-function subscribeStorage(cb: () => void) {
-  window.addEventListener("storage", cb);
-  return () => window.removeEventListener("storage", cb);
+/** Subscribers notified when consent changes within this tab. */
+const listeners = new Set<() => void>();
+
+function notifyListeners() {
+  for (const cb of listeners) cb();
+}
+
+function subscribeConsent(cb: () => void) {
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
 }
 
 function getConsentSnapshot(): boolean {
-  if (typeof window === "undefined") return true; // SSR: hide banner
+  if (typeof window === "undefined") return true;
   return localStorage.getItem(COOKIE_CONSENT_KEY) !== null;
 }
 
@@ -26,16 +35,15 @@ function getConsentServerSnapshot(): boolean {
  */
 export function CookieBanner() {
   const hasConsented = useSyncExternalStore(
-    subscribeStorage,
+    subscribeConsent,
     getConsentSnapshot,
     getConsentServerSnapshot,
   );
 
-  function accept() {
+  const accept = useCallback(() => {
     localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
-    // Force re-render by dispatching storage event manually
-    window.dispatchEvent(new StorageEvent("storage"));
-  }
+    notifyListeners();
+  }, []);
 
   if (hasConsented) return null;
 

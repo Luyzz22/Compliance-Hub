@@ -45,12 +45,25 @@ const AI_SYSTEMS_ROLES: ReadonlySet<string> = new Set<UserRole>([
   "super_admin",
 ]);
 
+const VALID_ROLES: ReadonlySet<string> = new Set<UserRole>([
+  "viewer",
+  "contributor",
+  "editor",
+  "auditor",
+  "compliance_officer",
+  "ciso",
+  "board_member",
+  "compliance_admin",
+  "tenant_admin",
+  "super_admin",
+]);
+
 function resolveRole(): UserRole | null {
   const raw =
     typeof window !== "undefined"
       ? process.env.NEXT_PUBLIC_OPA_USER_ROLE?.trim().toLowerCase() ?? null
       : null;
-  if (!raw) return null;
+  if (!raw || !VALID_ROLES.has(raw)) return null;
   return raw as UserRole;
 }
 

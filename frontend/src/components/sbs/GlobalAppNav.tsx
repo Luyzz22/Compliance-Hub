@@ -389,8 +389,9 @@ export function GlobalAppNav() {
         setMobileOpen(false);
       }
     }
-    document.addEventListener("click", onDoc);
-    return () => document.removeEventListener("click", onDoc);
+    // Use mousedown to avoid race condition with the toggle button's click
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
   }, [mobileOpen]);
 
   // Feature-gating upgrade modal

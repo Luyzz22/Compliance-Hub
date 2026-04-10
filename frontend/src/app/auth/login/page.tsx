@@ -33,6 +33,13 @@ function safeReturnTo(raw: string | null): string {
   if (!raw.startsWith("/") || raw.startsWith("//")) return fallback;
   // Block any URL that contains a protocol-like pattern
   if (/^[a-z]+:/i.test(raw)) return fallback;
+  // Block encoded characters that could be used for header injection
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (decoded.includes("\n") || decoded.includes("\r")) return fallback;
+  } catch {
+    return fallback;
+  }
   return raw;
 }
 
