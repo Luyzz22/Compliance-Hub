@@ -5,6 +5,7 @@ import { DemoContextualHint } from "@/components/demo/DemoContextualHint";
 import { DemoEnvironmentBanner } from "@/components/demo/DemoEnvironmentBanner";
 import { DemoGuide } from "@/components/demo/DemoGuide";
 import { SessionAttributionCapture } from "@/components/marketing/SessionAttributionCapture";
+import { CookieBanner } from "@/components/sbs/CookieBanner";
 import { SbsFooter } from "@/components/sbs/SbsFooter";
 import { SbsHeader } from "@/components/sbs/SbsHeader";
 import { isDemoUiDesiredForTenant } from "@/lib/workspaceDemoServer";
@@ -43,6 +44,9 @@ export default async function RootLayout({
         </main>
         <DemoGuide tenantId={workspaceTenantId} enabled={showDemoUi} />
         <SbsFooter />
+        <Suspense fallback={null}>
+          <CookieBanner />
+        </Suspense>
       </body>
     </html>
   );
