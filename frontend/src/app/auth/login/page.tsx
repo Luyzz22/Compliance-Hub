@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   CH_BTN_PRIMARY,
+  CH_BTN_SECONDARY,
   CH_CARD,
   CH_SHELL,
 } from "@/lib/boardLayout";
@@ -81,24 +82,16 @@ export default function LoginPage() {
           </h2>
           <p className="mt-2 text-sm text-slate-600">
             Willkommen{result.display_name ? `, ${result.display_name}` : ""}!
+            Sie werden zum Dashboard weitergeleitet.
           </p>
-          <p className="mt-1 text-sm text-slate-600">
-            Benutzer-ID:{" "}
-            <code className="rounded bg-slate-100 px-1 text-xs">
-              {result.user_id}
-            </code>
-          </p>
-          {result.access_token && (
-            <p className="mt-1 text-sm text-slate-600">
-              Access-Token:{" "}
-              <code className="rounded bg-slate-100 px-1 text-xs break-all">
-                {result.access_token}
-              </code>
-            </p>
-          )}
-          <Link href="/" className={`${CH_BTN_PRIMARY} mt-4`}>
-            Zum Dashboard
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/board/kpis" className={CH_BTN_PRIMARY}>
+              Zum Board Dashboard
+            </Link>
+            <Link href="/tenant/compliance-overview" className={CH_BTN_SECONDARY}>
+              Zum Workspace
+            </Link>
+          </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className={CH_CARD}>
