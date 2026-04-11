@@ -31,6 +31,13 @@ vi.mock("@/hooks/useUserRole", () => ({
   useCanSeeAiSystems: () => mockUseCanSeeAiSystems(),
 }));
 
+vi.mock("@/hooks/useFeatureGate", () => ({
+  useFeatureGate: () => ({
+    isGated: () => false,
+    requiredPlanLabel: () => "Professional",
+  }),
+}));
+
 import { GlobalAppNav } from "./GlobalAppNav";
 
 describe("GlobalAppNav", () => {

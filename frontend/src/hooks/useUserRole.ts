@@ -74,20 +74,20 @@ export function useUserRole(): UserRole | null {
 /** True when the current role is allowed to see Admin nav items. */
 export function useCanSeeAdmin(): boolean {
   const role = resolveRole();
-  if (!role) return true; // unauthenticated / no role → show everything (public site)
+  if (!role) return false; // fail-closed: hide restricted items during SSR / unknown role
   return ADMIN_ROLES.has(role);
 }
 
 /** True when the current role is allowed to see Reporting nav items. */
 export function useCanSeeReporting(): boolean {
   const role = resolveRole();
-  if (!role) return true;
+  if (!role) return false;
   return REPORTING_ROLES.has(role);
 }
 
 /** True when the current role is allowed to see AI Systems link. */
 export function useCanSeeAiSystems(): boolean {
   const role = resolveRole();
-  if (!role) return true;
+  if (!role) return false;
   return AI_SYSTEMS_ROLES.has(role);
 }

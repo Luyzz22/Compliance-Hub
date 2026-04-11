@@ -9,6 +9,7 @@ import {
   useCanSeeAiSystems,
   useCanSeeReporting,
 } from "@/hooks/useUserRole";
+import { useFeatureGate } from "@/hooks/useFeatureGate";
 import { isAdvisorNavEnabled } from "@/lib/api";
 import {
   ADMIN_NAV_ITEMS,
@@ -19,23 +20,6 @@ import {
 
 import { GlobalWorkspaceEvidenceNavBlock } from "./GlobalWorkspaceEvidenceNavBlock";
 import { UpgradeModal } from "./UpgradeModal";
-
-/* ── Feature-gating helpers ────────────────────────────────────────── */
-
-/** Feature keys that are gated per plan. Items not listed here are ungated. */
-const NAV_FEATURE_GATES: Record<string, { feature: string; requiredPlan: string }> = {
-  "/board/datev-export": { feature: "datev_export", requiredPlan: "Professional" },
-  "/board/xrechnung-export": { feature: "xrechnung", requiredPlan: "Enterprise" },
-  "/board/gap-analysis": { feature: "rag_gap_analysis", requiredPlan: "Professional" },
-};
-
-function isFeatureGated(href: string): boolean {
-  return href in NAV_FEATURE_GATES;
-}
-
-function requiredPlanLabel(href: string): string {
-  return NAV_FEATURE_GATES[href]?.requiredPlan ?? "Professional";
-}
 
 /* ── Shared styles ─────────────────────────────────────────────────── */
 
@@ -273,6 +257,7 @@ function MobileNavContent({
   showAiSystems,
   showAdvisorNav,
   onUpgrade,
+  isGated,
 }: {
   onClose: () => void;
   showReporting: boolean;
@@ -280,6 +265,7 @@ function MobileNavContent({
   showAiSystems: boolean;
   showAdvisorNav: boolean;
   onUpgrade: (href: string) => void;
+  isGated: (href: string) => boolean;
 }) {
   return (
     <div className="flex flex-col gap-1 p-4">
@@ -305,7 +291,7 @@ function MobileNavContent({
         <>
           <DropdownSeparator label="Reporting" />
           {REPORTING_NAV_ITEMS.map((item) =>
-            isFeatureGated(item.href) ? (
+            isGated(item.href) ? (
               <button
                 key={item.href}
                 type="button"
@@ -378,6 +364,9 @@ export function GlobalAppNav() {
   const showReporting = useCanSeeReporting();
   const showAiSystems = useCanSeeAiSystems();
 
+  // Feature-gate plan check (billing API)
+  const featureGate = useFeatureGate();
+
   // Mobile drawer
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileRef = useRef<HTMLDivElement>(null);
@@ -446,6 +435,7 @@ export function GlobalAppNav() {
               showAiSystems={showAiSystems}
               showAdvisorNav={showAdvisorNav}
               onUpgrade={handleUpgrade}
+              isGated={featureGate.isGated}
             />
           </div>
         ) : null}
@@ -480,7 +470,7 @@ export function GlobalAppNav() {
         {showReporting ? (
           <Dropdown label="Reporting" active={reportingActive}>
             {REPORTING_NAV_ITEMS.map((item) =>
-              isFeatureGated(item.href) ? (
+              featureGate.isGated(item.href) ? (
                 <GatedDropdownItem key={item.href} href={item.href} onUpgrade={handleUpgrade}>
                   {item.label}
                 </GatedDropdownItem>
@@ -538,7 +528,7 @@ export function GlobalAppNav() {
       {/* Feature-gate upgrade modal */}
       {upgradeHref ? (
         <UpgradeModal
-          planLabel={requiredPlanLabel(upgradeHref)}
+          planLabel={featureGate.requiredPlanLabel(upgradeHref)}
           onClose={() => setUpgradeHref(null)}
         />
       ) : null}

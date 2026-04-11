@@ -45,13 +45,13 @@ describe("useUserRole RBAC helpers", () => {
     expect(useCanSeeReporting()).toBe(false);
   });
 
-  it("shows everything when no role is set (public site)", async () => {
+  it("hides everything when no role is set (fail-closed / SSR safe)", async () => {
     delete process.env.NEXT_PUBLIC_OPA_USER_ROLE;
     const { useCanSeeAdmin, useCanSeeReporting, useCanSeeAiSystems } =
       await loadHelpers();
-    expect(useCanSeeAdmin()).toBe(true);
-    expect(useCanSeeReporting()).toBe(true);
-    expect(useCanSeeAiSystems()).toBe(true);
+    expect(useCanSeeAdmin()).toBe(false);
+    expect(useCanSeeReporting()).toBe(false);
+    expect(useCanSeeAiSystems()).toBe(false);
   });
 
   it("hides AI systems for viewer", async () => {
