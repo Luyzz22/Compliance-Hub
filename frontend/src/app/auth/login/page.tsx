@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import React, { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { Suspense, useCallback, useState } from "react";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
@@ -21,7 +22,32 @@ type LoginResult = {
   access_token?: string;
 };
 
-export default function LoginPage() {
+/**
+ * Validate that a `next` redirect target is safe (relative path only).
+ * Blocks absolute URLs, protocol-relative URLs, and other open-redirect vectors.
+ */
+function safeReturnTo(raw: string | null): string {
+  const fallback = "/board";
+  if (!raw) return fallback;
+  // Must start with "/" and must NOT start with "//" (protocol-relative)
+  if (!raw.startsWith("/") || raw.startsWith("//")) return fallback;
+  // Block any URL that contains a protocol-like pattern
+  if (/^[a-z]+:/i.test(raw)) return fallback;
+  // Block encoded characters that could be used for header injection
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (decoded.includes("\n") || decoded.includes("\r")) return fallback;
+  } catch {
+    return fallback;
+  }
+  return raw;
+}
+
+function LoginPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = safeReturnTo(searchParams.get("next"));
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -29,43 +55,48 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LoginResult | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setResult(null);
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoading(true);
+      setError(null);
+      setResult(null);
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const code = body?.detail?.code ?? body?.detail ?? "";
-        if (code === "invalid_credentials") {
-          throw new Error("E-Mail oder Passwort ist ungültig.");
-        }
-        if (code === "account_locked") {
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          const code = body?.detail?.code ?? body?.detail ?? "";
+          if (code === "invalid_credentials") {
+            throw new Error("E-Mail oder Passwort ist ungültig.");
+          }
+          if (code === "account_locked") {
+            throw new Error(
+              "Ihr Konto ist gesperrt. Bitte wenden Sie sich an den Administrator.",
+            );
+          }
           throw new Error(
-            "Ihr Konto ist gesperrt. Bitte wenden Sie sich an den Administrator.",
+            `Anmeldung fehlgeschlagen (HTTP ${res.status}). Bitte versuchen Sie es erneut.`,
           );
         }
-        throw new Error(
-          `Anmeldung fehlgeschlagen (HTTP ${res.status}). Bitte versuchen Sie es erneut.`,
-        );
-      }
 
-      const data: LoginResult = await res.json();
-      setResult(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler");
-    } finally {
-      setLoading(false);
-    }
-  }
+        const data: LoginResult = await res.json();
+        setResult(data);
+        // Redirect to the safe returnTo target
+        router.push(returnTo);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [email, password, returnTo, router],
+  );
 
   return (
     <div className={CH_SHELL}>
@@ -85,8 +116,8 @@ export default function LoginPage() {
             Sie werden zum Dashboard weitergeleitet.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/board/kpis" className={CH_BTN_PRIMARY}>
-              Zum Board Dashboard
+            <Link href={returnTo} className={CH_BTN_PRIMARY}>
+              Weiter
             </Link>
             <Link href="/tenant/compliance-overview" className={CH_BTN_SECONDARY}>
               Zum Workspace
@@ -163,5 +194,13 @@ export default function LoginPage() {
         </form>
       )}
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }
