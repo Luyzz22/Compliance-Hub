@@ -36,6 +36,7 @@ export const ADMIN_NAV_ITEMS = [
   { href: "/admin/advisor-portfolio", label: "Advisor Portfolio" },
   { href: "/admin/advisor-mandant-export", label: "Mandant Export" },
   { href: "/admin/gtm", label: "GTM Command Center" },
+  { href: "/admin/audit-log", label: "Audit-Log" },
 ] as const;
 
 /** Auth-related navigation items. */
