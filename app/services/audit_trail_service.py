@@ -194,7 +194,7 @@ class AuditTrailService:
                     purpose=f"Compliance-Verarbeitung: {action_key}",
                     legal_basis="Art. 6 Abs. 1 lit. c/f DSGVO",
                     recipients=["Compliance-Hub System", "Tenant-Administratoren"],
-                    retention_period="10 Jahre (GoBD §14b UStG)",
+                    retention_period="10 Jahre (GoBD / AO)",
                     technical_measures=[
                         "SHA-256 Hashketten-Integrität",
                         "Append-only Speicherung",
