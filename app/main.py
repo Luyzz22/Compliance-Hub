@@ -365,6 +365,13 @@ from app.services.ai_kpi_service import (
 )
 from app.services.ai_system_import import import_ai_systems_from_file
 from app.services.audit_gobd_export import generate_gobd_xml
+from app.services.audit_trail_service import AuditTrailService, NIS2AlertService
+from app.services.audit_trail_types import (
+    AuditAlertItem,
+    AuditLogPage,
+    ChainIntegrityResult,
+    VVTExport,
+)
 from app.services.authority_ai_export import build_authority_export
 from app.services.authority_audit_preparation_pack import (
     build_authority_audit_preparation_pack,
@@ -5274,6 +5281,115 @@ def export_audit_logs_gobd_xml(
             "Content-Disposition": (f'attachment; filename="audit-trail-{tenant_id}.xml"'),
         },
     )
+
+
+# --- Phase 10 audit trail endpoints ---
+
+
+@app.get("/api/v1/audit-logs/filtered", response_model=AuditLogPage)
+def list_audit_logs_filtered(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_AUDIT_LOG))],
+    session: Annotated[Session, Depends(get_session)],
+    page: int = 1,
+    page_size: int = 50,
+    actor: str | None = None,
+    action: str | None = None,
+    resource_type: str | None = None,
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
+) -> AuditLogPage:
+    svc = AuditTrailService(session)
+    return svc.list_filtered(
+        tenant_id,
+        page=page,
+        page_size=page_size,
+        actor=actor,
+        action=action,
+        resource_type=resource_type,
+        from_date=from_date,
+        to_date=to_date,
+    )
+
+
+@app.get("/api/v1/audit-logs/integrity")
+def check_audit_log_integrity(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
+    session: Annotated[Session, Depends(get_session)],
+) -> ChainIntegrityResult:
+    svc = AuditTrailService(session)
+    return svc.verify_integrity(tenant_id)
+
+
+@app.get("/api/v1/audit-logs/export/csv")
+def export_audit_logs_csv(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
+    session: Annotated[Session, Depends(get_session)],
+) -> Response:
+    svc = AuditTrailService(session)
+    csv_content = svc.export_csv(tenant_id)
+    return Response(
+        content=csv_content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="audit-trail-{tenant_id}.csv"',
+        },
+    )
+
+
+@app.get("/api/v1/audit-logs/export/json")
+def export_audit_logs_json(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
+    session: Annotated[Session, Depends(get_session)],
+) -> Response:
+    svc = AuditTrailService(session)
+    json_content = svc.export_json(tenant_id)
+    return Response(
+        content=json_content,
+        media_type="application/json; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="audit-trail-{tenant_id}.json"',
+        },
+    )
+
+
+@app.get("/api/v1/audit-logs/vvt-export", response_model=VVTExport)
+def export_vvt(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
+    session: Annotated[Session, Depends(get_session)],
+) -> VVTExport:
+    """DSGVO Art. 30 Verarbeitungsverzeichnis export."""
+    svc = AuditTrailService(session)
+    return svc.generate_vvt_export(tenant_id)
+
+
+@app.get("/api/v1/audit-alerts", response_model=list[AuditAlertItem])
+def list_audit_alerts(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_AUDIT_LOG))],
+    session: Annotated[Session, Depends(get_session)],
+    severity: str | None = None,
+) -> list[AuditAlertItem]:
+    svc = NIS2AlertService(session)
+    return svc.list_alerts(tenant_id, severity=severity)
+
+
+@app.post("/api/v1/audit-alerts/{alert_id}/resolve", response_model=AuditAlertItem)
+def resolve_audit_alert(
+    alert_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
+    session: Annotated[Session, Depends(get_session)],
+) -> AuditAlertItem:
+    svc = NIS2AlertService(session)
+    result = svc.resolve_alert(tenant_id, alert_id, resolved_by="admin")
+    if result is None:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return result
 
 
 # ---------------------------------------------------------------------------
