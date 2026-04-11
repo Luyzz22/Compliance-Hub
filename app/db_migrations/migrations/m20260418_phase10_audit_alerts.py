@@ -42,16 +42,8 @@ def apply(engine: Engine) -> bool:
             )
         """)
         )
-        conn.execute(
-            text("CREATE INDEX idx_audit_alerts_tenant ON audit_alerts (tenant_id)")
-        )
-        conn.execute(
-            text("CREATE INDEX idx_audit_alerts_severity ON audit_alerts (severity)")
-        )
-        conn.execute(
-            text(
-                "CREATE INDEX idx_audit_alerts_created ON audit_alerts (created_at_utc)"
-            )
-        )
+        conn.execute(text("CREATE INDEX idx_audit_alerts_tenant ON audit_alerts (tenant_id)"))
+        conn.execute(text("CREATE INDEX idx_audit_alerts_severity ON audit_alerts (severity)"))
+        conn.execute(text("CREATE INDEX idx_audit_alerts_created ON audit_alerts (created_at_utc)"))
     logger.info("db_migration applied: %s", MIGRATION_ID)
     return True

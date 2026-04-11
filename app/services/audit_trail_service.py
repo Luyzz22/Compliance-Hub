@@ -84,9 +84,7 @@ class AuditTrailService:
         # Paginate
         offset = (page - 1) * page_size
         data_stmt = (
-            stmt.order_by(AuditLogTable.created_at_utc.desc())
-            .offset(offset)
-            .limit(page_size)
+            stmt.order_by(AuditLogTable.created_at_utc.desc()).offset(offset).limit(page_size)
         )
         rows = self._session.execute(data_stmt).scalars().all()
 
@@ -135,35 +133,39 @@ class AuditTrailService:
         entries = self._repo.list_for_tenant(tenant_id=tenant_id, limit=limit)
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow([
-            "id",
-            "timestamp",
-            "actor",
-            "actor_role",
-            "action",
-            "entity_type",
-            "entity_id",
-            "outcome",
-            "ip_address",
-            "user_agent",
-            "entry_hash",
-            "previous_hash",
-        ])
+        writer.writerow(
+            [
+                "id",
+                "timestamp",
+                "actor",
+                "actor_role",
+                "action",
+                "entity_type",
+                "entity_id",
+                "outcome",
+                "ip_address",
+                "user_agent",
+                "entry_hash",
+                "previous_hash",
+            ]
+        )
         for e in entries:
-            writer.writerow([
-                e.id,
-                e.created_at_utc.isoformat(),
-                e.actor,
-                e.actor_role or "",
-                e.action,
-                e.entity_type,
-                e.entity_id,
-                e.outcome or "",
-                e.ip_address or "",
-                e.user_agent or "",
-                e.entry_hash or "",
-                e.previous_hash or "",
-            ])
+            writer.writerow(
+                [
+                    e.id,
+                    e.created_at_utc.isoformat(),
+                    e.actor,
+                    e.actor_role or "",
+                    e.action,
+                    e.entity_type,
+                    e.entity_id,
+                    e.outcome or "",
+                    e.ip_address or "",
+                    e.user_agent or "",
+                    e.entry_hash or "",
+                    e.previous_hash or "",
+                ]
+            )
         return buf.getvalue()
 
     def export_json(self, tenant_id: str, limit: int = 10_000) -> str:
