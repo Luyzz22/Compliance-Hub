@@ -7,7 +7,7 @@ and access logging for the enterprise Trust Center.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -56,7 +56,9 @@ COMPLIANCE_FRAMEWORKS = (
 _BUNDLE_DEFAULTS: dict[str, dict[str, str]] = {
     "iso_27001": {
         "title": "ISO 27001 Evidence Bundle",
-        "description": "ISMS-Policies, Kontroll-Mappings, Audit-Log-Exporte und Risikozusammenfassungen.",
+        "description": (
+            "ISMS-Policies, Kontroll-Mappings, Audit-Log-Exporte und Risikozusammenfassungen."
+        ),
     },
     "nis2": {
         "title": "NIS2 Compliance Bundle",
@@ -110,7 +112,7 @@ def log_trust_center_access(
         resource_type=resource_type,
         resource_id=resource_id,
         ip_address=ip_address,
-        created_at_utc=datetime.now(timezone.utc),
+        created_at_utc=datetime.now(UTC),
     )
     session.add(entry)
     session.commit()
@@ -159,7 +161,7 @@ def create_trust_center_asset(
     session: Session, tenant_id: str, data: dict[str, Any]
 ) -> dict[str, Any]:
     """Create a new trust center asset."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     asset = TrustCenterAssetDB(
         id=str(uuid.uuid4()),
         tenant_id=tenant_id,
@@ -210,7 +212,7 @@ def update_trust_center_asset(
     ):
         if field in data:
             setattr(row, field, data[field])
-    row.updated_at_utc = datetime.now(timezone.utc)
+    row.updated_at_utc = datetime.now(UTC)
     session.commit()
     session.refresh(row)
     return _asset_to_dict(row)
@@ -240,9 +242,7 @@ def _asset_to_dict(row: TrustCenterAssetDB) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def list_evidence_bundles(
-    session: Session, tenant_id: str
-) -> list[dict[str, Any]]:
+def list_evidence_bundles(session: Session, tenant_id: str) -> list[dict[str, Any]]:
     """List all evidence bundles for a tenant."""
     rows = (
         session.query(EvidenceBundleDB)
@@ -253,9 +253,7 @@ def list_evidence_bundles(
     return [_bundle_to_dict(r) for r in rows]
 
 
-def get_evidence_bundle(
-    session: Session, tenant_id: str, bundle_id: str
-) -> dict[str, Any] | None:
+def get_evidence_bundle(session: Session, tenant_id: str, bundle_id: str) -> dict[str, Any] | None:
     """Retrieve a single evidence bundle by ID (tenant-scoped)."""
     row = (
         session.query(EvidenceBundleDB)
@@ -279,7 +277,7 @@ def generate_evidence_bundle(
     metadata record and reference relevant existing trust-center assets.
     """
     defaults = _BUNDLE_DEFAULTS.get(bundle_type, {})
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Collect asset IDs that match the bundle's frameworks
     framework_filter = _bundle_framework_filter(bundle_type)
@@ -294,8 +292,7 @@ def generate_evidence_bundle(
     artefact_ids = [
         a.id
         for a in assets
-        if not framework_filter
-        or any(f in (a.framework_refs or []) for f in framework_filter)
+        if not framework_filter or any(f in (a.framework_refs or []) for f in framework_filter)
     ]
 
     bundle = EvidenceBundleDB(
@@ -354,9 +351,7 @@ def _bundle_to_dict(row: EvidenceBundleDB) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def get_compliance_mapping_overview(
-    session: Session, tenant_id: str
-) -> dict[str, Any]:
+def get_compliance_mapping_overview(session: Session, tenant_id: str) -> dict[str, Any]:
     """Build a high-level compliance mapping view.
 
     Returns a matrix of controls (trust center assets of type 'tom')
@@ -393,9 +388,7 @@ def get_compliance_mapping_overview(
         )
 
     total = len(assets) or 1
-    framework_coverage = {
-        fw: round(count / total, 2) for fw, count in framework_counts.items()
-    }
+    framework_coverage = {fw: round(count / total, 2) for fw, count in framework_counts.items()}
 
     return {
         "tenant_id": tenant_id,

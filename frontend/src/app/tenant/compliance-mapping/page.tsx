@@ -119,7 +119,7 @@ export default function TenantComplianceMappingPage() {
         title="Compliance Mapping"
         description={
           <>
-            „Map once, comply many" – Übersicht welche Controls und Nachweise auf welche
+            &bdquo;Map once, comply many&ldquo; – Übersicht welche Controls und Nachweise auf welche
             Frameworks einzahlen. High-Level-Ansicht für Business/Procurement, Detail für
             Auditoren und Security Reviewer.
           </>

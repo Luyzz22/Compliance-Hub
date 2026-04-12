@@ -105,7 +105,7 @@ export default function TrustCenterPublicPage() {
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
           ComplianceHub unterstützt die zentralen regulatorischen Frameworks für den DACH-Markt.
-          Ein gemeinsames Kontrollmodell ermöglicht „Map once, comply many".
+          Ein gemeinsames Kontrollmodell ermöglicht &bdquo;Map once, comply many&ldquo;.
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {frameworks.map((fw) => (

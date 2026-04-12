@@ -151,6 +151,8 @@ _TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
         Permission.EXPORT_XRECHNUNG,
         Permission.MANAGE_N8N_WEBHOOKS,
         Permission.MANAGE_BILLING,
+        Permission.MANAGE_TRUST_CENTER,
+        Permission.ACCESS_EVIDENCE_BUNDLES,
     }
 )
 

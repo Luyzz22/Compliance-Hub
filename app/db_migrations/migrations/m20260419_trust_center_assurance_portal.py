@@ -72,9 +72,7 @@ def apply(engine: Engine) -> bool:
             """)
             )
             conn.execute(
-                text(
-                    "CREATE INDEX idx_evidence_bundles_tenant ON evidence_bundles (tenant_id)"
-                )
+                text("CREATE INDEX idx_evidence_bundles_tenant ON evidence_bundles (tenant_id)")
             )
 
         if not table_exists(engine, "trust_center_access_logs"):
@@ -95,7 +93,8 @@ def apply(engine: Engine) -> bool:
             )
             conn.execute(
                 text(
-                    "CREATE INDEX idx_trust_center_access_logs_tenant ON trust_center_access_logs (tenant_id)"
+                    "CREATE INDEX idx_trust_center_access_logs_tenant"
+                    " ON trust_center_access_logs (tenant_id)"
                 )
             )
 

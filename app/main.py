@@ -9191,7 +9191,13 @@ def get_evidence_bundle_endpoint(
 
 
 class GenerateBundleInput(BaseModel):
-    bundle_type: str = Field(..., description="One of: iso_27001, nis2, dsgvo, eu_ai_act, gobd_revision, vendor_security_review, auditor_bundle")
+    bundle_type: str = Field(
+        ...,
+        description=(
+            "One of: iso_27001, nis2, dsgvo, eu_ai_act,"
+            " gobd_revision, vendor_security_review, auditor_bundle"
+        ),
+    )
 
 
 @app.post(
@@ -9263,7 +9269,7 @@ def get_compliance_mapping_endpoint(
 )
 def list_bundle_types() -> dict:
     """List available evidence bundle types (public info)."""
-    from app.services.trust_center_service import BUNDLE_TYPES, _BUNDLE_DEFAULTS
+    from app.services.trust_center_service import _BUNDLE_DEFAULTS, BUNDLE_TYPES
 
     return {
         "bundle_types": [
