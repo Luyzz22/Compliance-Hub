@@ -8972,3 +8972,306 @@ def check_feature_gate_endpoint(
         return {"feature": feature, "accessible": True}
     finally:
         session.close()
+
+
+# ---------------------------------------------------------------------------
+# Trust Center & Assurance Portal endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/trust-center/public",
+    tags=["trust-center"],
+)
+def get_trust_center_public() -> dict:
+    """Public trust center content – no authentication required."""
+    from app.services.trust_center_service import get_public_trust_center_content
+
+    return get_public_trust_center_content()
+
+
+@app.get(
+    "/api/v1/trust-center/assets",
+    tags=["trust-center"],
+)
+def list_trust_center_assets_endpoint(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_TRUST_CENTER))],
+    request: Request,
+) -> dict:
+    """List published trust center assets for the tenant (gated)."""
+    from app.services.trust_center_service import (
+        list_trust_center_assets,
+        log_trust_center_access,
+    )
+
+    sensitivity_map = {
+        "viewer": "prospect",
+        "contributor": "customer",
+        "editor": "customer",
+        "auditor": "auditor",
+        "compliance_officer": "internal",
+        "ciso": "internal",
+        "board_member": "customer",
+        "compliance_admin": "internal",
+        "tenant_admin": "internal",
+        "super_admin": "internal",
+    }
+    max_sens = sensitivity_map.get(_role.value, "customer")
+
+    session = next(get_session())
+    try:
+        log_trust_center_access(
+            session,
+            tenant_id=tenant_id,
+            actor=None,
+            role=_role.value,
+            action="list_assets",
+            resource_type="trust_center",
+            ip_address=request.client.host if request.client else None,
+        )
+        assets = list_trust_center_assets(session, tenant_id, sensitivity_max=max_sens)
+        return {"assets": assets, "count": len(assets)}
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/trust-center/assets/{asset_id}",
+    tags=["trust-center"],
+)
+def get_trust_center_asset_endpoint(
+    asset_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.DOWNLOAD_ASSURANCE_DOCS))
+    ],
+    request: Request,
+) -> dict:
+    """Retrieve a single trust center asset (gated download)."""
+    from app.services.trust_center_service import (
+        get_trust_center_asset,
+        log_trust_center_access,
+    )
+
+    session = next(get_session())
+    try:
+        asset = get_trust_center_asset(session, tenant_id, asset_id)
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        log_trust_center_access(
+            session,
+            tenant_id=tenant_id,
+            actor=None,
+            role=_role.value,
+            action="download_asset",
+            resource_type="trust_center_asset",
+            resource_id=asset_id,
+            ip_address=request.client.host if request.client else None,
+        )
+        return asset
+    finally:
+        session.close()
+
+
+class TrustCenterAssetInput(BaseModel):
+    title: str = Field(..., min_length=1, max_length=500)
+    description: str | None = None
+    asset_type: str = "policy"
+    sensitivity: str = "customer"
+    framework_refs: list[str] = Field(default_factory=list)
+    file_name: str | None = None
+    published: bool = False
+
+
+@app.post(
+    "/api/v1/trust-center/assets",
+    tags=["trust-center"],
+    status_code=status.HTTP_201_CREATED,
+)
+def create_trust_center_asset_endpoint(
+    body: TrustCenterAssetInput,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TRUST_CENTER))
+    ],
+) -> dict:
+    """Create a new trust center asset (admin)."""
+    from app.services.trust_center_service import create_trust_center_asset
+
+    session = next(get_session())
+    try:
+        return create_trust_center_asset(session, tenant_id, body.model_dump())
+    finally:
+        session.close()
+
+
+@app.put(
+    "/api/v1/trust-center/assets/{asset_id}",
+    tags=["trust-center"],
+)
+def update_trust_center_asset_endpoint(
+    asset_id: str,
+    body: TrustCenterAssetInput,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TRUST_CENTER))
+    ],
+) -> dict:
+    """Update an existing trust center asset (admin)."""
+    from app.services.trust_center_service import update_trust_center_asset
+
+    session = next(get_session())
+    try:
+        result = update_trust_center_asset(session, tenant_id, asset_id, body.model_dump())
+        if not result:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        return result
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/trust-center/evidence-bundles",
+    tags=["trust-center"],
+)
+def list_evidence_bundles_endpoint(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.ACCESS_EVIDENCE_BUNDLES))
+    ],
+) -> dict:
+    """List evidence bundles for the tenant."""
+    from app.services.trust_center_service import list_evidence_bundles
+
+    session = next(get_session())
+    try:
+        bundles = list_evidence_bundles(session, tenant_id)
+        return {"bundles": bundles, "count": len(bundles)}
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/trust-center/evidence-bundles/{bundle_id}",
+    tags=["trust-center"],
+)
+def get_evidence_bundle_endpoint(
+    bundle_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.ACCESS_EVIDENCE_BUNDLES))
+    ],
+    request: Request,
+) -> dict:
+    """Retrieve a single evidence bundle."""
+    from app.services.trust_center_service import (
+        get_evidence_bundle,
+        log_trust_center_access,
+    )
+
+    session = next(get_session())
+    try:
+        bundle = get_evidence_bundle(session, tenant_id, bundle_id)
+        if not bundle:
+            raise HTTPException(status_code=404, detail="Evidence bundle not found")
+        log_trust_center_access(
+            session,
+            tenant_id=tenant_id,
+            actor=None,
+            role=_role.value,
+            action="download_bundle",
+            resource_type="evidence_bundle",
+            resource_id=bundle_id,
+            ip_address=request.client.host if request.client else None,
+        )
+        return bundle
+    finally:
+        session.close()
+
+
+class GenerateBundleInput(BaseModel):
+    bundle_type: str = Field(..., description="One of: iso_27001, nis2, dsgvo, eu_ai_act, gobd_revision, vendor_security_review, auditor_bundle")
+
+
+@app.post(
+    "/api/v1/trust-center/evidence-bundles/generate",
+    tags=["trust-center"],
+    status_code=status.HTTP_201_CREATED,
+)
+def generate_evidence_bundle_endpoint(
+    body: GenerateBundleInput,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.ACCESS_EVIDENCE_BUNDLES))
+    ],
+    request: Request,
+) -> dict:
+    """Generate a new evidence bundle for due-diligence."""
+    from app.services.trust_center_service import (
+        BUNDLE_TYPES,
+        generate_evidence_bundle,
+        log_trust_center_access,
+    )
+
+    if body.bundle_type not in BUNDLE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid bundle_type. Must be one of: {', '.join(BUNDLE_TYPES)}",
+        )
+    session = next(get_session())
+    try:
+        bundle = generate_evidence_bundle(session, tenant_id, body.bundle_type)
+        log_trust_center_access(
+            session,
+            tenant_id=tenant_id,
+            actor=None,
+            role=_role.value,
+            action="generate_bundle",
+            resource_type="evidence_bundle",
+            resource_id=bundle["id"],
+            ip_address=request.client.host if request.client else None,
+        )
+        return bundle
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/trust-center/compliance-mapping",
+    tags=["trust-center"],
+)
+def get_compliance_mapping_endpoint(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.VIEW_TRUST_CENTER))
+    ],
+) -> dict:
+    """Compliance mapping overview: controls × frameworks."""
+    from app.services.trust_center_service import get_compliance_mapping_overview
+
+    session = next(get_session())
+    try:
+        return get_compliance_mapping_overview(session, tenant_id)
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/trust-center/bundle-types",
+    tags=["trust-center"],
+)
+def list_bundle_types() -> dict:
+    """List available evidence bundle types (public info)."""
+    from app.services.trust_center_service import BUNDLE_TYPES, _BUNDLE_DEFAULTS
+
+    return {
+        "bundle_types": [
+            {
+                "key": bt,
+                "title": _BUNDLE_DEFAULTS.get(bt, {}).get("title", bt),
+                "description": _BUNDLE_DEFAULTS.get(bt, {}).get("description", ""),
+            }
+            for bt in BUNDLE_TYPES
+        ]
+    }
