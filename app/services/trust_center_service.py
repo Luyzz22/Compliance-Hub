@@ -527,7 +527,9 @@ def sign_evidence_bundle(
     row.signed_by_role = signer_role
     row.signing_key_id = kid
     row.signed_payload = payload.decode()
-    # Store the signed payload so verification can reconstruct it
+    # Store signed_payload + kid in metadata_json as well for backward
+    # compatibility – verify reads from DB columns first, falling back to
+    # metadata for Phase-11 bundles that lack the dedicated columns.
     meta = dict(row.metadata_payload or {})
     meta["signed_payload"] = payload.decode()
     meta["kid"] = kid
