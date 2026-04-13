@@ -23,6 +23,7 @@ export const WORKSPACE_NAV_ITEMS = [
 /** Enterprise Reporting & Export module pages. */
 export const REPORTING_NAV_ITEMS = [
   { href: "/board/executive-dashboard", label: "Executive Dashboard" },
+  { href: "/board/analytics", label: "Compliance Analytics" },
   { href: "/board/gap-analysis", label: "Gap Analysis" },
   { href: "/board/ai-compliance-report", label: "AI Compliance Report" },
   { href: "/board/datev-export", label: "DATEV Export" },

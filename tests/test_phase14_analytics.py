@@ -12,12 +12,7 @@ from app.models_db import (
     AuditLogTable,
     Base,
     ComplianceControlDB,
-    ComplianceFrameworkDB,
-    ComplianceRequirementControlLinkDB,
-    ComplianceRequirementDB,
-    TrustCenterAccessLogDB,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
