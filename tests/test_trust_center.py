@@ -432,6 +432,46 @@ def test_api_compliance_mapping_requires_auth() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Phase 14 – Health Endpoint Auth-Gate Tests
+# ---------------------------------------------------------------------------
+
+
+def test_health_endpoint_no_role_returns_403() -> None:
+    """Health endpoint returns 403 for anonymous/default CONTRIBUTOR role."""
+    from app.main import app
+
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.get("/api/v1/trust-center/health")
+    assert resp.status_code == 403
+
+
+def test_health_endpoint_viewer_returns_403() -> None:
+    """Health endpoint returns 403 for viewer role (insufficient permission)."""
+    from app.main import app
+
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.get(
+        "/api/v1/trust-center/health",
+        headers={"x-opa-user-role": "viewer"},
+    )
+    assert resp.status_code == 403
+
+
+def test_health_endpoint_compliance_admin_returns_200() -> None:
+    """Health endpoint returns 200 for compliance_admin role."""
+    from app.main import app
+
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.get(
+        "/api/v1/trust-center/health",
+        headers={"x-opa-user-role": "compliance_admin"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "registry_configured" in data
+
+
+# ---------------------------------------------------------------------------
 # Phase 11 – Sensitivity Gate & E-Signing Tests
 # ---------------------------------------------------------------------------
 

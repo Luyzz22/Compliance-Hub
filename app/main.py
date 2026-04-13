@@ -9343,7 +9343,11 @@ def verify_evidence_bundle_endpoint(
     "/api/v1/trust-center/health",
     tags=["trust-center"],
 )
-def trust_center_health_endpoint() -> dict:
+def trust_center_health_endpoint(
+    _rbac: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.ACCESS_EVIDENCE_BUNDLES))
+    ],
+) -> dict:
     """Return key-registry health status (no key material exposed)."""
     from app.services.trust_center_service import get_key_registry_health
 
