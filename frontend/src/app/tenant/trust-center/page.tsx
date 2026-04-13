@@ -16,6 +16,8 @@ const assetCategories = [
     icon: "📄",
     description: "Informationssicherheits-, Datenschutz- und AI-Governance-Richtlinien.",
     sensitivity: "customer",
+    sensitivityLabel: "🟡 Customer",
+    sensitivityColor: "bg-yellow-100 text-yellow-800 ring-yellow-200/70",
   },
   {
     key: "certificates",
@@ -23,6 +25,8 @@ const assetCategories = [
     icon: "🏅",
     description: "ISO-Zertifikate, SOC-Reports und externe Prüfberichte.",
     sensitivity: "auditor",
+    sensitivityLabel: "🔴 Auditor",
+    sensitivityColor: "bg-red-100 text-red-800 ring-red-200/70",
   },
   {
     key: "audit_reports",
@@ -30,6 +34,8 @@ const assetCategories = [
     icon: "📊",
     description: "Interne und externe Auditberichte mit Maßnahmenverfolgung.",
     sensitivity: "auditor",
+    sensitivityLabel: "🔴 Auditor",
+    sensitivityColor: "bg-red-100 text-red-800 ring-red-200/70",
   },
   {
     key: "toms",
@@ -37,6 +43,8 @@ const assetCategories = [
     icon: "🔒",
     description: "Technische und organisatorische Maßnahmen gemäß Art. 32 DSGVO.",
     sensitivity: "customer",
+    sensitivityLabel: "🟡 Customer",
+    sensitivityColor: "bg-yellow-100 text-yellow-800 ring-yellow-200/70",
   },
   {
     key: "compliance_snapshots",
@@ -44,6 +52,8 @@ const assetCategories = [
     icon: "📈",
     description: "Aktuelle Compliance-Standings über alle Frameworks hinweg.",
     sensitivity: "customer",
+    sensitivityLabel: "🟡 Customer",
+    sensitivityColor: "bg-yellow-100 text-yellow-800 ring-yellow-200/70",
   },
   {
     key: "board_pdfs",
@@ -51,6 +61,8 @@ const assetCategories = [
     icon: "📑",
     description: "Board-Reports, Executive Summaries und Assurance-Dokumentation.",
     sensitivity: "internal",
+    sensitivityLabel: "⚫ Internal",
+    sensitivityColor: "bg-slate-800 text-white ring-slate-700",
   },
 ];
 
@@ -115,8 +127,8 @@ export default function TenantTrustCenterPage() {
                 <span className="text-2xl" aria-hidden>{cat.icon}</span>
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{cat.label}</p>
-                  <span className="inline-block mt-0.5 rounded-full bg-slate-100 px-2 py-0.5 text-[0.6rem] font-medium text-slate-500">
-                    {cat.sensitivity}
+                  <span className={`mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[0.6rem] font-semibold ring-1 ring-inset ${cat.sensitivityColor}`}>
+                    {cat.sensitivityLabel}
                   </span>
                 </div>
               </div>

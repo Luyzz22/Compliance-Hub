@@ -429,3 +429,246 @@ def test_api_compliance_mapping_requires_auth() -> None:
     client = TestClient(app, raise_server_exceptions=False)
     resp = client.get("/api/v1/trust-center/compliance-mapping")
     assert resp.status_code in (400, 401, 403, 422)
+
+
+# ---------------------------------------------------------------------------
+# Phase 11 – Sensitivity Gate & E-Signing Tests
+# ---------------------------------------------------------------------------
+
+
+def test_get_asset_blocks_unpublished(_session) -> None:
+    """P1 Fix: get_trust_center_asset returns None for unpublished assets."""
+    from app.services.trust_center_service import (
+        create_trust_center_asset,
+        get_trust_center_asset,
+    )
+
+    asset = create_trust_center_asset(
+        _session,
+        "tenant-p11-01",
+        {"title": "Draft Doc", "sensitivity": "public", "published": False},
+    )
+    result = get_trust_center_asset(_session, "tenant-p11-01", asset["id"])
+    assert result is None
+
+
+def test_get_asset_blocks_above_sensitivity(_session) -> None:
+    """P1 Fix: get_trust_center_asset returns None when sensitivity exceeds ceiling."""
+    from app.services.trust_center_service import (
+        create_trust_center_asset,
+        get_trust_center_asset,
+    )
+
+    asset = create_trust_center_asset(
+        _session,
+        "tenant-p11-02",
+        {"title": "Internal Only", "sensitivity": "internal", "published": True},
+    )
+    # Viewer ceiling (prospect) should NOT see internal docs
+    result = get_trust_center_asset(
+        _session, "tenant-p11-02", asset["id"], sensitivity_max="prospect"
+    )
+    assert result is None
+
+    # Admin ceiling (internal) should see it
+    result_ok = get_trust_center_asset(
+        _session, "tenant-p11-02", asset["id"], sensitivity_max="internal"
+    )
+    assert result_ok is not None
+    assert result_ok["title"] == "Internal Only"
+
+
+def test_get_asset_sensitivity_boundary(_session) -> None:
+    """P1 Fix: exact boundary – auditor ceiling can see auditor but not internal."""
+    from app.services.trust_center_service import (
+        create_trust_center_asset,
+        get_trust_center_asset,
+    )
+
+    auditor_doc = create_trust_center_asset(
+        _session,
+        "tenant-p11-03",
+        {"title": "Auditor Doc", "sensitivity": "auditor", "published": True},
+    )
+    internal_doc = create_trust_center_asset(
+        _session,
+        "tenant-p11-03",
+        {"title": "Internal Doc", "sensitivity": "internal", "published": True},
+    )
+    # auditor ceiling: can see auditor doc
+    assert (
+        get_trust_center_asset(
+            _session, "tenant-p11-03", auditor_doc["id"], sensitivity_max="auditor"
+        )
+        is not None
+    )
+    # auditor ceiling: cannot see internal doc
+    assert (
+        get_trust_center_asset(
+            _session, "tenant-p11-03", internal_doc["id"], sensitivity_max="auditor"
+        )
+        is None
+    )
+
+
+def test_compliance_mapping_sensitivity_ceiling(_session) -> None:
+    """P1 Fix: compliance mapping respects sensitivity ceiling."""
+    from app.services.trust_center_service import (
+        create_trust_center_asset,
+        get_compliance_mapping_overview,
+    )
+
+    create_trust_center_asset(
+        _session,
+        "tenant-p11-04",
+        {
+            "title": "Public Control",
+            "sensitivity": "public",
+            "framework_refs": ["ISO_27001"],
+            "published": True,
+        },
+    )
+    create_trust_center_asset(
+        _session,
+        "tenant-p11-04",
+        {
+            "title": "Internal Control",
+            "sensitivity": "internal",
+            "framework_refs": ["ISO_27001", "NIS2"],
+            "published": True,
+        },
+    )
+
+    # Viewer (prospect ceiling) → sees only 1 control
+    viewer_map = get_compliance_mapping_overview(
+        _session, "tenant-p11-04", sensitivity_max="prospect"
+    )
+    assert viewer_map["total_controls"] == 1
+
+    # Admin (internal ceiling) → sees both
+    admin_map = get_compliance_mapping_overview(
+        _session, "tenant-p11-04", sensitivity_max="internal"
+    )
+    assert admin_map["total_controls"] == 2
+
+
+def test_compliance_mapping_viewer_no_auditor_assets(_session) -> None:
+    """Viewer must not see AUDITOR_ONLY or INTERNAL assets in compliance mapping."""
+    from app.services.trust_center_service import (
+        create_trust_center_asset,
+        get_compliance_mapping_overview,
+    )
+
+    create_trust_center_asset(
+        _session,
+        "tenant-p11-05",
+        {
+            "title": "Customer Doc",
+            "sensitivity": "customer",
+            "framework_refs": ["DSGVO"],
+            "published": True,
+        },
+    )
+    create_trust_center_asset(
+        _session,
+        "tenant-p11-05",
+        {
+            "title": "Auditor-Only Doc",
+            "sensitivity": "auditor",
+            "framework_refs": ["DSGVO"],
+            "published": True,
+        },
+    )
+
+    viewer_map = get_compliance_mapping_overview(
+        _session, "tenant-p11-05", sensitivity_max="prospect"
+    )
+    assert viewer_map["total_controls"] == 0  # prospect can't even see customer
+
+    customer_map = get_compliance_mapping_overview(
+        _session, "tenant-p11-05", sensitivity_max="customer"
+    )
+    assert customer_map["total_controls"] == 1
+    assert customer_map["controls"][0]["title"] == "Customer Doc"
+
+
+def test_sign_and_verify_evidence_bundle(_session) -> None:
+    """E-Signing: sign + verify with cryptographic validation."""
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    from app.services.trust_center_service import (
+        _get_signing_key_pem,
+        generate_evidence_bundle,
+        sign_evidence_bundle,
+        verify_evidence_bundle,
+    )
+
+    bundle = generate_evidence_bundle(_session, "tenant-p11-06", "iso_27001")
+    assert bundle["signature"] is None
+
+    signed = sign_evidence_bundle(_session, "tenant-p11-06", bundle["id"], "compliance_admin")
+    assert signed is not None
+    assert signed["signature"] is not None
+    assert signed["cert_fingerprint"] is not None
+    assert signed["signed_at"] is not None
+    assert signed["signed_by_role"] == "compliance_admin"
+
+    # Verify via service (cryptographic check)
+    result = verify_evidence_bundle(_session, "tenant-p11-06", bundle["id"])
+    assert result is not None
+    assert result["valid"] is True
+    assert result["signer_role"] == "compliance_admin"
+
+    # Also verify the signature directly with the crypto library
+    key_pem = _get_signing_key_pem()
+    private_key = serialization.load_pem_private_key(key_pem, password=None)
+    assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+    public_key = private_key.public_key()
+    sig_bytes = bytes.fromhex(signed["signature"])
+    payload = signed["metadata"]["signed_payload"].encode()
+    # This will raise if the signature is invalid
+    public_key.verify(sig_bytes, payload, ec.ECDSA(hashes.SHA256()))
+
+
+def test_verify_unsigned_bundle(_session) -> None:
+    """E-Signing: verify returns valid=False for unsigned bundles."""
+    from app.services.trust_center_service import (
+        generate_evidence_bundle,
+        verify_evidence_bundle,
+    )
+
+    bundle = generate_evidence_bundle(_session, "tenant-p11-07", "dsgvo")
+
+    result = verify_evidence_bundle(_session, "tenant-p11-07", bundle["id"])
+    assert result is not None
+    assert result["valid"] is False
+
+
+def test_role_sensitivity_mapping() -> None:
+    """Role sensitivity helper returns correct ceilings."""
+    from app.services.trust_center_service import max_sensitivity_for_role
+
+    assert max_sensitivity_for_role("viewer") == "prospect"
+    assert max_sensitivity_for_role("contributor") == "customer"
+    assert max_sensitivity_for_role("auditor") == "auditor"
+    assert max_sensitivity_for_role("compliance_admin") == "internal"
+    assert max_sensitivity_for_role("tenant_admin") == "internal"
+    assert max_sensitivity_for_role("unknown_role") == "customer"
+
+
+def test_migration_phase11_satisfied(_engine) -> None:
+    """Phase 11 migration is satisfied after create_all."""
+    from app.db_migrations.migrations.m20260420_phase11_trust_center_esigning import (
+        satisfied,
+    )
+
+    assert satisfied(_engine)
+
+
+def test_migration_phase11_apply_idempotent(_engine) -> None:
+    from app.db_migrations.migrations.m20260420_phase11_trust_center_esigning import (
+        apply,
+    )
+
+    assert apply(_engine) is False

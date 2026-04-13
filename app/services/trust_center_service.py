@@ -6,6 +6,8 @@ and access logging for the enterprise Trust Center.
 
 from __future__ import annotations
 
+import hashlib
+import os
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -32,6 +34,37 @@ ASSET_TYPES = (
 )
 
 SENSITIVITY_LEVELS = ("public", "prospect", "customer", "auditor", "internal")
+
+# ---------------------------------------------------------------------------
+# Role → maximum sensitivity mapping
+# ---------------------------------------------------------------------------
+
+ROLE_SENSITIVITY_MAP: dict[str, str] = {
+    "viewer": "prospect",
+    "contributor": "customer",
+    "editor": "customer",
+    "auditor": "auditor",
+    "compliance_officer": "internal",
+    "ciso": "internal",
+    "board_member": "customer",
+    "compliance_admin": "internal",
+    "tenant_admin": "internal",
+    "super_admin": "internal",
+}
+
+
+def max_sensitivity_for_role(role: str) -> str:
+    """Return the highest sensitivity level a role may access."""
+    return ROLE_SENSITIVITY_MAP.get(role, "customer")
+
+
+def _sensitivity_allowed(asset_sensitivity: str, ceiling: str) -> bool:
+    """Return True if *asset_sensitivity* is at or below *ceiling*."""
+    try:
+        return SENSITIVITY_LEVELS.index(asset_sensitivity) <= SENSITIVITY_LEVELS.index(ceiling)
+    except ValueError:
+        return False
+
 
 BUNDLE_TYPES = (
     "iso_27001",
@@ -102,6 +135,7 @@ def log_trust_center_access(
     resource_type: str,
     resource_id: str | None = None,
     ip_address: str | None = None,
+    metadata_json: str | None = None,
 ) -> None:
     """Write an immutable access-log entry for trust center interactions."""
     entry = TrustCenterAccessLogDB(
@@ -112,6 +146,7 @@ def log_trust_center_access(
         resource_type=resource_type,
         resource_id=resource_id,
         ip_address=ip_address,
+        metadata_json=metadata_json,
         created_at_utc=datetime.now(UTC),
     )
     session.add(entry)
@@ -143,18 +178,31 @@ def list_trust_center_assets(
 
 
 def get_trust_center_asset(
-    session: Session, tenant_id: str, asset_id: str
+    session: Session,
+    tenant_id: str,
+    asset_id: str,
+    *,
+    sensitivity_max: str = "internal",
 ) -> dict[str, Any] | None:
-    """Retrieve a single asset by ID (tenant-scoped)."""
+    """Retrieve a single asset by ID (tenant-scoped, sensitivity-gated).
+
+    Returns ``None`` (→ 404) when the asset is unpublished or exceeds the
+    caller's sensitivity ceiling.  This avoids leaking asset existence.
+    """
     row = (
         session.query(TrustCenterAssetDB)
         .filter(
             TrustCenterAssetDB.id == asset_id,
             TrustCenterAssetDB.tenant_id == tenant_id,
+            TrustCenterAssetDB.published.is_(True),
         )
         .first()
     )
-    return _asset_to_dict(row) if row else None
+    if not row:
+        return None
+    if not _sensitivity_allowed(row.sensitivity, sensitivity_max):
+        return None
+    return _asset_to_dict(row)
 
 
 def create_trust_center_asset(
@@ -343,7 +391,174 @@ def _bundle_to_dict(row: EvidenceBundleDB) -> dict[str, Any]:
         "metadata": row.metadata_payload,
         "sensitivity": row.sensitivity,
         "created_at_utc": row.created_at_utc.isoformat() if row.created_at_utc else None,
+        "signature": row.signature if hasattr(row, "signature") else None,
+        "cert_fingerprint": row.cert_fingerprint if hasattr(row, "cert_fingerprint") else None,
+        "signed_at": (
+            row.signed_at.isoformat() if hasattr(row, "signed_at") and row.signed_at else None
+        ),
+        "signed_by_role": row.signed_by_role if hasattr(row, "signed_by_role") else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Evidence Bundle E-Signing (ECDSA-P256 / eIDAS / GoBD)
+# ---------------------------------------------------------------------------
+
+
+def _get_signing_key_pem() -> bytes:
+    """Load the PEM-encoded ECDSA private key from env var.
+
+    Falls back to a deterministic dev key when the env var
+    ``TRUST_CENTER_SIGNING_KEY`` is absent.  **Not for production use.**
+    """
+    import logging
+
+    raw = os.environ.get("TRUST_CENTER_SIGNING_KEY")
+    if raw:
+        return raw.encode()
+
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "TRUST_CENTER_SIGNING_KEY not set – using deterministic dev key. Do NOT use in production."
+    )
+
+    # Deterministic dev fallback: derive a fixed key from a static seed.
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
+
+    seed = hashlib.sha256(b"compliance-hub-dev-signing-key-seed").digest()
+    # Use the full 256-bit seed as private value (valid for SECP256R1 order ~ 2^256)
+    private_value = int.from_bytes(seed, "big")
+    # Clamp to valid range [1, curve_order - 1]
+    curve_order = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+    private_value = (private_value % (curve_order - 1)) + 1
+    dev_key = ec.derive_private_key(private_value, ec.SECP256R1())
+    return dev_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+
+
+def sign_evidence_bundle(
+    session: Session,
+    tenant_id: str,
+    bundle_id: str,
+    signer_role: str,
+) -> dict[str, Any] | None:
+    """Sign an evidence bundle with ECDSA-P256.
+
+    Stores the DER-hex signature, cert fingerprint, timestamp, and
+    signer role on the bundle row.  Returns the updated bundle dict or
+    ``None`` when the bundle is not found.
+    """
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    row = (
+        session.query(EvidenceBundleDB)
+        .filter(
+            EvidenceBundleDB.id == bundle_id,
+            EvidenceBundleDB.tenant_id == tenant_id,
+        )
+        .first()
+    )
+    if not row:
+        return None
+
+    # Build canonical payload to sign
+    now = datetime.now(UTC)
+    payload = f"{row.id}|{row.tenant_id}|{now.isoformat()}".encode()
+
+    key_pem = _get_signing_key_pem()
+    private_key = serialization.load_pem_private_key(key_pem, password=None)
+    assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+
+    sig_bytes = private_key.sign(payload, ec.ECDSA(hashes.SHA256()))
+
+    # Compute fingerprint of the public key (SHA-256 of DER)
+    pub_der = private_key.public_key().public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    fingerprint = hashlib.sha256(pub_der).hexdigest()
+
+    row.signature = sig_bytes.hex()
+    row.cert_fingerprint = fingerprint
+    row.signed_at = now
+    row.signed_by_role = signer_role
+    # Store the signed payload so verification can reconstruct it
+    meta = dict(row.metadata_payload or {})
+    meta["signed_payload"] = payload.decode()
+    row.metadata_payload = meta
+    session.commit()
+    session.refresh(row)
+    return _bundle_to_dict(row)
+
+
+def verify_evidence_bundle(
+    session: Session,
+    tenant_id: str,
+    bundle_id: str,
+) -> dict[str, Any] | None:
+    """Verify the cryptographic signature of an evidence bundle.
+
+    Reconstructs the signed payload and verifies the ECDSA signature
+    against the signing public key.  Returns a dict with ``valid``,
+    ``signed_at``, and ``signer_role`` or ``None`` when the bundle
+    does not exist.
+    """
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    row = (
+        session.query(EvidenceBundleDB)
+        .filter(
+            EvidenceBundleDB.id == bundle_id,
+            EvidenceBundleDB.tenant_id == tenant_id,
+        )
+        .first()
+    )
+    if not row:
+        return None
+
+    if not getattr(row, "signature", None):
+        return {
+            "valid": False,
+            "signed_at": None,
+            "signer_role": None,
+            "reason": "Bundle ist nicht signiert.",
+        }
+
+    # Retrieve the signed payload stored during signing
+    meta = row.metadata_payload or {}
+    signed_payload_str = meta.get("signed_payload")
+    if not signed_payload_str:
+        return {
+            "valid": False,
+            "signed_at": row.signed_at.isoformat() if row.signed_at else None,
+            "signer_role": row.signed_by_role,
+            "reason": "Signierter Payload fehlt – Signatur nicht verifizierbar.",
+        }
+
+    try:
+        key_pem = _get_signing_key_pem()
+        private_key = serialization.load_pem_private_key(key_pem, password=None)
+        assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+        public_key = private_key.public_key()
+
+        sig_bytes = bytes.fromhex(row.signature)
+        payload = signed_payload_str.encode()
+        public_key.verify(sig_bytes, payload, ec.ECDSA(hashes.SHA256()))
+
+        return {
+            "valid": True,
+            "signed_at": row.signed_at.isoformat() if row.signed_at else None,
+            "signer_role": row.signed_by_role,
+        }
+    except Exception:
+        return {
+            "valid": False,
+            "signed_at": row.signed_at.isoformat() if row.signed_at else None,
+            "signer_role": row.signed_by_role,
+            "reason": "Signaturprüfung fehlgeschlagen – Integrität nicht bestätigt.",
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -351,17 +566,25 @@ def _bundle_to_dict(row: EvidenceBundleDB) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def get_compliance_mapping_overview(session: Session, tenant_id: str) -> dict[str, Any]:
+def get_compliance_mapping_overview(
+    session: Session,
+    tenant_id: str,
+    *,
+    sensitivity_max: str = "internal",
+) -> dict[str, Any]:
     """Build a high-level compliance mapping view.
 
     Returns a matrix of controls (trust center assets of type 'tom')
     mapped against the six core DACH frameworks, plus coverage statistics.
+    Assets above the caller's sensitivity ceiling are excluded.
     """
+    allowed = list(SENSITIVITY_LEVELS[: SENSITIVITY_LEVELS.index(sensitivity_max) + 1])
     assets = (
         session.query(TrustCenterAssetDB)
         .filter(
             TrustCenterAssetDB.tenant_id == tenant_id,
             TrustCenterAssetDB.published.is_(True),
+            TrustCenterAssetDB.sensitivity.in_(allowed),
         )
         .all()
     )

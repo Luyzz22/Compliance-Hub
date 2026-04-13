@@ -15,6 +15,7 @@ class AuditActionCategory(StrEnum):
     BILLING = "billing"
     DATA_ACCESS = "data_access"
     ADMIN = "admin"
+    TRUST_CENTER = "trust_center"
 
 
 class AlertSeverity(StrEnum):

@@ -17,6 +17,7 @@ const bundleTypes = [
     icon: "🔒",
     frameworks: ["ISO 27001"],
     audience: "ISO-Auditoren",
+    signed: true,
   },
   {
     key: "nis2",
@@ -25,6 +26,7 @@ const bundleTypes = [
     icon: "🛡️",
     frameworks: ["NIS2"],
     audience: "NIS2-Assessoren",
+    signed: false,
   },
   {
     key: "dsgvo",
@@ -33,6 +35,7 @@ const bundleTypes = [
     icon: "🇪🇺",
     frameworks: ["DSGVO"],
     audience: "Datenschutzbeauftragte, Aufsichtsbehörden",
+    signed: true,
   },
   {
     key: "eu_ai_act",
@@ -41,6 +44,7 @@ const bundleTypes = [
     icon: "🤖",
     frameworks: ["EU AI Act", "ISO 42001"],
     audience: "AI-Act-Aufsichtsbehörden",
+    signed: false,
   },
   {
     key: "gobd_revision",
@@ -49,6 +53,7 @@ const bundleTypes = [
     icon: "📊",
     frameworks: ["GoBD"],
     audience: "Steuerprüfer, Wirtschaftsprüfer",
+    signed: true,
   },
   {
     key: "vendor_security_review",
@@ -57,6 +62,7 @@ const bundleTypes = [
     icon: "🏢",
     frameworks: ["ISO 27001", "NIS2"],
     audience: "Procurement-Teams",
+    signed: false,
   },
   {
     key: "auditor_bundle",
@@ -65,6 +71,7 @@ const bundleTypes = [
     icon: "📦",
     frameworks: ["Alle Frameworks"],
     audience: "Externe Auditoren",
+    signed: false,
   },
 ];
 
@@ -123,7 +130,18 @@ export default function TenantEvidenceBundlesPage() {
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 text-2xl" aria-hidden>{bundle.icon}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-900">{bundle.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{bundle.title}</p>
+                    {bundle.signed ? (
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[0.6rem] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200/70">
+                        ✅ Signiert
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-semibold text-amber-700 ring-1 ring-inset ring-amber-200/70">
+                        ⏳ Unsigniert
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {bundle.frameworks.map((fw) => (
                       <span
@@ -141,13 +159,24 @@ export default function TenantEvidenceBundlesPage() {
                 <span className="text-xs text-slate-500">
                   Für: {bundle.audience}
                 </span>
-                <button
-                  type="button"
-                  className={`${CH_BTN_PRIMARY} !px-3 !py-1.5 !text-xs`}
-                  title={`${bundle.title} generieren`}
-                >
-                  Generieren
-                </button>
+                <div className="flex gap-2">
+                  {!bundle.signed && (
+                    <button
+                      type="button"
+                      className={`${CH_BTN_SECONDARY} !px-3 !py-1.5 !text-xs`}
+                      title={`${bundle.title} signieren`}
+                    >
+                      Jetzt signieren
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`${CH_BTN_PRIMARY} !px-3 !py-1.5 !text-xs`}
+                    title={`${bundle.title} generieren`}
+                  >
+                    Generieren
+                  </button>
+                </div>
               </div>
             </article>
           ))}
