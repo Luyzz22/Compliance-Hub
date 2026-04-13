@@ -593,8 +593,12 @@ def test_compliance_mapping_viewer_no_auditor_assets(_session) -> None:
 
 
 def test_sign_and_verify_evidence_bundle(_session) -> None:
-    """E-Signing: sign_evidence_bundle creates valid signature, verify confirms."""
+    """E-Signing: sign + verify with cryptographic validation."""
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
     from app.services.trust_center_service import (
+        _get_signing_key_pem,
         generate_evidence_bundle,
         sign_evidence_bundle,
         verify_evidence_bundle,
@@ -610,11 +614,21 @@ def test_sign_and_verify_evidence_bundle(_session) -> None:
     assert signed["signed_at"] is not None
     assert signed["signed_by_role"] == "compliance_admin"
 
-    # Verify
+    # Verify via service (cryptographic check)
     result = verify_evidence_bundle(_session, "tenant-p11-06", bundle["id"])
     assert result is not None
     assert result["valid"] is True
     assert result["signer_role"] == "compliance_admin"
+
+    # Also verify the signature directly with the crypto library
+    key_pem = _get_signing_key_pem()
+    private_key = serialization.load_pem_private_key(key_pem, password=None)
+    assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+    public_key = private_key.public_key()
+    sig_bytes = bytes.fromhex(signed["signature"])
+    payload = signed["metadata"]["signed_payload"].encode()
+    # This will raise if the signature is invalid
+    public_key.verify(sig_bytes, payload, ec.ECDSA(hashes.SHA256()))
 
 
 def test_verify_unsigned_bundle(_session) -> None:

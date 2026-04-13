@@ -408,19 +408,32 @@ def _bundle_to_dict(row: EvidenceBundleDB) -> dict[str, Any]:
 def _get_signing_key_pem() -> bytes:
     """Load the PEM-encoded ECDSA private key from env var.
 
-    Falls back to generating an ephemeral key for dev/test when the env
-    var ``TRUST_CENTER_SIGNING_KEY`` is absent.
+    Falls back to a deterministic dev key when the env var
+    ``TRUST_CENTER_SIGNING_KEY`` is absent.  **Not for production use.**
     """
+    import logging
+
     raw = os.environ.get("TRUST_CENTER_SIGNING_KEY")
     if raw:
         return raw.encode()
-    # Dev/test fallback – generate a deterministic ephemeral key.
-    from cryptography.hazmat.primitives.asymmetric import ec
 
-    _dev_key = ec.generate_private_key(ec.SECP256R1())
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "TRUST_CENTER_SIGNING_KEY not set – using deterministic dev key. Do NOT use in production."
+    )
+
+    # Deterministic dev fallback: derive a fixed key from a static seed.
+    from cryptography.hazmat.primitives.asymmetric import ec
     from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
 
-    return _dev_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+    seed = hashlib.sha256(b"compliance-hub-dev-signing-key-seed").digest()
+    # Use the full 256-bit seed as private value (valid for SECP256R1 order ~ 2^256)
+    private_value = int.from_bytes(seed, "big")
+    # Clamp to valid range [1, curve_order - 1]
+    curve_order = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+    private_value = (private_value % (curve_order - 1)) + 1
+    dev_key = ec.derive_private_key(private_value, ec.SECP256R1())
+    return dev_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
 
 
 def sign_evidence_bundle(
@@ -470,6 +483,10 @@ def sign_evidence_bundle(
     row.cert_fingerprint = fingerprint
     row.signed_at = now
     row.signed_by_role = signer_role
+    # Store the signed payload so verification can reconstruct it
+    meta = dict(row.metadata_payload or {})
+    meta["signed_payload"] = payload.decode()
+    row.metadata_payload = meta
     session.commit()
     session.refresh(row)
     return _bundle_to_dict(row)
@@ -480,11 +497,16 @@ def verify_evidence_bundle(
     tenant_id: str,
     bundle_id: str,
 ) -> dict[str, Any] | None:
-    """Verify the signature of an evidence bundle.
+    """Verify the cryptographic signature of an evidence bundle.
 
-    Returns a dict with ``valid``, ``signed_at``, and ``signer_role``
-    or ``None`` when the bundle does not exist.
+    Reconstructs the signed payload and verifies the ECDSA signature
+    against the signing public key.  Returns a dict with ``valid``,
+    ``signed_at``, and ``signer_role`` or ``None`` when the bundle
+    does not exist.
     """
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
     row = (
         session.query(EvidenceBundleDB)
         .filter(
@@ -504,11 +526,39 @@ def verify_evidence_bundle(
             "reason": "Bundle ist nicht signiert.",
         }
 
-    return {
-        "valid": True,
-        "signed_at": row.signed_at.isoformat() if row.signed_at else None,
-        "signer_role": row.signed_by_role,
-    }
+    # Retrieve the signed payload stored during signing
+    meta = row.metadata_payload or {}
+    signed_payload_str = meta.get("signed_payload")
+    if not signed_payload_str:
+        return {
+            "valid": False,
+            "signed_at": row.signed_at.isoformat() if row.signed_at else None,
+            "signer_role": row.signed_by_role,
+            "reason": "Signierter Payload fehlt – Signatur nicht verifizierbar.",
+        }
+
+    try:
+        key_pem = _get_signing_key_pem()
+        private_key = serialization.load_pem_private_key(key_pem, password=None)
+        assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+        public_key = private_key.public_key()
+
+        sig_bytes = bytes.fromhex(row.signature)
+        payload = signed_payload_str.encode()
+        public_key.verify(sig_bytes, payload, ec.ECDSA(hashes.SHA256()))
+
+        return {
+            "valid": True,
+            "signed_at": row.signed_at.isoformat() if row.signed_at else None,
+            "signer_role": row.signed_by_role,
+        }
+    except Exception:
+        return {
+            "valid": False,
+            "signed_at": row.signed_at.isoformat() if row.signed_at else None,
+            "signer_role": row.signed_by_role,
+            "reason": "Signaturprüfung fehlgeschlagen – Integrität nicht bestätigt.",
+        }
 
 
 # ---------------------------------------------------------------------------
