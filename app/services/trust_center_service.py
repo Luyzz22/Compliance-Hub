@@ -438,6 +438,10 @@ def _get_signing_key_pem() -> bytes:
     return dev_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
 
 
+class KeyRegistryError(Exception):
+    """Raised when the key registry is empty or misconfigured."""
+
+
 def _get_key_registry() -> dict[str, bytes]:
     """Load all signing keys from ``TRUST_CENTER_SIGNING_KEYS`` (JSON array).
 
@@ -462,12 +466,18 @@ def _get_active_signing_key() -> tuple[str, bytes]:
     With multi-key config (``TRUST_CENTER_SIGNING_KEYS``), the entry with
     ``"active": true`` is returned.  With legacy single-key config, returns
     ``("v1", <pem>)``.
+
+    Raises :class:`KeyRegistryError` when the registry is empty.
     """
     import json as _json
 
     raw_multi = os.environ.get("TRUST_CENTER_SIGNING_KEYS")
     if raw_multi:
         entries = _json.loads(raw_multi)
+        if not entries:
+            raise KeyRegistryError(
+                "Key-Registry ist leer. TRUST_CENTER_SIGNING_KEYS konfigurieren."
+            )
         for e in entries:
             if e.get("active"):
                 return e["kid"], e["key_pem"].encode()
@@ -476,6 +486,61 @@ def _get_active_signing_key() -> tuple[str, bytes]:
         return last["kid"], last["key_pem"].encode()
 
     return "v1", _get_signing_key_pem()
+
+
+def _compute_key_fingerprint(key_pem: bytes) -> str:
+    """Compute SHA-256 fingerprint of the public key encoded in *key_pem*."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    private_key = serialization.load_pem_private_key(key_pem, password=None)
+    assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+    pub_der = private_key.public_key().public_bytes(
+        serialization.Encoding.DER,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    return hashlib.sha256(pub_der).hexdigest()
+
+
+def _resolve_legacy_kid(
+    cert_fingerprint: str | None, registry: dict[str, bytes]
+) -> tuple[str, str]:
+    """Resolve a legacy bundle (no ``signing_key_id``) to its registry ``kid``.
+
+    Fallback chain:
+    1. Fingerprint match against all keys in the registry.
+    2. Singleton — if the registry has exactly one key, use it.
+    3. Explicit ``kid="v1"`` entry in the registry.
+    4. Raise ``KeyRegistryError``.
+
+    Returns ``(kid, method)`` where *method* is one of
+    ``"fingerprint"``, ``"singleton"``, ``"default_v1"``.
+    """
+    import hmac
+
+    # 1. Fingerprint match (constant-time comparison)
+    if cert_fingerprint:
+        for kid, key_pem in registry.items():
+            try:
+                fp = _compute_key_fingerprint(key_pem)
+                if hmac.compare_digest(fp, cert_fingerprint):
+                    return kid, "fingerprint"
+            except Exception:  # noqa: BLE001
+                continue
+
+    # 2. Singleton registry
+    if len(registry) == 1:
+        only_kid = next(iter(registry))
+        return only_kid, "singleton"
+
+    # 3. Default v1
+    if "v1" in registry:
+        return "v1", "default_v1"
+
+    raise KeyRegistryError(
+        "Legacy-Bundle kann keinem Schlüssel zugeordnet werden – "
+        "kein Fingerprint-Match, kein Singleton, kein kid='v1'."
+    )
 
 
 def sign_evidence_bundle(
@@ -579,18 +644,40 @@ def verify_evidence_bundle(
             "key_fingerprint": None,
             "payload_binding": "not_signed",
             "long_term_valid": False,
+            "legacy_lookup_method": None,
             "reason": "Bundle ist nicht signiert.",
         }
 
     # Determine the kid used to sign this bundle.
     # Phase-12 bundles store kid in the DB column; Phase-11 bundles don't.
     kid = getattr(row, "signing_key_id", None)
+    legacy_lookup_method: str | None = None
+
+    registry = _get_key_registry()
+
     if not kid:
         meta = row.metadata_payload or {}
-        kid = meta.get("kid", "v1")
+        kid_from_meta = meta.get("kid")
+        if kid_from_meta and kid_from_meta in registry:
+            kid = kid_from_meta
+        else:
+            # Phase-11 legacy bundle – resolve via fingerprint / singleton / v1
+            try:
+                kid, legacy_lookup_method = _resolve_legacy_kid(row.cert_fingerprint, registry)
+            except KeyRegistryError:
+                return {
+                    "valid": False,
+                    "signed_at": row.signed_at.isoformat() if row.signed_at else None,
+                    "signer_role": row.signed_by_role,
+                    "key_id": None,
+                    "key_fingerprint": row.cert_fingerprint,
+                    "payload_binding": "unknown_key",
+                    "long_term_valid": False,
+                    "legacy_lookup_method": None,
+                    "reason": ("Legacy-Bundle kann keinem Schlüssel zugeordnet werden."),
+                }
 
     # Look up the signing key from the registry
-    registry = _get_key_registry()
     if kid not in registry:
         return {
             "valid": False,
@@ -600,6 +687,7 @@ def verify_evidence_bundle(
             "key_fingerprint": row.cert_fingerprint,
             "payload_binding": "unknown_key",
             "long_term_valid": False,
+            "legacy_lookup_method": legacy_lookup_method,
             "reason": (
                 f"Schlüssel '{kid}' nicht mehr verfügbar – Langzeit-Verifikation nicht möglich."
             ),
@@ -620,6 +708,7 @@ def verify_evidence_bundle(
             "key_fingerprint": row.cert_fingerprint,
             "payload_binding": "missing_payload",
             "long_term_valid": False,
+            "legacy_lookup_method": legacy_lookup_method,
             "reason": "Signierter Payload fehlt – Signatur nicht verifizierbar.",
         }
 
@@ -650,6 +739,7 @@ def verify_evidence_bundle(
             "key_fingerprint": row.cert_fingerprint,
             "payload_binding": "violation",
             "long_term_valid": False,
+            "legacy_lookup_method": legacy_lookup_method,
             "reason": "Payload-Binding-Verletzung: Bundle-ID oder Tenant-ID stimmt nicht überein.",
         }
 
@@ -672,6 +762,7 @@ def verify_evidence_bundle(
             "key_fingerprint": row.cert_fingerprint,
             "payload_binding": "verified",
             "long_term_valid": True,
+            "legacy_lookup_method": legacy_lookup_method,
         }
     except Exception:
         return {
@@ -682,8 +773,37 @@ def verify_evidence_bundle(
             "key_fingerprint": row.cert_fingerprint,
             "payload_binding": "verified",
             "long_term_valid": False,
+            "legacy_lookup_method": legacy_lookup_method,
             "reason": "Signaturprüfung fehlgeschlagen – Integrität nicht bestätigt.",
         }
+
+
+def get_key_registry_health() -> dict[str, Any]:
+    """Return key-registry health status (no key material exposed)."""
+    registry = _get_key_registry()
+    active_kid: str | None = None
+    key_count = len(registry)
+
+    try:
+        active_kid, _ = _get_active_signing_key()
+    except KeyRegistryError:
+        pass
+
+    # Compute fingerprints only – never expose key material
+    key_info = []
+    for kid, key_pem in registry.items():
+        try:
+            fp = _compute_key_fingerprint(key_pem)
+        except Exception:  # noqa: BLE001
+            fp = "error"
+        key_info.append({"kid": kid, "fingerprint": fp})
+
+    return {
+        "registry_configured": key_count > 0,
+        "active_key_id": active_kid,
+        "key_count": key_count,
+        "keys": key_info,
+    }
 
 
 # ---------------------------------------------------------------------------

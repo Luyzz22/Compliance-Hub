@@ -840,3 +840,94 @@ def test_migration_phase12_apply_idempotent(_engine) -> None:
     )
 
     assert apply(_engine) is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 13 – Fingerprint-based Legacy Lookup & Empty-Registry Guard Tests
+# ---------------------------------------------------------------------------
+
+
+def test_legacy_fingerprint_lookup(_session) -> None:
+    """Legacy bundle without signing_key_id resolves via fingerprint match under custom kid."""
+    import json
+    import os
+
+    from app.models_db import EvidenceBundleDB
+    from app.services.trust_center_service import (
+        _get_signing_key_pem,
+        generate_evidence_bundle,
+        sign_evidence_bundle,
+        verify_evidence_bundle,
+    )
+
+    # Sign a bundle normally (kid=v1)
+    bundle = generate_evidence_bundle(_session, "tenant-p13-fp", "iso_27001")
+    signed = sign_evidence_bundle(_session, "tenant-p13-fp", bundle["id"], "compliance_admin")
+    assert signed is not None
+    assert signed["signing_key_id"] == "v1"
+
+    # Simulate Phase-11 legacy bundle: clear signing_key_id but keep cert_fingerprint
+    row = _session.query(EvidenceBundleDB).filter(EvidenceBundleDB.id == bundle["id"]).first()
+    row.signing_key_id = None
+    row.signed_payload = None  # Phase-11 didn't have this
+    # Clear kid from metadata to force fingerprint-based resolution
+    meta = dict(row.metadata_payload or {})
+    meta.pop("kid", None)
+    row.metadata_payload = meta
+    _session.commit()
+
+    # Now register the same key under a custom kid ("prod-2026-04")
+    v1_pem = _get_signing_key_pem().decode()
+    keys_json = json.dumps([{"kid": "prod-2026-04", "key_pem": v1_pem, "active": True}])
+    os.environ["TRUST_CENTER_SIGNING_KEYS"] = keys_json
+    try:
+        result = verify_evidence_bundle(_session, "tenant-p13-fp", bundle["id"])
+        assert result is not None
+        assert result["valid"] is True
+        assert result["key_id"] == "prod-2026-04"
+        assert result["legacy_lookup_method"] == "fingerprint"
+        assert result["payload_binding"] == "verified"
+        assert result["long_term_valid"] is True
+    finally:
+        os.environ.pop("TRUST_CENTER_SIGNING_KEYS", None)
+
+
+def test_empty_registry_503(_session) -> None:
+    """Empty key registry raises KeyRegistryError → 503 on sign."""
+    import json
+    import os
+
+    from app.services.trust_center_service import (
+        KeyRegistryError,
+        _get_active_signing_key,
+    )
+
+    keys_json = json.dumps([])
+    os.environ["TRUST_CENTER_SIGNING_KEYS"] = keys_json
+    try:
+        try:
+            _get_active_signing_key()
+            raised = False
+        except KeyRegistryError as exc:
+            raised = True
+            assert "leer" in str(exc).lower() or "TRUST_CENTER_SIGNING_KEYS" in str(exc)
+        assert raised, "_get_active_signing_key should raise KeyRegistryError for empty registry"
+    finally:
+        os.environ.pop("TRUST_CENTER_SIGNING_KEYS", None)
+
+
+def test_migration_phase13_satisfied(_engine) -> None:
+    """Phase 13 migration is satisfied after create_all."""
+    from app.db_migrations.migrations.m20260422_phase13_tenant_onboarding_completed import (
+        satisfied,
+    )
+
+    assert satisfied(_engine)
+
+
+def test_migration_phase13_apply_idempotent(_engine) -> None:
+    from app.db_migrations.migrations.m20260422_phase13_tenant_onboarding_completed import (
+        apply,
+    )
+
+    assert apply(_engine) is False

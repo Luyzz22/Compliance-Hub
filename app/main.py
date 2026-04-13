@@ -9289,13 +9289,17 @@ def sign_evidence_bundle_endpoint(
 ) -> dict:
     """Sign an evidence bundle (compliance_admin / tenant_admin only)."""
     from app.services.trust_center_service import (
+        KeyRegistryError,
         log_trust_center_access,
         sign_evidence_bundle,
     )
 
     session = next(get_session())
     try:
-        result = sign_evidence_bundle(session, tenant_id, bundle_id, _role.value)
+        try:
+            result = sign_evidence_bundle(session, tenant_id, bundle_id, _role.value)
+        except KeyRegistryError as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
         if not result:
             raise HTTPException(status_code=404, detail="Evidence bundle not found")
         log_trust_center_access(
@@ -9333,3 +9337,14 @@ def verify_evidence_bundle_endpoint(
         return result
     finally:
         session.close()
+
+
+@app.get(
+    "/api/v1/trust-center/health",
+    tags=["trust-center"],
+)
+def trust_center_health_endpoint() -> dict:
+    """Return key-registry health status (no key material exposed)."""
+    from app.services.trust_center_service import get_key_registry_health
+
+    return get_key_registry_health()

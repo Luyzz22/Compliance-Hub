@@ -24,6 +24,7 @@ def _create_legacy_tenants_table_without_kritis(url: str) -> None:
         ai_act_scope VARCHAR(64) NOT NULL DEFAULT 'in_scope',
         is_demo BOOLEAN NOT NULL DEFAULT 0,
         demo_playground BOOLEAN NOT NULL DEFAULT 0,
+        onboarding_completed_at DATETIME,
         created_at_utc DATETIME NOT NULL
     )
     """
