@@ -397,6 +397,8 @@ def _bundle_to_dict(row: EvidenceBundleDB) -> dict[str, Any]:
             row.signed_at.isoformat() if hasattr(row, "signed_at") and row.signed_at else None
         ),
         "signed_by_role": row.signed_by_role if hasattr(row, "signed_by_role") else None,
+        "signing_key_id": getattr(row, "signing_key_id", None),
+        "signed_payload": getattr(row, "signed_payload", None),
     }
 
 
@@ -436,6 +438,46 @@ def _get_signing_key_pem() -> bytes:
     return dev_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
 
 
+def _get_key_registry() -> dict[str, bytes]:
+    """Load all signing keys from ``TRUST_CENTER_SIGNING_KEYS`` (JSON array).
+
+    Each entry must be ``{"kid": "...", "key_pem": "-----BEGIN ...", "active": bool}``.
+    Falls back to ``TRUST_CENTER_SIGNING_KEY`` (single key) mapped as ``kid="v1"``.
+    Returns a dict mapping *kid* → PEM bytes.
+    """
+    import json as _json
+
+    raw_multi = os.environ.get("TRUST_CENTER_SIGNING_KEYS")
+    if raw_multi:
+        entries = _json.loads(raw_multi)
+        return {e["kid"]: e["key_pem"].encode() for e in entries}
+
+    # Fallback: legacy single-key env var → kid "v1"
+    return {"v1": _get_signing_key_pem()}
+
+
+def _get_active_signing_key() -> tuple[str, bytes]:
+    """Return ``(kid, pem_bytes)`` for the currently *active* signing key.
+
+    With multi-key config (``TRUST_CENTER_SIGNING_KEYS``), the entry with
+    ``"active": true`` is returned.  With legacy single-key config, returns
+    ``("v1", <pem>)``.
+    """
+    import json as _json
+
+    raw_multi = os.environ.get("TRUST_CENTER_SIGNING_KEYS")
+    if raw_multi:
+        entries = _json.loads(raw_multi)
+        for e in entries:
+            if e.get("active"):
+                return e["kid"], e["key_pem"].encode()
+        # No active key found – fall back to last entry
+        last = entries[-1]
+        return last["kid"], last["key_pem"].encode()
+
+    return "v1", _get_signing_key_pem()
+
+
 def sign_evidence_bundle(
     session: Session,
     tenant_id: str,
@@ -466,7 +508,7 @@ def sign_evidence_bundle(
     now = datetime.now(UTC)
     payload = f"{row.id}|{row.tenant_id}|{now.isoformat()}".encode()
 
-    key_pem = _get_signing_key_pem()
+    kid, key_pem = _get_active_signing_key()
     private_key = serialization.load_pem_private_key(key_pem, password=None)
     assert isinstance(private_key, ec.EllipticCurvePrivateKey)
 
@@ -483,9 +525,12 @@ def sign_evidence_bundle(
     row.cert_fingerprint = fingerprint
     row.signed_at = now
     row.signed_by_role = signer_role
+    row.signing_key_id = kid
+    row.signed_payload = payload.decode()
     # Store the signed payload so verification can reconstruct it
     meta = dict(row.metadata_payload or {})
     meta["signed_payload"] = payload.decode()
+    meta["kid"] = kid
     row.metadata_payload = meta
     session.commit()
     session.refresh(row)
@@ -499,13 +544,18 @@ def verify_evidence_bundle(
 ) -> dict[str, Any] | None:
     """Verify the cryptographic signature of an evidence bundle.
 
-    Reconstructs the signed payload and verifies the ECDSA signature
-    against the signing public key.  Returns a dict with ``valid``,
-    ``signed_at``, and ``signer_role`` or ``None`` when the bundle
-    does not exist.
+    Uses the key registry to look up the historical signing key by ``kid``.
+    Validates payload binding (bundle_id + tenant_id) against the DB row.
+    Returns an extended dict with ``valid``, ``signed_at``, ``signer_role``,
+    ``key_id``, ``key_fingerprint``, ``payload_binding``, ``long_term_valid``
+    or ``None`` when the bundle does not exist.
     """
+    import logging
+
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import ec
+
+    logger = logging.getLogger(__name__)
 
     row = (
         session.query(EvidenceBundleDB)
@@ -523,22 +573,87 @@ def verify_evidence_bundle(
             "valid": False,
             "signed_at": None,
             "signer_role": None,
+            "key_id": None,
+            "key_fingerprint": None,
+            "payload_binding": "not_signed",
+            "long_term_valid": False,
             "reason": "Bundle ist nicht signiert.",
         }
 
-    # Retrieve the signed payload stored during signing
-    meta = row.metadata_payload or {}
-    signed_payload_str = meta.get("signed_payload")
+    # Determine the kid used to sign this bundle.
+    # Phase-12 bundles store kid in the DB column; Phase-11 bundles don't.
+    kid = getattr(row, "signing_key_id", None)
+    if not kid:
+        meta = row.metadata_payload or {}
+        kid = meta.get("kid", "v1")
+
+    # Look up the signing key from the registry
+    registry = _get_key_registry()
+    if kid not in registry:
+        return {
+            "valid": False,
+            "signed_at": row.signed_at.isoformat() if row.signed_at else None,
+            "signer_role": row.signed_by_role,
+            "key_id": kid,
+            "key_fingerprint": row.cert_fingerprint,
+            "payload_binding": "unknown_key",
+            "long_term_valid": False,
+            "reason": (
+                f"Schlüssel '{kid}' nicht mehr verfügbar – Langzeit-Verifikation nicht möglich."
+            ),
+        }
+
+    # Retrieve the signed payload: prefer DB column (Phase 12), fall back
+    # to metadata_json (Phase 11 backward compat).
+    signed_payload_str = getattr(row, "signed_payload", None)
+    if not signed_payload_str:
+        meta = row.metadata_payload or {}
+        signed_payload_str = meta.get("signed_payload")
     if not signed_payload_str:
         return {
             "valid": False,
             "signed_at": row.signed_at.isoformat() if row.signed_at else None,
             "signer_role": row.signed_by_role,
+            "key_id": kid,
+            "key_fingerprint": row.cert_fingerprint,
+            "payload_binding": "missing_payload",
+            "long_term_valid": False,
             "reason": "Signierter Payload fehlt – Signatur nicht verifizierbar.",
         }
 
+    # --- Payload-Binding Check (Anti-Transplant) ---
     try:
-        key_pem = _get_signing_key_pem()
+        parts = signed_payload_str.split("|")
+        payload_bundle_id = parts[0] if len(parts) >= 1 else None
+        payload_tenant_id = parts[1] if len(parts) >= 2 else None
+    except Exception:
+        payload_bundle_id = None
+        payload_tenant_id = None
+
+    if payload_bundle_id != row.id or payload_tenant_id != row.tenant_id:
+        logger.critical(
+            "PAYLOAD_BINDING_VIOLATION: bundle=%s tenant=%s – "
+            "signed payload references bundle=%s tenant=%s. "
+            "Possible signature transplant attack.",
+            row.id,
+            row.tenant_id,
+            payload_bundle_id,
+            payload_tenant_id,
+        )
+        return {
+            "valid": False,
+            "signed_at": row.signed_at.isoformat() if row.signed_at else None,
+            "signer_role": row.signed_by_role,
+            "key_id": kid,
+            "key_fingerprint": row.cert_fingerprint,
+            "payload_binding": "violation",
+            "long_term_valid": False,
+            "reason": "Payload-Binding-Verletzung: Bundle-ID oder Tenant-ID stimmt nicht überein.",
+        }
+
+    # --- Cryptographic Verification ---
+    try:
+        key_pem = registry[kid]
         private_key = serialization.load_pem_private_key(key_pem, password=None)
         assert isinstance(private_key, ec.EllipticCurvePrivateKey)
         public_key = private_key.public_key()
@@ -551,12 +666,20 @@ def verify_evidence_bundle(
             "valid": True,
             "signed_at": row.signed_at.isoformat() if row.signed_at else None,
             "signer_role": row.signed_by_role,
+            "key_id": kid,
+            "key_fingerprint": row.cert_fingerprint,
+            "payload_binding": "verified",
+            "long_term_valid": True,
         }
     except Exception:
         return {
             "valid": False,
             "signed_at": row.signed_at.isoformat() if row.signed_at else None,
             "signer_role": row.signed_by_role,
+            "key_id": kid,
+            "key_fingerprint": row.cert_fingerprint,
+            "payload_binding": "verified",
+            "long_term_valid": False,
             "reason": "Signaturprüfung fehlgeschlagen – Integrität nicht bestätigt.",
         }
 

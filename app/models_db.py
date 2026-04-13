@@ -1726,6 +1726,9 @@ class EvidenceBundleDB(Base):
     cert_fingerprint: Mapped[str | None] = mapped_column(String(128), nullable=True)
     signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     signed_by_role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Phase 12 – Key-Rotation-Safe Verification & Payload-Binding
+    signing_key_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    signed_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class TrustCenterAccessLogDB(Base):

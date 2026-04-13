@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
+  CH_BADGE,
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
   CH_CARD,
@@ -18,6 +19,8 @@ const bundleTypes = [
     frameworks: ["ISO 27001"],
     audience: "ISO-Auditoren",
     signed: true,
+    keyId: "v1",
+    longTermValid: true,
   },
   {
     key: "nis2",
@@ -27,6 +30,8 @@ const bundleTypes = [
     frameworks: ["NIS2"],
     audience: "NIS2-Assessoren",
     signed: false,
+    keyId: null,
+    longTermValid: false,
   },
   {
     key: "dsgvo",
@@ -36,6 +41,8 @@ const bundleTypes = [
     frameworks: ["DSGVO"],
     audience: "Datenschutzbeauftragte, Aufsichtsbehörden",
     signed: true,
+    keyId: "v1",
+    longTermValid: true,
   },
   {
     key: "eu_ai_act",
@@ -45,6 +52,8 @@ const bundleTypes = [
     frameworks: ["EU AI Act", "ISO 42001"],
     audience: "AI-Act-Aufsichtsbehörden",
     signed: false,
+    keyId: null,
+    longTermValid: false,
   },
   {
     key: "gobd_revision",
@@ -54,6 +63,8 @@ const bundleTypes = [
     frameworks: ["GoBD"],
     audience: "Steuerprüfer, Wirtschaftsprüfer",
     signed: true,
+    keyId: "v2",
+    longTermValid: true,
   },
   {
     key: "vendor_security_review",
@@ -63,6 +74,8 @@ const bundleTypes = [
     frameworks: ["ISO 27001", "NIS2"],
     audience: "Procurement-Teams",
     signed: false,
+    keyId: null,
+    longTermValid: false,
   },
   {
     key: "auditor_bundle",
@@ -72,6 +85,8 @@ const bundleTypes = [
     frameworks: ["Alle Frameworks"],
     audience: "Externe Auditoren",
     signed: false,
+    keyId: null,
+    longTermValid: false,
   },
 ];
 
@@ -142,6 +157,22 @@ export default function TenantEvidenceBundlesPage() {
                       </span>
                     )}
                   </div>
+                  {bundle.signed && bundle.keyId && (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className={`${CH_BADGE} bg-indigo-50 text-indigo-700 ring-indigo-200/70`}>
+                        🔑 Key: {bundle.keyId}
+                      </span>
+                      {bundle.longTermValid ? (
+                        <span className={`${CH_BADGE} bg-emerald-50 text-emerald-700 ring-emerald-200/70`}>
+                          🛡️ Langzeit-gültig
+                        </span>
+                      ) : (
+                        <span className={`${CH_BADGE} bg-red-50 text-red-700 ring-red-200/70`}>
+                          ⚠️ Nicht langzeit-gültig
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="mt-1 flex flex-wrap gap-1">
                     {bundle.frameworks.map((fw) => (
                       <span
