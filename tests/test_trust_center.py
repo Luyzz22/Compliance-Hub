@@ -613,12 +613,16 @@ def test_sign_and_verify_evidence_bundle(_session) -> None:
     assert signed["cert_fingerprint"] is not None
     assert signed["signed_at"] is not None
     assert signed["signed_by_role"] == "compliance_admin"
+    assert signed["signing_key_id"] is not None
 
     # Verify via service (cryptographic check)
     result = verify_evidence_bundle(_session, "tenant-p11-06", bundle["id"])
     assert result is not None
     assert result["valid"] is True
     assert result["signer_role"] == "compliance_admin"
+    assert result["key_id"] is not None
+    assert result["payload_binding"] == "verified"
+    assert result["long_term_valid"] is True
 
     # Also verify the signature directly with the crypto library
     key_pem = _get_signing_key_pem()
@@ -668,6 +672,170 @@ def test_migration_phase11_satisfied(_engine) -> None:
 
 def test_migration_phase11_apply_idempotent(_engine) -> None:
     from app.db_migrations.migrations.m20260420_phase11_trust_center_esigning import (
+        apply,
+    )
+
+    assert apply(_engine) is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 12 – Key-Rotation-Safe Verification & Payload-Binding Tests
+# ---------------------------------------------------------------------------
+
+
+def test_key_rotation_verification(_session) -> None:
+    """Key rotation: bundle signed with v1 key remains valid after registry switch to v2."""
+    import json
+
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
+
+    from app.services.trust_center_service import (
+        generate_evidence_bundle,
+        sign_evidence_bundle,
+        verify_evidence_bundle,
+    )
+
+    # Sign a bundle with the default dev key (kid=v1)
+    bundle = generate_evidence_bundle(_session, "tenant-p12-kr", "iso_27001")
+    signed = sign_evidence_bundle(_session, "tenant-p12-kr", bundle["id"], "tenant_admin")
+    assert signed is not None
+    assert signed["signing_key_id"] == "v1"
+
+    # Generate a second key (v2)
+    v2_key = ec.generate_private_key(ec.SECP256R1())
+    v2_pem = v2_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()).decode()
+
+    # Get v1 key PEM for registry
+    from app.services.trust_center_service import _get_signing_key_pem
+
+    v1_pem = _get_signing_key_pem().decode()
+
+    # Set TRUST_CENTER_SIGNING_KEYS with both keys, v2 active
+    import os
+
+    keys_json = json.dumps(
+        [
+            {"kid": "v1", "key_pem": v1_pem, "active": False},
+            {"kid": "v2", "key_pem": v2_pem, "active": True},
+        ]
+    )
+    os.environ["TRUST_CENTER_SIGNING_KEYS"] = keys_json
+    try:
+        # Verify the v1-signed bundle — must still be valid
+        result = verify_evidence_bundle(_session, "tenant-p12-kr", bundle["id"])
+        assert result is not None
+        assert result["valid"] is True
+        assert result["key_id"] == "v1"
+        assert result["payload_binding"] == "verified"
+        assert result["long_term_valid"] is True
+    finally:
+        os.environ.pop("TRUST_CENTER_SIGNING_KEYS", None)
+
+
+def test_payload_transplant_attack(_session) -> None:
+    """Payload transplant: copying signature+payload to another bundle is detected."""
+    from app.models_db import EvidenceBundleDB
+    from app.services.trust_center_service import (
+        generate_evidence_bundle,
+        sign_evidence_bundle,
+        verify_evidence_bundle,
+    )
+
+    # Create and sign bundle A
+    bundle_a = generate_evidence_bundle(_session, "tenant-p12-pt", "iso_27001")
+    signed_a = sign_evidence_bundle(_session, "tenant-p12-pt", bundle_a["id"], "compliance_admin")
+    assert signed_a is not None
+
+    # Create bundle B (unsigned)
+    bundle_b = generate_evidence_bundle(_session, "tenant-p12-pt", "dsgvo")
+
+    # Transplant signature + payload from A into B
+    row_b = _session.query(EvidenceBundleDB).filter(EvidenceBundleDB.id == bundle_b["id"]).first()
+    row_a = _session.query(EvidenceBundleDB).filter(EvidenceBundleDB.id == bundle_a["id"]).first()
+    row_b.signature = row_a.signature
+    row_b.cert_fingerprint = row_a.cert_fingerprint
+    row_b.signed_at = row_a.signed_at
+    row_b.signed_by_role = row_a.signed_by_role
+    row_b.signing_key_id = row_a.signing_key_id
+    row_b.signed_payload = row_a.signed_payload
+    row_b.metadata_payload = dict(row_a.metadata_payload or {})
+    _session.commit()
+
+    # Verify bundle B — must detect payload-binding violation
+    result = verify_evidence_bundle(_session, "tenant-p12-pt", bundle_b["id"])
+    assert result is not None
+    assert result["valid"] is False
+    assert result["payload_binding"] == "violation"
+    assert "Payload-Binding-Verletzung" in result.get("reason", "")
+
+
+def test_unknown_kid_verification(_session) -> None:
+    """Bundle with unknown kid: verification returns valid=False with reason."""
+    from app.models_db import EvidenceBundleDB
+    from app.services.trust_center_service import (
+        generate_evidence_bundle,
+        sign_evidence_bundle,
+        verify_evidence_bundle,
+    )
+
+    # Create and sign a bundle
+    bundle = generate_evidence_bundle(_session, "tenant-p12-uk", "iso_27001")
+    signed = sign_evidence_bundle(_session, "tenant-p12-uk", bundle["id"], "tenant_admin")
+    assert signed is not None
+
+    # Tamper: set an unknown kid
+    row = _session.query(EvidenceBundleDB).filter(EvidenceBundleDB.id == bundle["id"]).first()
+    row.signing_key_id = "v999_unknown"
+    _session.commit()
+
+    result = verify_evidence_bundle(_session, "tenant-p12-uk", bundle["id"])
+    assert result is not None
+    assert result["valid"] is False
+    assert result["key_id"] == "v999_unknown"
+    assert "nicht mehr verfügbar" in result.get("reason", "")
+
+
+def test_backward_compat_phase11_bundle(_session) -> None:
+    """Phase 11 bundles without kid/signed_payload columns are still verifiable."""
+    from app.models_db import EvidenceBundleDB
+    from app.services.trust_center_service import (
+        generate_evidence_bundle,
+        sign_evidence_bundle,
+        verify_evidence_bundle,
+    )
+
+    # Create and sign a bundle normally (Phase 12 style)
+    bundle = generate_evidence_bundle(_session, "tenant-p12-bc", "dsgvo")
+    signed = sign_evidence_bundle(_session, "tenant-p12-bc", bundle["id"], "compliance_admin")
+    assert signed is not None
+
+    # Simulate a Phase 11 bundle: clear the Phase 12 columns
+    row = _session.query(EvidenceBundleDB).filter(EvidenceBundleDB.id == bundle["id"]).first()
+    row.signing_key_id = None  # Phase 11 didn't have this
+    row.signed_payload = None  # Phase 11 didn't have this
+    _session.commit()
+
+    # Verify — should fall back to kid=v1 from metadata and payload from metadata
+    result = verify_evidence_bundle(_session, "tenant-p12-bc", bundle["id"])
+    assert result is not None
+    assert result["valid"] is True
+    assert result["key_id"] == "v1"
+    assert result["payload_binding"] == "verified"
+    assert result["long_term_valid"] is True
+
+
+def test_migration_phase12_satisfied(_engine) -> None:
+    """Phase 12 migration is satisfied after create_all."""
+    from app.db_migrations.migrations.m20260421_phase12_esigning_key_rotation import (
+        satisfied,
+    )
+
+    assert satisfied(_engine)
+
+
+def test_migration_phase12_apply_idempotent(_engine) -> None:
+    from app.db_migrations.migrations.m20260421_phase12_esigning_key_rotation import (
         apply,
     )
 
