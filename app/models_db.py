@@ -1673,3 +1673,69 @@ class AuditAlertDB(Base):
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+
+
+# ---------------------------------------------------------------------------
+# Trust Center & Assurance Portal
+# ---------------------------------------------------------------------------
+
+
+class TrustCenterAssetDB(Base):
+    """Published document / artefact in the Trust Center / Assurance Portal."""
+
+    __tablename__ = "trust_center_assets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    asset_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    sensitivity: Mapped[str] = mapped_column(String(32), nullable=False, default="customer")
+    framework_refs: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
+    file_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class EvidenceBundleDB(Base):
+    """Pre-assembled evidence bundle for due-diligence / audit."""
+
+    __tablename__ = "evidence_bundles"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    bundle_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    artefact_ids: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
+    metadata_payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    sensitivity: Mapped[str] = mapped_column(String(32), nullable=False, default="auditor")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class TrustCenterAccessLogDB(Base):
+    """Immutable access log for trust center downloads and views."""
+
+    __tablename__ = "trust_center_access_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    actor: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    resource_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )

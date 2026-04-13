@@ -17,6 +17,7 @@ export const WORKSPACE_NAV_ITEMS = [
   { href: "/tenant/blueprints", label: "Blueprints" },
   { href: "/tenant/policies", label: "Policies" },
   { href: "/tenant/audit-log", label: "Audit-Log" },
+  { href: "/tenant/trust-center", label: "Trust Center" },
 ] as const;
 
 /** Enterprise Reporting & Export module pages. */

@@ -19,6 +19,7 @@ const baseItems = [
   { href: "/tenant/policies", label: "Policies & Regeln" },
   { href: "/tenant/audit-log", label: "Audit & Evidence" },
   { href: "/tenant/blueprints", label: "Blueprints" },
+  { href: "/tenant/trust-center", label: "Trust Center" },
 ];
 
 const items = [

@@ -44,6 +44,10 @@ class Permission(StrEnum):
     EXPORT_XRECHNUNG = "export_xrechnung"
     MANAGE_N8N_WEBHOOKS = "manage_n8n_webhooks"
     MANAGE_BILLING = "manage_billing"
+    VIEW_TRUST_CENTER = "view_trust_center"
+    MANAGE_TRUST_CENTER = "manage_trust_center"
+    ACCESS_EVIDENCE_BUNDLES = "access_evidence_bundles"
+    DOWNLOAD_ASSURANCE_DOCS = "download_assurance_docs"
 
 
 _VIEWER_PERMS = frozenset(
@@ -53,6 +57,7 @@ _VIEWER_PERMS = frozenset(
         Permission.VIEW_COMPLIANCE_STATUS,
         Permission.VIEW_BOARD_REPORTS,
         Permission.VIEW_COMPLIANCE_CALENDAR,
+        Permission.VIEW_TRUST_CENTER,
     }
 )
 
@@ -61,6 +66,7 @@ _CONTRIBUTOR_PERMS = _VIEWER_PERMS | frozenset(
         Permission.VIEW_RISK_REGISTER,
         Permission.VIEW_INCIDENTS,
         Permission.VIEW_AUDIT_LOG,
+        Permission.DOWNLOAD_ASSURANCE_DOCS,
     }
 )
 
@@ -77,6 +83,7 @@ _AUDITOR_PERMS = _CONTRIBUTOR_PERMS | frozenset(
         Permission.EXPORT_AUDIT_LOG,
         Permission.VIEW_COMPLIANCE_CALENDAR,
         Permission.VIEW_PRIVILEGED_EVENTS,
+        Permission.ACCESS_EVIDENCE_BUNDLES,
     }
 )
 
@@ -122,6 +129,8 @@ _COMPLIANCE_ADMIN_PERMS = _COMPLIANCE_OFFICER_PERMS | frozenset(
         Permission.GENERATE_PDF_REPORT,
         Permission.EXPORT_XRECHNUNG,
         Permission.MANAGE_N8N_WEBHOOKS,
+        Permission.MANAGE_TRUST_CENTER,
+        Permission.ACCESS_EVIDENCE_BUNDLES,
     }
 )
 
@@ -142,6 +151,8 @@ _TENANT_ADMIN_PERMS = _CISO_PERMS | frozenset(
         Permission.EXPORT_XRECHNUNG,
         Permission.MANAGE_N8N_WEBHOOKS,
         Permission.MANAGE_BILLING,
+        Permission.MANAGE_TRUST_CENTER,
+        Permission.ACCESS_EVIDENCE_BUNDLES,
     }
 )
 

@@ -19,7 +19,7 @@ describe("appNavConfig", () => {
   });
 
   it("exports WORKSPACE_NAV_ITEMS with expected structure", () => {
-    expect(WORKSPACE_NAV_ITEMS.length).toBeGreaterThanOrEqual(6);
+    expect(WORKSPACE_NAV_ITEMS.length).toBeGreaterThanOrEqual(7);
     for (const item of WORKSPACE_NAV_ITEMS) {
       expect(item.href).toMatch(/^\/tenant\//);
       expect(item.label.length).toBeGreaterThan(0);
