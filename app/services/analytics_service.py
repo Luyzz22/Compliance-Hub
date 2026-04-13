@@ -48,7 +48,7 @@ def _ttl_cache(ttl: int = _CACHE_TTL_SECONDS):
             return result
 
         wrapper.cache = _cache  # type: ignore[attr-defined]
-        wrapper.cache_clear = _cache.clear  # type: ignore[attr-defined]
+        wrapper.cache_clear = lambda: _cache.clear()  # type: ignore[attr-defined]
         return wrapper
 
     return decorator
