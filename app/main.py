@@ -9352,3 +9352,100 @@ def trust_center_health_endpoint(
     from app.services.trust_center_service import get_key_registry_health
 
     return get_key_registry_health()
+
+
+# ---------------------------------------------------------------------------
+# Phase 14 – Compliance Analytics KPI Endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/api/v1/analytics/kpi-summary",
+    tags=["analytics"],
+)
+def analytics_kpi_summary(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _rbac: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_ANALYTICS))],
+    period_days: int = Query(30, ge=1, le=365),
+) -> dict:
+    """Return aggregated KPI summary for the tenant."""
+    from app.services.analytics_service import get_kpi_summary
+
+    session = next(get_session())
+    try:
+        return get_kpi_summary(session, tenant_id, period_days)
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/analytics/compliance-score",
+    tags=["analytics"],
+)
+def analytics_compliance_score(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _rbac: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_ANALYTICS))],
+) -> dict:
+    """Return overall compliance score for the tenant."""
+    from app.services.analytics_service import get_compliance_score
+
+    session = next(get_session())
+    try:
+        return get_compliance_score(session, tenant_id)
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/analytics/framework-coverage",
+    tags=["analytics"],
+)
+def analytics_framework_coverage(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _rbac: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_ANALYTICS))],
+) -> list[dict]:
+    """Return per-framework requirement coverage breakdown."""
+    from app.services.analytics_service import get_framework_coverage
+
+    session = next(get_session())
+    try:
+        return get_framework_coverage(session, tenant_id)
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/analytics/risk-matrix",
+    tags=["analytics"],
+)
+def analytics_risk_matrix(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _rbac: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_ANALYTICS))],
+) -> dict:
+    """Return risk distribution from unresolved alerts by severity."""
+    from app.services.analytics_service import get_risk_matrix
+
+    session = next(get_session())
+    try:
+        return get_risk_matrix(session, tenant_id)
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/analytics/activity-feed",
+    tags=["analytics"],
+)
+def analytics_activity_feed(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _rbac: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_ANALYTICS))],
+    limit: int = Query(10, ge=1, le=100),
+) -> list[dict]:
+    """Return latest audit log entries for the tenant."""
+    from app.services.analytics_service import get_activity_feed
+
+    session = next(get_session())
+    try:
+        return get_activity_feed(session, tenant_id, limit)
+    finally:
+        session.close()

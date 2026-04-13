@@ -48,6 +48,7 @@ class Permission(StrEnum):
     MANAGE_TRUST_CENTER = "manage_trust_center"
     ACCESS_EVIDENCE_BUNDLES = "access_evidence_bundles"
     DOWNLOAD_ASSURANCE_DOCS = "download_assurance_docs"
+    VIEW_ANALYTICS = "view_analytics"
 
 
 _VIEWER_PERMS = frozenset(
@@ -84,6 +85,7 @@ _AUDITOR_PERMS = _CONTRIBUTOR_PERMS | frozenset(
         Permission.VIEW_COMPLIANCE_CALENDAR,
         Permission.VIEW_PRIVILEGED_EVENTS,
         Permission.ACCESS_EVIDENCE_BUNDLES,
+        Permission.VIEW_ANALYTICS,
     }
 )
 
@@ -131,6 +133,7 @@ _COMPLIANCE_ADMIN_PERMS = _COMPLIANCE_OFFICER_PERMS | frozenset(
         Permission.MANAGE_N8N_WEBHOOKS,
         Permission.MANAGE_TRUST_CENTER,
         Permission.ACCESS_EVIDENCE_BUNDLES,
+        Permission.VIEW_ANALYTICS,
     }
 )
 
