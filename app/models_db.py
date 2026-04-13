@@ -1660,6 +1660,9 @@ class AuditAlertDB(Base):
     """NIS2 security alert generated from audit trail analysis."""
 
     __tablename__ = "audit_alerts"
+    __table_args__ = (
+        Index("ix_audit_alerts_tenant_severity_resolved", "tenant_id", "severity", "resolved"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

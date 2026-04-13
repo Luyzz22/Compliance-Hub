@@ -538,8 +538,9 @@ export default function OnboardingWizardPage() {
   const router = useRouter();
   const [state, setState] = useState<WizardState>(loadState);
 
-  // Persist on every change
+  // Persist on every change — skip when completed to avoid race condition
   useEffect(() => {
+    if (state.completed) return;
     saveState(state);
   }, [state]);
 
@@ -561,7 +562,6 @@ export default function OnboardingWizardPage() {
   }, [state.step]);
 
   const finish = useCallback(() => {
-    setState((s) => ({ ...s, completed: true }));
     sessionStorage.removeItem(STORAGE_KEY);
     router.push("/tenant/compliance-overview");
   }, [router]);
