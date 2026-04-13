@@ -80,9 +80,7 @@ def get_compliance_score(session: Session, tenant_id: str) -> dict:
     }
 
 
-def get_kpi_summary(
-    session: Session, tenant_id: str, period_days: int = 30
-) -> dict:
+def get_kpi_summary(session: Session, tenant_id: str, period_days: int = 30) -> dict:
     """Return all KPIs in a single call."""
     compliance = get_compliance_score(session, tenant_id)
 
@@ -142,9 +140,7 @@ def get_framework_coverage(session: Session, tenant_id: str) -> list[dict]:
                 session.query(ComplianceRequirementControlLinkDB)
                 .filter(
                     ComplianceRequirementControlLinkDB.requirement_id.in_(req_ids),
-                    ComplianceRequirementControlLinkDB.control_id.in_(
-                        tenant_control_ids
-                    ),
+                    ComplianceRequirementControlLinkDB.control_id.in_(tenant_control_ids),
                 )
                 .all()
             )
@@ -212,9 +208,7 @@ def get_risk_matrix(session: Session, tenant_id: str) -> dict:
     return matrix
 
 
-def get_activity_feed(
-    session: Session, tenant_id: str, limit: int = 10
-) -> list[dict]:
+def get_activity_feed(session: Session, tenant_id: str, limit: int = 10) -> list[dict]:
     """Return the latest audit log entries for a tenant."""
     entries = (
         session.query(AuditLogTable)
@@ -231,9 +225,7 @@ def get_activity_feed(
             "action": entry.action,
             "entity_type": entry.entity_type,
             "entity_id": entry.entity_id,
-            "created_at": entry.created_at_utc.isoformat()
-            if entry.created_at_utc
-            else None,
+            "created_at": entry.created_at_utc.isoformat() if entry.created_at_utc else None,
             "outcome": entry.outcome,
         }
         for entry in entries

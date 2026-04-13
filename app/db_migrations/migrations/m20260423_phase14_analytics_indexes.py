@@ -19,9 +19,7 @@ def _index_exists(engine: Engine, table: str, index_name: str) -> bool:
     with engine.connect() as conn:
         dialect = engine.dialect.name
         if dialect == "sqlite":
-            rows = conn.execute(
-                text(f"PRAGMA index_list('{table}')")
-            ).fetchall()
+            rows = conn.execute(text(f"PRAGMA index_list('{table}')")).fetchall()
             return any(r[1] == index_name for r in rows)
         rows = conn.execute(
             text(
