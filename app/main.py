@@ -9092,9 +9092,7 @@ class TrustCenterAssetInput(BaseModel):
 def create_trust_center_asset_endpoint(
     body: TrustCenterAssetInput,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TRUST_CENTER))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TRUST_CENTER))],
 ) -> dict:
     """Create a new trust center asset (admin)."""
     from app.services.trust_center_service import create_trust_center_asset
@@ -9114,9 +9112,7 @@ def update_trust_center_asset_endpoint(
     asset_id: str,
     body: TrustCenterAssetInput,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.MANAGE_TRUST_CENTER))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TRUST_CENTER))],
 ) -> dict:
     """Update an existing trust center asset (admin)."""
     from app.services.trust_center_service import update_trust_center_asset
@@ -9249,9 +9245,7 @@ def generate_evidence_bundle_endpoint(
 )
 def get_compliance_mapping_endpoint(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
-    _role: Annotated[
-        EnterpriseRole, Depends(require_permission(Permission.VIEW_TRUST_CENTER))
-    ],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_TRUST_CENTER))],
 ) -> dict:
     """Compliance mapping overview: controls × frameworks."""
     from app.services.trust_center_service import get_compliance_mapping_overview
