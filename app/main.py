@@ -9003,21 +9003,10 @@ def list_trust_center_assets_endpoint(
     from app.services.trust_center_service import (
         list_trust_center_assets,
         log_trust_center_access,
+        max_sensitivity_for_role,
     )
 
-    sensitivity_map = {
-        "viewer": "prospect",
-        "contributor": "customer",
-        "editor": "customer",
-        "auditor": "auditor",
-        "compliance_officer": "internal",
-        "ciso": "internal",
-        "board_member": "customer",
-        "compliance_admin": "internal",
-        "tenant_admin": "internal",
-        "super_admin": "internal",
-    }
-    max_sens = sensitivity_map.get(_role.value, "customer")
+    max_sens = max_sensitivity_for_role(_role.value)
 
     session = next(get_session())
     try:
@@ -9052,11 +9041,13 @@ def get_trust_center_asset_endpoint(
     from app.services.trust_center_service import (
         get_trust_center_asset,
         log_trust_center_access,
+        max_sensitivity_for_role,
     )
 
+    max_sens = max_sensitivity_for_role(_role.value)
     session = next(get_session())
     try:
-        asset = get_trust_center_asset(session, tenant_id, asset_id)
+        asset = get_trust_center_asset(session, tenant_id, asset_id, sensitivity_max=max_sens)
         if not asset:
             raise HTTPException(status_code=404, detail="Asset not found")
         log_trust_center_access(
@@ -9248,11 +9239,15 @@ def get_compliance_mapping_endpoint(
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_TRUST_CENTER))],
 ) -> dict:
     """Compliance mapping overview: controls × frameworks."""
-    from app.services.trust_center_service import get_compliance_mapping_overview
+    from app.services.trust_center_service import (
+        get_compliance_mapping_overview,
+        max_sensitivity_for_role,
+    )
 
+    max_sens = max_sensitivity_for_role(_role.value)
     session = next(get_session())
     try:
-        return get_compliance_mapping_overview(session, tenant_id)
+        return get_compliance_mapping_overview(session, tenant_id, sensitivity_max=max_sens)
     finally:
         session.close()
 
@@ -9275,3 +9270,66 @@ def list_bundle_types() -> dict:
             for bt in BUNDLE_TYPES
         ]
     }
+
+
+# ---------------------------------------------------------------------------
+# Evidence Bundle E-Signing Endpoints (Phase 11)
+# ---------------------------------------------------------------------------
+
+
+@app.post(
+    "/api/v1/trust-center/bundles/{bundle_id}/sign",
+    tags=["trust-center"],
+)
+def sign_evidence_bundle_endpoint(
+    bundle_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_TRUST_CENTER))],
+    request: Request,
+) -> dict:
+    """Sign an evidence bundle (compliance_admin / tenant_admin only)."""
+    from app.services.trust_center_service import (
+        log_trust_center_access,
+        sign_evidence_bundle,
+    )
+
+    session = next(get_session())
+    try:
+        result = sign_evidence_bundle(session, tenant_id, bundle_id, _role.value)
+        if not result:
+            raise HTTPException(status_code=404, detail="Evidence bundle not found")
+        log_trust_center_access(
+            session,
+            tenant_id=tenant_id,
+            actor=None,
+            role=_role.value,
+            action="sign_bundle",
+            resource_type="evidence_bundle",
+            resource_id=bundle_id,
+            ip_address=request.client.host if request.client else None,
+        )
+        return result
+    finally:
+        session.close()
+
+
+@app.get(
+    "/api/v1/trust-center/bundles/{bundle_id}/verify",
+    tags=["trust-center"],
+)
+def verify_evidence_bundle_endpoint(
+    bundle_id: str,
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_TRUST_CENTER))],
+) -> dict:
+    """Verify the signature integrity of an evidence bundle."""
+    from app.services.trust_center_service import verify_evidence_bundle
+
+    session = next(get_session())
+    try:
+        result = verify_evidence_bundle(session, tenant_id, bundle_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Evidence bundle not found")
+        return result
+    finally:
+        session.close()

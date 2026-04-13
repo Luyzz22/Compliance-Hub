@@ -1721,6 +1721,11 @@ class EvidenceBundleDB(Base):
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+    # E-Signing fields (Phase 11 – eIDAS / GoBD)
+    signature: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cert_fingerprint: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    signed_by_role: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class TrustCenterAccessLogDB(Base):
@@ -1736,6 +1741,7 @@ class TrustCenterAccessLogDB(Base):
     resource_type: Mapped[str] = mapped_column(String(64), nullable=False)
     resource_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
