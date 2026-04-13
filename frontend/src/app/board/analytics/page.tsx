@@ -3,16 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   CH_CARD,
-  CH_CARD_MUTED,
   CH_SHELL,
-  CH_PAGE_TITLE,
   CH_PAGE_SUB,
   CH_SECTION_LABEL,
   CH_BADGE,
-  CH_BTN_PRIMARY,
   CH_SKELETON,
 } from "@/lib/boardLayout";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { useUserRole } from "@/hooks/useUserRole";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,18 +59,24 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || "tenant-overview-001";
 
-function apiHeaders(): Record<string, string> {
-  return {
+function buildApiHeaders(opaRole: string | null): Record<string, string> {
+  const headers: Record<string, string> = {
     "x-api-key": API_KEY,
     "x-tenant-id": TENANT_ID,
-    "x-opa-user-role": "compliance_admin",
     "Content-Type": "application/json",
   };
+  if (opaRole) {
+    headers["x-opa-user-role"] = opaRole;
+  }
+  return headers;
 }
 
-async function fetchJson<T>(path: string): Promise<T | null> {
+async function fetchJson<T>(
+  path: string,
+  headers: Record<string, string>,
+): Promise<T | null> {
   try {
-    const resp = await fetch(`${API_BASE}${path}`, { headers: apiHeaders() });
+    const resp = await fetch(`${API_BASE}${path}`, { headers });
     if (!resp.ok) return null;
     return (await resp.json()) as T;
   } catch {
@@ -253,6 +257,7 @@ function FrameworkAmpel({ frameworks }: { frameworks: FrameworkCoverage[] }) {
 // ---------------------------------------------------------------------------
 
 export default function ComplianceAnalyticsPage() {
+  const opaRole = useUserRole();
   const [kpi, setKpi] = useState<KpiSummary | null>(null);
   const [frameworks, setFrameworks] = useState<FrameworkCoverage[]>([]);
   const [riskMatrix, setRiskMatrix] = useState<RiskMatrix | null>(null);
@@ -261,21 +266,28 @@ export default function ComplianceAnalyticsPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    const headers = buildApiHeaders(opaRole);
     const [kpiData, fwData, riskData, feedData] = await Promise.all([
-      fetchJson<KpiSummary>("/api/v1/analytics/kpi-summary?period_days=30"),
-      fetchJson<FrameworkCoverage[]>("/api/v1/analytics/framework-coverage"),
-      fetchJson<RiskMatrix>("/api/v1/analytics/risk-matrix"),
-      fetchJson<ActivityEntry[]>("/api/v1/analytics/activity-feed?limit=10"),
+      fetchJson<KpiSummary>("/api/v1/analytics/kpi-summary?period_days=30", headers),
+      fetchJson<FrameworkCoverage[]>("/api/v1/analytics/framework-coverage", headers),
+      fetchJson<RiskMatrix>("/api/v1/analytics/risk-matrix", headers),
+      fetchJson<ActivityEntry[]>("/api/v1/analytics/activity-feed?limit=10", headers),
     ]);
     if (kpiData) setKpi(kpiData);
     if (fwData) setFrameworks(fwData);
     if (riskData) setRiskMatrix(riskData);
     if (feedData) setActivity(feedData);
     setLoading(false);
-  }, []);
+  }, [opaRole]);
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void loadData();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadData]);
 
   return (
