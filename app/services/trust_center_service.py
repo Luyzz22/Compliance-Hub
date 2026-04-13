@@ -7,6 +7,7 @@ and access logging for the enterprise Trust Center.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import uuid
 from datetime import UTC, datetime
@@ -526,6 +527,7 @@ def _resolve_legacy_kid(
                 if hmac.compare_digest(fp, cert_fingerprint):
                     return kid, "fingerprint"
             except Exception:  # noqa: BLE001
+                logging.getLogger(__name__).debug("fingerprint computation failed for kid=%s", kid)
                 continue
 
     # 2. Singleton registry
@@ -795,6 +797,9 @@ def get_key_registry_health() -> dict[str, Any]:
         try:
             fp = _compute_key_fingerprint(key_pem)
         except Exception:  # noqa: BLE001
+            logging.getLogger(__name__).debug(
+                "health: fingerprint computation failed for kid=%s", kid
+            )
             fp = "error"
         key_info.append({"kid": kid, "fingerprint": fp})
 

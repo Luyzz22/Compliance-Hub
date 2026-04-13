@@ -379,7 +379,9 @@ function Step3({
     setUsers(next);
   };
 
-  const adminExists = users.some((u) => u.role === "admin" && u.email.includes("@"));
+  const adminExists = users.some(
+    (u) => u.role === "admin" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email),
+  );
 
   return (
     <section className={CH_CARD}>
@@ -460,7 +462,7 @@ function Step4() {
           </p>
           <p className="mt-1 text-xs text-slate-500">
             Für die E-Signatur von Evidence Bundles wird ein ECDSA-P256-Schlüssel benötigt.
-            Setzen Sie die Umgebungsvariable <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">TRUST_CENTER_SIGNING_KEY</code>.
+            Setzen Sie die Umgebungsvariable <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">TRUST_CENTER_SIGNING_KEYS</code>.
           </p>
           <div className="mt-2 rounded-lg bg-slate-900 p-3">
             <code className="block text-xs text-emerald-400">
