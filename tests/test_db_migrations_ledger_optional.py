@@ -106,7 +106,8 @@ def test_run_all_ledgerless_reports_unsatisfied_without_ddl(tmp_path) -> None:
     assert "20260419_trust_center_assurance_portal" in ids
     assert "20260420_phase11_trust_center_esigning" in ids
     assert "20260421_phase12_esigning_key_rotation" in ids
-    assert len(ids) == 20
+    assert "20260422_phase13_tenant_onboarding_completed" in ids
+    assert len(ids) == 21
     cols = {c["name"] for c in inspect(engine).get_columns("tenants")}
     assert "kritis_sector" not in cols
     engine.dispose()

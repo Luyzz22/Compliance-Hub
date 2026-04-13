@@ -34,6 +34,9 @@ class TenantDB(Base):
     ai_act_scope: Mapped[str] = mapped_column(String(64), nullable=False, default="in_scope")
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     demo_playground: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,

@@ -30,6 +30,59 @@ function daysSince(dateStr: string): number {
   return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+/** Registry health status widget – shows green/yellow/red based on config state. */
+function KeyRegistryStatusWidget() {
+  const keyCount = signingKeys.length;
+  const activeKey = signingKeys.find((k) => k.status === "Aktiv");
+  const registryConfigured = keyCount > 0;
+
+  let statusColor: string;
+  let statusLabel: string;
+  let statusIcon: string;
+
+  if (!registryConfigured) {
+    statusColor = "bg-red-50 border-red-300 text-red-800";
+    statusLabel = "Nicht konfiguriert";
+    statusIcon = "🔴";
+  } else if (!activeKey) {
+    statusColor = "bg-amber-50 border-amber-300 text-amber-800";
+    statusLabel = "Kein aktiver Schlüssel";
+    statusIcon = "🟡";
+  } else {
+    const ageDays = daysSince(activeKey.activeSince);
+    if (ageDays > 365) {
+      statusColor = "bg-amber-50 border-amber-300 text-amber-800";
+      statusLabel = "Rotation empfohlen";
+      statusIcon = "🟡";
+    } else {
+      statusColor = "bg-emerald-50 border-emerald-300 text-emerald-800";
+      statusLabel = "Betriebsbereit";
+      statusIcon = "🟢";
+    }
+  }
+
+  return (
+    <section aria-label="Key-Registry-Status" className={`rounded-2xl border p-5 shadow-sm ${statusColor}`}>
+      <div className="flex items-center justify-between">
+        <p className={CH_SECTION_LABEL}>Key-Registry-Status</p>
+        <span className="text-lg">{statusIcon}</span>
+      </div>
+      <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+        <div>
+          <span className="font-semibold">Status:</span> {statusLabel}
+        </div>
+        <div>
+          <span className="font-semibold">Aktiver Key:</span>{" "}
+          {activeKey ? activeKey.kid : "–"}
+        </div>
+        <div>
+          <span className="font-semibold">Schlüssel gesamt:</span> {keyCount}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function AdminSigningKeysPage() {
   const activeKey = signingKeys.find((k) => k.status === "Aktiv");
   const activeKeyAgeDays = activeKey ? daysSince(activeKey.activeSince) : 0;
@@ -54,6 +107,9 @@ export default function AdminSigningKeysPage() {
           </button>
         }
       />
+
+      {/* Key-Registry-Status Widget */}
+      <KeyRegistryStatusWidget />
 
       {/* GoBD / eIDAS notice */}
       <section aria-label="GoBD-Hinweis" className={CH_CARD}>
