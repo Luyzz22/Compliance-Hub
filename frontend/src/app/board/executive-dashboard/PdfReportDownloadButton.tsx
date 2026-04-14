@@ -2,22 +2,17 @@
 
 import React, { useState } from "react";
 
+import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
+import { tenantRequestHeaders } from "@/lib/api";
 import { CH_BTN_PRIMARY } from "@/lib/boardLayout";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.COMPLIANCEHUB_API_BASE_URL ||
   "http://localhost:8000";
-const API_KEY =
-  process.env.NEXT_PUBLIC_API_KEY ||
-  process.env.COMPLIANCEHUB_API_KEY ||
-  "tenant-overview-key";
-const TENANT_ID =
-  process.env.NEXT_PUBLIC_TENANT_ID ||
-  process.env.COMPLIANCEHUB_TENANT_ID ||
-  "tenant-overview-001";
 
 export function PdfReportDownloadButton() {
+  const workspaceTenantId = useWorkspaceTenantIdClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,12 +20,7 @@ export function PdfReportDownloadButton() {
     setLoading(true);
     setError(null);
     try {
-      const opaRole = process.env.NEXT_PUBLIC_OPA_USER_ROLE?.trim();
-      const headers: Record<string, string> = {
-        "x-api-key": API_KEY,
-        "x-tenant-id": TENANT_ID,
-      };
-      if (opaRole) headers["x-opa-user-role"] = opaRole;
+      const headers = tenantRequestHeaders(workspaceTenantId, undefined, { json: false });
 
       const res = await fetch(
         `${API_BASE_URL}/api/v1/enterprise/board/pdf-report`,
@@ -52,7 +42,7 @@ export function PdfReportDownloadButton() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `board-report-${TENANT_ID}.html`;
+      a.download = `board-report-${workspaceTenantId}.html`;
       document.body.appendChild(a);
       a.click();
       a.remove();

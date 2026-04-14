@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 
+import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
 import {
   postNis2KritisKpiSuggestions,
   upsertNis2KritisKpi,
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export function Nis2KpiAiAssistClient({ aiSystemId }: Props) {
+  const workspaceTenantId = useWorkspaceTenantIdClient();
   const enabled = featureLlmEnabled() && featureLlmKpiSuggestions();
   const [ctx, setCtx] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +43,11 @@ export function Nis2KpiAiAssistClient({ aiSystemId }: Props) {
     setLoading(true);
     setErr(null);
     try {
-      const res = await postNis2KritisKpiSuggestions(aiSystemId, ctx.trim());
+      const res = await postNis2KritisKpiSuggestions(
+        workspaceTenantId,
+        aiSystemId,
+        ctx.trim(),
+      );
       setSuggestions(res.suggestions);
       setIgnored({});
       setDraftPct({});
@@ -71,7 +77,7 @@ export function Nis2KpiAiAssistClient({ aiSystemId }: Props) {
     if (v === undefined) return;
     setSaving(kpiType);
     try {
-      await upsertNis2KritisKpi(aiSystemId, {
+      await upsertNis2KritisKpi(workspaceTenantId, aiSystemId, {
         kpi_type: kpiType,
         value_percent: Math.min(100, Math.max(0, Math.round(v))),
         evidence_ref: "KI-Vorschlag (manuell bestätigt)",

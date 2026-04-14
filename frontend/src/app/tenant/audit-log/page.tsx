@@ -12,20 +12,17 @@ import {
   CH_PAGE_NAV_LINK,
   CH_SHELL,
 } from "@/lib/boardLayout";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
-const TENANT_ID =
-  process.env.NEXT_PUBLIC_TENANT_ID ||
-  process.env.COMPLIANCEHUB_TENANT_ID ||
-  "tenant-overview-001";
-
-const DEMO_AUDIT_ROWS: AuditLogDemoRow[] = [
+function demoAuditRows(tenantId: string): AuditLogDemoRow[] {
+  return [
   {
     id: "1",
     ts: "2025-03-18T09:15:00.000Z",
     actor: "isa@tenant.example",
     entityType: "AI-System",
     action: "UPDATE",
-    tenant: TENANT_ID,
+    tenant: tenantId,
     detail: "risk_level → high",
   },
   {
@@ -34,7 +31,7 @@ const DEMO_AUDIT_ROWS: AuditLogDemoRow[] = [
     actor: "system",
     entityType: "Evidence",
     action: "CREATE",
-    tenant: TENANT_ID,
+    tenant: tenantId,
     detail: "Upload DPIA (KI-Chatbot Vertrieb)",
   },
   {
@@ -43,7 +40,7 @@ const DEMO_AUDIT_ROWS: AuditLogDemoRow[] = [
     actor: "compliance@tenant.example",
     entityType: "Policy",
     action: "PUBLISH",
-    tenant: TENANT_ID,
+    tenant: tenantId,
     detail: "policy-eu-ai-act-v3",
   },
   {
@@ -52,7 +49,7 @@ const DEMO_AUDIT_ROWS: AuditLogDemoRow[] = [
     actor: "auditor@external.example",
     entityType: "Action",
     action: "READ",
-    tenant: TENANT_ID,
+    tenant: tenantId,
     detail: "Governance-Maßnahme #12",
   },
   {
@@ -61,12 +58,15 @@ const DEMO_AUDIT_ROWS: AuditLogDemoRow[] = [
     actor: "api-key:ingest",
     entityType: "AI-System",
     action: "IMPORT",
-    tenant: TENANT_ID,
+    tenant: tenantId,
     detail: "CSV Import 12 Zeilen",
   },
 ];
+}
 
 export default async function TenantAuditLogPage() {
+  const tenantId = await getWorkspaceTenantIdServer();
+  const demoRows = demoAuditRows(tenantId);
   return (
     <div className={CH_SHELL}>
       <EnterprisePageHeader
@@ -96,7 +96,7 @@ export default async function TenantAuditLogPage() {
         }
       />
 
-      <TenantAuditLogTableClient tenantId={TENANT_ID} rows={DEMO_AUDIT_ROWS} />
+      <TenantAuditLogTableClient tenantId={tenantId} rows={demoRows} />
 
       <section className={`${CH_CARD} overflow-hidden p-0`}>
         <div className="border-b border-slate-200/80 px-5 py-4">

@@ -13,7 +13,7 @@ export const TENANT_ID =
   process.env.COMPLIANCEHUB_TENANT_ID ||
   "tenant-overview-001";
 
-function tenantRequestHeaders(
+export function tenantRequestHeaders(
   tenantId: string,
   initHeaders?: HeadersInit,
   options?: { json?: boolean },
@@ -663,8 +663,10 @@ export interface AIComplianceOverview {
   nis2_kritis_systems_full_coverage_ratio?: number;
 }
 
-export async function fetchAIComplianceOverview(): Promise<AIComplianceOverview> {
-  return apiFetch("/api/v1/ai-governance/compliance/overview");
+export async function fetchAIComplianceOverview(
+  tenantId: string,
+): Promise<AIComplianceOverview> {
+  return tenantApiFetch("/api/v1/ai-governance/compliance/overview", tenantId);
 }
 
 // ─── Board-Level AI Governance KPIs ────────────────────────────────────────────
@@ -693,8 +695,8 @@ export interface BoardKpiSummary {
   nis2_kritis_systems_full_coverage_ratio?: number;
 }
 
-export async function fetchBoardKpis(): Promise<BoardKpiSummary> {
-  return apiFetch("/api/v1/ai-governance/board-kpis");
+export async function fetchBoardKpis(tenantId: string): Promise<BoardKpiSummary> {
+  return tenantApiFetch("/api/v1/ai-governance/board-kpis", tenantId);
 }
 
 /** Board-KPI-Alert (NIS2 / EU AI Act / ISO 42001 Schwellenwerte) */
@@ -721,8 +723,8 @@ export interface AIKpiAlert {
   alert_metadata?: AIKpiAlertMetadata | null;
 }
 
-export async function fetchBoardAlerts(): Promise<AIKpiAlert[]> {
-  return apiFetch("/api/v1/ai-governance/alerts/board");
+export async function fetchBoardAlerts(tenantId: string): Promise<AIKpiAlert[]> {
+  return tenantApiFetch("/api/v1/ai-governance/alerts/board", tenantId);
 }
 
 /** Export-URL für Board-Alerts (JSON/CSV) – für Weiterleitung an CISO/ISB/Vorstand. */
@@ -1111,9 +1113,11 @@ export interface Nis2KritisKpiListResponse {
 }
 
 export async function fetchNis2KritisKpis(
-  aiSystemId: string
+  tenantId: string,
+  aiSystemId: string,
 ): Promise<Nis2KritisKpiListResponse> {
-  return apiFetch(`/api/v1/ai-systems/${aiSystemId}/nis2-kritis-kpis`);
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/nis2-kritis-kpis`, tenantId);
 }
 
 export interface Nis2KritisKpiUpsertInput {
@@ -1124,10 +1128,12 @@ export interface Nis2KritisKpiUpsertInput {
 }
 
 export async function upsertNis2KritisKpi(
+  tenantId: string,
   aiSystemId: string,
-  input: Nis2KritisKpiUpsertInput
+  input: Nis2KritisKpiUpsertInput,
 ): Promise<Nis2KritisKpi> {
-  return apiFetch(`/api/v1/ai-systems/${aiSystemId}/nis2-kritis-kpis`, {
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/nis2-kritis-kpis`, tenantId, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -1146,15 +1152,18 @@ export interface Nis2KritisKpiSuggestionResponse {
 }
 
 export async function postNis2KritisKpiSuggestions(
+  tenantId: string,
   aiSystemId: string,
-  freeText: string
+  freeText: string,
 ): Promise<Nis2KritisKpiSuggestionResponse> {
-  return apiFetch(
-    `/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/nis2-kritis-kpi-suggestions`,
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(
+    `/api/v1/ai-systems/${sid}/nis2-kritis-kpi-suggestions`,
+    tenantId,
     {
       method: "POST",
       body: JSON.stringify({ free_text: freeText }),
-    }
+    },
   );
 }
 
@@ -1420,10 +1429,12 @@ export interface Nis2KritisKpiDrilldown {
 }
 
 export async function fetchNis2KritisKpiDrilldown(
-  topN = 5
+  tenantId: string,
+  topN = 5,
 ): Promise<Nis2KritisKpiDrilldown> {
-  return apiFetch(
-    `/api/v1/nis2-kritis/kpi-drilldown?top_n=${encodeURIComponent(String(topN))}`
+  return tenantApiFetch(
+    `/api/v1/nis2-kritis/kpi-drilldown?top_n=${encodeURIComponent(String(topN))}`,
+    tenantId,
   );
 }
 

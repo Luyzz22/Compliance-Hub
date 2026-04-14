@@ -1,11 +1,8 @@
 import React from "react";
 import Link from "next/link";
 
-import {
-  fetchBoardKpiReport,
-  TENANT_ID,
-  type BoardKpiReport,
-} from "@/lib/api";
+import { fetchBoardKpiReport, type BoardKpiReport } from "@/lib/api";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import { PdfReportDownloadButton } from "./PdfReportDownloadButton";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
@@ -34,10 +31,11 @@ function statusDot(score: number): string {
 /* ── Page ──────────────────────────────────────────────────────────── */
 
 export default async function ExecutiveDashboardPage() {
+  const tenantId = await getWorkspaceTenantIdServer();
   let report: BoardKpiReport | null = null;
 
   try {
-    report = await fetchBoardKpiReport(TENANT_ID);
+    report = await fetchBoardKpiReport(tenantId);
   } catch (error) {
     console.error("Executive Dashboard API error:", error);
   }

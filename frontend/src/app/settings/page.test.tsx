@@ -22,6 +22,10 @@ vi.mock("@/components/settings/TenantApiKeysPanel", () => ({
   ),
 }));
 
+vi.mock("@/lib/workspaceTenantServer", () => ({
+  getWorkspaceTenantIdServer: async () => "tenant-overview-001",
+}));
+
 vi.mock("@/lib/config", async () => {
   const actual = await vi.importActual<typeof import("@/lib/config")>("@/lib/config");
   return {
@@ -31,15 +35,15 @@ vi.mock("@/lib/config", async () => {
   };
 });
 
-import SettingsPage from "./page";
-
 describe("SettingsPage", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("zeigt API-Keys-Bereich wenn NEXT_PUBLIC_FEATURE_API_KEYS_UI aktiv ist", () => {
-    render(<SettingsPage />);
+  it("zeigt API-Keys-Bereich wenn NEXT_PUBLIC_FEATURE_API_KEYS_UI aktiv ist", async () => {
+    const Page = (await import("./page")).default;
+    const tree = await Page();
+    render(tree);
     const panel = screen.getByTestId("api-keys-panel");
     expect(panel.textContent ?? "").toContain("tenant-overview-001");
   });

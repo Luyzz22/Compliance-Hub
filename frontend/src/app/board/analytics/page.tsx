@@ -11,6 +11,7 @@ import {
 } from "@/lib/boardLayout";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,12 +58,11 @@ interface ActivityEntry {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || "tenant-overview-001";
 
-function buildApiHeaders(opaRole: string | null): Record<string, string> {
+function buildApiHeaders(opaRole: string | null, tenantId: string): Record<string, string> {
   const headers: Record<string, string> = {
     "x-api-key": API_KEY,
-    "x-tenant-id": TENANT_ID,
+    "x-tenant-id": tenantId,
     "Content-Type": "application/json",
   };
   if (opaRole) {
@@ -258,6 +258,7 @@ function FrameworkAmpel({ frameworks }: { frameworks: FrameworkCoverage[] }) {
 
 export default function ComplianceAnalyticsPage() {
   const opaRole = useUserRole();
+  const workspaceTenantId = useWorkspaceTenantIdClient();
   const [kpi, setKpi] = useState<KpiSummary | null>(null);
   const [frameworks, setFrameworks] = useState<FrameworkCoverage[]>([]);
   const [riskMatrix, setRiskMatrix] = useState<RiskMatrix | null>(null);
@@ -266,7 +267,7 @@ export default function ComplianceAnalyticsPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const headers = buildApiHeaders(opaRole);
+    const headers = buildApiHeaders(opaRole, workspaceTenantId);
     const [kpiData, fwData, riskData, feedData] = await Promise.all([
       fetchJson<KpiSummary>("/api/v1/analytics/kpi-summary?period_days=30", headers),
       fetchJson<FrameworkCoverage[]>("/api/v1/analytics/framework-coverage", headers),
@@ -278,7 +279,7 @@ export default function ComplianceAnalyticsPage() {
     if (riskData) setRiskMatrix(riskData);
     if (feedData) setActivity(feedData);
     setLoading(false);
-  }, [opaRole]);
+  }, [opaRole, workspaceTenantId]);
 
   useEffect(() => {
     let cancelled = false;

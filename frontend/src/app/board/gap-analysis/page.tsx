@@ -1,15 +1,11 @@
 import React from "react";
 import Link from "next/link";
 
-import {
-  fetchGapReports,
-  TENANT_ID,
-  type GapReportSummary,
-} from "@/lib/api";
+import { fetchGapReports, type GapReportSummary } from "@/lib/api";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   BOARD_PAGE_ROOT_CLASS,
-  CH_BTN_PRIMARY,
   CH_CARD,
   CH_CARD_MUTED,
   CH_PAGE_NAV_LINK,
@@ -37,10 +33,11 @@ function statusBadge(status: string): { label: string; cls: string } {
 /* ── Page ──────────────────────────────────────────────────────────── */
 
 export default async function GapAnalysisPage() {
+  const tenantId = await getWorkspaceTenantIdServer();
   let reports: GapReportSummary[] = [];
 
   try {
-    reports = await fetchGapReports(TENANT_ID);
+    reports = await fetchGapReports(tenantId);
   } catch (error) {
     console.error("Gap Analysis API error:", error);
   }

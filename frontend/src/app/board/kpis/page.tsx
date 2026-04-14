@@ -8,12 +8,12 @@ import {
   fetchBoardAlertsExport,
   getBoardReportDownloadUrl,
   getBoardReportMarkdownDownloadUrl,
-  TENANT_ID,
   type AIComplianceOverview,
   type AIKpiAlert,
   type BoardKpiSummary,
 } from "@/lib/api";
 import { AiKpiPortfolioStrip } from "@/components/ai/AiKpiPortfolioStrip";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import { BoardToWorkspaceCtas } from "@/components/sbs/BoardToWorkspaceCtas";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
@@ -184,15 +184,16 @@ function KpiStatusChip({ ratio }: { ratio: number | null }) {
 }
 
 export default async function BoardKpisPage() {
+  const tenantId = await getWorkspaceTenantIdServer();
   let kpis: BoardKpiSummary | null = null;
   let complianceOverview: AIComplianceOverview | null = null;
   let alerts: AIKpiAlert[] = [];
 
   try {
     const [kpisRes, overviewRes, alertsRes] = await Promise.all([
-      fetchBoardKpis(),
-      fetchAIComplianceOverview(),
-      fetchBoardAlerts(),
+      fetchBoardKpis(tenantId),
+      fetchAIComplianceOverview(tenantId),
+      fetchBoardAlerts(tenantId),
     ]);
     kpis = kpisRes;
     complianceOverview = overviewRes;
@@ -251,7 +252,7 @@ export default async function BoardKpisPage() {
 
       <BoardWhatIfSimulatorClient />
 
-      {featureAiKpiKri() ? <AiKpiPortfolioStrip tenantId={TENANT_ID} boardLayout /> : null}
+      {featureAiKpiKri() ? <AiKpiPortfolioStrip tenantId={tenantId} boardLayout /> : null}
 
       <section
         aria-label="Executive KPIs"
