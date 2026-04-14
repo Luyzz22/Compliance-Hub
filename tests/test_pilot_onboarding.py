@@ -58,7 +58,7 @@ def test_provision_tenant_sets_defaults_and_initial_key() -> None:
 
     listed = client.get(
         f"/api/v1/tenants/{tid}/api-keys",
-        headers={"x-api-key": plain, "x-tenant-id": tid},
+        headers={"x-api-key": plain, "x-tenant-id": tid, "x-opa-user-role": "tenant_admin"},
     )
     assert listed.status_code == 200
     keys = listed.json()
@@ -136,7 +136,7 @@ def test_create_and_revoke_api_key() -> None:
 
     cr = client.post(
         f"/api/v1/tenants/{tid}/api-keys",
-        headers={"x-api-key": plain, "x-tenant-id": tid},
+        headers={"x-api-key": plain, "x-tenant-id": tid, "x-opa-user-role": "tenant_admin"},
         json={"name": "ETL Produktiv"},
     )
     assert cr.status_code == 200
@@ -145,20 +145,20 @@ def test_create_and_revoke_api_key() -> None:
 
     listed = client.get(
         f"/api/v1/tenants/{tid}/api-keys",
-        headers={"x-api-key": plain2, "x-tenant-id": tid},
+        headers={"x-api-key": plain2, "x-tenant-id": tid, "x-opa-user-role": "tenant_admin"},
     )
     assert listed.status_code == 200
     assert len(listed.json()) == 2
 
     dl = client.delete(
         f"/api/v1/tenants/{tid}/api-keys/{kid}",
-        headers={"x-api-key": plain2, "x-tenant-id": tid},
+        headers={"x-api-key": plain2, "x-tenant-id": tid, "x-opa-user-role": "tenant_admin"},
     )
     assert dl.status_code == 204
 
     listed2 = client.get(
         f"/api/v1/tenants/{tid}/api-keys",
-        headers={"x-api-key": plain, "x-tenant-id": tid},
+        headers={"x-api-key": plain, "x-tenant-id": tid, "x-opa-user-role": "tenant_admin"},
     )
     rows = listed2.json()
     revoked = next(x for x in rows if x["id"] == kid)

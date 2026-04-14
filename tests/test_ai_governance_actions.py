@@ -10,7 +10,11 @@ client = TestClient(app)
 
 
 def _h(tid: str = "action-tenant-1") -> dict[str, str]:
-    return {"x-api-key": "board-kpi-key", "x-tenant-id": tid}
+    return {
+        "x-api-key": "board-kpi-key",
+        "x-tenant-id": tid,
+        "x-opa-user-role": "compliance_officer",
+    }
 
 
 def _create_system(sid: str, tid: str) -> None:
