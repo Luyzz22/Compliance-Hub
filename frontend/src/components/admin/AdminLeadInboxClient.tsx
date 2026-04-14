@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { GtmProductBridgeHint } from "@/lib/gtmProductBridgeTypes";
 import { GTM_READINESS_LABELS_DE } from "@/lib/gtmAccountReadiness";
@@ -152,6 +152,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
   const [draftRelatedRaw, setDraftRelatedRaw] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const leadsFetchGen = useRef(0);
 
   const selected = useMemo(
     () => items.find((i) => i.lead_id === selectedId) ?? null,
@@ -195,12 +196,16 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
   }, [filters]);
 
   const fetchLeads = useCallback(async () => {
+    const gen = ++leadsFetchGen.current;
     setLoading(true);
     setLoadError(null);
     try {
       const r = await fetch(`/api/admin/lead-inquiries${queryString}`, {
         credentials: "include",
       });
+      if (gen !== leadsFetchGen.current) {
+        return;
+      }
       if (r.status === 401) {
         setAuthed(false);
         setItems([]);
@@ -212,13 +217,21 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
         return;
       }
       const data = (await r.json()) as { ok?: boolean; items?: LeadInboxItem[] };
+      if (gen !== leadsFetchGen.current) {
+        return;
+      }
       setAuthed(true);
       setItems(data.items ?? []);
     } catch {
+      if (gen !== leadsFetchGen.current) {
+        return;
+      }
       setAuthed(true);
       setLoadError("Netzwerkfehler");
     } finally {
-      setLoading(false);
+      if (gen === leadsFetchGen.current) {
+        setLoading(false);
+      }
     }
   }, [queryString]);
 
