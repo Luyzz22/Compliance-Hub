@@ -60,6 +60,14 @@ def _seed_links() -> None:
         s.close()
 
 
+def _tenant_headers(tenant_id: str) -> dict[str, str]:
+    return {
+        "x-api-key": API_KEY,
+        "x-tenant-id": tenant_id,
+        "x-opa-user-role": "compliance_officer",
+    }
+
+
 def _post_system(tenant_id: str, system_id: str, risk: str = "high") -> None:
     body = {
         "id": system_id,
@@ -79,7 +87,7 @@ def _post_system(tenant_id: str, system_id: str, risk: str = "high") -> None:
     resp = client.post(
         "/api/v1/ai-systems",
         json=body,
-        headers={"x-api-key": API_KEY, "x-tenant-id": tenant_id},
+        headers=_tenant_headers(tenant_id),
     )
     assert resp.status_code == 200, resp.text
 
@@ -95,7 +103,7 @@ def _post_action(tenant_id: str, system_id: str, *, overdue: bool = False) -> No
         payload["due_date"] = (datetime.now(UTC) - timedelta(days=3)).isoformat()
     resp = client.post(
         "/api/v1/ai-governance/actions",
-        headers={"x-api-key": API_KEY, "x-tenant-id": tenant_id},
+        headers=_tenant_headers(tenant_id),
         json=payload,
     )
     assert resp.status_code == 201, resp.text

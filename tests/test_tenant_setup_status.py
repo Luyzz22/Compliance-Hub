@@ -17,6 +17,7 @@ def _headers(tenant_id: str) -> dict[str, str]:
     return {
         "x-api-key": "board-kpi-key",
         "x-tenant-id": tenant_id,
+        "x-opa-user-role": "compliance_officer",
     }
 
 
