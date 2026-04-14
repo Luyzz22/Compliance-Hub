@@ -48,7 +48,7 @@ function pickRisk(s: AISystem): string {
 export default async function TenantAiSystemDetailPage({ params }: PageProps) {
   const { id } = await params;
   const workspaceTenantId = await getWorkspaceTenantIdServer();
-  const systems = await fetchTenantAISystems();
+  const systems = await fetchTenantAISystems(workspaceTenantId);
   const system = systems.find((x) => x.id === id);
 
   if (!system) {
@@ -67,11 +67,14 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
   }
 
   const [violations, nis2, compliance, bySystem, readiness] = await Promise.all([
-    fetchAISystemViolations(id).catch(() => []),
-    fetchNis2KritisKpis(id).catch(() => ({ kpis: [], recommended: null })),
-    fetchSystemCompliance(id).catch(() => []),
-    fetchIncidentsBySystem().catch(() => []),
-    fetchEuAiActReadiness().catch(() => null),
+    fetchAISystemViolations(workspaceTenantId, id).catch(() => []),
+    fetchNis2KritisKpis(workspaceTenantId, id).catch(() => ({
+      kpis: [],
+      recommended: null,
+    })),
+    fetchSystemCompliance(workspaceTenantId, id).catch(() => []),
+    fetchIncidentsBySystem(workspaceTenantId).catch(() => []),
+    fetchEuAiActReadiness(workspaceTenantId).catch(() => null),
   ]);
 
   const regulatoryHints =
@@ -81,7 +84,7 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
 
   let classification: Awaited<ReturnType<typeof fetchClassification>> | null = null;
   try {
-    classification = await fetchClassification(id);
+    classification = await fetchClassification(workspaceTenantId, id);
   } catch {
     classification = null;
   }

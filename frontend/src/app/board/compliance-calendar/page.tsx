@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
+import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
+import { tenantRequestHeaders } from "@/lib/api";
 import {
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
@@ -15,14 +17,6 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.COMPLIANCEHUB_API_BASE_URL ||
   "http://localhost:8000";
-const API_KEY =
-  process.env.NEXT_PUBLIC_API_KEY ||
-  process.env.COMPLIANCEHUB_API_KEY ||
-  "tenant-overview-key";
-const TENANT_ID =
-  process.env.NEXT_PUBLIC_TENANT_ID ||
-  process.env.COMPLIANCEHUB_TENANT_ID ||
-  "tenant-overview-001";
 
 type DeadlineCategory =
   | "eu_ai_act"
@@ -92,17 +86,12 @@ function trafficDot(daysRemaining: number, status: DeadlineStatus): string {
   return "bg-emerald-500";
 }
 
-function buildHeaders(): Record<string, string> {
-  const opaRole = process.env.NEXT_PUBLIC_OPA_USER_ROLE?.trim();
-  const h: Record<string, string> = {
-    "x-api-key": API_KEY,
-    "x-tenant-id": TENANT_ID,
-  };
-  if (opaRole) h["x-opa-user-role"] = opaRole;
-  return h;
+function buildHeaders(tenantId: string): Record<string, string> {
+  return tenantRequestHeaders(tenantId, undefined, { json: false });
 }
 
 export default function ComplianceCalendarPage() {
+  const workspaceTenantId = useWorkspaceTenantIdClient();
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -124,7 +113,7 @@ export default function ComplianceCalendarPage() {
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/v1/compliance-calendar/deadlines`,
-        { headers: buildHeaders() },
+        { headers: buildHeaders(workspaceTenantId) },
       );
       if (!res.ok) {
         setError(`Fehler beim Laden (HTTP ${res.status})`);
@@ -139,7 +128,7 @@ export default function ComplianceCalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceTenantId]);
 
   useEffect(() => {
     fetchDeadlines();
@@ -153,10 +142,7 @@ export default function ComplianceCalendarPage() {
         `${API_BASE_URL}/api/v1/compliance-calendar/deadlines`,
         {
           method: "POST",
-          headers: {
-            ...buildHeaders(),
-            "Content-Type": "application/json",
-          },
+          headers: tenantRequestHeaders(workspaceTenantId, undefined, { json: true }),
           body: JSON.stringify({
             title: newTitle,
             category: newCategory,
@@ -195,7 +181,7 @@ export default function ComplianceCalendarPage() {
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/v1/compliance-calendar/export/ical`,
-        { headers: buildHeaders() },
+        { headers: buildHeaders(workspaceTenantId) },
       );
       if (!res.ok) {
         setError(`iCal-Export fehlgeschlagen (HTTP ${res.status})`);

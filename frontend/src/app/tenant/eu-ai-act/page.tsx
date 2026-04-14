@@ -6,10 +6,13 @@ import React, { useEffect, useState } from "react";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   fetchNis2KritisKpis,
+  TENANT_ID,
+  tenantRequestHeaders,
   upsertNis2KritisKpi,
   type Nis2KritisKpiListResponse,
   type Nis2KritisKpiType,
 } from "@/lib/api";
+import { readWorkspaceTenantIdFromDocumentCookie } from "@/lib/workspaceTenantBrowser";
 import {
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
@@ -103,18 +106,19 @@ interface AISystem {
 // ─── API helpers (client-side) ───────────────────────────────────────────────
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "tenant-overview-key";
-const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || "tenant-overview-001";
+
+function resolveWorkspaceTenantId(): string {
+  if (typeof window === "undefined") {
+    return TENANT_ID;
+  }
+  return readWorkspaceTenantIdFromDocumentCookie(TENANT_ID);
+}
 
 async function api(path: string, init?: RequestInit) {
+  const tid = resolveWorkspaceTenantId();
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: {
-      "x-api-key": API_KEY,
-      "x-tenant-id": TENANT_ID,
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
+    headers: tenantRequestHeaders(tid, init?.headers, { json: true }),
   });
   if (!res.ok) return null;
   return res.json();
@@ -299,7 +303,7 @@ export default function EUAIActPage() {
     const statuses = await api(`/api/v1/ai-systems/${systemId}/compliance`);
     if (statuses) setGapStatuses(statuses);
     try {
-      const nis2 = await fetchNis2KritisKpis(systemId);
+      const nis2 = await fetchNis2KritisKpis(resolveWorkspaceTenantId(), systemId);
       setNis2Kpis(nis2);
       const types: Nis2KritisKpiType[] = [
         "INCIDENT_RESPONSE_MATURITY",
@@ -329,7 +333,7 @@ export default function EUAIActPage() {
     const d = nis2Draft[kpiType];
     setNis2Saving(kpiType);
     try {
-      const saved = await upsertNis2KritisKpi(gapSystemId, {
+      const saved = await upsertNis2KritisKpi(resolveWorkspaceTenantId(), gapSystemId, {
         kpi_type: kpiType,
         value_percent: Math.min(100, Math.max(0, Math.round(d.value))),
         evidence_ref: d.evidence.trim() || null,

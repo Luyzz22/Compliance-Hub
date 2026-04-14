@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 
+import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
+import { tenantRequestHeaders } from "@/lib/api";
 import {
   CH_BTN_PRIMARY,
   CH_CARD,
@@ -15,14 +17,6 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.COMPLIANCEHUB_API_BASE_URL ||
   "http://localhost:8000";
-const API_KEY =
-  process.env.NEXT_PUBLIC_API_KEY ||
-  process.env.COMPLIANCEHUB_API_KEY ||
-  "tenant-overview-key";
-const TENANT_ID =
-  process.env.NEXT_PUBLIC_TENANT_ID ||
-  process.env.COMPLIANCEHUB_TENANT_ID ||
-  "tenant-overview-001";
 
 interface LineItem {
   description: string;
@@ -32,6 +26,7 @@ interface LineItem {
 }
 
 export default function XRechnungExportPage() {
+  const workspaceTenantId = useWorkspaceTenantIdClient();
   const today = new Date().toISOString().slice(0, 10);
   const dueDateDefault = new Date(Date.now() + 30 * 86400_000)
     .toISOString()
@@ -84,13 +79,7 @@ export default function XRechnungExportPage() {
     setSuccess(false);
 
     try {
-      const opaRole = process.env.NEXT_PUBLIC_OPA_USER_ROLE?.trim();
-      const headers: Record<string, string> = {
-        "x-api-key": API_KEY,
-        "x-tenant-id": TENANT_ID,
-        "Content-Type": "application/json",
-      };
-      if (opaRole) headers["x-opa-user-role"] = opaRole;
+      const headers = tenantRequestHeaders(workspaceTenantId, undefined, { json: true });
 
       const body = {
         invoice_id: invoiceId,

@@ -8,23 +8,25 @@ import {
   type AIIncidentBySystem,
   type AIIncidentOverview,
 } from "@/lib/api";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import { BoardToWorkspaceCtas } from "@/components/sbs/BoardToWorkspaceCtas";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { BOARD_PAGE_ROOT_CLASS, CH_PAGE_NAV_LINK } from "@/lib/boardLayout";
 
 export default async function BoardIncidentsPage() {
+  const tenantId = await getWorkspaceTenantIdServer();
   let overview: AIIncidentOverview | null = null;
   let bySystem: AIIncidentBySystem[] = [];
 
   try {
-    overview = await fetchIncidentOverview();
+    overview = await fetchIncidentOverview(tenantId);
   } catch (error) {
     console.error("Incident overview API error:", error);
   }
 
   if (overview) {
     try {
-      bySystem = await fetchIncidentsBySystem();
+      bySystem = await fetchIncidentsBySystem(tenantId);
     } catch (error) {
       console.error("Incidents by system API error:", error);
     }

@@ -13,7 +13,7 @@ export const TENANT_ID =
   process.env.COMPLIANCEHUB_TENANT_ID ||
   "tenant-overview-001";
 
-function tenantRequestHeaders(
+export function tenantRequestHeaders(
   tenantId: string,
   initHeaders?: HeadersInit,
   options?: { json?: boolean },
@@ -516,15 +516,18 @@ export async function fetchTenantViolations(tenantId: string = TENANT_ID): Promi
 }
 
 // Detail eines AI-Systems
-export async function fetchAISystemById(id: string): Promise<AISystem> {
-  return apiFetch(`/api/v1/ai-systems/${id}`);
+export async function fetchAISystemById(tenantId: string, id: string): Promise<AISystem> {
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}`, tenantId);
 }
 
 // Violations für ein konkretes AI-System
 export async function fetchAISystemViolations(
-  id: string
+  tenantId: string,
+  id: string,
 ): Promise<Violation[]> {
-  return apiFetch(`/api/v1/ai-systems/${id}/violations`);
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/violations`, tenantId);
 }
 
 // ─── EU AI Act Classification & Gap Analysis ─────────────────────────────────
@@ -600,48 +603,63 @@ export interface ComplianceDashboard {
 }
 
 export async function classifyAISystem(
+  tenantId: string,
   id: string,
-  questionnaire: Record<string, unknown>
+  questionnaire: Record<string, unknown>,
 ): Promise<RiskClassification> {
-  return apiFetch(`/api/v1/ai-systems/${id}/classify`, {
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/classify`, tenantId, {
     method: "POST",
     body: JSON.stringify(questionnaire),
   });
 }
 
 export async function fetchClassification(
-  id: string
+  tenantId: string,
+  id: string,
 ): Promise<RiskClassification> {
-  return apiFetch(`/api/v1/ai-systems/${id}/classification`);
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/classification`, tenantId);
 }
 
-export async function fetchClassificationSummary(): Promise<ClassificationSummary> {
-  return apiFetch("/api/v1/classifications/summary");
+export async function fetchClassificationSummary(
+  tenantId: string,
+): Promise<ClassificationSummary> {
+  return tenantApiFetch("/api/v1/classifications/summary", tenantId);
 }
 
 export async function fetchSystemCompliance(
-  id: string
+  tenantId: string,
+  id: string,
 ): Promise<ComplianceStatusEntry[]> {
-  return apiFetch(`/api/v1/ai-systems/${id}/compliance`);
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/compliance`, tenantId);
 }
 
 export async function updateComplianceStatus(
+  tenantId: string,
   systemId: string,
   requirementId: string,
-  data: { status: string; evidence_notes?: string }
+  data: { status: string; evidence_notes?: string },
 ): Promise<ComplianceStatusEntry> {
-  return apiFetch(`/api/v1/ai-systems/${systemId}/compliance/${requirementId}`, {
+  const sid = encodeURIComponent(systemId);
+  const rid = encodeURIComponent(requirementId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/compliance/${rid}`, tenantId, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function fetchComplianceRequirements(): Promise<ComplianceRequirement[]> {
-  return apiFetch("/api/v1/compliance/requirements");
+export async function fetchComplianceRequirements(
+  tenantId: string,
+): Promise<ComplianceRequirement[]> {
+  return tenantApiFetch("/api/v1/compliance/requirements", tenantId);
 }
 
-export async function fetchComplianceDashboard(): Promise<ComplianceDashboard> {
-  return apiFetch("/api/v1/compliance/dashboard");
+export async function fetchComplianceDashboard(
+  tenantId: string,
+): Promise<ComplianceDashboard> {
+  return tenantApiFetch("/api/v1/compliance/dashboard", tenantId);
 }
 
 /** Board-fähiger EU AI Act / ISO 42001 Compliance-Readiness-Überblick */
@@ -663,8 +681,10 @@ export interface AIComplianceOverview {
   nis2_kritis_systems_full_coverage_ratio?: number;
 }
 
-export async function fetchAIComplianceOverview(): Promise<AIComplianceOverview> {
-  return apiFetch("/api/v1/ai-governance/compliance/overview");
+export async function fetchAIComplianceOverview(
+  tenantId: string,
+): Promise<AIComplianceOverview> {
+  return tenantApiFetch("/api/v1/ai-governance/compliance/overview", tenantId);
 }
 
 // ─── Board-Level AI Governance KPIs ────────────────────────────────────────────
@@ -693,8 +713,8 @@ export interface BoardKpiSummary {
   nis2_kritis_systems_full_coverage_ratio?: number;
 }
 
-export async function fetchBoardKpis(): Promise<BoardKpiSummary> {
-  return apiFetch("/api/v1/ai-governance/board-kpis");
+export async function fetchBoardKpis(tenantId: string): Promise<BoardKpiSummary> {
+  return tenantApiFetch("/api/v1/ai-governance/board-kpis", tenantId);
 }
 
 /** Board-KPI-Alert (NIS2 / EU AI Act / ISO 42001 Schwellenwerte) */
@@ -721,8 +741,8 @@ export interface AIKpiAlert {
   alert_metadata?: AIKpiAlertMetadata | null;
 }
 
-export async function fetchBoardAlerts(): Promise<AIKpiAlert[]> {
-  return apiFetch("/api/v1/ai-governance/alerts/board");
+export async function fetchBoardAlerts(tenantId: string): Promise<AIKpiAlert[]> {
+  return tenantApiFetch("/api/v1/ai-governance/alerts/board", tenantId);
 }
 
 /** Export-URL für Board-Alerts (JSON/CSV) – für Weiterleitung an CISO/ISB/Vorstand. */
@@ -1039,12 +1059,16 @@ export interface AIIncidentBySystem {
   last_incident_at: string | null;
 }
 
-export async function fetchIncidentOverview(): Promise<AIIncidentOverview> {
-  return apiFetch("/api/v1/ai-governance/incidents/overview");
+export async function fetchIncidentOverview(
+  tenantId: string,
+): Promise<AIIncidentOverview> {
+  return tenantApiFetch("/api/v1/ai-governance/incidents/overview", tenantId);
 }
 
-export async function fetchIncidentsBySystem(): Promise<AIIncidentBySystem[]> {
-  return apiFetch("/api/v1/ai-governance/incidents/by-system");
+export async function fetchIncidentsBySystem(
+  tenantId: string,
+): Promise<AIIncidentBySystem[]> {
+  return tenantApiFetch("/api/v1/ai-governance/incidents/by-system", tenantId);
 }
 
 // ─── AI Governance Supplier Risk Drilldown (NIS2 Art. 21/24, Supply-Chain) ─────
@@ -1111,9 +1135,11 @@ export interface Nis2KritisKpiListResponse {
 }
 
 export async function fetchNis2KritisKpis(
-  aiSystemId: string
+  tenantId: string,
+  aiSystemId: string,
 ): Promise<Nis2KritisKpiListResponse> {
-  return apiFetch(`/api/v1/ai-systems/${aiSystemId}/nis2-kritis-kpis`);
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/nis2-kritis-kpis`, tenantId);
 }
 
 export interface Nis2KritisKpiUpsertInput {
@@ -1124,10 +1150,12 @@ export interface Nis2KritisKpiUpsertInput {
 }
 
 export async function upsertNis2KritisKpi(
+  tenantId: string,
   aiSystemId: string,
-  input: Nis2KritisKpiUpsertInput
+  input: Nis2KritisKpiUpsertInput,
 ): Promise<Nis2KritisKpi> {
-  return apiFetch(`/api/v1/ai-systems/${aiSystemId}/nis2-kritis-kpis`, {
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/nis2-kritis-kpis`, tenantId, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -1146,15 +1174,18 @@ export interface Nis2KritisKpiSuggestionResponse {
 }
 
 export async function postNis2KritisKpiSuggestions(
+  tenantId: string,
   aiSystemId: string,
-  freeText: string
+  freeText: string,
 ): Promise<Nis2KritisKpiSuggestionResponse> {
-  return apiFetch(
-    `/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/nis2-kritis-kpi-suggestions`,
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(
+    `/api/v1/ai-systems/${sid}/nis2-kritis-kpi-suggestions`,
+    tenantId,
     {
       method: "POST",
       body: JSON.stringify({ free_text: freeText }),
-    }
+    },
   );
 }
 
@@ -1261,49 +1292,51 @@ export interface AIActDocListResponsePayload {
 }
 
 export async function fetchAiActDocList(
-  aiSystemId: string
+  tenantId: string,
+  aiSystemId: string,
 ): Promise<AIActDocListResponsePayload> {
-  return apiFetch(`/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs`);
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/ai-act-docs`, tenantId);
 }
 
 export async function postAiActDocDraft(
+  tenantId: string,
   aiSystemId: string,
-  sectionKey: AIActDocSectionKey
+  sectionKey: AIActDocSectionKey,
 ): Promise<AIActDocPayload> {
-  return apiFetch(
-    `/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs/${sectionKey}/draft`,
-    { method: "POST" }
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(
+    `/api/v1/ai-systems/${sid}/ai-act-docs/${sectionKey}/draft`,
+    tenantId,
+    { method: "POST" },
   );
 }
 
 export async function persistAiActDocSection(
+  tenantId: string,
   aiSystemId: string,
   sectionKey: AIActDocSectionKey,
   body: {
     title: string;
     content_markdown: string;
     content_source?: "manual" | "ai_generated" | null;
-  }
+  },
 ): Promise<AIActDocPayload> {
-  return apiFetch(
-    `/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs/${sectionKey}`,
-    {
-      method: "POST",
-      body: JSON.stringify(body),
-    }
-  );
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/ai-act-docs/${sectionKey}`, tenantId, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export async function downloadAiActDocumentationMarkdown(
-  aiSystemId: string
+  tenantId: string,
+  aiSystemId: string,
 ): Promise<void> {
   const url = `${API_BASE_URL}/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs/export?format=markdown`;
   const res = await fetch(url, {
     method: "GET",
-    headers: {
-      "x-api-key": API_KEY,
-      "x-tenant-id": TENANT_ID,
-    },
+    headers: tenantRequestHeaders(tenantId, undefined, { json: false }),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -1420,10 +1453,12 @@ export interface Nis2KritisKpiDrilldown {
 }
 
 export async function fetchNis2KritisKpiDrilldown(
-  topN = 5
+  tenantId: string,
+  topN = 5,
 ): Promise<Nis2KritisKpiDrilldown> {
-  return apiFetch(
-    `/api/v1/nis2-kritis/kpi-drilldown?top_n=${encodeURIComponent(String(topN))}`
+  return tenantApiFetch(
+    `/api/v1/nis2-kritis/kpi-drilldown?top_n=${encodeURIComponent(String(topN))}`,
+    tenantId,
   );
 }
 
@@ -1477,8 +1512,10 @@ export interface EUAIActReadinessOverview {
   open_governance_actions: AIGovernanceActionRead[];
 }
 
-export async function fetchEuAiActReadiness(): Promise<EUAIActReadinessOverview> {
-  return apiFetch("/api/v1/ai-governance/readiness/eu-ai-act");
+export async function fetchEuAiActReadiness(
+  tenantId: string,
+): Promise<EUAIActReadinessOverview> {
+  return tenantApiFetch("/api/v1/ai-governance/readiness/eu-ai-act", tenantId);
 }
 
 export interface AIGovernanceActionCreateInput {

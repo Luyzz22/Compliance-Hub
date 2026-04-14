@@ -9,6 +9,7 @@ import {
   type Nis2KritisKpiType,
   type Nis2KritisKpiTypeDrilldown,
 } from "@/lib/api";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import { BoardToWorkspaceCtas } from "@/components/sbs/BoardToWorkspaceCtas";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
@@ -79,12 +80,13 @@ function VerticalBucketChart({
 }
 
 export default async function BoardNis2KritisPage() {
+  const tenantId = await getWorkspaceTenantIdServer();
   let drilldown: Nis2KritisKpiDrilldown | null = null;
   let boardKpis: Awaited<ReturnType<typeof fetchBoardKpis>> | null = null;
 
   const [ddRes, kpRes] = await Promise.allSettled([
-    fetchNis2KritisKpiDrilldown(5),
-    fetchBoardKpis(),
+    fetchNis2KritisKpiDrilldown(tenantId, 5),
+    fetchBoardKpis(tenantId),
   ]);
   if (ddRes.status === "fulfilled") drilldown = ddRes.value;
   else console.error("NIS2 drilldown API error:", ddRes.reason);

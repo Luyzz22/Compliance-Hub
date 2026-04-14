@@ -8,12 +8,16 @@ const mockDraft = vi.fn();
 const mockPersist = vi.fn();
 const mockDownload = vi.fn();
 
-vi.mock("@/lib/api", () => ({
-  fetchAiActDocList: (...a: unknown[]) => mockList(...a),
-  postAiActDocDraft: (...a: unknown[]) => mockDraft(...a),
-  persistAiActDocSection: (...a: unknown[]) => mockPersist(...a),
-  downloadAiActDocumentationMarkdown: (...a: unknown[]) => mockDownload(...a),
-}));
+vi.mock("@/lib/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api")>();
+  return {
+    ...actual,
+    fetchAiActDocList: (...a: unknown[]) => mockList(...a),
+    postAiActDocDraft: (...a: unknown[]) => mockDraft(...a),
+    persistAiActDocSection: (...a: unknown[]) => mockPersist(...a),
+    downloadAiActDocumentationMarkdown: (...a: unknown[]) => mockDownload(...a),
+  };
+});
 
 describe("AiActDocumentationClient", () => {
   const saved = {
