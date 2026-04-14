@@ -22,7 +22,7 @@ def evidence_storage_tmp(tmp_path, monkeypatch: pytest.MonkeyPatch):
 
 
 def _tenant_headers(tenant_id: str) -> dict[str, str]:
-    return {**_headers(), "x-tenant-id": tenant_id}
+    return {**_headers(), "x-tenant-id": tenant_id, "x-opa-user-role": "compliance_officer"}
 
 
 def _create_ai_system(client: TestClient, tenant_id: str, system_id: str) -> None:

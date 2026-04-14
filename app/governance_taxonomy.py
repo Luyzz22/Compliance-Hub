@@ -14,6 +14,9 @@ class GovernanceAuditEntity(StrEnum):
     ENTERPRISE_ONBOARDING_READINESS = "enterprise_onboarding_readiness"
     ENTERPRISE_INTEGRATION_BLUEPRINT = "enterprise_integration_blueprint"
     ENTERPRISE_CONNECTOR_RUNTIME = "enterprise_connector_runtime"
+    AI_GOVERNANCE_ACTION = "ai_governance_action"
+    TENANT_API_KEY = "tenant_api_key"
+    EVIDENCE_FILE = "evidence_file"
 
 
 class GovernanceAuditAction(StrEnum):
@@ -34,6 +37,12 @@ class GovernanceAuditAction(StrEnum):
     ENTERPRISE_CONNECTOR_SYNC_TRIGGERED = "enterprise_connector.sync.triggered"
     ENTERPRISE_CONNECTOR_SYNC_COMPLETED = "enterprise_connector.sync.completed"
     ENTERPRISE_CONNECTOR_SYNC_RETRY_TRIGGERED = "enterprise_connector.sync.retry_triggered"
+    AI_GOVERNANCE_ACTION_CREATE = "ai_governance_action.create"
+    AI_GOVERNANCE_ACTION_UPDATE = "ai_governance_action.update"
+    AI_GOVERNANCE_ACTION_DELETE = "ai_governance_action.delete"
+    TENANT_API_KEY_CREATE = "tenant_api_key.create"
+    TENANT_API_KEY_REVOKE = "tenant_api_key.revoke"
+    EVIDENCE_DELETE = "evidence.delete"
 
 
 class NIS2DeadlinePolicy:

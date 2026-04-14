@@ -3,7 +3,6 @@ import React from "react";
 import { DemoWorkspaceBadge } from "@/components/demo/DemoWorkspaceBadge";
 import { TenantNav } from "@/components/sbs/TenantNav";
 import { TenantWorkspaceShell } from "@/components/workspace/TenantWorkspaceShell";
-import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
 export default async function TenantsTenantLayout({
   children,
@@ -14,8 +13,6 @@ export default async function TenantsTenantLayout({
 }) {
   const { tenantId: raw } = await params;
   const tenantId = decodeURIComponent(raw);
-  const workspaceId = await getWorkspaceTenantIdServer();
-  const mismatch = workspaceId !== tenantId;
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-0 lg:flex-row lg:items-start">
@@ -38,18 +35,7 @@ export default async function TenantsTenantLayout({
         <TenantNav workspaceTenantId={tenantId} />
       </aside>
       <div className="min-w-0 flex-1 bg-slate-50/90 px-4 py-8 md:px-6 md:py-10">
-        <TenantWorkspaceShell tenantId={tenantId}>
-          {mismatch ? (
-            <div
-              className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-              role="status"
-            >
-              Hinweis: Die Mandanten-ID in der URL ({tenantId}) weicht vom aktiven Workspace (
-              {workspaceId}) ab. API-Aufrufe auf dieser Seite verwenden die URL-ID.
-            </div>
-          ) : null}
-          {children}
-        </TenantWorkspaceShell>
+        <TenantWorkspaceShell tenantId={tenantId}>{children}</TenantWorkspaceShell>
       </div>
     </div>
   );

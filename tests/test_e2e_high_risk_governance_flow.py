@@ -24,7 +24,11 @@ E2E_API_KEY = "board-kpi-key"
 
 
 def _h(tenant_id: str) -> dict[str, str]:
-    return {"x-api-key": E2E_API_KEY, "x-tenant-id": tenant_id}
+    return {
+        "x-api-key": E2E_API_KEY,
+        "x-tenant-id": tenant_id,
+        "x-opa-user-role": "compliance_officer",
+    }
 
 
 def _high_risk_system_payload(system_id: str = E2E_SYSTEM_ID) -> dict:

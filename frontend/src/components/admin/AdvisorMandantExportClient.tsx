@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   KanzleiReviewPlaybookHelper,
@@ -86,26 +86,54 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   const [newRemNote, setNewRemNote] = useState("");
   const [newRemBusy, setNewRemBusy] = useState(false);
 
+  const remindersFetchGen = useRef(0);
+  const portfolioFetchGen = useRef(0);
+  const historyFetchGen = useRef(0);
+  const loadOpGen = useRef(0);
+  const bundleOpGen = useRef(0);
+
+  useEffect(() => {
+    if (!clientId.trim()) {
+      loadOpGen.current += 1;
+      bundleOpGen.current += 1;
+      setLoading(false);
+      setBundleLoading(false);
+    }
+  }, [clientId]);
+
   const fetchTenantReminders = useCallback(async () => {
+    const gen = ++remindersFetchGen.current;
     const id = clientId.trim();
     if (!id) {
       setTenantReminders([]);
+      setRemLoading(false);
       return;
     }
     setRemLoading(true);
     try {
       const q = new URLSearchParams({ client_id: id, status: "open" });
       const r = await fetch(`/api/internal/advisor/mandant-reminders?${q}`, { credentials: "include" });
+      if (gen !== remindersFetchGen.current) {
+        return;
+      }
       if (!r.ok) {
         setTenantReminders([]);
         return;
       }
       const data = (await r.json()) as { reminders?: MandantReminderRecord[] };
+      if (gen !== remindersFetchGen.current) {
+        return;
+      }
       setTenantReminders(data.reminders ?? []);
     } catch {
+      if (gen !== remindersFetchGen.current) {
+        return;
+      }
       setTenantReminders([]);
     } finally {
-      setRemLoading(false);
+      if (gen === remindersFetchGen.current) {
+        setRemLoading(false);
+      }
     }
   }, [clientId]);
 
@@ -124,48 +152,74 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   }, [clientId]);
 
   const fetchPortfolioRow = useCallback(async () => {
+    const gen = ++portfolioFetchGen.current;
     const id = clientId.trim();
     if (!id) {
       setPortfolioRow(null);
+      setPortfolioLoading(false);
       return;
     }
     setPortfolioLoading(true);
     try {
       const r = await fetch("/api/internal/advisor/kanzlei-portfolio", { credentials: "include" });
+      if (gen !== portfolioFetchGen.current) {
+        return;
+      }
       if (!r.ok) {
         setPortfolioRow(null);
         return;
       }
       const data = (await r.json()) as { ok?: boolean; kanzlei_portfolio?: KanzleiPortfolioPayload };
+      if (gen !== portfolioFetchGen.current) {
+        return;
+      }
       const rows = data.kanzlei_portfolio?.rows ?? [];
       setPortfolioRow(rows.find((x) => x.tenant_id === id) ?? null);
     } catch {
+      if (gen !== portfolioFetchGen.current) {
+        return;
+      }
       setPortfolioRow(null);
     } finally {
-      setPortfolioLoading(false);
+      if (gen === portfolioFetchGen.current) {
+        setPortfolioLoading(false);
+      }
     }
   }, [clientId]);
 
   const fetchHistory = useCallback(async () => {
+    const gen = ++historyFetchGen.current;
     const id = clientId.trim();
     if (!id) {
       setHistory(null);
+      setHistLoading(false);
       return;
     }
     setHistLoading(true);
     try {
       const q = new URLSearchParams({ client_id: id });
       const r = await fetch(`/api/internal/advisor/mandant-history?${q}`, { credentials: "include" });
+      if (gen !== historyFetchGen.current) {
+        return;
+      }
       if (!r.ok) {
         setHistory(null);
         return;
       }
       const data = (await r.json()) as { mandant_history?: AdvisorMandantHistoryApiDto };
+      if (gen !== historyFetchGen.current) {
+        return;
+      }
       setHistory(data.mandant_history ?? null);
     } catch {
+      if (gen !== historyFetchGen.current) {
+        return;
+      }
       setHistory(null);
     } finally {
-      setHistLoading(false);
+      if (gen === historyFetchGen.current) {
+        setHistLoading(false);
+      }
     }
   }, [clientId]);
 
@@ -194,6 +248,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       setError("Bitte Mandanten-ID (client_id) eingeben.");
       return;
     }
+    const op = ++loadOpGen.current;
     setLoading(true);
     setError(null);
     setMsg(null);
@@ -202,6 +257,9 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       const r = await fetch(`/api/internal/advisor/mandant-readiness-export?${q}`, {
         credentials: "include",
       });
+      if (op !== loadOpGen.current) {
+        return;
+      }
       if (r.status === 401) {
         setError("Nicht angemeldet (Admin-Secret).");
         setPayload(null);
@@ -222,14 +280,21 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
         ok?: boolean;
         mandant_readiness_export?: MandantReadinessAdvisorPayload;
       };
+      if (op !== loadOpGen.current) {
+        return;
+      }
       setPayload(data.mandant_readiness_export ?? null);
       void fetchHistory();
       void fetchPortfolioRow();
       void fetchTenantReminders();
     } catch {
-      setError("Netzwerkfehler");
+      if (op === loadOpGen.current) {
+        setError("Netzwerkfehler");
+      }
     } finally {
-      setLoading(false);
+      if (op === loadOpGen.current) {
+        setLoading(false);
+      }
     }
   }, [clientId, fetchHistory, fetchPortfolioRow, fetchTenantReminders]);
 
@@ -260,6 +325,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       setError("Bitte Mandanten-ID (client_id) eingeben.");
       return;
     }
+    const op = ++bundleOpGen.current;
     setBundleLoading(true);
     setError(null);
     setMsg(null);
@@ -268,6 +334,9 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       const r = await fetch(`/api/internal/advisor/datev-export-bundle?${q}`, {
         credentials: "include",
       });
+      if (op !== bundleOpGen.current) {
+        return;
+      }
       if (r.status === 401) {
         setError("Nicht angemeldet (Admin-Secret).");
         return;
@@ -282,6 +351,9 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
         return;
       }
       const blob = await r.blob();
+      if (op !== bundleOpGen.current) {
+        return;
+      }
       const cd = r.headers.get("Content-Disposition");
       const match = cd?.match(/filename="([^"]+)"/);
       const name = match?.[1] ?? `datev-kanzlei-bundle-${id}.zip`;
@@ -296,9 +368,13 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       void fetchPortfolioRow();
       void fetchTenantReminders();
     } catch {
-      setError("Netzwerkfehler");
+      if (op === bundleOpGen.current) {
+        setError("Netzwerkfehler");
+      }
     } finally {
-      setBundleLoading(false);
+      if (op === bundleOpGen.current) {
+        setBundleLoading(false);
+      }
     }
   }, [clientId, fetchHistory, fetchPortfolioRow, fetchTenantReminders]);
 

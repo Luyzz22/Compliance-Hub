@@ -1103,9 +1103,12 @@ def download_evidence_api(
 
 @app.delete("/api/v1/evidence/{evidence_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_evidence_api(
+    request: Request,
     evidence_id: str,
     auth_context: Annotated[AuthContext, Depends(require_evidence_delete_capability)],
+    role: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_DASHBOARD))],
     evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> Response:
     storage = get_evidence_storage()
     delete_evidence_file(
@@ -1113,6 +1116,23 @@ def delete_evidence_api(
         evidence_id,
         evidence_repo=evidence_repo,
         storage=storage,
+    )
+    actor = actor_id_from_request(request)
+    record_governance_audit(
+        audit_repo,
+        tenant_id=auth_context.tenant_id,
+        actor_id=actor,
+        actor_role=role,
+        action=GovernanceAuditAction.EVIDENCE_DELETE.value,
+        entity_type=GovernanceAuditEntity.EVIDENCE_FILE.value,
+        entity_id=evidence_id,
+        outcome="success",
+        before=None,
+        after=None,
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"delete_capability": True},
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -1661,14 +1681,20 @@ def get_eu_ai_act_readiness(
     status_code=status.HTTP_201_CREATED,
 )
 def create_ai_governance_action(
+    request: Request,
     body: AIGovernanceActionCreate,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.EDIT_COMPLIANCE_STATUS)),
+    ],
     session: Annotated[Session, Depends(get_session)],
     action_repo: Annotated[
         AIGovernanceActionRepository,
         Depends(get_ai_governance_action_repository),
     ],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> AIGovernanceActionRead:
     tenant_id = auth_context.tenant_id
     if body.related_ai_system_id:
@@ -1684,6 +1710,22 @@ def create_ai_governance_action(
         usage_event_logger.GOVERNANCE_ACTION_CREATED,
         {"action_id": created.id},
     )
+    record_governance_audit(
+        audit_repo,
+        tenant_id=tenant_id,
+        actor_id=actor_id_from_request(request),
+        actor_role=role,
+        action=GovernanceAuditAction.AI_GOVERNANCE_ACTION_CREATE.value,
+        entity_type=GovernanceAuditEntity.AI_GOVERNANCE_ACTION.value,
+        entity_id=created.id,
+        outcome="success",
+        before=None,
+        after=created.model_dump_json(),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"status": created.status.value},
+    )
     return created
 
 
@@ -1693,6 +1735,10 @@ def create_ai_governance_action(
 )
 def list_ai_governance_actions(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.VIEW_COMPLIANCE_STATUS)),
+    ],
     action_repo: Annotated[
         AIGovernanceActionRepository,
         Depends(get_ai_governance_action_repository),
@@ -1717,6 +1763,10 @@ def list_ai_governance_actions(
 def get_ai_governance_action(
     action_id: str,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.VIEW_COMPLIANCE_STATUS)),
+    ],
     action_repo: Annotated[
         AIGovernanceActionRepository,
         Depends(get_ai_governance_action_repository),
@@ -1736,14 +1786,20 @@ def get_ai_governance_action(
     response_model=AIGovernanceActionRead,
 )
 def update_ai_governance_action(
+    request: Request,
     action_id: str,
     body: AIGovernanceActionUpdate,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.EDIT_COMPLIANCE_STATUS)),
+    ],
     action_repo: Annotated[
         AIGovernanceActionRepository,
         Depends(get_ai_governance_action_repository),
     ],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> AIGovernanceActionRead:
     tenant_id = auth_context.tenant_id
     patch = body.model_dump(exclude_unset=True)
@@ -1759,6 +1815,22 @@ def update_ai_governance_action(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Governance action not found",
         )
+    record_governance_audit(
+        audit_repo,
+        tenant_id=tenant_id,
+        actor_id=actor_id_from_request(request),
+        actor_role=role,
+        action=GovernanceAuditAction.AI_GOVERNANCE_ACTION_UPDATE.value,
+        entity_type=GovernanceAuditEntity.AI_GOVERNANCE_ACTION.value,
+        entity_id=action_id,
+        outcome="success",
+        before=None,
+        after=updated.model_dump_json(),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"status": updated.status.value},
+    )
     return updated
 
 
@@ -1767,18 +1839,40 @@ def update_ai_governance_action(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_ai_governance_action(
+    request: Request,
     action_id: str,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.EDIT_COMPLIANCE_STATUS)),
+    ],
     action_repo: Annotated[
         AIGovernanceActionRepository,
         Depends(get_ai_governance_action_repository),
     ],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> Response:
     if not action_repo.delete(auth_context.tenant_id, action_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Governance action not found",
         )
+    record_governance_audit(
+        audit_repo,
+        tenant_id=auth_context.tenant_id,
+        actor_id=actor_id_from_request(request),
+        actor_role=role,
+        action=GovernanceAuditAction.AI_GOVERNANCE_ACTION_DELETE.value,
+        entity_type=GovernanceAuditEntity.AI_GOVERNANCE_ACTION.value,
+        entity_id=action_id,
+        outcome="success",
+        before=None,
+        after=None,
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata=None,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -3001,6 +3095,7 @@ def post_provision_tenant(
 def list_tenant_api_keys(
     tenant_id: str,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_API_KEYS))],
     key_repo: Annotated[TenantApiKeyRepository, Depends(get_tenant_api_key_repository)],
 ) -> list[TenantApiKeyRead]:
     _ensure_tenant_path_matches_auth(tenant_id, auth_context)
@@ -3014,14 +3109,33 @@ def list_tenant_api_keys(
     tags=["tenants"],
 )
 def create_tenant_api_key(
+    request: Request,
     tenant_id: str,
     body: TenantApiKeyCreateBody,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_API_KEYS))],
     key_repo: Annotated[TenantApiKeyRepository, Depends(get_tenant_api_key_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> TenantApiKeyCreated:
     _ensure_tenant_path_matches_auth(tenant_id, auth_context)
     row, plain = key_repo.create_key(tenant_id=tenant_id, name=body.name)
     read = _api_key_row_to_read(row)
+    record_governance_audit(
+        audit_repo,
+        tenant_id=tenant_id,
+        actor_id=actor_id_from_request(request),
+        actor_role=role,
+        action=GovernanceAuditAction.TENANT_API_KEY_CREATE.value,
+        entity_type=GovernanceAuditEntity.TENANT_API_KEY.value,
+        entity_id=read.id,
+        outcome="success",
+        before=None,
+        after=json.dumps({"name": read.name, "active": read.active}),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"key_last4": read.key_last4},
+    )
     return TenantApiKeyCreated(
         id=read.id,
         name=read.name,
@@ -3038,15 +3152,34 @@ def create_tenant_api_key(
     tags=["tenants"],
 )
 def revoke_tenant_api_key(
+    request: Request,
     tenant_id: str,
     key_id: str,
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_API_KEYS))],
     key_repo: Annotated[TenantApiKeyRepository, Depends(get_tenant_api_key_repository)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> Response:
     _ensure_tenant_path_matches_auth(tenant_id, auth_context)
     row = key_repo.revoke(tenant_id=tenant_id, key_id=key_id)
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found")
+    record_governance_audit(
+        audit_repo,
+        tenant_id=tenant_id,
+        actor_id=actor_id_from_request(request),
+        actor_role=role,
+        action=GovernanceAuditAction.TENANT_API_KEY_REVOKE.value,
+        entity_type=GovernanceAuditEntity.TENANT_API_KEY.value,
+        entity_id=key_id,
+        outcome="success",
+        before=None,
+        after=json.dumps({"active": False}),
+        correlation_id=correlation_id_from_request(request),
+        ip_address=client_ip_from_request(request),
+        user_agent=user_agent_from_request(request),
+        metadata={"name": row.name, "key_last4": row.key_last4},
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -5400,6 +5533,7 @@ def resolve_audit_alert(
 @app.get("/api/v1/audit-events", response_model=list[AuditEvent], tags=["audit"])
 def list_audit_events(
     auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_AUDIT_LOG))],
     audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
 ) -> list[AuditEvent]:
     return audit_repo.list_events_for_tenant(auth.tenant_id)
@@ -5413,6 +5547,7 @@ def list_audit_events(
 def list_audit_events_for_ai_system(
     ai_system_id: str,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.VIEW_AUDIT_LOG))],
     audit_repo: Annotated[AuditRepository, Depends(get_audit_repository)],
 ) -> list[AuditEvent]:
     return audit_repo.list_events_for_entity(

@@ -286,12 +286,7 @@ async function apiFetch(path: string, init?: RequestInit) {
   const url = `${API_BASE_URL}${path}`;
   const res = await fetch(url, {
     ...init,
-    headers: {
-      "x-api-key": API_KEY,
-      "x-tenant-id": TENANT_ID,
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
+    headers: tenantRequestHeaders(TENANT_ID, init?.headers, { json: true }),
     cache: "no-store",
   });
 
@@ -2154,10 +2149,7 @@ export async function revokeTenantApiKey(tenantId: string, keyId: string): Promi
   const url = `${API_BASE_URL}/api/v1/tenants/${encodeURIComponent(tenantId)}/api-keys/${encodeURIComponent(keyId)}`;
   const res = await fetch(url, {
     method: "DELETE",
-    headers: {
-      "x-api-key": API_KEY,
-      "x-tenant-id": tenantId,
-    },
+    headers: tenantRequestHeaders(tenantId, undefined, { json: false }),
     cache: "no-store",
   });
   if (!res.ok) {

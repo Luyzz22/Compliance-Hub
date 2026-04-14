@@ -10,7 +10,11 @@ client = TestClient(app)
 
 
 def _h(tid: str = "readiness-tenant-1") -> dict[str, str]:
-    return {"x-api-key": "board-kpi-key", "x-tenant-id": tid}
+    return {
+        "x-api-key": "board-kpi-key",
+        "x-tenant-id": tid,
+        "x-opa-user-role": "compliance_officer",
+    }
 
 
 def test_eu_ai_act_readiness_happy_path():
