@@ -12,13 +12,11 @@ import {
   CH_SHELL,
 } from "@/lib/boardLayout";
 import { featureApiKeysUi, featureDemoSeeding } from "@/lib/config";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
-const TENANT_ID =
-  process.env.NEXT_PUBLIC_TENANT_ID ||
-  process.env.COMPLIANCEHUB_TENANT_ID ||
-  "tenant-overview-001";
+export default async function SettingsPage() {
+  const workspaceTenantId = await getWorkspaceTenantIdServer();
 
-export default function SettingsPage() {
   return (
     <div className={CH_SHELL}>
       <EnterprisePageHeader
@@ -29,7 +27,7 @@ export default function SettingsPage() {
       <section className="grid gap-4 md:grid-cols-2">
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Mandant</p>
-          <p className="mt-2 font-mono text-sm font-semibold text-slate-900">{TENANT_ID}</p>
+          <p className="mt-2 font-mono text-sm font-semibold text-slate-900">{workspaceTenantId}</p>
           <p className="mt-2 text-sm text-slate-600">
             Anzeigename, Rechtsform und Kontakte werden produktiv über die Admin-API gepflegt.
           </p>
@@ -43,7 +41,7 @@ export default function SettingsPage() {
 
         {featureApiKeysUi() ? (
           <article className={`${CH_CARD} md:col-span-2`}>
-            <TenantApiKeysPanel tenantId={TENANT_ID} />
+            <TenantApiKeysPanel tenantId={workspaceTenantId} />
           </article>
         ) : (
           <article className={CH_CARD}>
@@ -75,12 +73,12 @@ export default function SettingsPage() {
 
         {featureDemoSeeding() ? (
           <article className={`${CH_CARD} md:col-span-2`}>
-            <DemoTenantSetupPanel defaultTenantId={TENANT_ID} />
+            <DemoTenantSetupPanel defaultTenantId={workspaceTenantId} />
           </article>
         ) : null}
 
         <div className="md:col-span-2">
-          <TenantUsageSummary mode="tenant" tenantId={TENANT_ID} />
+          <TenantUsageSummary mode="tenant" tenantId={workspaceTenantId} />
         </div>
 
       </section>
