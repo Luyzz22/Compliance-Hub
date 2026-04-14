@@ -10,6 +10,7 @@ import {
   type AIActDocListItemPayload,
   type AIActDocSectionKey,
 } from "@/lib/api";
+import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY } from "@/lib/boardLayout";
 import {
   featureAiActDocs,
@@ -37,6 +38,7 @@ function statusLabel(status: string, hasDraftInEditor: boolean): string {
 }
 
 export function AiActDocumentationClient({ aiSystemId }: Props) {
+  const workspaceTenantId = useWorkspaceTenantIdClient();
   const enabled = featureAiActDocs();
   const llmDraftEnabled =
     featureLlmEnabled() && featureLlmLegalReasoning() && featureLlmReportAssistant();
@@ -54,12 +56,12 @@ export function AiActDocumentationClient({ aiSystemId }: Props) {
   const refresh = useCallback(async () => {
     setLoadErr(null);
     try {
-      const res = await fetchAiActDocList(aiSystemId);
+      const res = await fetchAiActDocList(workspaceTenantId, aiSystemId);
       setItems(res.items);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Laden fehlgeschlagen");
     }
-  }, [aiSystemId]);
+  }, [aiSystemId, workspaceTenantId]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -89,7 +91,7 @@ export function AiActDocumentationClient({ aiSystemId }: Props) {
     setBusy("draft");
     setMsg(null);
     try {
-      const d = await postAiActDocDraft(aiSystemId, open);
+      const d = await postAiActDocDraft(workspaceTenantId, aiSystemId, open);
       setTitleDraft(d.title);
       setMdDraft(d.content_markdown);
       setDirty(true);
@@ -107,7 +109,7 @@ export function AiActDocumentationClient({ aiSystemId }: Props) {
     setBusy("save");
     setMsg(null);
     try {
-      await persistAiActDocSection(aiSystemId, open, {
+      await persistAiActDocSection(workspaceTenantId, aiSystemId, open, {
         title: titleDraft.trim() || "Abschnitt",
         content_markdown: mdDraft,
       });
@@ -125,7 +127,7 @@ export function AiActDocumentationClient({ aiSystemId }: Props) {
     setBusy("export");
     setMsg(null);
     try {
-      await downloadAiActDocumentationMarkdown(aiSystemId);
+      await downloadAiActDocumentationMarkdown(workspaceTenantId, aiSystemId);
       setMsg("Download gestartet.");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Export fehlgeschlagen");

@@ -516,8 +516,9 @@ export async function fetchTenantViolations(tenantId: string = TENANT_ID): Promi
 }
 
 // Detail eines AI-Systems
-export async function fetchAISystemById(id: string): Promise<AISystem> {
-  return apiFetch(`/api/v1/ai-systems/${id}`);
+export async function fetchAISystemById(tenantId: string, id: string): Promise<AISystem> {
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}`, tenantId);
 }
 
 // Violations für ein konkretes AI-System
@@ -602,10 +603,12 @@ export interface ComplianceDashboard {
 }
 
 export async function classifyAISystem(
+  tenantId: string,
   id: string,
-  questionnaire: Record<string, unknown>
+  questionnaire: Record<string, unknown>,
 ): Promise<RiskClassification> {
-  return apiFetch(`/api/v1/ai-systems/${id}/classify`, {
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/classify`, tenantId, {
     method: "POST",
     body: JSON.stringify(questionnaire),
   });
@@ -619,8 +622,10 @@ export async function fetchClassification(
   return tenantApiFetch(`/api/v1/ai-systems/${sid}/classification`, tenantId);
 }
 
-export async function fetchClassificationSummary(): Promise<ClassificationSummary> {
-  return apiFetch("/api/v1/classifications/summary");
+export async function fetchClassificationSummary(
+  tenantId: string,
+): Promise<ClassificationSummary> {
+  return tenantApiFetch("/api/v1/classifications/summary", tenantId);
 }
 
 export async function fetchSystemCompliance(
@@ -632,22 +637,29 @@ export async function fetchSystemCompliance(
 }
 
 export async function updateComplianceStatus(
+  tenantId: string,
   systemId: string,
   requirementId: string,
-  data: { status: string; evidence_notes?: string }
+  data: { status: string; evidence_notes?: string },
 ): Promise<ComplianceStatusEntry> {
-  return apiFetch(`/api/v1/ai-systems/${systemId}/compliance/${requirementId}`, {
+  const sid = encodeURIComponent(systemId);
+  const rid = encodeURIComponent(requirementId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/compliance/${rid}`, tenantId, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function fetchComplianceRequirements(): Promise<ComplianceRequirement[]> {
-  return apiFetch("/api/v1/compliance/requirements");
+export async function fetchComplianceRequirements(
+  tenantId: string,
+): Promise<ComplianceRequirement[]> {
+  return tenantApiFetch("/api/v1/compliance/requirements", tenantId);
 }
 
-export async function fetchComplianceDashboard(): Promise<ComplianceDashboard> {
-  return apiFetch("/api/v1/compliance/dashboard");
+export async function fetchComplianceDashboard(
+  tenantId: string,
+): Promise<ComplianceDashboard> {
+  return tenantApiFetch("/api/v1/compliance/dashboard", tenantId);
 }
 
 /** Board-fähiger EU AI Act / ISO 42001 Compliance-Readiness-Überblick */
@@ -1280,49 +1292,51 @@ export interface AIActDocListResponsePayload {
 }
 
 export async function fetchAiActDocList(
-  aiSystemId: string
+  tenantId: string,
+  aiSystemId: string,
 ): Promise<AIActDocListResponsePayload> {
-  return apiFetch(`/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs`);
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/ai-act-docs`, tenantId);
 }
 
 export async function postAiActDocDraft(
+  tenantId: string,
   aiSystemId: string,
-  sectionKey: AIActDocSectionKey
+  sectionKey: AIActDocSectionKey,
 ): Promise<AIActDocPayload> {
-  return apiFetch(
-    `/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs/${sectionKey}/draft`,
-    { method: "POST" }
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(
+    `/api/v1/ai-systems/${sid}/ai-act-docs/${sectionKey}/draft`,
+    tenantId,
+    { method: "POST" },
   );
 }
 
 export async function persistAiActDocSection(
+  tenantId: string,
   aiSystemId: string,
   sectionKey: AIActDocSectionKey,
   body: {
     title: string;
     content_markdown: string;
     content_source?: "manual" | "ai_generated" | null;
-  }
+  },
 ): Promise<AIActDocPayload> {
-  return apiFetch(
-    `/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs/${sectionKey}`,
-    {
-      method: "POST",
-      body: JSON.stringify(body),
-    }
-  );
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/ai-act-docs/${sectionKey}`, tenantId, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export async function downloadAiActDocumentationMarkdown(
-  aiSystemId: string
+  tenantId: string,
+  aiSystemId: string,
 ): Promise<void> {
   const url = `${API_BASE_URL}/api/v1/ai-systems/${encodeURIComponent(aiSystemId)}/ai-act-docs/export?format=markdown`;
   const res = await fetch(url, {
     method: "GET",
-    headers: {
-      "x-api-key": API_KEY,
-      "x-tenant-id": TENANT_ID,
-    },
+    headers: tenantRequestHeaders(tenantId, undefined, { json: false }),
     cache: "no-store",
   });
   if (!res.ok) {
