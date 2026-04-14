@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 
 import {
   CH_BTN_PRIMARY,
@@ -160,23 +161,21 @@ export default function XRechnungExportPage() {
 
   return (
     <div className="min-w-0">
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          XRechnung 3.0 Export
-        </h1>
-        <Link href="/board/executive-dashboard" className={CH_PAGE_NAV_LINK}>
-          Executive Dashboard
-        </Link>
-        <Link href="/board/datev-export" className={CH_PAGE_NAV_LINK}>
-          DATEV Export
-        </Link>
-      </div>
-
-      <p className="mb-6 text-sm text-slate-600">
-        EU-konforme E-Rechnung nach XRechnung 3.0 / EN-16931 (UBL 2.1)
-        erstellen. Pflicht für Rechnungen an öffentliche Auftraggeber
-        (ERechV).
-      </p>
+      <EnterprisePageHeader
+        eyebrow="Reporting"
+        title="XRechnung 3.0 Export"
+        description="EU-konforme E-Rechnung nach XRechnung 3.0 / EN-16931 (UBL 2.1) für Rechnungen an öffentliche Auftraggeber (ERechV)."
+        below={
+          <>
+            <Link href="/board/executive-dashboard" className={CH_PAGE_NAV_LINK}>
+              Executive Dashboard
+            </Link>
+            <Link href="/board/datev-export" className={CH_PAGE_NAV_LINK}>
+              DATEV Export
+            </Link>
+          </>
+        }
+      />
 
       {error && (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">

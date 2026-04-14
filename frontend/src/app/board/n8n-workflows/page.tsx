@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 
 import {
-  CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
   CH_CARD,
   CH_PAGE_NAV_LINK,
@@ -140,25 +140,24 @@ export default function N8nWorkflowsPage() {
 
   return (
     <div className="min-w-0">
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          n8n Workflow Automation
-        </h1>
-        <Link href="/board/executive-dashboard" className={CH_PAGE_NAV_LINK}>
-          Executive Dashboard
-        </Link>
-        <Link href="/board/datev-export" className={CH_PAGE_NAV_LINK}>
-          DATEV Export
-        </Link>
-        <Link href="/board/xrechnung-export" className={CH_PAGE_NAV_LINK}>
-          XRechnung Export
-        </Link>
-      </div>
-
-      <p className="mb-6 text-sm text-slate-600">
-        Self-hosted n8n Workflow-Automatisierung (DSGVO-konform, EU-Region).
-        Vorgefertigte Workflows für wiederkehrende Compliance-Aufgaben.
-      </p>
+      <EnterprisePageHeader
+        eyebrow="Reporting"
+        title="n8n Workflow Automation"
+        description="Self-hosted n8n Workflow-Automatisierung (DSGVO-konform, EU-Region) für wiederkehrende Compliance-Aufgaben."
+        below={
+          <>
+            <Link href="/board/executive-dashboard" className={CH_PAGE_NAV_LINK}>
+              Executive Dashboard
+            </Link>
+            <Link href="/board/datev-export" className={CH_PAGE_NAV_LINK}>
+              DATEV Export
+            </Link>
+            <Link href="/board/xrechnung-export" className={CH_PAGE_NAV_LINK}>
+              XRechnung Export
+            </Link>
+          </>
+        }
+      />
 
       {/* ── Workflow Cards ── */}
       <div className="space-y-4">

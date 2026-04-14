@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import React from "react";
 
 import { useAiActEvidenceNav } from "@/hooks/useAiActEvidenceNav";
+import { useCanSeeAdmin, useCanSeeReporting } from "@/hooks/useUserRole";
 import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
 import {
   ADMIN_NAV_ITEMS,
@@ -63,6 +64,8 @@ function NavStrip({
 
 export function AppSecondaryNav() {
   const pathname = usePathname();
+  const canSeeAdmin = useCanSeeAdmin();
+  const canSeeReporting = useCanSeeReporting();
   const workspaceTenantId = useWorkspaceTenantIdClient();
   const { visible: evidenceVisible, href: evidenceHref, loading: evidenceLoading } =
     useAiActEvidenceNav(workspaceTenantId);
@@ -71,7 +74,7 @@ export function AppSecondaryNav() {
     (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
   );
 
-  if (isReportingPage) {
+  if (isReportingPage && canSeeReporting) {
     return (
       <NavStrip
         label="Reporting"
@@ -110,7 +113,7 @@ export function AppSecondaryNav() {
     );
   }
 
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/admin") && canSeeAdmin) {
     return (
       <NavStrip
         label="Admin"

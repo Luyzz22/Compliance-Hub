@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 
 import {
   CH_BTN_PRIMARY,
-  CH_BTN_SECONDARY,
   CH_CARD,
   CH_PAGE_NAV_LINK,
   CH_SECTION_LABEL,
@@ -102,30 +102,21 @@ export default function DatevExportPage() {
 
   return (
     <div className="min-w-0">
-      <header className="mb-8 border-b border-slate-200/80 pb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
-          Enterprise
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
-          DATEV Export (EXTF)
-        </h1>
-        <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600">
-          GoBD-konformer DATEV-ASCII-Export (EXTF-Standard) für Bußgelder,
-          GRC-Beraterhonorare, Zertifizierungskosten und
-          Cyber-Versicherungsprämien.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-          <Link
-            href="/board/executive-dashboard"
-            className={CH_PAGE_NAV_LINK}
-          >
-            Executive Dashboard
-          </Link>
-          <Link href="/board/gap-analysis" className={CH_PAGE_NAV_LINK}>
-            Gap-Analyse
-          </Link>
-        </div>
-      </header>
+      <EnterprisePageHeader
+        eyebrow="Reporting"
+        title="DATEV Export (EXTF)"
+        description="GoBD-konformer DATEV-ASCII-Export (EXTF-Standard) für Bußgelder, GRC-Beraterhonorare, Zertifizierungskosten und Cyber-Versicherungsprämien."
+        below={
+          <>
+            <Link href="/board/executive-dashboard" className={CH_PAGE_NAV_LINK}>
+              Executive Dashboard
+            </Link>
+            <Link href="/board/gap-analysis" className={CH_PAGE_NAV_LINK}>
+              Gap-Analyse
+            </Link>
+          </>
+        }
+      />
 
       {/* ── Export Config ── */}
       <section className={`${CH_CARD} mb-6 space-y-4`}>
