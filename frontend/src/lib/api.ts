@@ -522,9 +522,11 @@ export async function fetchAISystemById(id: string): Promise<AISystem> {
 
 // Violations für ein konkretes AI-System
 export async function fetchAISystemViolations(
-  id: string
+  tenantId: string,
+  id: string,
 ): Promise<Violation[]> {
-  return apiFetch(`/api/v1/ai-systems/${id}/violations`);
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/violations`, tenantId);
 }
 
 // ─── EU AI Act Classification & Gap Analysis ─────────────────────────────────
@@ -610,9 +612,11 @@ export async function classifyAISystem(
 }
 
 export async function fetchClassification(
-  id: string
+  tenantId: string,
+  id: string,
 ): Promise<RiskClassification> {
-  return apiFetch(`/api/v1/ai-systems/${id}/classification`);
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/classification`, tenantId);
 }
 
 export async function fetchClassificationSummary(): Promise<ClassificationSummary> {
@@ -620,9 +624,11 @@ export async function fetchClassificationSummary(): Promise<ClassificationSummar
 }
 
 export async function fetchSystemCompliance(
-  id: string
+  tenantId: string,
+  id: string,
 ): Promise<ComplianceStatusEntry[]> {
-  return apiFetch(`/api/v1/ai-systems/${id}/compliance`);
+  const sid = encodeURIComponent(id);
+  return tenantApiFetch(`/api/v1/ai-systems/${sid}/compliance`, tenantId);
 }
 
 export async function updateComplianceStatus(
@@ -1041,12 +1047,16 @@ export interface AIIncidentBySystem {
   last_incident_at: string | null;
 }
 
-export async function fetchIncidentOverview(): Promise<AIIncidentOverview> {
-  return apiFetch("/api/v1/ai-governance/incidents/overview");
+export async function fetchIncidentOverview(
+  tenantId: string,
+): Promise<AIIncidentOverview> {
+  return tenantApiFetch("/api/v1/ai-governance/incidents/overview", tenantId);
 }
 
-export async function fetchIncidentsBySystem(): Promise<AIIncidentBySystem[]> {
-  return apiFetch("/api/v1/ai-governance/incidents/by-system");
+export async function fetchIncidentsBySystem(
+  tenantId: string,
+): Promise<AIIncidentBySystem[]> {
+  return tenantApiFetch("/api/v1/ai-governance/incidents/by-system", tenantId);
 }
 
 // ─── AI Governance Supplier Risk Drilldown (NIS2 Art. 21/24, Supply-Chain) ─────
@@ -1488,8 +1498,10 @@ export interface EUAIActReadinessOverview {
   open_governance_actions: AIGovernanceActionRead[];
 }
 
-export async function fetchEuAiActReadiness(): Promise<EUAIActReadinessOverview> {
-  return apiFetch("/api/v1/ai-governance/readiness/eu-ai-act");
+export async function fetchEuAiActReadiness(
+  tenantId: string,
+): Promise<EUAIActReadinessOverview> {
+  return tenantApiFetch("/api/v1/ai-governance/readiness/eu-ai-act", tenantId);
 }
 
 export interface AIGovernanceActionCreateInput {

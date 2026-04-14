@@ -8,6 +8,7 @@ import {
   type EUAIActReadinessOverview,
   type ReadinessRequirementTraffic,
 } from "@/lib/api";
+import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import { BoardToWorkspaceCtas } from "@/components/sbs/BoardToWorkspaceCtas";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
@@ -83,9 +84,10 @@ function ReadinessRing({ percent }: { percent: number }) {
 }
 
 export default async function EuAiActReadinessPage() {
+  const tenantId = await getWorkspaceTenantIdServer();
   let data: EUAIActReadinessOverview | null = null;
   try {
-    data = await fetchEuAiActReadiness();
+    data = await fetchEuAiActReadiness(tenantId);
   } catch (error) {
     console.error("EU AI Act readiness API error:", error);
   }
