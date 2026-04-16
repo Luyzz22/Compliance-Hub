@@ -291,10 +291,10 @@ export function SelfAssessmentWorkspaceClient({
     await refreshAudit();
   }
 
-  function setAnswerField(key: string, value: unknown) {
+  const setAnswerField = useCallback((key: string, value: unknown) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
     scheduleSave(key, value);
-  }
+  }, [scheduleSave]);
 
   const sessionShort =
     sessionId.length > 14 ? `${sessionId.slice(0, 8)}…${sessionId.slice(-4)}` : sessionId;
@@ -376,7 +376,7 @@ export function SelfAssessmentWorkspaceClient({
           <AuditTrailPanel
             rows={auditRows}
             initialLoadError={initialAuditError ?? undefined}
-            onRefresh={() => void refreshAudit()}
+            onRefresh={refreshAudit}
           />
         ),
       },
@@ -393,6 +393,8 @@ export function SelfAssessmentWorkspaceClient({
       saveState,
       savedAt,
       session.status,
+      sessionId,
+      setAnswerField,
     ],
   );
 
