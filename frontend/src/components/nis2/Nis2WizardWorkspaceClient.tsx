@@ -328,7 +328,6 @@ export function Nis2WizardWorkspaceClient({
           <li key={s.id}>
             <button
               type="button"
-              disabled={readOnly}
               onClick={() => setWizardStep(idx)}
               className={
                 wizardStep === idx
@@ -470,7 +469,7 @@ export function Nis2WizardWorkspaceClient({
       <div className="mt-8 flex flex-wrap justify-between gap-2 border-t border-slate-200/80 pt-6">
         <button
           type="button"
-          disabled={readOnly || wizardStep === 0}
+          disabled={wizardStep === 0}
           className={`${CH_BTN_SECONDARY} disabled:opacity-40`}
           onClick={() => setWizardStep((s) => Math.max(0, s - 1))}
         >
@@ -478,7 +477,7 @@ export function Nis2WizardWorkspaceClient({
         </button>
         <button
           type="button"
-          disabled={readOnly || wizardStep >= STEPS.length - 1}
+          disabled={wizardStep >= STEPS.length - 1}
           className={`${CH_BTN_SECONDARY} disabled:opacity-40`}
           onClick={() => setWizardStep((s) => Math.min(STEPS.length - 1, s + 1))}
         >
@@ -582,7 +581,7 @@ export function Nis2WizardWorkspaceClient({
       onExport={onExportStub}
       statusChangeDisabled={readOnly}
       completeDisabled={readOnly}
-      exportDisabled={readOnly}
+      exportDisabled={actionBusy !== null}
       busyAction={actionBusy}
       labels={{
         statusChange: "Als in Bearbeitung markieren",
