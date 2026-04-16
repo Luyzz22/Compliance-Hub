@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+/** Detail-Run: UI-Shell in SelfAssessmentWorkspaceClient (GovernanceWorkspaceLayout + Panels). */
 import { SelfAssessmentWorkspaceClient } from "@/components/ai-act/SelfAssessmentWorkspaceClient";
 import {
   getSelfAssessmentAnswers,
