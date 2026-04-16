@@ -14,6 +14,7 @@ export function governanceStatusToneFromRunStatus(status: string): GovernanceSta
     case "completed":
       return "success";
     case "in_review":
+    case "in_progress":
       return "warning";
     default:
       return "neutral";
