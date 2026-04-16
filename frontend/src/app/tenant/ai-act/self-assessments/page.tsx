@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { StartNewSelfAssessmentButton } from "@/components/ai-act/StartNewSelfAssessmentButton";
+import { StatusBadge } from "@/components/governance/StatusBadge";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { listSelfAssessments } from "@/lib/aiActSelfAssessmentApi";
 import { tenantAiActSelfAssessmentDetailPath } from "@/lib/aiActSelfAssessmentRoutes";
@@ -10,18 +11,8 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
+import { formatGovernanceDateTime } from "@/lib/formatGovernanceDate";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
-
-function formatTs(iso: string | null | undefined): string {
-  if (!iso) {
-    return "—";
-  }
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    return iso;
-  }
-  return d.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
-}
 
 export default async function TenantSelfAssessmentsListPage() {
   const tenantId = await getWorkspaceTenantIdServer();
@@ -92,11 +83,17 @@ export default async function TenantSelfAssessmentsListPage() {
                   const nameOrId = row.ai_system_name ?? row.ai_system_id ?? "—";
                   return (
                     <tr key={row.session_id} className="transition hover:bg-slate-50/90">
-                      <td className="px-4 py-3 font-medium text-slate-900">{row.status}</td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={String(row.status)} />
+                      </td>
                       <td className="px-4 py-3 text-slate-700">{nameOrId}</td>
                       <td className="px-4 py-3 text-slate-600">{row.schema_version ?? "—"}</td>
-                      <td className="px-4 py-3 text-slate-600">{formatTs(row.started_at)}</td>
-                      <td className="px-4 py-3 text-slate-600">{formatTs(row.completed_at)}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {formatGovernanceDateTime(row.started_at)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {formatGovernanceDateTime(row.completed_at)}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <Link
                           href={tenantAiActSelfAssessmentDetailPath(row.session_id)}
