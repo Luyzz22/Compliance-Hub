@@ -15,6 +15,7 @@ import {
 const baseItems = [
   { href: "/tenant/compliance-overview", label: "Mandant & Übersicht" },
   { href: "/tenant/eu-ai-act", label: "EU AI Act" },
+  { href: "/tenant/ai-act/self-assessments", label: "Self-Assessment (AI Act)" },
   { href: "/tenant/ai-systems", label: "KI-Systeme" },
   { href: "/tenant/policies", label: "Policies & Regeln" },
   { href: "/tenant/audit-log", label: "Audit & Evidence" },
@@ -63,13 +64,13 @@ export function TenantNav({ workspaceTenantId }: TenantNavProps) {
             href={item.href}
             className={`flex items-center gap-2 rounded-lg px-2 py-2 no-underline transition ${
               active
-                ? "bg-cyan-50 font-semibold text-cyan-900"
+                ? "bg-slate-100 font-semibold text-[var(--sbs-navy-deep)]"
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
             <span
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                active ? "bg-cyan-500" : "bg-slate-300"
+                active ? "bg-[var(--sbs-navy-mid)]" : "bg-slate-300"
               }`}
               aria-hidden
             />
@@ -86,14 +87,14 @@ export function TenantNav({ workspaceTenantId }: TenantNavProps) {
             href={evidenceHref}
             className={`flex items-center gap-2 rounded-lg px-2 py-2 no-underline transition ${
               pathname === evidenceHref || pathname.startsWith(`${evidenceHref}/`)
-                ? "bg-cyan-50 font-semibold text-cyan-900"
+                ? "bg-slate-100 font-semibold text-[var(--sbs-navy-deep)]"
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
             <span
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                 pathname === evidenceHref || pathname.startsWith(`${evidenceHref}/`)
-                  ? "bg-cyan-500"
+                  ? "bg-[var(--sbs-navy-mid)]"
                   : "bg-slate-300"
               }`}
               aria-hidden
