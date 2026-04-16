@@ -17,18 +17,19 @@ export const CH_PAGE_TITLE =
 export const CH_PAGE_SUB =
   "mt-2 max-w-2xl text-base leading-relaxed text-slate-600";
 
+/** Eyebrow / Akzent — SBS-Navy (KanzleiAI / Enterprise DACH, vgl. design-tokens.css). */
 export const CH_EYEBROW =
-  "text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700";
+  "text-xs font-semibold uppercase tracking-[0.14em] text-[var(--sbs-navy-mid)]";
 
 export const CH_SECTION_LABEL =
   "text-xs font-semibold uppercase tracking-[0.12em] text-slate-500";
 
 /** Inline-Navigation unter dem Seitentitel */
 export const CH_PAGE_NAV_LINK =
-  "text-sm font-medium text-cyan-700 underline decoration-cyan-600/25 underline-offset-4 transition hover:text-cyan-900";
+  "text-sm font-medium text-[var(--sbs-text-accent)] underline decoration-[var(--sbs-navy-mid)]/30 underline-offset-4 transition hover:text-[var(--sbs-navy-deep)]";
 
 export const CH_BTN_PRIMARY =
-  "inline-flex items-center justify-center rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700";
+  "inline-flex items-center justify-center rounded-xl bg-[var(--sbs-navy-mid)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--sbs-navy-deep)]";
 
 export const CH_BTN_SECONDARY =
   "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50";
@@ -61,7 +62,7 @@ export function chKpiStatusFromRatio(ratio: number): {
 
 /** Breadcrumb separator and link style. */
 export const CH_BREADCRUMB_LINK =
-  "text-xs font-medium text-slate-500 hover:text-cyan-700 transition";
+  "text-xs font-medium text-slate-500 hover:text-[var(--sbs-text-accent)] transition";
 
 export const CH_BREADCRUMB_CURRENT =
   "text-xs font-semibold text-slate-800";

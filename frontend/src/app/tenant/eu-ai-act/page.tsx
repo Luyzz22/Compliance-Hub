@@ -12,6 +12,7 @@ import {
   type Nis2KritisKpiListResponse,
   type Nis2KritisKpiType,
 } from "@/lib/api";
+import { TENANT_AI_ACT_SELF_ASSESSMENTS_PATH } from "@/lib/aiActSelfAssessmentRoutes";
 import { readWorkspaceTenantIdFromDocumentCookie } from "@/lib/workspaceTenantBrowser";
 import {
   CH_BTN_PRIMARY,
@@ -407,6 +408,9 @@ export default function EUAIActPage() {
               </Link>
               <Link href="/tenant/ai-systems" className={CH_PAGE_NAV_LINK}>
                 KI-System-Register
+              </Link>
+              <Link href={TENANT_AI_ACT_SELF_ASSESSMENTS_PATH} className={CH_PAGE_NAV_LINK}>
+                Self-Assessment Workspace
               </Link>
             </>
           }
