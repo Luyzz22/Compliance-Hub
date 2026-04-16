@@ -16,6 +16,7 @@ const baseItems = [
   { href: "/tenant/compliance-overview", label: "Mandant & Übersicht" },
   { href: "/tenant/eu-ai-act", label: "EU AI Act" },
   { href: "/tenant/ai-act/self-assessments", label: "Self-Assessment (AI Act)" },
+  { href: "/tenant/nis2/wizard", label: "NIS2 / KRITIS Wizard" },
   { href: "/tenant/ai-systems", label: "KI-Systeme" },
   { href: "/tenant/policies", label: "Policies & Regeln" },
   { href: "/tenant/audit-log", label: "Audit & Evidence" },
