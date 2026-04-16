@@ -104,25 +104,41 @@ export async function tenantSaFetchJson<T>(
   init?: RequestInit,
 ): Promise<SaApiResult<T>> {
   const url = `${getComplianceHubApiBaseUrl()}${path}`;
-  const res = await fetch(url, {
-    ...init,
-    headers: tenantRequestHeaders(tenantId, init?.headers, {
-      json: init?.body != null || (init?.method ?? "GET").toUpperCase() !== "GET",
-    }),
-    cache: "no-store",
-  });
-  if (res.status === 204) {
-    return { ok: true, data: undefined as T };
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers: tenantRequestHeaders(tenantId, init?.headers, {
+        json: init?.body != null || (init?.method ?? "GET").toUpperCase() !== "GET",
+      }),
+      cache: "no-store",
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, status: 0, message: `Netzwerkfehler: ${msg}` };
   }
-  if (!res.ok) {
-    return { ok: false, status: res.status, message: await readErrorMessage(res) };
+
+  try {
+    if (res.status === 204) {
+      return { ok: true, data: undefined as T };
+    }
+    if (!res.ok) {
+      return { ok: false, status: res.status, message: await readErrorMessage(res) };
+    }
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("application/json")) {
+      const text = await res.text();
+      return { ok: true, data: text as unknown as T };
+    }
+    return { ok: true, data: (await res.json()) as T };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      status: res.status,
+      message: `Antwortverarbeitung fehlgeschlagen: ${msg}`,
+    };
   }
-  const ct = res.headers.get("content-type") ?? "";
-  if (!ct.includes("application/json")) {
-    const text = await res.text();
-    return { ok: true, data: text as unknown as T };
-  }
-  return { ok: true, data: (await res.json()) as T };
 }
 
 export function normalizeSessionId(row: Record<string, unknown>): string {
