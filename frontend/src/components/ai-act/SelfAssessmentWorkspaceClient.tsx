@@ -157,8 +157,19 @@ export function SelfAssessmentWorkspaceClient({
   const [actionBusy, setActionBusy] = useState<string | null>(null);
 
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  /** Letzter Wert pro Frage für sofortiges Flushen abgelaufener Debounces. */
+  const latestByKey = useRef<Record<string, unknown>>({});
+  /** Laufende PUT /answers (inkl. Debounce-Fires), damit Abschluss darauf warten kann. */
+  const inflightSaves = useRef<Promise<void>[]>([]);
 
   const readOnly = session.status === "completed";
+
+  function trackInflightSave(p: Promise<void>): void {
+    inflightSaves.current.push(p);
+    void p.finally(() => {
+      inflightSaves.current = inflightSaves.current.filter((x) => x !== p);
+    });
+  }
 
   useEffect(() => {
     setSession(initialSession);
@@ -190,6 +201,7 @@ export function SelfAssessmentWorkspaceClient({
       if (readOnly) {
         return;
       }
+      latestByKey.current[questionKey] = value;
       const prev = timers.current[questionKey];
       if (prev) {
         clearTimeout(prev);
@@ -197,7 +209,8 @@ export function SelfAssessmentWorkspaceClient({
       setSaveState("saving");
       setInlineError(null);
       timers.current[questionKey] = setTimeout(() => {
-        void (async () => {
+        delete timers.current[questionKey];
+        const p = (async () => {
           const res = await putSelfAssessmentAnswer(tenantId, sessionId, questionKey, value);
           if (!res.ok) {
             setSaveState("error");
@@ -208,10 +221,52 @@ export function SelfAssessmentWorkspaceClient({
           setSaveState("saved");
           setSavedAt(new Date().toISOString());
         })();
+        trackInflightSave(p);
       }, 450);
     },
     [readOnly, sessionId, showToast, tenantId],
   );
+
+  const drainInflightSaves = useCallback(async (): Promise<void> => {
+    for (let i = 0; i < 25; i++) {
+      const batch = inflightSaves.current.slice();
+      if (batch.length === 0) {
+        return;
+      }
+      await Promise.all(batch);
+    }
+  }, []);
+
+  /**
+   * Wartet auf laufende Autosave-PUTs, bricht anstehende Debounces ab und persistiert die
+   * jeweils letzten Werte — verhindert Abschluss mit veralteten Antworten oder späte PUTs
+   * nach abgeschlossenem Run.
+   */
+  const flushPendingAutosaves = useCallback(async (): Promise<
+    { ok: true } | { ok: false; status: number; message: string }
+  > => {
+    await drainInflightSaves();
+    const debouncedKeys = Object.keys(timers.current);
+    for (const key of debouncedKeys) {
+      const tid = timers.current[key];
+      if (tid) {
+        clearTimeout(tid);
+      }
+      delete timers.current[key];
+    }
+    await drainInflightSaves();
+    for (const key of debouncedKeys) {
+      const value = latestByKey.current[key];
+      const res = await putSelfAssessmentAnswer(tenantId, sessionId, key, value);
+      if (!res.ok) {
+        return { ok: false, status: res.status, message: res.message };
+      }
+      setSaveState("saved");
+      setSavedAt(new Date().toISOString());
+    }
+    await drainInflightSaves();
+    return { ok: true };
+  }, [drainInflightSaves, sessionId, tenantId]);
 
   useEffect(() => {
     return () => {
@@ -246,6 +301,14 @@ export function SelfAssessmentWorkspaceClient({
   async function onSetInReview() {
     setInlineError(null);
     setActionBusy("review");
+    const flush = await flushPendingAutosaves();
+    if (!flush.ok) {
+      setActionBusy(null);
+      setInlineError(`${flush.status}: ${flush.message}`);
+      showToast("error", flush.message);
+      setSaveState("error");
+      return;
+    }
     const res = await patchSelfAssessmentSession(tenantId, sessionId, { status: "in_review" });
     setActionBusy(null);
     if (!res.ok) {
@@ -263,6 +326,14 @@ export function SelfAssessmentWorkspaceClient({
   async function onComplete() {
     setInlineError(null);
     setActionBusy("complete");
+    const flush = await flushPendingAutosaves();
+    if (!flush.ok) {
+      setActionBusy(null);
+      setInlineError(`${flush.status}: ${flush.message}`);
+      showToast("error", `Antworten konnten vor dem Abschluss nicht gespeichert werden: ${flush.message}`);
+      setSaveState("error");
+      return;
+    }
     const res = await completeSelfAssessment(tenantId, sessionId);
     setActionBusy(null);
     if (!res.ok) {
