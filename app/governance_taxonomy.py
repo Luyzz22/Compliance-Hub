@@ -17,6 +17,8 @@ class GovernanceAuditEntity(StrEnum):
     AI_GOVERNANCE_ACTION = "ai_governance_action"
     TENANT_API_KEY = "tenant_api_key"
     EVIDENCE_FILE = "evidence_file"
+    SERVICE_HEALTH_SNAPSHOT = "service_health_snapshot"
+    SERVICE_HEALTH_INCIDENT = "service_health_incident"
 
 
 class GovernanceAuditAction(StrEnum):
@@ -43,6 +45,9 @@ class GovernanceAuditAction(StrEnum):
     TENANT_API_KEY_CREATE = "tenant_api_key.create"
     TENANT_API_KEY_REVOKE = "tenant_api_key.revoke"
     EVIDENCE_DELETE = "evidence.delete"
+    SERVICE_HEALTH_POLL_COMPLETED = "service_health.poll.completed"
+    SERVICE_HEALTH_INCIDENT_DETECTED = "service_health.incident.detected"
+    SERVICE_HEALTH_INCIDENT_RESOLVED = "service_health.incident.resolved"
 
 
 class NIS2DeadlinePolicy:

@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
+import { HealthStatusPill } from "@/components/governance/HealthStatusPill";
+import {
+  fetchHealthStatus,
+  governanceServiceHealthHint,
+  type InternalHealthPayload,
+} from "@/lib/internalHealth";
 import type { TenantRiskOverview } from "@/lib/tenantRiskOverview";
 import { nis2ExposureCategoryLabel } from "@/lib/tenantRiskOverview";
 import { TENANT_AI_ACT_SELF_ASSESSMENTS_PATH } from "@/lib/aiActSelfAssessmentRoutes";
@@ -33,6 +40,28 @@ function exposurePillClass(level: TenantRiskOverview["nis2ExposureLevel"]): stri
  * TODO: Live-Daten vom Server; interaktive Filter; Drilldown in System-/Wizard-Views.
  */
 export function TenantRiskOverviewPanel({ overview }: Props) {
+  const [liveHealth, setLiveHealth] = useState<InternalHealthPayload | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchHealthStatus().then((h) => {
+      if (!cancelled) {
+        setLiveHealth(h);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const serviceHealth = liveHealth ?? {
+    app: overview.serviceHealth.app,
+    db: overview.serviceHealth.db,
+    externalAiProvider: overview.serviceHealth.externalAiProvider,
+    timestamp: overview.serviceHealthCheckedAt,
+  };
+  const healthHint = governanceServiceHealthHint(serviceHealth);
+
   return (
     <div className="space-y-8 md:space-y-10">
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -72,6 +101,39 @@ export function TenantRiskOverviewPanel({ overview }: Props) {
           <p className="mt-1 text-xs text-slate-600">AI-Act / Self-Assessment (heuristisch)</p>
         </article>
       </section>
+
+      <article className={CH_CARD}>
+        <p className={CH_SECTION_LABEL}>Betriebs- &amp; Monitoring-Status</p>
+        <h2 className="mt-1 text-lg font-semibold text-slate-900">Continuous Monitoring (Baustein)</h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          Aggregierte Signale für Mandanten-Governance (NIS2/KRITIS-Betrieb, Incident Readiness).
+          Detaildaten stammen aus internem Health-Check (Stub:{" "}
+          <code className="rounded bg-slate-100 px-1">fetchHealthStatus</code>
+          ), später an geschützten Health-Endpunkt angebunden.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <HealthStatusPill status={serviceHealth.app} label="App" />
+          <HealthStatusPill status={serviceHealth.db} label="Datenbank" />
+          <HealthStatusPill status={serviceHealth.externalAiProvider} label="KI-Provider (extern)" />
+        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          Stand:{" "}
+          <time dateTime={serviceHealth.timestamp}>
+            {new Date(serviceHealth.timestamp).toLocaleString("de-DE", {
+              dateStyle: "short",
+              timeStyle: "short",
+            })}
+          </time>
+        </p>
+        {healthHint ? (
+          <p
+            className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-sm text-amber-950"
+            role="status"
+          >
+            {healthHint}
+          </p>
+        ) : null}
+      </article>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <article className={CH_CARD}>

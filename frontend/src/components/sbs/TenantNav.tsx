@@ -15,6 +15,7 @@ import {
 const baseItems = [
   { href: "/tenant/compliance-overview", label: "Mandant & Übersicht" },
   { href: "/tenant/governance/overview", label: "Risk & Control Overview" },
+  { href: "/tenant/governance/operations", label: "Betrieb & Resilienz" },
   { href: "/tenant/eu-ai-act", label: "EU AI Act" },
   { href: "/tenant/ai-act/self-assessments", label: "Self-Assessment (AI Act)" },
   { href: "/tenant/nis2/wizard", label: "NIS2 / KRITIS Wizard" },

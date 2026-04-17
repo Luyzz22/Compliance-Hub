@@ -3,6 +3,10 @@
  * Aggregiert EU AI Act, NIS2/KRITIS (Block 3) und später ISO/Controls (Block 2).
  */
 
+import { fetchHealthStatus, type ServiceHealth } from "./internalHealth";
+
+export type { HealthStatus } from "./internalHealth";
+
 export type Nis2ExposureLevel = "low" | "medium" | "high";
 
 /** Kundenfreundliche Kategorie (Mapping aus Score/Profil, keine Behördenfeststellung). */
@@ -42,6 +46,10 @@ export interface TenantRiskOverview {
   isoControlsImplemented: number;
   isoControlsPlanned: number;
 
+  /** Betrieb / Monitoring (Continuous Monitoring, NIS2-Betriebslage) — siehe fetchHealthStatus. */
+  serviceHealth: ServiceHealth;
+  serviceHealthCheckedAt: string;
+
   topRiskAiSystems: AiActSystemRiskRow[];
   derivedTodos: string[];
 }
@@ -78,6 +86,11 @@ function buildDummyTodos(o: TenantRiskOverview): string[] {
       `${o.isoControlsPlanned} geplante ISO-/Controls (Block 2) — Umsetzung mit Security & Compliance abstimmen.`,
     );
   }
+  if (o.serviceHealth.db !== "up" || o.serviceHealth.externalAiProvider !== "up") {
+    items.push(
+      "Betriebs- oder KI-Provider-Health eingeschränkt — Incident-Playbook, Meldewege und Monitoring prüfen.",
+    );
+  }
   if (items.length === 0) {
     items.push("Keine kritischen Heuristiken — regelmäßiges Monitoring und Dokumentation beibehalten.");
   }
@@ -96,7 +109,7 @@ function buildDummyTodos(o: TenantRiskOverview): string[] {
  * 4) ISO (Block 2): implemented/planned aus control_implementations / roadmap.
  */
 export async function fetchTenantRiskOverview(tenantId: string): Promise<TenantRiskOverview> {
-  await Promise.resolve();
+  const healthPayload = await fetchHealthStatus();
 
   const nis2Score = 68;
   const nis2Level: Nis2ExposureLevel = nis2Score >= 72 ? "high" : nis2Score >= 42 ? "medium" : "low";
@@ -114,6 +127,12 @@ export async function fetchTenantRiskOverview(tenantId: string): Promise<TenantR
     nis2ExposureCategory: exposureCategoryFromScore(nis2Score, nis2Level),
     isoControlsImplemented: 42,
     isoControlsPlanned: 18,
+    serviceHealth: {
+      app: healthPayload.app,
+      db: healthPayload.db,
+      externalAiProvider: healthPayload.externalAiProvider,
+    },
+    serviceHealthCheckedAt: healthPayload.timestamp,
     topRiskAiSystems: [
       {
         ai_system_id: "sys-hr-scoring",

@@ -7,10 +7,11 @@ import json
 import logging
 import os
 import re
+import secrets
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 from urllib.parse import quote
 
@@ -257,6 +258,8 @@ from app.operational_monitoring_models import (
     SystemMonitoringIndexOut,
     TenantOperationalMonitoringIndexOut,
 )
+from app.operations_resilience_models import OperationalHealthPollRunResponse
+from app.operations_resilience_routes import router as operations_resilience_router
 from app.policy.opa_client import evaluate_action_policy
 from app.policy.policy_guard import enforce_action_policy
 from app.policy.role_resolution import (
@@ -454,7 +457,9 @@ from app.services.governance_maturity_board_summary_llm import (
     maybe_build_governance_maturity_board_summary_result,
 )
 from app.services.governance_maturity_service import build_governance_maturity_response
+from app.services.health_monitor import run_operational_health_poll_all_tenants
 from app.services.high_risk_scenarios import list_high_risk_scenarios
+from app.services.internal_health_core import compute_internal_deep_health
 from app.services.llm_router import LLMRouter
 from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
@@ -567,6 +572,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(TelemetryMiddleware)
+app.include_router(operations_resilience_router)
 
 logger = logging.getLogger(__name__)
 
@@ -850,6 +856,96 @@ class NormEvidenceWithAudit(BaseModel):
 @app.get("/health")
 def health_root() -> dict[str, str]:
     return _health_payload()
+
+
+InternalHealthSignal = Literal["up", "degraded", "down"]
+
+
+class InternalDeepHealthResponse(BaseModel):
+    """Structured health for monitoring agents (gated; not tenant-scoped)."""
+
+    app: InternalHealthSignal
+    db: InternalHealthSignal
+    external_ai_provider: InternalHealthSignal
+    timestamp: datetime
+
+
+def _health_api_key_matches(provided: str, expected: str) -> bool:
+    try:
+        return secrets.compare_digest(
+            provided.encode("utf-8"),
+            expected.encode("utf-8"),
+        )
+    except (TypeError, ValueError, AttributeError):
+        return False
+
+
+def require_internal_health_gate(
+    request: Request,
+    x_health_key: Annotated[str | None, Header(alias="X-HEALTH-KEY")] = None,
+) -> None:
+    """API key + optional IP allowlist for internal monitoring (env-driven)."""
+    expected = os.getenv("INTERNAL_HEALTH_API_KEY", "").strip()
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Internal health endpoint is not configured",
+        )
+    if x_health_key is None or not _health_api_key_matches(x_health_key, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing X-HEALTH-KEY",
+        )
+    allow_raw = os.getenv("INTERNAL_HEALTH_ALLOWED_IPS", "").strip()
+    if not allow_raw:
+        return
+    allowed = {p.strip() for p in allow_raw.split(",") if p.strip()}
+    client_ip = client_ip_from_request(request)
+    if client_ip is None or client_ip not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Client IP not allowed for internal health",
+        )
+
+
+@app.get(
+    "/api/internal/health",
+    response_model=InternalDeepHealthResponse,
+    tags=["internal", "health"],
+)
+def internal_deep_health(
+    _: Annotated[None, Depends(require_internal_health_gate)],
+    session: Annotated[Session, Depends(get_session)],
+) -> InternalDeepHealthResponse:
+    """Deep health for monitoring (DB + AI credential posture). Requires X-HEALTH-KEY."""
+    dto = compute_internal_deep_health(session)
+    return InternalDeepHealthResponse(
+        app=dto.app,
+        db=dto.db,
+        external_ai_provider=dto.external_ai_provider,
+        timestamp=dto.timestamp,
+    )
+
+
+@app.post(
+    "/api/internal/health/poll/run",
+    response_model=OperationalHealthPollRunResponse,
+    tags=["internal", "health"],
+)
+def internal_health_poll_run(
+    _: Annotated[None, Depends(require_internal_health_gate)],
+    session: Annotated[Session, Depends(get_session)],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+) -> OperationalHealthPollRunResponse:
+    """Cron/n8n-triggered poll: snapshots + incidents for all tenants (same X-HEALTH-KEY gate)."""
+    result = run_operational_health_poll_all_tenants(session, audit_repo)
+    return OperationalHealthPollRunResponse(
+        tenants_processed=result.tenants_processed,
+        snapshots_written=result.snapshots_written,
+        incidents_opened=result.incidents_opened,
+        incidents_resolved=result.incidents_resolved,
+        errors=result.errors,
+    )
 
 
 @app.post("/api/v1/documents/intake", response_model=DocumentIntakeResponse)
@@ -8408,7 +8504,6 @@ def create_datev_extf_export(
 ) -> Response:
     """Generate DATEV EXTF ASCII export. Requires EXPORT_DATEV permission."""
     import uuid as _uuid
-    from datetime import UTC
     from datetime import datetime as _dt
 
     from app.models_db import DatevExportLogDB
@@ -8588,7 +8683,6 @@ def get_board_pdf_report(
 ) -> Response:
     """Generate PDF/A-3 board report from KPI data. GoBD-konform, archivierungssicher."""
     import uuid as _uuid
-    from datetime import UTC
     from datetime import datetime as _dt
 
     from app.models_db import ReportExportDB
@@ -8669,7 +8763,6 @@ def create_xrechnung_export(
 ) -> Response:
     """Generate XRechnung 3.0 / EN-16931 UBL 2.1 XML invoice."""
     import uuid as _uuid
-    from datetime import UTC
     from datetime import date as _date
     from datetime import datetime as _dt
 
