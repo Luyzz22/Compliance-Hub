@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth_dependencies import get_api_key_and_tenant
@@ -147,7 +148,20 @@ def materialize_control_from_suggestion(
             "triggered_by": match.triggered_by,
         },
     )
-    created = repo.create_control(tenant_id, create, created_by="api:governance-controls")
+    try:
+        created = repo.create_control(tenant_id, create, created_by="api:governance-controls")
+    except IntegrityError:
+        session.rollback()
+        dup = repo.find_materialized_suggestion(tenant_id, body.suggestion_key)
+        if dup is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Materialize conflict; retry or contact support",
+            ) from None
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=jsonable_encoder(dup),
+        )
     record_governance_audit(
         audit_repo,
         tenant_id=tenant_id,

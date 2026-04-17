@@ -25,6 +25,14 @@ from app.models_db import (
 )
 
 
+def _as_utc_aware(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
+
+
 class GovernanceControlRepository:
     def __init__(self, session: Session) -> None:
         self._s = session
@@ -183,6 +191,10 @@ class GovernanceControlRepository:
         cid = str(uuid4())
         tags = [t[:64] for t in body.framework_tags]
         src = dict(body.source_inputs) if isinstance(body.source_inputs, dict) else {}
+        mat_key: str | None = None
+        raw_key = src.get("materialized_from_suggestion")
+        if isinstance(raw_key, str) and raw_key.strip():
+            mat_key = raw_key.strip()[:128]
         row = GovernanceControlTable(
             id=cid,
             tenant_id=tenant_id,
@@ -194,6 +206,7 @@ class GovernanceControlRepository:
             next_review_at=body.next_review_at,
             framework_tags_json=tags,
             source_inputs_json=src,
+            materialized_from_suggestion_key=mat_key,
             created_at_utc=now,
             updated_at_utc=now,
             created_by=created_by,
@@ -339,11 +352,20 @@ class GovernanceControlRepository:
     ) -> GovernanceControlRead | None:
         stmt = select(GovernanceControlTable).where(
             GovernanceControlTable.tenant_id == tenant_id,
+            GovernanceControlTable.materialized_from_suggestion_key == suggestion_key,
         )
-        for row in self._s.scalars(stmt).all():
-            src = row.source_inputs_json if isinstance(row.source_inputs_json, dict) else {}
+        row = self._s.scalars(stmt).first()
+        if row is not None:
+            return self._row_to_read(row)
+        stmt_legacy = select(GovernanceControlTable).where(
+            GovernanceControlTable.tenant_id == tenant_id,
+        )
+        for legacy in self._s.scalars(stmt_legacy).all():
+            if legacy.materialized_from_suggestion_key:
+                continue
+            src = legacy.source_inputs_json if isinstance(legacy.source_inputs_json, dict) else {}
             if src.get("materialized_from_suggestion") == suggestion_key:
-                return self._row_to_read(row)
+                return self._row_to_read(legacy)
         return None
 
     def list_controls_for_export(
@@ -365,24 +387,24 @@ class GovernanceControlRepository:
         total = len(rows)
         status_keys = ("implemented", "in_progress", "not_started", "needs_review", "overdue")
         counts = {s: 0 for s in status_keys}
-        overdue = 0
+        overdue_reviews = 0
         for row in rows:
             st = row.status
             if st in counts:
                 counts[st] += 1
             else:
                 counts["not_started"] += 1
-            if (
-                row.next_review_at is not None
-                and row.next_review_at < now
-                and row.status == "implemented"
-            ):
-                overdue += 1
+            if st == "overdue":
+                overdue_reviews += 1
+            else:
+                deadline = _as_utc_aware(row.next_review_at)
+                if deadline is not None and deadline < now and row.status == "implemented":
+                    overdue_reviews += 1
         return GovernanceControlsDashboardSummary(
             total_controls=total,
             implemented=counts["implemented"],
             in_progress=counts["in_progress"],
             not_started=counts["not_started"],
             needs_review=counts["needs_review"],
-            overdue_reviews=overdue,
+            overdue_reviews=overdue_reviews,
         )

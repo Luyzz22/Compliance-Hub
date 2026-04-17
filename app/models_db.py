@@ -1168,6 +1168,14 @@ class GovernanceControlTable(Base):
     __table_args__ = (
         Index("idx_governance_controls_tenant_status", "tenant_id", "status"),
         Index("idx_governance_controls_tenant_review", "tenant_id", "next_review_at"),
+        Index(
+            "uq_gc_tenant_materialized_suggestion",
+            "tenant_id",
+            "materialized_from_suggestion_key",
+            unique=True,
+            sqlite_where=text("materialized_from_suggestion_key IS NOT NULL"),
+            postgresql_where=text("materialized_from_suggestion_key IS NOT NULL"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -1180,6 +1188,9 @@ class GovernanceControlTable(Base):
     next_review_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     framework_tags_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     source_inputs_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    materialized_from_suggestion_key: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, default=None
+    )
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )

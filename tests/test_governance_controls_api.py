@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -121,3 +123,36 @@ def test_governance_controls_from_suggestion_unknown() -> None:
         json={"suggestion_key": "definitely_unknown_key_xyz"},
     )
     assert r.status_code == 404
+
+
+def test_governance_controls_dashboard_overdue_status_in_kpi() -> None:
+    """Codex: overdue_reviews must include explicit status=overdue, not only date-based."""
+    h = _headers()
+    past = (datetime.now(UTC) - timedelta(days=7)).isoformat()
+    c1 = client.post(
+        "/api/v1/governance/controls",
+        headers=h,
+        json={
+            "title": "Explicit overdue status",
+            "status": "overdue",
+            "framework_tags": ["ISO_27001"],
+            "framework_mappings": [],
+        },
+    )
+    assert c1.status_code == 201, c1.text
+    c2 = client.post(
+        "/api/v1/governance/controls",
+        headers=h,
+        json={
+            "title": "Implemented review past due",
+            "status": "implemented",
+            "next_review_at": past,
+            "framework_tags": ["ISO_27001"],
+            "framework_mappings": [],
+        },
+    )
+    assert c2.status_code == 201, c2.text
+    summ = client.get("/api/v1/governance/controls/dashboard/summary", headers=h)
+    assert summ.status_code == 200
+    data = summ.json()
+    assert data["overdue_reviews"] >= 2
