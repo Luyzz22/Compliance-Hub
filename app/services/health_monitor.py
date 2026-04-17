@@ -211,6 +211,8 @@ def run_operational_health_poll_all_tenants(
         except Exception as exc:  # noqa: BLE001 — log and continue other tenants
             logger.exception("operational health poll failed for tenant %s", tid)
             aggregate.errors.append(f"{tid}: {exc!r}")
+            # Clear failed transaction so the next tenant is not hit with PendingRollbackError.
+            session.rollback()
     return aggregate
 
 

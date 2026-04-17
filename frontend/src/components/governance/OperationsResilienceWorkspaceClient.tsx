@@ -30,21 +30,22 @@ interface Props {
 export function OperationsResilienceWorkspaceClient({ tenantId }: Props) {
   const [kpis, setKpis] = useState<OperationsKpis | null>(null);
   const [snapshots, setSnapshots] = useState<ServiceHealthSnapshotRow[]>([]);
-  const [incidents, setIncidents] = useState<ServiceHealthIncidentRow[]>([]);
+  /** open_only=true server-side — avoids missing opens when many resolved rows fill the limit. */
+  const [openIncidents, setOpenIncidents] = useState<ServiceHealthIncidentRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busyIncidentId, setBusyIncidentId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoadError(null);
     try {
-      const [k, s, i] = await Promise.all([
+      const [k, s, open] = await Promise.all([
         fetchOperationsKpis(tenantId),
         fetchServiceHealthSnapshots(tenantId),
-        fetchServiceHealthIncidents(tenantId),
+        fetchServiceHealthIncidents(tenantId, { open_only: true, limit: 100 }),
       ]);
       setKpis(k);
       setSnapshots(s);
-      setIncidents(i);
+      setOpenIncidents(open);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Laden fehlgeschlagen");
     }
@@ -53,8 +54,6 @@ export function OperationsResilienceWorkspaceClient({ tenantId }: Props) {
   useEffect(() => {
     void reload();
   }, [reload]);
-
-  const openIncidents = incidents.filter((x) => x.incident_state === "open");
 
   async function onResolveIncident(incidentId: string) {
     setBusyIncidentId(incidentId);
