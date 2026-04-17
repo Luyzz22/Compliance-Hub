@@ -1139,6 +1139,134 @@ class ServiceHealthIncidentTable(Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
 
+class GovernanceRequirementTable(Base):
+    """Normative obligation / requirement statement (tenant catalog; map-once anchor)."""
+
+    __tablename__ = "governance_requirements"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "requirement_key",
+            name="uq_governance_requirements_tenant_key",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    requirement_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class GovernanceControlTable(Base):
+    """Unified control implementation for map-once, comply-many (AI Act, ISO, NIS2, …)."""
+
+    __tablename__ = "governance_controls"
+    __table_args__ = (
+        Index("idx_governance_controls_tenant_status", "tenant_id", "status"),
+        Index("idx_governance_controls_tenant_review", "tenant_id", "next_review_at"),
+        Index(
+            "uq_gc_tenant_materialized_suggestion",
+            "tenant_id",
+            "materialized_from_suggestion_key",
+            unique=True,
+            sqlite_where=text("materialized_from_suggestion_key IS NOT NULL"),
+            postgresql_where=text("materialized_from_suggestion_key IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    requirement_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_started")
+    owner: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    next_review_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    framework_tags_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    source_inputs_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    materialized_from_suggestion_key: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, default=None
+    )
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class GovernanceControlFrameworkMappingTable(Base):
+    """Clause-level mapping: one control → many framework references (audit narrative)."""
+
+    __tablename__ = "governance_control_framework_mappings"
+    __table_args__ = (Index("idx_gcfm_control", "tenant_id", "control_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    control_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    framework: Mapped[str] = mapped_column(String(64), nullable=False)
+    clause_ref: Mapped[str] = mapped_column(String(256), nullable=False)
+    mapping_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class GovernanceControlEvidenceTable(Base):
+    """Evidence artefact bound to a control (policies, logs, wizard exports, health links)."""
+
+    __tablename__ = "governance_control_evidence"
+    __table_args__ = (Index("idx_gce_control", "tenant_id", "control_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    control_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    body_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False, default="manual")
+    source_ref: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class GovernanceControlReviewTable(Base):
+    """Planned or completed control review (ISO / internal audit cycle)."""
+
+    __tablename__ = "governance_control_reviews"
+    __table_args__ = (Index("idx_gcr_control", "tenant_id", "control_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    control_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    reviewer: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class GovernanceControlStatusHistoryTable(Base):
+    """Immutable status transitions for board / audit readiness."""
+
+    __tablename__ = "governance_control_status_history"
+    __table_args__ = (Index("idx_gcsh_control", "tenant_id", "control_id", "changed_at_utc"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    control_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    from_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    changed_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    changed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class NIS2IncidentTable(Base):
     """NIS2 Art. 21 compliant incident response records — multi-tenant."""
 
