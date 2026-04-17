@@ -1088,6 +1088,57 @@ class TenantOperationalMonitoringSnapshotTable(Base):
     )
 
 
+class ServiceHealthSnapshotTable(Base):
+    """Point-in-time per-service health (internal poll); raw_payload preserves audit/replay."""
+
+    __tablename__ = "service_health_snapshots"
+    __table_args__ = (
+        Index("idx_service_health_snapshots_tenant_checked", "tenant_id", "checked_at"),
+        Index(
+            "idx_service_health_snapshots_tenant_service",
+            "tenant_id",
+            "service_name",
+            "checked_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    poll_run_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False, default="internal_health_poll")
+    service_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    raw_payload: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ServiceHealthIncidentTable(Base):
+    """Governance record from health transitions (monitoring; not full NIS2 case workflow)."""
+
+    __tablename__ = "service_health_incidents"
+    __table_args__ = (
+        Index("idx_service_health_incidents_tenant_state", "tenant_id", "incident_state"),
+        Index("idx_service_health_incidents_tenant_detected", "tenant_id", "detected_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    service_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    previous_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    current_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    incident_state: Mapped[str] = mapped_column(String(16), nullable=False)
+    source: Mapped[str] = mapped_column(String(64), nullable=False, default="internal_health_poll")
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    triggering_snapshot_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+
 class NIS2IncidentTable(Base):
     """NIS2 Art. 21 compliant incident response records — multi-tenant."""
 
