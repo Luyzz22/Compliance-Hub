@@ -106,8 +106,7 @@ def suggest_governance_controls(
 
     tenant = session.get(TenantDB, tenant_id)
     if tenant is not None and (
-        (tenant.kritis_sector and tenant.kritis_sector.strip())
-        or tenant.nis2_scope == "in_scope"
+        (tenant.kritis_sector and tenant.kritis_sector.strip()) or tenant.nis2_scope == "in_scope"
     ):
         suggestions.append(
             GovernanceControlSuggestion(

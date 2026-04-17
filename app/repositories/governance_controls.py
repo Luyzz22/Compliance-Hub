@@ -98,8 +98,10 @@ class GovernanceControlRepository:
             total = len(out)
             return out[offset : offset + limit], total
 
-        count_stmt = select(func.count()).select_from(GovernanceControlTable).where(
-            GovernanceControlTable.tenant_id == tenant_id
+        count_stmt = (
+            select(func.count())
+            .select_from(GovernanceControlTable)
+            .where(GovernanceControlTable.tenant_id == tenant_id)
         )
         if search and search.strip():
             q = f"%{search.strip()[:200]}%"
