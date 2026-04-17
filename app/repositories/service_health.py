@@ -219,18 +219,24 @@ class ServiceHealthRepository:
         return True
 
     def count_open_incidents(self, tenant_id: str) -> int:
-        stmt = select(func.count()).select_from(ServiceHealthIncidentTable).where(
-            ServiceHealthIncidentTable.tenant_id == tenant_id,
-            ServiceHealthIncidentTable.incident_state == "open",
+        stmt = (
+            select(func.count())
+            .select_from(ServiceHealthIncidentTable)
+            .where(
+                ServiceHealthIncidentTable.tenant_id == tenant_id,
+                ServiceHealthIncidentTable.incident_state == "open",
+            )
         )
         return int(self._session.execute(stmt).scalar_one())
 
     def latest_snapshot_statuses(self, tenant_id: str) -> dict[str, str]:
         """Latest status per logical service_name for KPI tiles."""
         # Per-service latest: fetch ordered rows and pick first per name (small N).
-        stmt = select(ServiceHealthSnapshotTable).where(
-            ServiceHealthSnapshotTable.tenant_id == tenant_id
-        ).order_by(ServiceHealthSnapshotTable.checked_at.desc())
+        stmt = (
+            select(ServiceHealthSnapshotTable)
+            .where(ServiceHealthSnapshotTable.tenant_id == tenant_id)
+            .order_by(ServiceHealthSnapshotTable.checked_at.desc())
+        )
         rows = self._session.scalars(stmt).all()
         out: dict[str, str] = {}
         for r in rows:

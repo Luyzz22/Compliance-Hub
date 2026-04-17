@@ -203,9 +203,7 @@ def run_operational_health_poll_all_tenants(
     dto = compute_internal_deep_health(session)
     for tid in tenant_ids:
         try:
-            part = run_operational_health_poll_for_tenant(
-                session, tid, audit_repo, dto=dto
-            )
+            part = run_operational_health_poll_for_tenant(session, tid, audit_repo, dto=dto)
             aggregate.tenants_processed += part.tenants_processed
             aggregate.snapshots_written += part.snapshots_written
             aggregate.incidents_opened += part.incidents_opened

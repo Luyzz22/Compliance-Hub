@@ -30,7 +30,6 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.advisor.metrics import AdvisorMetricsResponse, aggregate_advisor_metrics
@@ -454,13 +453,13 @@ from app.services.governance_audit import (
     record_governance_audit,
     user_agent_from_request,
 )
-from app.services.health_monitor import run_operational_health_poll_all_tenants
-from app.services.internal_health_core import compute_internal_deep_health
 from app.services.governance_maturity_board_summary_llm import (
     maybe_build_governance_maturity_board_summary_result,
 )
 from app.services.governance_maturity_service import build_governance_maturity_response
+from app.services.health_monitor import run_operational_health_poll_all_tenants
 from app.services.high_risk_scenarios import list_high_risk_scenarios
+from app.services.internal_health_core import compute_internal_deep_health
 from app.services.llm_router import LLMRouter
 from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
@@ -8505,7 +8504,6 @@ def create_datev_extf_export(
 ) -> Response:
     """Generate DATEV EXTF ASCII export. Requires EXPORT_DATEV permission."""
     import uuid as _uuid
-    from datetime import UTC
     from datetime import datetime as _dt
 
     from app.models_db import DatevExportLogDB
@@ -8685,7 +8683,6 @@ def get_board_pdf_report(
 ) -> Response:
     """Generate PDF/A-3 board report from KPI data. GoBD-konform, archivierungssicher."""
     import uuid as _uuid
-    from datetime import UTC
     from datetime import datetime as _dt
 
     from app.models_db import ReportExportDB
@@ -8766,7 +8763,6 @@ def create_xrechnung_export(
 ) -> Response:
     """Generate XRechnung 3.0 / EN-16931 UBL 2.1 XML invoice."""
     import uuid as _uuid
-    from datetime import UTC
     from datetime import date as _date
     from datetime import datetime as _dt
 
