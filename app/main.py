@@ -217,6 +217,7 @@ from app.feature_flags import (
     is_feature_enabled,
     require_tenant_llm_features,
 )
+from app.governance_controls_routes import router as governance_controls_router
 from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturityBoardSummaryParseResult
 from app.governance_taxonomy import GovernanceAuditAction, GovernanceAuditEntity
@@ -573,6 +574,7 @@ app = FastAPI(
 )
 app.add_middleware(TelemetryMiddleware)
 app.include_router(operations_resilience_router)
+app.include_router(governance_controls_router)
 
 logger = logging.getLogger(__name__)
 
