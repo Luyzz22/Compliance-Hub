@@ -6,13 +6,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
 
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models_db import (
     AISystemTable,
-    GovernanceAuditCaseControlTable,
-    GovernanceAuditCaseTable,
     GovernanceControlEvidenceTable,
     GovernanceControlReviewTable,
     GovernanceControlTable,
@@ -216,7 +214,11 @@ async def compute_snapshot(
             AISystemTable.updated_at_utc <= prev_end,
         ),
     )
-    ai_risk_trend, ai_risk_delta = _trend(high_risk_systems, prev_high_risk_systems, stable_delta=0.0)
+    ai_risk_trend, ai_risk_delta = _trend(
+        high_risk_systems,
+        prev_high_risk_systems,
+        stable_delta=0.0,
+    )
 
     # 7) NIS2 exposure level derived from incident density
     nis2_exposure_level = (
@@ -233,10 +235,19 @@ async def compute_snapshot(
             label="Governance Readiness",
             value=readiness_pct,
             unit="percent",
-            traffic_light="green" if readiness_pct >= 85 else "amber" if readiness_pct >= 70 else "red",
+            traffic_light=(
+                "green"
+                if readiness_pct >= 85
+                else "amber"
+                if readiness_pct >= 70
+                else "red"
+            ),
             trend_direction=readiness_trend,
             trend_delta=readiness_delta,
-            narrative_de="Anteil umgesetzter Controls (implemented/in_review) im Tenant-Control-Register.",
+            narrative_de=(
+                "Anteil umgesetzter Controls (implemented/in_review) "
+                "im Tenant-Control-Register."
+            ),
         ),
         BoardMetric(
             metric_key="open_critical_controls",
@@ -320,7 +331,6 @@ async def compute_snapshot(
 async def derive_period_bounds(
     period_start: datetime, period_end: datetime
 ) -> tuple[datetime, datetime]:
-    window_seconds = max(1, int((period_end - period_start).total_seconds()))
     prev_end = period_start
     prev_start = prev_end - (period_end - period_start)
     if prev_start >= prev_end:
