@@ -1267,6 +1267,78 @@ class GovernanceControlStatusHistoryTable(Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class GovernanceAuditCaseTable(Base):
+    """Scoped audit / assurance engagement over unified controls (map-once, comply many)."""
+
+    __tablename__ = "governance_audit_cases"
+    __table_args__ = (Index("idx_gac_tenant", "tenant_id", "status"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class GovernanceAuditCaseFrameworkTable(Base):
+    """Frameworks in scope for an audit case (AI Act, ISO 42001, ISO 27001, ISO 27701, NIS2)."""
+
+    __tablename__ = "governance_audit_case_frameworks"
+    __table_args__ = (Index("idx_gacf_case", "tenant_id", "audit_case_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    audit_case_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    framework_tag: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class GovernanceAuditCaseControlTable(Base):
+    """Controls explicitly in scope for an audit case (subset of tenant register)."""
+
+    __tablename__ = "governance_audit_case_controls"
+    __table_args__ = (
+        Index("idx_gacc_case", "tenant_id", "audit_case_id"),
+        UniqueConstraint("tenant_id", "audit_case_id", "control_id", name="uq_gacc_case_control"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    audit_case_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    control_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    attached_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class GovernanceEvidenceRequirementTable(Base):
+    """Tenant-level evidence type expectations per framework (advisor-tunable; defaults in code)."""
+
+    __tablename__ = "governance_evidence_requirements"
+    __table_args__ = (
+        Index("idx_ger_tenant_fw", "tenant_id", "framework_tag"),
+        UniqueConstraint(
+            "tenant_id",
+            "framework_tag",
+            "evidence_type_key",
+            name="uq_ger_tenant_fw_type",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    framework_tag: Mapped[str] = mapped_column(String(64), nullable=False)
+    evidence_type_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    label: Mapped[str] = mapped_column(String(500), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+
+
 class NIS2IncidentTable(Base):
     """NIS2 Art. 21 compliant incident response records — multi-tenant."""
 

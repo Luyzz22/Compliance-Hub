@@ -12,9 +12,13 @@ const TONE_CLASS: Record<GovernanceStatusTone, string> = {
 export function governanceStatusToneFromRunStatus(status: string): GovernanceStatusTone {
   switch (status) {
     case "completed":
+    case "implemented":
       return "success";
     case "in_review":
     case "in_progress":
+      return "warning";
+    case "overdue":
+    case "needs_review":
       return "warning";
     default:
       return "neutral";
