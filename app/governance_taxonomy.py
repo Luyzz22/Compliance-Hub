@@ -21,6 +21,7 @@ class GovernanceAuditEntity(StrEnum):
     SERVICE_HEALTH_INCIDENT = "service_health_incident"
     GOVERNANCE_CONTROL = "governance_control"
     GOVERNANCE_CONTROL_EVIDENCE = "governance_control_evidence"
+    GOVERNANCE_AUDIT_CASE = "governance_audit_case"
 
 
 class GovernanceAuditAction(StrEnum):
@@ -53,6 +54,8 @@ class GovernanceAuditAction(StrEnum):
     GOVERNANCE_CONTROL_CREATE = "governance_control.create"
     GOVERNANCE_CONTROL_UPDATE = "governance_control.update"
     GOVERNANCE_CONTROL_EVIDENCE_ADD = "governance_control.evidence.add"
+    GOVERNANCE_AUDIT_CASE_CREATE = "governance_audit_case.create"
+    GOVERNANCE_AUDIT_CASE_CONTROL_ATTACH = "governance_audit_case.control.attach"
 
 
 class NIS2DeadlinePolicy:
