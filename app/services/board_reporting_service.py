@@ -84,7 +84,10 @@ async def compute_snapshot(
         GovernanceControlTable.status.in_(["implemented", "in_review"]),
     )
     ready_controls = await _scalar_int(session, ready_controls_stmt)
-    readiness_pct = round(100.0 if active_controls == 0 else (ready_controls * 100.0 / active_controls), 1)
+    readiness_pct = round(
+        100.0 if active_controls == 0 else (ready_controls * 100.0 / active_controls),
+        1,
+    )
 
     prev_ready_controls_stmt = select(func.count()).where(
         GovernanceControlTable.tenant_id == tenant_id,
