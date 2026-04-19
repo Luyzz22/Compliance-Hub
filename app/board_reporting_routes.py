@@ -281,15 +281,17 @@ async def get_board_report(
         .order_by(BoardReportSnapshotTable.created_at.desc())
     )
     payload = snap.payload_json if snap else {}
-    metric_rows = (await session.scalars(
-        select(BoardReportItemTable)
-        .where(
-            BoardReportItemTable.report_id == report_id,
-            BoardReportItemTable.tenant_id == tenant_id,
-            BoardReportItemTable.item_type == "metric",
+    metric_rows = (
+        await session.scalars(
+            select(BoardReportItemTable)
+            .where(
+                BoardReportItemTable.report_id == report_id,
+                BoardReportItemTable.tenant_id == tenant_id,
+                BoardReportItemTable.item_type == "metric",
+            )
+            .order_by(BoardReportItemTable.sort_order.asc())
         )
-        .order_by(BoardReportItemTable.sort_order.asc())
-    )).all()
+    ).all()
     metrics = [
         BoardMetricRead(
             metric_key=m.item_key,
@@ -303,24 +305,30 @@ async def get_board_report(
         )
         for m in metric_rows
     ]
-    actions = (await session.scalars(
-        select(BoardReportActionTable)
-        .where(
-            BoardReportActionTable.report_id == report_id,
-            BoardReportActionTable.tenant_id == tenant_id,
+    actions = (
+        await session.scalars(
+            select(BoardReportActionTable)
+            .where(
+                BoardReportActionTable.report_id == report_id,
+                BoardReportActionTable.tenant_id == tenant_id,
+            )
+            .order_by(
+                BoardReportActionTable.priority.asc(), BoardReportActionTable.created_at.desc()
+            )
         )
-        .order_by(BoardReportActionTable.priority.asc(), BoardReportActionTable.created_at.desc())
-    )).all()
-    audit_rows = (await session.scalars(
-        select(AuditLogTable)
-        .where(
-            AuditLogTable.tenant_id == tenant_id,
-            AuditLogTable.entity_type == GovernanceAuditEntity.BOARD_REPORT.value,
-            AuditLogTable.entity_id == report_id,
+    ).all()
+    audit_rows = (
+        await session.scalars(
+            select(AuditLogTable)
+            .where(
+                AuditLogTable.tenant_id == tenant_id,
+                AuditLogTable.entity_type == GovernanceAuditEntity.BOARD_REPORT.value,
+                AuditLogTable.entity_id == report_id,
+            )
+            .order_by(AuditLogTable.created_at_utc.desc())
+            .limit(50)
         )
-        .order_by(AuditLogTable.created_at_utc.desc())
-        .limit(50)
-    )).all()
+    ).all()
     summary = BoardReportSummaryRead(
         report_id=report_id,
         period_key=row.period_key,
@@ -385,14 +393,18 @@ async def get_board_report_actions(
     tenant_id: str = Depends(get_api_key_and_tenant),
     session: AsyncSession = Depends(get_async_db),
 ) -> list[BoardActionRead]:
-    rows = (await session.scalars(
-        select(BoardReportActionTable)
-        .where(
-            BoardReportActionTable.report_id == report_id,
-            BoardReportActionTable.tenant_id == tenant_id,
+    rows = (
+        await session.scalars(
+            select(BoardReportActionTable)
+            .where(
+                BoardReportActionTable.report_id == report_id,
+                BoardReportActionTable.tenant_id == tenant_id,
+            )
+            .order_by(
+                BoardReportActionTable.priority.asc(), BoardReportActionTable.created_at.desc()
+            )
         )
-        .order_by(BoardReportActionTable.priority.asc(), BoardReportActionTable.created_at.desc())
-    )).all()
+    ).all()
     return [
         BoardActionRead(
             id=r.id,

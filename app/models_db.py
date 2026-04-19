@@ -1346,9 +1346,7 @@ class BoardReportSnapshotTable(Base):
     """Snapshot payloads for reproducible board packs."""
 
     __tablename__ = "board_report_snapshots"
-    __table_args__ = (
-        Index("idx_board_report_snapshots_tenant_report", "tenant_id", "report_id"),
-    )
+    __table_args__ = (Index("idx_board_report_snapshots_tenant_report", "tenant_id", "report_id"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -1367,9 +1365,7 @@ class BoardReportItemTable(Base):
     """Structured board report items (metrics and narratives)."""
 
     __tablename__ = "board_report_items"
-    __table_args__ = (
-        Index("idx_board_report_items_tenant_report", "tenant_id", "report_id"),
-    )
+    __table_args__ = (Index("idx_board_report_items_tenant_report", "tenant_id", "report_id"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -1396,9 +1392,7 @@ class BoardReportActionTable(Base):
     """Board action register associated with a snapshot report."""
 
     __tablename__ = "board_report_actions"
-    __table_args__ = (
-        Index("idx_board_report_actions_tenant_report", "tenant_id", "report_id"),
-    )
+    __table_args__ = (Index("idx_board_report_actions_tenant_report", "tenant_id", "report_id"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

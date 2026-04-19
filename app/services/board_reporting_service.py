@@ -238,17 +238,12 @@ async def compute_snapshot(
             value=readiness_pct,
             unit="percent",
             traffic_light=(
-                "green"
-                if readiness_pct >= 85
-                else "amber"
-                if readiness_pct >= 70
-                else "red"
+                "green" if readiness_pct >= 85 else "amber" if readiness_pct >= 70 else "red"
             ),
             trend_direction=readiness_trend,
             trend_delta=readiness_delta,
             narrative_de=(
-                "Anteil umgesetzter Controls (implemented/in_review) "
-                "im Tenant-Control-Register."
+                "Anteil umgesetzter Controls (implemented/in_review) im Tenant-Control-Register."
             ),
         ),
         BoardMetric(
@@ -338,4 +333,3 @@ async def derive_period_bounds(
     if prev_start >= prev_end:
         prev_start = prev_end.replace(tzinfo=UTC) if prev_end.tzinfo is None else prev_end
     return prev_start, prev_end
-
