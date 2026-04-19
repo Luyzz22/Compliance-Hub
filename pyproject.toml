@@ -9,6 +9,7 @@ authors = [
 ]
 
 dependencies = [
+  "aiosqlite>=0.20",
   "fastapi>=0.115",
   "opentelemetry-api>=1.27",
   "opentelemetry-sdk>=1.27",
