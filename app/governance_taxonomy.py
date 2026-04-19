@@ -23,6 +23,7 @@ class GovernanceAuditEntity(StrEnum):
     GOVERNANCE_CONTROL_EVIDENCE = "governance_control_evidence"
     GOVERNANCE_AUDIT_CASE = "governance_audit_case"
     BOARD_REPORT = "board_report"
+    REMEDIATION_ACTION = "remediation_action"
 
 
 class GovernanceAuditAction(StrEnum):
@@ -58,6 +59,10 @@ class GovernanceAuditAction(StrEnum):
     GOVERNANCE_AUDIT_CASE_CREATE = "governance_audit_case.create"
     GOVERNANCE_AUDIT_CASE_CONTROL_ATTACH = "governance_audit_case.control.attach"
     BOARD_REPORT_GENERATE = "board_report.generate"
+    REMEDIATION_ACTION_CREATE = "remediation_action.create"
+    REMEDIATION_ACTION_UPDATE = "remediation_action.update"
+    REMEDIATION_ACTION_COMMENT = "remediation_action.comment"
+    REMEDIATION_ACTION_GENERATE = "remediation_action.generate"
 
 
 class NIS2DeadlinePolicy:

@@ -1441,6 +1441,116 @@ class BoardReportMetricHistoryTable(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
 
+class RemediationActionTable(Base):
+    """Steuerbare Maßnahme zu Gaps, Reviews, Incidents und Board Actions (mandantenisoliert)."""
+
+    __tablename__ = "remediation_actions"
+    __table_args__ = (
+        Index("idx_remediation_actions_tenant_status", "tenant_id", "status"),
+        Index("idx_remediation_actions_tenant_due", "tenant_id", "due_at_utc"),
+        Index("idx_remediation_actions_tenant_category", "tenant_id", "category"),
+        UniqueConstraint("tenant_id", "dedupe_key", name="uq_remediation_actions_tenant_dedupe"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, default="medium")
+    owner: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    due_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    category: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="manual",
+    )
+    rule_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    dedupe_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    deferred_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class RemediationActionLinkTable(Base):
+    """Verknüpfung einer Maßnahme mit Controls, Audits, Incidents, Reports, Requirements."""
+
+    __tablename__ = "remediation_action_links"
+    __table_args__ = (
+        Index("idx_ral_tenant_action", "tenant_id", "action_id"),
+        Index("idx_ral_tenant_entity", "tenant_id", "entity_type", "entity_id"),
+        UniqueConstraint(
+            "tenant_id",
+            "action_id",
+            "entity_type",
+            "entity_id",
+            name="uq_ral_tenant_action_entity",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    action_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("remediation_actions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    entity_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    entity_id: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
+class RemediationCommentTable(Base):
+    """Kommentarthread zu einer Maßnahme."""
+
+    __tablename__ = "remediation_comments"
+    __table_args__ = (Index("idx_rc_tenant_action", "tenant_id", "action_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    action_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("remediation_actions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class RemediationStatusHistoryTable(Base):
+    """Immutable Statusübergänge (Audit Trail)."""
+
+    __tablename__ = "remediation_status_history"
+    __table_args__ = (
+        Index("idx_rsh_tenant_action_time", "tenant_id", "action_id", "changed_at_utc"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    action_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("remediation_actions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    from_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    changed_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    changed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class GovernanceEvidenceRequirementTable(Base):
     """Tenant-level evidence type expectations per framework (advisor-tunable; defaults in code)."""
 

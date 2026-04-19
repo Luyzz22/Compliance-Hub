@@ -135,6 +135,7 @@ from app.authority_audit_preparation_pack_models import (
     PreparationPackFocus,
 )
 from app.board_reporting_routes import router as board_reporting_router
+from app.remediation_actions_routes import router as remediation_actions_router
 from app.classification_models import (
     ClassificationOverrideRequest,
     ClassificationQuestionnaire,
@@ -579,6 +580,7 @@ app.include_router(operations_resilience_router)
 app.include_router(governance_controls_router)
 app.include_router(governance_audit_readiness_router)
 app.include_router(board_reporting_router)
+app.include_router(remediation_actions_router)
 
 logger = logging.getLogger(__name__)
 
