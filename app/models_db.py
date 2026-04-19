@@ -1317,6 +1317,131 @@ class GovernanceAuditCaseControlTable(Base):
     )
 
 
+class BoardReportTable(Base):
+    """Immutable board reporting header per tenant and period."""
+
+    __tablename__ = "board_reports"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "period_key", name="uq_board_reports_tenant_period"),
+        Index("idx_board_reports_tenant_generated", "tenant_id", "generated_at_utc"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    period_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    period_type: Mapped[str] = mapped_column(String(16), nullable=False, default="monthly")
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="generated")
+    generated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    generated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class BoardReportSnapshotTable(Base):
+    """Snapshot payloads for reproducible board packs."""
+
+    __tablename__ = "board_report_snapshots"
+    __table_args__ = (
+        Index("idx_board_report_snapshots_tenant_report", "tenant_id", "report_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    report_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("board_reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    snapshot_kind: Mapped[str] = mapped_column(String(32), nullable=False, default="full")
+    payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class BoardReportItemTable(Base):
+    """Structured board report items (metrics and narratives)."""
+
+    __tablename__ = "board_report_items"
+    __table_args__ = (
+        Index("idx_board_report_items_tenant_report", "tenant_id", "report_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    report_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("board_reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    item_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    item_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    label: Mapped[str] = mapped_column(String(255), nullable=False)
+    value_num: Mapped[float | None] = mapped_column(Float, nullable=True)
+    value_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    traffic_light: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    trend_direction: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    trend_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class BoardReportActionTable(Base):
+    """Board action register associated with a snapshot report."""
+
+    __tablename__ = "board_report_actions"
+    __table_args__ = (
+        Index("idx_board_report_actions_tenant_report", "tenant_id", "report_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    report_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("board_reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    action_title: Mapped[str] = mapped_column(String(500), nullable=False)
+    action_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    owner: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, default="medium")
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False, default="board")
+    source_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class BoardReportMetricHistoryTable(Base):
+    """Metric history for trend computations across report periods."""
+
+    __tablename__ = "board_report_metric_history"
+    __table_args__ = (
+        Index("idx_board_report_metric_history_tenant_metric", "tenant_id", "metric_key", "period_end"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    report_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("board_reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    metric_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    value_num: Mapped[float] = mapped_column(Float, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
 class GovernanceEvidenceRequirementTable(Base):
     """Tenant-level evidence type expectations per framework (advisor-tunable; defaults in code)."""
 
