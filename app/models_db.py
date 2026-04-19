@@ -1424,7 +1424,12 @@ class BoardReportMetricHistoryTable(Base):
 
     __tablename__ = "board_report_metric_history"
     __table_args__ = (
-        Index("idx_board_report_metric_history_tenant_metric", "tenant_id", "metric_key", "period_end"),
+        Index(
+            "idx_board_report_metric_history_tenant_metric",
+            "tenant_id",
+            "metric_key",
+            "period_end",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

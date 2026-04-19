@@ -18,7 +18,6 @@ from app.models_db import (
     ServiceHealthIncidentTable,
 )
 
-
 TrendDirection = Literal["up", "down", "stable"]
 TrafficLight = Literal["green", "amber", "red"]
 

@@ -34,7 +34,10 @@ from app.models_db import (
 )
 from app.services.board_reporting_service import compute_snapshot, derive_period_bounds
 
-router = APIRouter(prefix="/api/v1/governance/board-reports", tags=["governance", "board-reporting"])
+router = APIRouter(
+    prefix="/api/v1/governance/board-reports",
+    tags=["governance", "board-reporting"],
+)
 
 
 async def _audit_event(
