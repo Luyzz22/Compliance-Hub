@@ -62,7 +62,10 @@ def create_audit_case(
     ],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> GovernanceAuditCaseRead:
-    created = repo.create_case(tenant_id, body, created_by="api:governance-audits")
+    try:
+        created = repo.create_case(tenant_id, body, created_by="api:governance-audits")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     record_governance_audit(
         audit_repo,
         tenant_id=tenant_id,

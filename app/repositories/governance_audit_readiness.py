@@ -99,19 +99,27 @@ class GovernanceAuditReadinessRepository:
         framework_tags: list[str],
     ) -> None:
         ctrl_repo = GovernanceControlRepository(self._s)
-        items, _ = ctrl_repo.list_controls_page(
-            tenant_id,
-            framework_tag=None,
-            search=None,
-            offset=0,
-            limit=5000,
-        )
         want = {normalize_framework_tag(t) for t in framework_tags}
         now = datetime.now(UTC)
-        for c in items:
-            tags = {normalize_framework_tag(t) for t in c.framework_tags}
-            if want & tags:
-                self._attach_control_row(tenant_id, audit_case_id, c.id, now)
+        offset = 0
+        page_limit = 1000
+        while True:
+            items, total = ctrl_repo.list_controls_page(
+                tenant_id,
+                framework_tag=None,
+                search=None,
+                offset=offset,
+                limit=page_limit,
+            )
+            if not items:
+                break
+            for c in items:
+                tags = {normalize_framework_tag(t) for t in c.framework_tags}
+                if want & tags:
+                    self._attach_control_row(tenant_id, audit_case_id, c.id, now)
+            offset += len(items)
+            if offset >= total:
+                break
 
     def _attach_control_row(
         self,
@@ -173,9 +181,17 @@ class GovernanceAuditReadinessRepository:
                     framework_tag=n,
                 )
             )
-        if body.control_ids:
+        if body.control_ids is not None:
+            ctrl_repo = GovernanceControlRepository(self._s)
+            seen_control_ids: set[str] = set()
             for cid in body.control_ids:
-                self._attach_control_row(tenant_id, aid, cid[:36], now)
+                normalized_cid = cid.strip()
+                if not normalized_cid or normalized_cid in seen_control_ids:
+                    continue
+                seen_control_ids.add(normalized_cid)
+                if ctrl_repo.get_control(tenant_id, normalized_cid) is None:
+                    raise ValueError(f"Unknown control_id for tenant: {normalized_cid}")
+                self._attach_control_row(tenant_id, aid, normalized_cid, now)
         else:
             self._auto_attach_controls(tenant_id, aid, body.framework_tags)
         self._s.flush()
