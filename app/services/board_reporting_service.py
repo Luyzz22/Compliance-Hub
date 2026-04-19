@@ -14,7 +14,7 @@ from app.models_db import (
     GovernanceControlEvidenceTable,
     GovernanceControlReviewTable,
     GovernanceControlTable,
-    Nis2IncidentTable,
+    NIS2IncidentTable,
     ServiceHealthIncidentTable,
 )
 
@@ -179,9 +179,9 @@ async def compute_snapshot(
     open_nis2_incidents = await _scalar_int(
         session,
         select(func.count()).where(
-            Nis2IncidentTable.tenant_id == tenant_id,
-            Nis2IncidentTable.workflow_status.in_(["detected", "reported", "contained"]),
-            Nis2IncidentTable.severity.in_(["high", "critical"]),
+            NIS2IncidentTable.tenant_id == tenant_id,
+            NIS2IncidentTable.workflow_status.in_(["detected", "reported", "contained"]),
+            NIS2IncidentTable.severity.in_(["high", "critical"]),
         ),
     )
     open_critical_incidents = open_critical_ops_incidents + open_nis2_incidents
