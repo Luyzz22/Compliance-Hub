@@ -63,10 +63,7 @@ def apply(engine: Engine) -> bool:
             )
         )
         conn.execute(
-            text(
-                "CREATE INDEX ix_remediation_actions_rule_key "
-                "ON remediation_actions (rule_key)"
-            )
+            text("CREATE INDEX ix_remediation_actions_rule_key ON remediation_actions (rule_key)")
         )
         conn.execute(
             text(
@@ -121,9 +118,7 @@ def apply(engine: Engine) -> bool:
             """)
         )
         conn.execute(
-            text(
-                "CREATE INDEX idx_rc_tenant_action ON remediation_comments (tenant_id, action_id)"
-            )
+            text("CREATE INDEX idx_rc_tenant_action ON remediation_comments (tenant_id, action_id)")
         )
 
         conn.execute(

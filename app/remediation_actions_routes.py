@@ -382,9 +382,7 @@ async def get_remediation_action(
         priority=row.priority,
         owner=row.owner,
         due_at_utc=row.due_at_utc,
-        is_overdue=_remediation_is_overdue(
-            status=row.status, due_at_utc=row.due_at_utc, now=now
-        ),
+        is_overdue=_remediation_is_overdue(status=row.status, due_at_utc=row.due_at_utc, now=now),
         category=row.category,
         rule_key=row.rule_key,
         deferred_note=row.deferred_note,
