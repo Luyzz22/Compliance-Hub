@@ -79,7 +79,9 @@ def _actor(request: Request) -> str:
 def _remediation_is_overdue(*, status: str, due_at_utc: datetime | None, now: datetime) -> bool:
     if due_at_utc is None or status not in ("open", "in_progress", "blocked"):
         return False
-    return due_at_utc < now
+    due = due_at_utc if due_at_utc.tzinfo is not None else due_at_utc.replace(tzinfo=UTC)
+    now_aware = now if now.tzinfo is not None else now.replace(tzinfo=UTC)
+    return due < now_aware
 
 
 def _ilike_search_term(raw: str) -> str:
