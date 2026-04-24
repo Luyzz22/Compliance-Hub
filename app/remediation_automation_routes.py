@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from app.db_tenant import get_async_db
 from app.governance_taxonomy import GovernanceAuditAction, GovernanceAuditEntity
 from app.models_db import (
     AuditLogTable,
+    RemediationActionTable,
     RemediationAutomationRunTable,
     RemediationEscalationTable,
     RemediationReminderTable,
@@ -181,11 +182,25 @@ async def list_escalations(
         stmt = stmt.where(RemediationEscalationTable.severity == severity)
     stmt = stmt.order_by(RemediationEscalationTable.created_at_utc.desc()).limit(limit)
     rows = (await session.scalars(stmt)).all()
+    action_ids = list({r.action_id for r in rows})
+    title_map: dict[str, str] = {}
+    if action_ids:
+        pairs = (
+            await session.execute(
+                select(RemediationActionTable.id, RemediationActionTable.title).where(
+                    RemediationActionTable.tenant_id == tenant_id,
+                    RemediationActionTable.id.in_(action_ids),
+                )
+            )
+        ).all()
+        for aid, title in pairs:
+            title_map[str(aid)] = title
     return RemediationEscalationListResponse(
         items=[
             RemediationEscalationListItem(
                 id=r.id,
                 action_id=r.action_id,
+                action_title=title_map.get(r.action_id),
                 severity=r.severity,
                 reason_code=r.reason_code,
                 detail=r.detail,
@@ -210,11 +225,25 @@ async def list_reminders(
         stmt = stmt.where(RemediationReminderTable.status == status_filter)
     stmt = stmt.order_by(RemediationReminderTable.remind_at_utc.asc()).limit(limit)
     rows = (await session.scalars(stmt)).all()
+    r_action_ids = list({r.action_id for r in rows})
+    r_title_map: dict[str, str] = {}
+    if r_action_ids:
+        rpairs = (
+            await session.execute(
+                select(RemediationActionTable.id, RemediationActionTable.title).where(
+                    RemediationActionTable.tenant_id == tenant_id,
+                    RemediationActionTable.id.in_(r_action_ids),
+                )
+            )
+        ).all()
+        for aid, title in rpairs:
+            r_title_map[str(aid)] = title
     return RemediationReminderListResponse(
         items=[
             RemediationReminderListItem(
                 id=r.id,
                 action_id=r.action_id,
+                action_title=r_title_map.get(r.action_id),
                 kind=r.kind,
                 remind_at_utc=r.remind_at_utc,
                 status=r.status,
@@ -241,8 +270,7 @@ async def acknowledge_escalation_for_action(
     actor = _actor(request)
     rows = (
         await session.scalars(
-            select(RemediationEscalationTable)
-            .where(
+            select(RemediationEscalationTable).where(
                 RemediationEscalationTable.tenant_id == tenant_id,
                 RemediationEscalationTable.action_id == action_id,
                 RemediationEscalationTable.status == "open",
@@ -250,7 +278,7 @@ async def acknowledge_escalation_for_action(
         )
     ).all()
     if not rows:
-        raise HTTPException(status_code=404, detail="No open escalations for this action.")
+        return AcknowledgeEscalationResponse(acknowledged=0, escalation_ids=[])
     now = datetime.now(UTC)
     ids: list[str] = []
     for r in rows:

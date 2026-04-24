@@ -9,6 +9,7 @@ export interface RemediationAutomationSummaryDto {
 export interface RemediationEscalationItemDto {
   id: string;
   action_id: string;
+  action_title?: string | null;
   severity: string;
   reason_code: string;
   detail: string | null;
@@ -20,6 +21,7 @@ export interface RemediationEscalationItemDto {
 export interface RemediationReminderItemDto {
   id: string;
   action_id: string;
+  action_title?: string | null;
   kind: string;
   remind_at_utc: string;
   status: string;
@@ -52,8 +54,13 @@ function apiKey(): string {
   );
 }
 
-function headers(tenantId: string): Record<string, string> {
-  return { "x-api-key": apiKey(), "x-tenant-id": tenantId, "Content-Type": "application/json" };
+function headers(tenantId: string, extra?: Record<string, string>): Record<string, string> {
+  return {
+    "x-api-key": apiKey(),
+    "x-tenant-id": tenantId,
+    "Content-Type": "application/json",
+    ...extra,
+  };
 }
 
 const BASE = "/api/v1/governance/remediation-actions";
@@ -116,4 +123,33 @@ export async function fetchReminders(
   });
   if (!res.ok) throw new Error(`Reminders ${res.status}`);
   return (await res.json()) as { items: RemediationReminderItemDto[] };
+}
+
+export interface AcknowledgeEscalationResponseDto {
+  acknowledged: number;
+  escalation_ids: string[];
+}
+
+export async function postAcknowledgeEscalation(
+  tenantId: string,
+  actionId: string,
+  options?: { actorId?: string },
+): Promise<AcknowledgeEscalationResponseDto> {
+  const base = apiBase().replace(/\/$/, "");
+  const h = options?.actorId
+    ? headers(tenantId, { "x-actor-id": options.actorId })
+    : headers(tenantId);
+  const res = await fetch(
+    `${base}${BASE}/${encodeURIComponent(actionId)}/acknowledge-escalation`,
+    {
+      method: "POST",
+      headers: h,
+      cache: "no-store",
+    },
+  );
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Quittieren fehlgeschlagen (${res.status}): ${t || res.statusText}`);
+  }
+  return (await res.json()) as AcknowledgeEscalationResponseDto;
 }

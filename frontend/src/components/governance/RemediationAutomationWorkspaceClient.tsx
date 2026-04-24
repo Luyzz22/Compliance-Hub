@@ -9,6 +9,7 @@ import {
   fetchAutomationSummary,
   fetchEscalations,
   fetchReminders,
+  postAcknowledgeEscalation,
   postAutomationRun,
   type RemediationAutomationRunResponseDto,
   type RemediationAutomationSummaryDto,
@@ -34,7 +35,9 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
   const [lastRun, setLastRun] = useState<RemediationAutomationRunResponseDto | null>(null);
   const [sevFilter, setSevFilter] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ackingActionId, setAckingActionId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setErr(null);
@@ -60,9 +63,16 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
     void reload();
   }, [reload]);
 
+  useEffect(() => {
+    if (!successMsg) return;
+    const t = window.setTimeout(() => setSuccessMsg(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [successMsg]);
+
   async function onRun() {
     setBusy(true);
     setErr(null);
+    setSuccessMsg(null);
     try {
       const res = await postAutomationRun(tenantId);
       setLastRun(res);
@@ -71,6 +81,29 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
       setErr(e instanceof Error ? e.message : "Lauf fehlgeschlagen");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onAcknowledgeAction(actionId: string) {
+    setAckingActionId(actionId);
+    setErr(null);
+    setSuccessMsg(null);
+    try {
+      const r = await postAcknowledgeEscalation(tenantId, actionId);
+      if (r.acknowledged === 0) {
+        setSuccessMsg("Keine offenen Eskalationen mehr (bereits quittiert oder entfallen).");
+      } else {
+        setSuccessMsg(
+          r.acknowledged === 1
+            ? "Eine Eskalation wurde quittiert."
+            : `${r.acknowledged} Eskalationen wurden quittiert.`,
+        );
+      }
+      await reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Quittieren fehlgeschlagen");
+    } finally {
+      setAckingActionId(null);
     }
   }
 
@@ -104,6 +137,11 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
         {err ? (
           <p className="text-sm text-rose-800" role="alert">
             {err}
+          </p>
+        ) : null}
+        {successMsg ? (
+          <p className="text-sm text-emerald-900" role="status">
+            {successMsg}
           </p>
         ) : null}
 
@@ -171,29 +209,51 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
               <table className="min-w-full divide-y divide-slate-200 text-left">
                 <thead className="bg-slate-50/90 text-xs font-semibold text-slate-500">
                   <tr>
+                    <th className="px-2 py-2">Maßnahme</th>
                     <th className="px-2 py-2">Severity</th>
                     <th className="px-2 py-2">Grund</th>
-                    <th className="px-2 py-2">Action</th>
-                    <th className="px-2 py-2">Zeit</th>
+                    <th className="px-2 py-2">Erfasst</th>
+                    <th className="px-2 py-2 w-[1%] whitespace-nowrap">Aktion</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {escalations.length === 0 ? (
                     <tr>
-                      <td className="px-2 py-4 text-slate-600" colSpan={4}>
+                      <td className="px-2 py-4 text-slate-600" colSpan={5}>
                         Keine offenen Eskalationen in dieser Filterung.
                       </td>
                     </tr>
                   ) : (
                     escalations.map((x) => (
                       <tr key={x.id}>
+                        <td className="px-2 py-2 max-w-[14rem]">
+                          <p className="font-medium text-slate-900 line-clamp-2" title={x.action_title || undefined}>
+                            {x.action_title || "—"}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[0.7rem] text-slate-500">{x.action_id}</p>
+                          {x.detail ? (
+                            <p className="mt-1 text-xs text-slate-500 line-clamp-2" title={x.detail}>
+                              {x.detail}
+                            </p>
+                          ) : null}
+                        </td>
                         <td className="px-2 py-2">
                           <StatusBadge status={x.severity} tone={sevTone(x.severity)} />
                         </td>
                         <td className="px-2 py-2 text-slate-700">{x.reason_code}</td>
-                        <td className="px-2 py-2 font-mono text-xs">{x.action_id}</td>
                         <td className="px-2 py-2 text-slate-600">
                           {new Date(x.created_at_utc).toLocaleString("de-DE")}
+                        </td>
+                        <td className="px-2 py-2">
+                          <button
+                            type="button"
+                            className={CH_BTN_SECONDARY}
+                            disabled={busy || ackingActionId === x.action_id}
+                            aria-label={`Eskalationen zu Maßnahme ${x.action_id} quittieren`}
+                            onClick={() => void onAcknowledgeAction(x.action_id)}
+                          >
+                            {ackingActionId === x.action_id ? "…" : "Quittieren"}
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -210,7 +270,7 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
                 <thead className="bg-slate-50/90 text-xs font-semibold text-slate-500">
                   <tr>
                     <th className="px-2 py-2">Fällig (UTC)</th>
-                    <th className="px-2 py-2">Action</th>
+                    <th className="px-2 py-2">Maßnahme</th>
                     <th className="px-2 py-2">Kind</th>
                   </tr>
                 </thead>
@@ -227,7 +287,10 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
                         <td className="px-2 py-2 text-slate-800">
                           {new Date(m.remind_at_utc).toLocaleString("de-DE")}
                         </td>
-                        <td className="px-2 py-2 font-mono text-xs">{m.action_id}</td>
+                        <td className="px-2 py-2 max-w-[14rem]">
+                          <p className="font-medium text-slate-900 line-clamp-2">{m.action_title || "—"}</p>
+                          <p className="mt-0.5 font-mono text-[0.7rem] text-slate-500">{m.action_id}</p>
+                        </td>
                         <td className="px-2 py-2">{m.kind}</td>
                       </tr>
                     ))
@@ -239,8 +302,9 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
         </div>
 
         <p className="mt-6 text-xs text-slate-500">
-          Quittieren von Eskalationen erfolgt pro Maßnahme im Detail (API:{" "}
-          <code className="rounded bg-slate-100 px-1">acknowledge-escalation</code>).
+          „Quittieren“ schließt alle noch offenen Eskalationen zu genau dieser Maßnahme ab (pro
+          Mandant, auditierbar über{" "}
+          <code className="rounded bg-slate-100 px-1">remediation_escalation.ack</code>).
         </p>
       </GovernanceWorkspaceLayout>
     </div>

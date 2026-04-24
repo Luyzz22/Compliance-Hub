@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
@@ -60,7 +61,9 @@ def test_automation_run_and_escalations_list() -> None:
     esc = client.get(f"{BASE}/escalations?status=open", headers=h)
     assert esc.status_code == 200
     rows = esc.json()["items"]
-    assert any(x["action_id"] == aid and x["severity"] == "overdue" for x in rows)
+    match = next(x for x in rows if x["action_id"] == aid and x["severity"] == "overdue")
+    assert "action_title" in match
+    assert match.get("action_title") == "Automation overdue fixture"
 
     ack = client.post(f"{BASE}/{aid}/acknowledge-escalation", headers=h)
     assert ack.status_code == 200, ack.text
@@ -68,6 +71,18 @@ def test_automation_run_and_escalations_list() -> None:
 
     esc2 = client.get(f"{BASE}/escalations?status=open", headers=h)
     assert not any(x["action_id"] == aid for x in esc2.json()["items"])
+
+
+def test_acknowledge_idempotent_when_no_open_escalations() -> None:
+    h = _headers()
+    r = client.post(
+        f"{BASE}/{uuid.uuid4()}/acknowledge-escalation",
+        headers=h,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["acknowledged"] == 0
+    assert body["escalation_ids"] == []
 
 
 def test_automation_tenant_isolation() -> None:

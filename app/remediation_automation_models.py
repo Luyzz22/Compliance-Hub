@@ -19,6 +19,7 @@ class RemediationAutomationRunResponse(BaseModel):
 class RemediationEscalationListItem(BaseModel):
     id: str
     action_id: str
+    action_title: str | None = None
     severity: str
     reason_code: str
     detail: str | None
@@ -34,6 +35,7 @@ class RemediationEscalationListResponse(BaseModel):
 class RemediationReminderListItem(BaseModel):
     id: str
     action_id: str
+    action_title: str | None = None
     kind: str
     remind_at_utc: datetime
     status: str
