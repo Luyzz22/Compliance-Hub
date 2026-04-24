@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import asc, case, desc, nulls_last, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_dependencies import get_api_key_and_tenant
@@ -15,6 +15,7 @@ from app.db_tenant import get_async_db
 from app.governance_taxonomy import GovernanceAuditAction, GovernanceAuditEntity
 from app.models_db import (
     AuditLogTable,
+    GovernanceAuditCaseTable,
     GovernanceControlTable,
     RemediationActionLinkTable,
     RemediationActionTable,
@@ -35,6 +36,7 @@ from app.remediation_actions_models import (
     RemediationSummaryRead,
 )
 from app.services.remediation_actions_service import (
+    ENTITY_GOVERNANCE_AUDIT_CASE,
     ENTITY_GOVERNANCE_CONTROL,
     generate_remediation_actions,
     tenant_summary_counts,
@@ -74,6 +76,17 @@ def _actor(request: Request) -> str:
     return request.headers.get("x-actor-id", "api:governance-remediation")
 
 
+def _remediation_is_overdue(*, status: str, due_at_utc: datetime | None, now: datetime) -> bool:
+    if due_at_utc is None or status not in ("open", "in_progress", "blocked"):
+        return False
+    return due_at_utc < now
+
+
+def _ilike_search_term(raw: str) -> str:
+    t = raw.strip()
+    return t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 async def _load_links(
     session: AsyncSession, tenant_id: str, action_ids: list[str]
 ) -> dict[str, list]:
@@ -106,9 +119,20 @@ async def list_remediation_actions(
     framework_tag: str | None = Query(
         None, description="Filter über verknüpfte Controls, z. B. EU_AI_ACT"
     ),
+    search: str | None = Query(
+        None,
+        max_length=200,
+        description="Teilstring-Suche im Titel (mandanten-isoliert, LIKE mit Escape).",
+    ),
+    sort: str = Query(
+        "updated_desc",
+        pattern="^(updated_desc|due_asc|due_desc|priority_desc)$",
+        description="Sortierung der Liste",
+    ),
     limit: int = Query(200, ge=1, le=500),
 ) -> RemediationActionListResponse:
-    summary_raw = await tenant_summary_counts(session, tenant_id)
+    now = datetime.now(UTC)
+    summary_raw = await tenant_summary_counts(session, tenant_id, now=now)
     stmt = select(RemediationActionTable).where(RemediationActionTable.tenant_id == tenant_id)
     if status_filter:
         stmt = stmt.where(RemediationActionTable.status == status_filter)
@@ -118,6 +142,10 @@ async def list_remediation_actions(
         stmt = stmt.where(RemediationActionTable.category == category)
     if rule_key:
         stmt = stmt.where(RemediationActionTable.rule_key == rule_key)
+    if search and search.strip():
+        term = _ilike_search_term(search)
+        if term:
+            stmt = stmt.where(RemediationActionTable.title.ilike(f"%{term}%", escape="\\"))
     if framework_tag:
         subq = (
             select(RemediationActionLinkTable.action_id)
@@ -134,7 +162,30 @@ async def list_remediation_actions(
             .distinct()
         )
         stmt = stmt.where(RemediationActionTable.id.in_(subq))
-    stmt = stmt.order_by(RemediationActionTable.updated_at_utc.desc()).limit(limit)
+    prio_rank = case(
+        (RemediationActionTable.priority == "critical", 4),
+        (RemediationActionTable.priority == "high", 3),
+        (RemediationActionTable.priority == "medium", 2),
+        else_=1,
+    )
+    if sort == "due_asc":
+        stmt = stmt.order_by(
+            nulls_last(asc(RemediationActionTable.due_at_utc)),
+            desc(RemediationActionTable.updated_at_utc),
+        )
+    elif sort == "due_desc":
+        stmt = stmt.order_by(
+            nulls_last(desc(RemediationActionTable.due_at_utc)),
+            desc(RemediationActionTable.updated_at_utc),
+        )
+    elif sort == "priority_desc":
+        stmt = stmt.order_by(
+            desc(prio_rank),
+            desc(RemediationActionTable.updated_at_utc),
+        )
+    else:
+        stmt = stmt.order_by(desc(RemediationActionTable.updated_at_utc))
+    stmt = stmt.limit(limit)
     rows = (await session.scalars(stmt)).all()
     ids = [r.id for r in rows]
     link_map = await _load_links(session, tenant_id, ids)
@@ -149,6 +200,9 @@ async def list_remediation_actions(
                 priority=r.priority,
                 owner=r.owner,
                 due_at_utc=r.due_at_utc,
+                is_overdue=_remediation_is_overdue(
+                    status=r.status, due_at_utc=r.due_at_utc, now=now
+                ),
                 category=r.category,
                 rule_key=r.rule_key,
                 updated_at_utc=r.updated_at_utc,
@@ -162,6 +216,7 @@ async def list_remediation_actions(
         items=items,
         summary=RemediationSummaryRead(
             open_actions=summary_raw["open_actions"],
+            backlog_actions=summary_raw["backlog_actions"],
             overdue_actions=summary_raw["overdue_actions"],
             blocked_actions=summary_raw["blocked_actions"],
             due_this_week=summary_raw["due_this_week"],
@@ -186,6 +241,13 @@ async def create_remediation_action(
                 raise HTTPException(
                     status_code=400,
                     detail="Invalid governance_control link for this tenant.",
+                )
+        elif link.entity_type == ENTITY_GOVERNANCE_AUDIT_CASE:
+            ac = await session.get(GovernanceAuditCaseTable, link.entity_id)
+            if ac is None or ac.tenant_id != tenant_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid governance_audit_case link for this tenant.",
                 )
 
     session.add(
@@ -249,17 +311,28 @@ async def generate_remediation_actions_endpoint(
     session: AsyncSession = Depends(get_async_db),
 ) -> RemediationGenerateResponse:
     actor = _actor(request)
-    n, touched = await generate_remediation_actions(session, tenant_id=tenant_id, actor=actor)
+    evaluated_at = datetime.now(UTC)
+    n, touched = await generate_remediation_actions(
+        session, tenant_id=tenant_id, actor=actor, now=evaluated_at
+    )
     await _audit_event(
         session,
         tenant_id=tenant_id,
         actor=actor,
         action=GovernanceAuditAction.REMEDIATION_ACTION_GENERATE.value,
         entity_id=tenant_id,
-        payload={"created_count": n, "rule_keys": touched},
+        payload={
+            "created_count": n,
+            "rule_keys": touched,
+            "evaluated_at_utc": evaluated_at.isoformat(),
+        },
     )
     await session.commit()
-    return RemediationGenerateResponse(created_count=n, rule_keys_touched=touched)
+    return RemediationGenerateResponse(
+        created_count=n,
+        rule_keys_touched=touched,
+        evaluated_at_utc=evaluated_at,
+    )
 
 
 @router.get("/{action_id}", response_model=RemediationActionDetailRead)
@@ -268,6 +341,7 @@ async def get_remediation_action(
     tenant_id: str = Depends(get_api_key_and_tenant),
     session: AsyncSession = Depends(get_async_db),
 ) -> RemediationActionDetailRead:
+    now = datetime.now(UTC)
     row = await session.get(RemediationActionTable, action_id)
     if row is None or row.tenant_id != tenant_id:
         raise HTTPException(status_code=404, detail="Remediation action not found.")
@@ -308,6 +382,9 @@ async def get_remediation_action(
         priority=row.priority,
         owner=row.owner,
         due_at_utc=row.due_at_utc,
+        is_overdue=_remediation_is_overdue(
+            status=row.status, due_at_utc=row.due_at_utc, now=now
+        ),
         category=row.category,
         rule_key=row.rule_key,
         deferred_note=row.deferred_note,
@@ -375,6 +452,10 @@ async def patch_remediation_action(
     if body.status is not None:
         row.status = body.status
     row.updated_at_utc = datetime.now(UTC)
+    hist_note: str | None = None
+    if body.status_change_note is not None:
+        stripped = body.status_change_note.strip()
+        hist_note = stripped if stripped else None
     if body.status is not None and body.status != prev_status:
         session.add(
             RemediationStatusHistoryTable(
@@ -385,7 +466,7 @@ async def patch_remediation_action(
                 to_status=body.status,
                 changed_at_utc=row.updated_at_utc,
                 changed_by=actor,
-                note=None,
+                note=hist_note,
             )
         )
     await _audit_event(

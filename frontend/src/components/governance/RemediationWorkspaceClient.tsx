@@ -54,12 +54,20 @@ function sourceLabel(row: RemediationActionListItemDto): string {
   }
 }
 
+const STATUS_LABEL_DE: Record<string, string> = {
+  open: "Offen",
+  in_progress: "In Bearbeitung",
+  blocked: "Blockiert",
+  done: "Erledigt",
+  accepted_risk: "Risiko akzeptiert",
+};
+
 function linkHint(entityType: string): string {
   switch (entityType) {
     case "governance_control":
       return "Control";
     case "governance_audit_case":
-      return "Audit Case";
+      return "Audit-Fall";
     case "service_health_incident":
       return "Ops Incident";
     case "board_report":
@@ -88,6 +96,16 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
   const [priorityFilter, setPriorityFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [frameworkTag, setFrameworkTag] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [sortKey, setSortKey] = useState<
+    "updated_desc" | "due_asc" | "due_desc" | "priority_desc"
+  >("updated_desc");
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearchDebounced(searchInput.trim()), 400);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
 
   const reload = useCallback(async () => {
     setError(null);
@@ -97,6 +115,8 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
         priority: priorityFilter || undefined,
         category: categoryFilter || undefined,
         framework_tag: frameworkTag || undefined,
+        search: searchDebounced || undefined,
+        sort: sortKey,
         limit: 300,
       });
       setPack(next);
@@ -106,7 +126,15 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Laden fehlgeschlagen");
     }
-  }, [tenantId, statusFilter, priorityFilter, categoryFilter, frameworkTag]);
+  }, [
+    tenantId,
+    statusFilter,
+    priorityFilter,
+    categoryFilter,
+    frameworkTag,
+    searchDebounced,
+    sortKey,
+  ]);
 
   useEffect(() => {
     void reload();
@@ -175,11 +203,18 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
         </p>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <article className={`${CH_CARD} border-slate-200/80`}>
-          <p className={CH_SECTION_LABEL}>Offene Maßnahmen</p>
+          <p className={CH_SECTION_LABEL}>Offen + In Arbeit</p>
           <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
             {summary?.open_actions ?? "—"}
+          </p>
+        </article>
+        <article className={`${CH_CARD} border-slate-200/80`}>
+          <p className={CH_SECTION_LABEL}>Aktiver Backlog</p>
+          <p className="mt-1 text-xs text-slate-500">inkl. blockiert</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums text-slate-900">
+            {summary?.backlog_actions ?? "—"}
           </p>
         </article>
         <article className={`${CH_CARD} border-slate-200/80`}>
@@ -203,6 +238,40 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
       </section>
 
       <div className="flex flex-wrap items-end gap-3">
+        <label className="flex min-w-[12rem] flex-col text-xs font-medium text-slate-600">
+          Titelsuche
+          <input
+            type="search"
+            className="mt-1 rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+            placeholder="z. B. Evidence, Board, Incident…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            autoComplete="off"
+          />
+        </label>
+        <label className="flex flex-col text-xs font-medium text-slate-600">
+          Sortierung
+          <select
+            className="mt-1 min-w-[11rem] rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+            value={sortKey}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (
+                v === "updated_desc" ||
+                v === "due_asc" ||
+                v === "due_desc" ||
+                v === "priority_desc"
+              ) {
+                setSortKey(v);
+              }
+            }}
+          >
+            <option value="updated_desc">Zuletzt geändert</option>
+            <option value="due_asc">Fälligkeit (aufsteigend)</option>
+            <option value="due_desc">Fälligkeit (absteigend)</option>
+            <option value="priority_desc">Priorität</option>
+          </select>
+        </label>
         <label className="flex flex-col text-xs font-medium text-slate-600">
           Status
           <select
@@ -211,11 +280,11 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="">Alle</option>
-            <option value="open">open</option>
-            <option value="in_progress">in_progress</option>
-            <option value="blocked">blocked</option>
-            <option value="done">done</option>
-            <option value="accepted_risk">accepted_risk</option>
+            <option value="open">{STATUS_LABEL_DE.open}</option>
+            <option value="in_progress">{STATUS_LABEL_DE.in_progress}</option>
+            <option value="blocked">{STATUS_LABEL_DE.blocked}</option>
+            <option value="done">{STATUS_LABEL_DE.done}</option>
+            <option value="accepted_risk">{STATUS_LABEL_DE.accepted_risk}</option>
           </select>
         </label>
         <label className="flex flex-col text-xs font-medium text-slate-600">
@@ -303,9 +372,16 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
                         <td className="px-3 py-2 text-slate-700">{row.priority}</td>
                         <td className="px-3 py-2 text-slate-600">{row.owner ?? "—"}</td>
                         <td className="px-3 py-2 text-slate-600">
-                          {row.due_at_utc
-                            ? new Date(row.due_at_utc).toLocaleDateString("de-DE")
-                            : "—"}
+                          {row.due_at_utc ? (
+                            <span className="inline-flex flex-col gap-0.5">
+                              <span>{new Date(row.due_at_utc).toLocaleDateString("de-DE")}</span>
+                              {row.is_overdue === true ? (
+                                <span className="text-xs font-medium text-rose-700">überfällig</span>
+                              ) : null}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="px-3 py-2 text-slate-600">{sourceLabel(row)}</td>
                       </tr>
@@ -344,10 +420,15 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
                   </div>
                   <div className="flex justify-between gap-2 border-b border-slate-100 py-1">
                     <dt className="text-slate-500">Fällig</dt>
-                    <dd>
+                    <dd className="text-right">
                       {detail.due_at_utc
                         ? new Date(detail.due_at_utc).toLocaleString("de-DE")
                         : "—"}
+                      {detail.is_overdue === true ? (
+                        <span className="mt-0.5 block text-xs font-medium text-rose-700">
+                          überfällig (aktiver Status)
+                        </span>
+                      ) : null}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2 border-b border-slate-100 py-1">
@@ -421,11 +502,17 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
                   <p className={CH_SECTION_LABEL}>Status-Historie</p>
                   <ul className="mt-2 space-y-1 text-xs text-slate-600">
                     {detail.status_history.map((h) => (
-                      <li key={h.id}>
-                        {(h.from_status ?? "∅")} → {h.to_status}{" "}
-                        <time dateTime={h.changed_at_utc}>
-                          ({new Date(h.changed_at_utc).toLocaleString("de-DE")})
-                        </time>
+                      <li key={h.id} className="rounded border border-slate-100/80 bg-white/60 px-2 py-1.5">
+                        <span>
+                          {(h.from_status ?? "∅")} → {h.to_status}{" "}
+                          <time dateTime={h.changed_at_utc} className="text-slate-500">
+                            ({new Date(h.changed_at_utc).toLocaleString("de-DE")}
+                            {h.changed_by ? ` · ${h.changed_by}` : ""})
+                          </time>
+                        </span>
+                        {h.note ? (
+                          <p className="mt-1 text-slate-700">Anmerkung: {h.note}</p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>

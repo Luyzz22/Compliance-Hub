@@ -1,5 +1,6 @@
 export interface RemediationSummaryDto {
   open_actions: number;
+  backlog_actions: number;
   overdue_actions: number;
   blocked_actions: number;
   due_this_week: number;
@@ -17,6 +18,7 @@ export interface RemediationActionListItemDto {
   priority: string;
   owner: string | null;
   due_at_utc: string | null;
+  is_overdue: boolean;
   category: string;
   rule_key: string | null;
   updated_at_utc: string;
@@ -53,6 +55,7 @@ export interface RemediationActionDetailDto {
   priority: string;
   owner: string | null;
   due_at_utc: string | null;
+  is_overdue: boolean;
   category: string;
   rule_key: string | null;
   deferred_note: string | null;
@@ -67,6 +70,7 @@ export interface RemediationActionDetailDto {
 export interface RemediationGenerateResponseDto {
   created_count: number;
   rule_keys_touched: string[];
+  evaluated_at_utc: string;
 }
 
 function apiBase(): string {
@@ -97,6 +101,8 @@ export async function fetchRemediationActions(
     category?: string;
     rule_key?: string;
     framework_tag?: string;
+    search?: string;
+    sort?: "updated_desc" | "due_asc" | "due_desc" | "priority_desc";
     limit?: number;
   } = {},
 ): Promise<RemediationListResponseDto> {
@@ -106,6 +112,8 @@ export async function fetchRemediationActions(
   if (params.category) qs.set("category", params.category);
   if (params.rule_key) qs.set("rule_key", params.rule_key);
   if (params.framework_tag) qs.set("framework_tag", params.framework_tag);
+  if (params.search?.trim()) qs.set("search", params.search.trim());
+  if (params.sort) qs.set("sort", params.sort);
   if (params.limit != null) qs.set("limit", String(params.limit));
   const q = qs.toString();
   const base = apiBase().replace(/\/$/, "");

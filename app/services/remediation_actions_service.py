@@ -12,6 +12,7 @@ from app.models_db import (
     AISystemTable,
     BoardReportActionTable,
     GovernanceAuditCaseControlTable,
+    GovernanceAuditCaseTable,
     GovernanceControlEvidenceTable,
     GovernanceControlReviewTable,
     GovernanceControlTable,
@@ -34,6 +35,7 @@ RULE_AI_ACT_HIGH_BASELINE = "ai_act_high_risk_baseline"
 RULE_NIS2_BASELINE_PRIORITY = "nis2_baseline_priority"
 
 ENTITY_GOVERNANCE_CONTROL = "governance_control"
+ENTITY_GOVERNANCE_AUDIT_CASE = "governance_audit_case"
 ENTITY_BOARD_REPORT_ACTION = "board_report_action"
 ENTITY_BOARD_REPORT = "board_report"
 ENTITY_SERVICE_HEALTH_INCIDENT = "service_health_incident"
@@ -336,15 +338,21 @@ async def generate_remediation_actions(
             owner=None,
         )
 
-    # 8) Audit-Scope: Controls ohne Evidence, nicht „implemented“ (anderes Dedupe als Regel 1).
-    scoped = (
-        await session.scalars(
-            select(GovernanceAuditCaseControlTable.control_id)
+    # 8) Audit-Scope: je Audit-Case + Control ohne Evidence, nicht „implemented“ (Dedupe pro Case).
+    scoped_pairs = (
+        await session.execute(
+            select(
+                GovernanceAuditCaseControlTable.audit_case_id,
+                GovernanceAuditCaseControlTable.control_id,
+            )
             .where(GovernanceAuditCaseControlTable.tenant_id == tenant_id)
             .distinct()
         )
     ).all()
-    for cid in scoped[:200]:
+    for audit_case_id, cid in scoped_pairs[:200]:
+        ac = await session.get(GovernanceAuditCaseTable, audit_case_id)
+        if ac is None or ac.tenant_id != tenant_id:
+            continue
         ctl = await session.get(GovernanceControlTable, cid)
         if ctl is None or ctl.tenant_id != tenant_id:
             continue
@@ -359,19 +367,22 @@ async def generate_remediation_actions(
         )
         if has_ev > 0:
             continue
-        dk = f"audit_scope_no_evidence:{cid}"
+        dk = f"audit_scope_no_evidence:{audit_case_id}:{cid}"
         await _create(
             dedupe_key=dk,
             title=f"Audit Readiness: Nachweis vorbereiten — {ctl.title}",
             description=(
-                "Kontrolle ist einem Audit Case zugeordnet, ist aber nicht umgesetzt und ohne "
-                "Evidence — Umsetzung oder Nachweisplan für Audit Readiness."
+                f"Kontrolle ist Audit-Case {audit_case_id} zugeordnet, ist aber nicht umgesetzt "
+                "und ohne Evidence — Umsetzung oder Nachweisplan für Audit Readiness."
             ),
             category="audit",
             rule_key=RULE_EVIDENCE_GAP,
             priority="medium",
             due=ts + timedelta(days=21),
-            links=[(ENTITY_GOVERNANCE_CONTROL, cid)],
+            links=[
+                (ENTITY_GOVERNANCE_AUDIT_CASE, audit_case_id),
+                (ENTITY_GOVERNANCE_CONTROL, cid),
+            ],
             owner=ctl.owner,
         )
 
@@ -420,8 +431,16 @@ async def tenant_summary_counts(
             RemediationActionTable.due_at_utc <= week_end,
         ),
     )
+    backlog_actions = await _scalar_int(
+        session,
+        select(func.count()).where(
+            RemediationActionTable.tenant_id == tenant_id,
+            RemediationActionTable.status.in_(active_states),
+        ),
+    )
     return {
         "open_actions": open_actions,
+        "backlog_actions": backlog_actions,
         "overdue_actions": overdue_actions,
         "blocked_actions": blocked_actions,
         "due_this_week": due_this_week,

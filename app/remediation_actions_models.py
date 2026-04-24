@@ -36,6 +36,11 @@ class RemediationActionUpdate(BaseModel):
     owner: str | None = Field(default=None, max_length=320)
     due_at_utc: datetime | None = None
     deferred_note: str | None = Field(default=None, max_length=8000)
+    status_change_note: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Optionaler Audit-Kommentar zur Statusänderung (erscheint in der Historie).",
+    )
 
 
 class RemediationCommentCreate(BaseModel):
@@ -70,6 +75,7 @@ class RemediationActionListItemRead(BaseModel):
     priority: str
     owner: str | None
     due_at_utc: datetime | None
+    is_overdue: bool = False
     category: str
     rule_key: str | None
     updated_at_utc: datetime
@@ -78,6 +84,7 @@ class RemediationActionListItemRead(BaseModel):
 
 class RemediationSummaryRead(BaseModel):
     open_actions: int
+    backlog_actions: int
     overdue_actions: int
     blocked_actions: int
     due_this_week: int
@@ -97,6 +104,7 @@ class RemediationActionDetailRead(BaseModel):
     priority: str
     owner: str | None
     due_at_utc: datetime | None
+    is_overdue: bool = False
     category: str
     rule_key: str | None
     deferred_note: str | None
@@ -111,3 +119,4 @@ class RemediationActionDetailRead(BaseModel):
 class RemediationGenerateResponse(BaseModel):
     created_count: int
     rule_keys_touched: list[str]
+    evaluated_at_utc: datetime

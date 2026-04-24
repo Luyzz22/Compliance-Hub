@@ -26,10 +26,14 @@ def test_remediation_list_summary_shape() -> None:
     s = body["summary"]
     assert set(s.keys()) >= {
         "open_actions",
+        "backlog_actions",
         "overdue_actions",
         "blocked_actions",
         "due_this_week",
     }
+    assert isinstance(s["backlog_actions"], int)
+    if body["items"]:
+        assert "is_overdue" in body["items"][0]
 
 
 def test_remediation_crud_comment_generate_flow() -> None:
@@ -90,8 +94,19 @@ def test_remediation_crud_comment_generate_flow() -> None:
 
     gen = client.post(f"{BASE}/generate", headers=h)
     assert gen.status_code == 200, gen.text
-    assert "created_count" in gen.json()
-    assert "rule_keys_touched" in gen.json()
+    gj = gen.json()
+    assert "created_count" in gj
+    assert "rule_keys_touched" in gj
+    assert "evaluated_at_utc" in gj
+
+    patch_note = client.patch(
+        f"{BASE}/{aid}",
+        headers=h,
+        json={"status": "blocked", "status_change_note": "Ressource fehlt bis Q3"},
+    )
+    assert patch_note.status_code == 200, patch_note.text
+    hist = client.get(f"{BASE}/{aid}", headers=h).json()["status_history"]
+    assert any(h.get("note") == "Ressource fehlt bis Q3" for h in hist)
 
 
 def test_remediation_accepted_risk_requires_note() -> None:
@@ -143,6 +158,39 @@ def test_remediation_invalid_control_link_400() -> None:
         },
     )
     assert r.status_code == 400
+
+
+def test_remediation_list_search_and_sort() -> None:
+    h = _headers()
+    unique = "pytest_unique_title_marker_zz42"
+    c1 = client.post(
+        BASE,
+        headers=h,
+        json={
+            "title": f"Sichtbar {unique}",
+            "priority": "high",
+            "category": "manual",
+            "links": [],
+        },
+    )
+    assert c1.status_code == 201, c1.text
+    client.post(
+        BASE,
+        headers=h,
+        json={
+            "title": "Anderer Titel ohne Marker",
+            "priority": "low",
+            "category": "manual",
+            "links": [],
+        },
+    )
+    r = client.get(f"{BASE}?search={unique}", headers=h)
+    assert r.status_code == 200, r.text
+    titles = [x["title"] for x in r.json()["items"]]
+    assert titles
+    assert all(unique in t for t in titles)
+    rs = client.get(f"{BASE}?sort=priority_desc&limit=5", headers=h)
+    assert rs.status_code == 200, rs.text
 
 
 def test_remediation_tenant_isolation_on_detail() -> None:
