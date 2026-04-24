@@ -291,6 +291,7 @@ from app.rbac.dependencies import require_permission
 from app.rbac.permissions import Permission
 from app.rbac.roles import EnterpriseRole
 from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
+from app.remediation_actions_routes import router as remediation_actions_router
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_act_docs import AIActDocRepository
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository
@@ -579,6 +580,7 @@ app.include_router(operations_resilience_router)
 app.include_router(governance_controls_router)
 app.include_router(governance_audit_readiness_router)
 app.include_router(board_reporting_router)
+app.include_router(remediation_actions_router)
 
 logger = logging.getLogger(__name__)
 

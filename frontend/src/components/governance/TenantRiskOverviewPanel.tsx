@@ -226,9 +226,14 @@ export function TenantRiskOverviewPanel({ overview }: Props) {
         <p className="mt-4 text-xs text-slate-500">
           TODO: Regeln serverseitig versionieren; mit Audit-Trail und Verantwortlichen verknüpfen.
         </p>
-        <Link href="/tenant/cross-regulation-dashboard" className={`${CH_PAGE_NAV_LINK} mt-3 inline-block`}>
-          Cross-Regulation-Dashboard
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+          <Link href="/tenant/governance/remediation" className={CH_PAGE_NAV_LINK}>
+            Remediation &amp; Maßnahmen
+          </Link>
+          <Link href="/tenant/cross-regulation-dashboard" className={CH_PAGE_NAV_LINK}>
+            Cross-Regulation-Dashboard
+          </Link>
+        </div>
       </article>
     </div>
   );
