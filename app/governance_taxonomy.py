@@ -63,6 +63,8 @@ class GovernanceAuditAction(StrEnum):
     REMEDIATION_ACTION_UPDATE = "remediation_action.update"
     REMEDIATION_ACTION_COMMENT = "remediation_action.comment"
     REMEDIATION_ACTION_GENERATE = "remediation_action.generate"
+    REMEDIATION_AUTOMATION_RUN = "remediation_automation.run"
+    REMEDIATION_ESCALATION_ACK = "remediation_escalation.ack"
 
 
 class NIS2DeadlinePolicy:

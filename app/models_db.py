@@ -1551,6 +1551,114 @@ class RemediationStatusHistoryTable(Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class RemediationAutomationRunTable(Base):
+    """Batch-Lauf der deterministischen Remediation-Automation (Mandant, historisiert)."""
+
+    __tablename__ = "remediation_automation_runs"
+    __table_args__ = (
+        Index("idx_ra_runs_tenant_started", "tenant_id", "started_at_utc"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    started_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    summary_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    escalations_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    reminders_upserted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    events_written: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    generated_actions_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class RemediationEscalationTable(Base):
+    """Eskalation zu einer Maßnahme (rule-based, quittierbar)."""
+
+    __tablename__ = "remediation_escalations"
+    __table_args__ = (
+        Index("idx_re_tenant_status", "tenant_id", "status", "severity"),
+        Index("idx_re_tenant_action", "tenant_id", "action_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    action_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("remediation_actions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    run_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("remediation_automation_runs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    severity: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    acknowledged_at_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    acknowledged_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class RemediationReminderTable(Base):
+    """Erinnerung zu Fälligkeiten (deterministisch, idempotent pro Lauf)."""
+
+    __tablename__ = "remediation_reminders"
+    __table_args__ = (Index("idx_rem_tenant_remind", "tenant_id", "remind_at_utc", "status"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    action_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("remediation_actions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    run_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("remediation_automation_runs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, default="due_window")
+    remind_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
+class RemediationActionEventTable(Base):
+    """Anhängiges Audit-Event (Automation, Empfehlung, Hinweis)."""
+
+    __tablename__ = "remediation_action_events"
+    __table_args__ = (
+        Index("idx_rae_tenant_time", "tenant_id", "created_at_utc"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    action_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("remediation_actions.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    run_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("remediation_automation_runs.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
 class GovernanceEvidenceRequirementTable(Base):
     """Tenant-level evidence type expectations per framework (advisor-tunable; defaults in code)."""
 

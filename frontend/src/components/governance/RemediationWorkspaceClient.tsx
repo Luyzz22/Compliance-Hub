@@ -537,6 +537,12 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
             <span className="text-sm text-slate-600">
               Mandant <span className="font-mono text-xs">{tenantId}</span>
             </span>
+            <Link
+              href="/tenant/governance/remediation/automation"
+              className="text-sm font-semibold text-[var(--sbs-navy-mid)] no-underline hover:underline"
+            >
+              Automation & Eskalation
+            </Link>
           </div>
         }
         breadcrumbs={[
