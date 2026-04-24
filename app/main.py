@@ -135,7 +135,6 @@ from app.authority_audit_preparation_pack_models import (
     PreparationPackFocus,
 )
 from app.board_reporting_routes import router as board_reporting_router
-from app.remediation_actions_routes import router as remediation_actions_router
 from app.classification_models import (
     ClassificationOverrideRequest,
     ClassificationQuestionnaire,
@@ -292,6 +291,7 @@ from app.rbac.dependencies import require_permission
 from app.rbac.permissions import Permission
 from app.rbac.roles import EnterpriseRole
 from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
+from app.remediation_actions_routes import router as remediation_actions_router
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_act_docs import AIActDocRepository
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository

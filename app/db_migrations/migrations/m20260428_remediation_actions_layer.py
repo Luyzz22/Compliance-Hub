@@ -62,7 +62,12 @@ def apply(engine: Engine) -> bool:
                 "ON remediation_actions (tenant_id, category)"
             )
         )
-        conn.execute(text("CREATE INDEX ix_remediation_actions_rule_key ON remediation_actions (rule_key)"))
+        conn.execute(
+            text(
+                "CREATE INDEX ix_remediation_actions_rule_key "
+                "ON remediation_actions (rule_key)"
+            )
+        )
         conn.execute(
             text(
                 "CREATE UNIQUE INDEX uq_remediation_actions_tenant_dedupe "
