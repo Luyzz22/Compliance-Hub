@@ -1555,16 +1555,12 @@ class RemediationAutomationRunTable(Base):
     """Batch-Lauf der deterministischen Remediation-Automation (Mandant, historisiert)."""
 
     __tablename__ = "remediation_automation_runs"
-    __table_args__ = (
-        Index("idx_ra_runs_tenant_started", "tenant_id", "started_at_utc"),
-    )
+    __table_args__ = (Index("idx_ra_runs_tenant_started", "tenant_id", "started_at_utc"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     started_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    finished_at_utc: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    finished_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     summary_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     escalations_created: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     reminders_upserted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -1636,9 +1632,7 @@ class RemediationActionEventTable(Base):
     """Anhängiges Audit-Event (Automation, Empfehlung, Hinweis)."""
 
     __tablename__ = "remediation_action_events"
-    __table_args__ = (
-        Index("idx_rae_tenant_time", "tenant_id", "created_at_utc"),
-    )
+    __table_args__ = (Index("idx_rae_tenant_time", "tenant_id", "created_at_utc"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

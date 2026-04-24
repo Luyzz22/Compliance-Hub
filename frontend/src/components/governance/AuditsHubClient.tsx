@@ -19,15 +19,16 @@ export function AuditsHubClient({ tenantId }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    setError(null);
     try {
       setRows(await fetchAuditCases(tenantId));
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Laden fehlgeschlagen");
     }
   }, [tenantId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initiale Daten nach Mount
     void reload();
   }, [reload]);
 

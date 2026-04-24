@@ -250,19 +250,23 @@ async def run_remediation_automation(
             res.rule_keys.append(REASON_BOARD_PERIOD)
 
     ev_gaps: list[dict[str, str]] = []
-    ev_stmt = select(
-        GovernanceControlTable.id,
-        GovernanceControlTable.title,
-        GovernanceControlTable.status,
-    ).where(
-        GovernanceControlTable.tenant_id == tenant_id,
-        GovernanceControlTable.status == "implemented",
-        ~GovernanceControlTable.id.in_(
-            select(GovernanceControlEvidenceTable.control_id).where(
-                GovernanceControlEvidenceTable.tenant_id == tenant_id
-            )
-        ),
-    ).limit(20)
+    ev_stmt = (
+        select(
+            GovernanceControlTable.id,
+            GovernanceControlTable.title,
+            GovernanceControlTable.status,
+        )
+        .where(
+            GovernanceControlTable.tenant_id == tenant_id,
+            GovernanceControlTable.status == "implemented",
+            ~GovernanceControlTable.id.in_(
+                select(GovernanceControlEvidenceTable.control_id).where(
+                    GovernanceControlEvidenceTable.tenant_id == tenant_id
+                )
+            ),
+        )
+        .limit(20)
+    )
     for cid, title, st in (await session.execute(ev_stmt)).all():
         ev_gaps.append(
             {

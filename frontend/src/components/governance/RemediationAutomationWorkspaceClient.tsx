@@ -107,44 +107,8 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
     }
   }
 
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <GovernanceWorkspaceLayout
-        title="Automation & Eskalation"
-        eyebrow="Governance"
-        status="live"
-        headerDescription={
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-            <StatusBadge status="rule_engine" tone="neutral" />
-            <span>
-              Regelbasiert, mandant <span className="font-mono text-xs">{tenantId}</span>
-            </span>
-            <Link
-              href="/tenant/governance/remediation"
-              className="font-semibold text-[var(--sbs-navy-mid)] no-underline hover:underline"
-            >
-              → Maßnahmenregister
-            </Link>
-          </div>
-        }
-        breadcrumbs={[
-          { label: "Tenant", href: "/tenant/compliance-overview" },
-          { label: "Governance", href: "/tenant/governance/overview" },
-          { label: "Remediation", href: "/tenant/governance/remediation" },
-          { label: "Automation", href: "/tenant/governance/remediation/automation" },
-        ]}
-      >
-        {err ? (
-          <p className="text-sm text-rose-800" role="alert">
-            {err}
-          </p>
-        ) : null}
-        {successMsg ? (
-          <p className="text-sm text-emerald-900" role="status">
-            {successMsg}
-          </p>
-        ) : null}
-
+  const tabContent = (
+    <>
         <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <article className={`${CH_CARD} border-slate-200/80`}>
             <p className={CH_SECTION_LABEL}>Überfällige Maßnahmen (gesamt)</p>
@@ -306,7 +270,52 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
           Mandant, auditierbar über{" "}
           <code className="rounded bg-slate-100 px-1">remediation_escalation.ack</code>).
         </p>
-      </GovernanceWorkspaceLayout>
+    </>
+  );
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <GovernanceWorkspaceLayout
+        title="Automation & Eskalation"
+        eyebrow="Governance"
+        status="live"
+        headerDescription={
+          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+            <StatusBadge status="rule_engine" tone="neutral" />
+            <span>
+              Regelbasiert, mandant <span className="font-mono text-xs">{tenantId}</span>
+            </span>
+            <Link
+              href="/tenant/governance/remediation"
+              className="font-semibold text-[var(--sbs-navy-mid)] no-underline hover:underline"
+            >
+              → Maßnahmenregister
+            </Link>
+          </div>
+        }
+        breadcrumbs={[
+          { label: "Tenant", href: "/tenant/compliance-overview" },
+          { label: "Governance", href: "/tenant/governance/overview" },
+          { label: "Remediation", href: "/tenant/governance/remediation" },
+          { label: "Automation", href: "/tenant/governance/remediation/automation" },
+        ]}
+        toast={
+          err
+            ? { kind: "error" as const, text: err }
+            : successMsg
+              ? { kind: "success" as const, text: successMsg }
+              : null
+        }
+        tabs={[
+          {
+            id: "overview",
+            label: "Übersicht",
+            content: tabContent,
+          },
+        ]}
+        activeTabId="overview"
+        onTabChange={() => {}}
+      />
     </div>
   );
 }
