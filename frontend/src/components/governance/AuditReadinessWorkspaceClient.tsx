@@ -27,13 +27,13 @@ export function AuditReadinessWorkspaceClient({ tenantId, auditId }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setError(null);
     try {
       const [s, c, t] = await Promise.all([
         fetchAuditReadiness(tenantId, auditId),
         fetchAuditControlRows(tenantId, auditId),
         fetchAuditTrail(tenantId, auditId),
       ]);
+      setError(null);
       setSummary(s);
       setControls(c);
       setTrail(t);
@@ -43,6 +43,7 @@ export function AuditReadinessWorkspaceClient({ tenantId, auditId }: Props) {
   }, [tenantId, auditId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initiale Daten nach Mount
     void load();
   }, [load]);
 
