@@ -15,13 +15,24 @@ import {
   patchWorkflowTask,
   postTestNotification,
   postWorkflowRun,
+  WorkflowApiError,
   type GovernanceWorkflowDashboardDto,
   type WorkflowEventDto,
   type WorkflowNotificationDeliveryDto,
   type WorkflowNotificationDto,
+  type WorkflowRunListItem,
   type WorkflowTaskListItemDto,
   type WorkflowTaskDetailDto,
 } from "@/lib/governanceWorkflowApi";
+import {
+  getEventsCountFromRunSummary,
+  isAllowedStatusTransition,
+  isWorkflowTaskStatus,
+  assertWorkflowTaskStatus,
+  WORKFLOW_SOURCE_TYPE_VALUES,
+  WORKFLOW_TASK_STATUS_VALUES,
+  type WorkflowTaskStatus,
+} from "@/lib/governanceWorkflowTypes";
 
 interface Props {
   tenantId: string;
@@ -35,6 +46,34 @@ function priorityTone(
   return "success";
 }
 
+function runDurationLabel(startedAt: string, completedAt: string | null): string {
+  if (!completedAt) return "…";
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  if (ms < 2000) return `${ms} ms`;
+  return `${(ms / 1000).toFixed(1)} s`;
+}
+
+function taskActionErrorText(e: unknown): string {
+  if (e instanceof WorkflowApiError && e.status === 422) {
+    return "Ungültiger Status – bitte Seite aktualisieren oder Workflow-Status prüfen.";
+  }
+  if (e instanceof Error) {
+    return e.message;
+  }
+  return "Aktualisierung fehlgeschlagen";
+}
+
+function pickDefaultTargetStatus(current: string): WorkflowTaskStatus {
+  if (!isWorkflowTaskStatus(current)) {
+    return "open";
+  }
+  const next = WORKFLOW_TASK_STATUS_VALUES.find(
+    (s) => s !== current && isAllowedStatusTransition(current, s)
+  );
+  return next ?? current;
+}
+
 export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
   const [activeTab, setActiveTab] = useState<"main" | "events" | "notif">("main");
   const [dash, setDash] = useState<GovernanceWorkflowDashboardDto | null>(null);
@@ -42,7 +81,7 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
   const [events, setEvents] = useState<WorkflowEventDto[]>([]);
   const [notifs, setNotifs] = useState<WorkflowNotificationDto[]>([]);
   const [deliv, setDeliv] = useState<WorkflowNotificationDeliveryDto[]>([]);
-  const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [fStatus, setFStatus] = useState("");
   const [fSource, setFSource] = useState("");
@@ -51,6 +90,17 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
   const [fFw, setFFw] = useState("");
   const [selTask, setSelTask] = useState<WorkflowTaskDetailDto | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
+  const [targetStatus, setTargetStatus] = useState<WorkflowTaskStatus>("open");
+
+  const recentRuns: WorkflowRunListItem[] = dash?.recent_runs ?? [];
+  const lastRun = recentRuns[0];
+  const previousRun = recentRuns[1];
+  const lastRunEventCount = getEventsCountFromRunSummary(lastRun?.summary);
+  const previousRunEventCount = getEventsCountFromRunSummary(previousRun?.summary);
+  const eventTrend =
+    lastRun && previousRun
+      ? lastRunEventCount - previousRunEventCount
+      : null;
 
   const loadAll = useCallback(async () => {
     try {
@@ -73,7 +123,10 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
       setNotifs(n);
       setDeliv(dlv);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Laden fehlgeschlagen");
+      setNotice({
+        kind: "error",
+        text: e instanceof Error ? e.message : "Laden fehlgeschlagen",
+      });
     }
   }, [tenantId, fStatus, fSource, fAsg, fSev, fFw]);
 
@@ -88,21 +141,31 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
     }
     void (async () => {
       try {
-        setSelTask(await fetchWorkflowTaskDetail(tenantId, selId));
+        setNotice(null);
+        const d = await fetchWorkflowTaskDetail(tenantId, selId);
+        setSelTask(d);
+        setTargetStatus(pickDefaultTargetStatus(d.status));
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "Detail fehlgeschlagen");
+        setNotice({
+          kind: "error",
+          text: e instanceof Error ? e.message : "Detail fehlgeschlagen",
+        });
       }
     })();
   }, [selId, tenantId]);
 
   async function onRun() {
     setBusy(true);
-    setErr(null);
+    setNotice(null);
     try {
-      await postWorkflowRun(tenantId);
+      const r = await postWorkflowRun(tenantId);
+      setNotice({
+        kind: "success",
+        text: `Regel-Sync abgeschlossen: ${r.events_written} Ereignis(se), ${r.tasks_materialized} Task(s) materialisiert.`,
+      });
       await loadAll();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Lauf fehlgeschlagen");
+      setNotice({ kind: "error", text: e instanceof Error ? e.message : "Lauf fehlgeschlagen" });
     } finally {
       setBusy(false);
     }
@@ -110,12 +173,64 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
 
   async function onTestNotif() {
     setBusy(true);
-    setErr(null);
+    setNotice(null);
     try {
       await postTestNotification(tenantId);
+      setNotice({ kind: "success", text: "Test-Benachrichtigung erstellt (Audit-Trail)." });
       await loadAll();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Test fehlgeschlagen");
+      setNotice({ kind: "error", text: e instanceof Error ? e.message : "Test fehlgeschlagen" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyStatusChange() {
+    if (!selTask) return;
+    try {
+      assertWorkflowTaskStatus(targetStatus);
+    } catch (e) {
+      setNotice({
+        kind: "error",
+        text: e instanceof Error ? e.message : "Ungültiger Status",
+      });
+      return;
+    }
+    if (!isAllowedStatusTransition(selTask.status, targetStatus)) {
+      setNotice({
+        kind: "error",
+        text: "Dieser Statuswechsel ist in der UI nicht vorgesehen (abgeschlossene Tasks werden nicht erneut geöffnet).",
+      });
+      return;
+    }
+    setBusy(true);
+    setNotice(null);
+    try {
+      await patchWorkflowTask(tenantId, selTask.id, { status: targetStatus });
+      const d = await fetchWorkflowTaskDetail(tenantId, selTask.id);
+      setSelTask(d);
+      setTargetStatus(pickDefaultTargetStatus(d.status));
+      setNotice({ kind: "success", text: "Status aktualisiert." });
+      await loadAll();
+    } catch (e) {
+      setNotice({ kind: "error", text: taskActionErrorText(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onUnassign() {
+    if (!selTask) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      await patchWorkflowTask(tenantId, selTask.id, { assignee_user_id: null });
+      const d = await fetchWorkflowTaskDetail(tenantId, selTask.id);
+      setSelTask(d);
+      setNotice({ kind: "success", text: "Zuweisung entfernt." });
+      await loadAll();
+    } catch (e) {
+      setNotice({ kind: "error", text: taskActionErrorText(e) });
     } finally {
       setBusy(false);
     }
@@ -150,13 +265,49 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
         </article>
       </section>
 
-      <p className="text-xs text-slate-500">
-        Regel-Bundle:{" "}
-        <span className="font-mono">
-          {dash?.rule_bundle_version ?? "—"}
-        </span>
-        · Ereignisse 24h: {dash?.kpis.workflow_events_24h ?? "—"}
-      </p>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <article className={`${CH_CARD} border-indigo-200/80`}>
+          <p className={CH_SECTION_LABEL}>Events im letzten Run (Summary)</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-indigo-900">
+            {lastRun != null ? lastRunEventCount : "—"}
+          </p>
+          {lastRun == null ? (
+            <p className="mt-1 text-xs text-slate-500">Noch kein Run in der Historie.</p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-600">
+              {eventTrend === null ? (
+                "Kein vorheriger Run zum Vergleich"
+              ) : eventTrend > 0 ? (
+                <span>
+                  Gegenüber vorherigem Run:{" "}
+                  <span className="font-medium text-rose-700">+{eventTrend} Events</span>
+                </span>
+              ) : eventTrend < 0 ? (
+                <span>
+                  Gegenüber vorherigem Run:{" "}
+                  <span className="font-medium text-emerald-800">{eventTrend} Events</span>
+                </span>
+              ) : (
+                "Gleich wie im vorherigen Run"
+              )}
+            </p>
+          )}
+        </article>
+        <article className={`${CH_CARD} sm:col-span-1 border-slate-200/80`}>
+          <p className={CH_SECTION_LABEL}>Regel-Sync (Kurzinfo)</p>
+          <p className="mt-1 text-sm text-slate-700">
+            <span className="font-mono text-xs">
+              {dash?.rule_bundle_version ?? "—"}
+            </span>
+            <span className="mx-1.5 text-slate-300">|</span>
+            Ereignisse 24h: {dash?.kpis.workflow_events_24h ?? "—"}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            <code>events_written</code> = während <code>run_sync</code> erzeugte Workflow-Events; siehe
+            Run-Tabelle.
+          </p>
+        </article>
+      </section>
 
       <div className="flex flex-wrap gap-2">
         <button type="button" className={CH_BTN_PRIMARY} onClick={() => void onRun()} disabled={busy}>
@@ -181,20 +332,27 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
             onChange={(e) => setFStatus(e.target.value)}
           >
             <option value="">(alle)</option>
-            <option value="open">open</option>
-            <option value="in_progress">in_progress</option>
-            <option value="escalated">escalated</option>
-            <option value="done">done</option>
+            {WORKFLOW_TASK_STATUS_VALUES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>
         </label>
         <label className="text-xs font-medium text-slate-600">
           Quelle
-          <input
-            className="mt-1 block min-w-[8rem] rounded border border-slate-300 px-2 py-1.5 text-sm"
+          <select
+            className="mt-1 block min-w-[12rem] rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
             value={fSource}
             onChange={(e) => setFSource(e.target.value)}
-            placeholder="z.B. governance_control"
-          />
+          >
+            <option value="">(alle / frei)</option>
+            {WORKFLOW_SOURCE_TYPE_VALUES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="text-xs font-medium text-slate-600">
           Bearbeiter
@@ -229,6 +387,54 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
           />
         </label>
       </div>
+
+      <article className={`${CH_CARD} overflow-hidden`}>
+        <p className={CH_SECTION_LABEL}>Run-Historie (letzte {recentRuns.length})</p>
+        <div className="mt-2 overflow-x-auto text-sm">
+          <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+            <thead className="bg-slate-50/90 text-slate-500">
+              <tr>
+                <th className="px-2 py-2">Start (lokal)</th>
+                <th className="px-2 py-2">Dauer</th>
+                <th className="px-2 py-2">neue Tasks</th>
+                <th className="px-2 py-2">Events (summary)</th>
+                <th className="px-2 py-2">Status / Bundle</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {recentRuns.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-2 py-3 text-slate-600">
+                    Noch keine Runs. „Regel-Sync ausführen“ klicken.
+                  </td>
+                </tr>
+              ) : (
+                recentRuns.map((run) => {
+                  const s = run.summary;
+                  const tasksN =
+                    s && typeof s.tasks_materialized === "number" ? s.tasks_materialized : "—";
+                  const evN = getEventsCountFromRunSummary(s);
+                  return (
+                    <tr key={run.id}>
+                      <td className="px-2 py-1.5 whitespace-nowrap">
+                        {new Date(run.started_at_utc).toLocaleString("de-DE")}
+                      </td>
+                      <td className="px-2 py-1.5">
+                        {runDurationLabel(run.started_at_utc, run.completed_at_utc ?? null)}
+                      </td>
+                      <td className="px-2 py-1.5 tabular-nums">{tasksN}</td>
+                      <td className="px-2 py-1.5 tabular-nums">{evN}</td>
+                      <td className="px-2 py-1.5">
+                        {run.status} · <span className="font-mono"> {run.rule_bundle_version}</span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </article>
 
       <article className={`${CH_CARD} overflow-hidden`}>
         <p className={CH_SECTION_LABEL}>Workflow Tasks</p>
@@ -302,6 +508,18 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
           <p className={CH_SECTION_LABEL}>Task-Detail</p>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2 text-sm">
             <div>
+              <dt className="text-xs text-slate-500">Aktueller Status</dt>
+              <dd>
+                <StatusBadge status={selTask.status} tone="neutral" />
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Bearbeiter (assignee_user_id)</dt>
+              <dd className="font-mono text-xs break-all">
+                {selTask.assignee_user_id ?? "— (nicht zugewiesen)"}
+              </dd>
+            </div>
+            <div>
               <dt className="text-xs text-slate-500">Quelle (Objekt)</dt>
               <dd>
                 {selTask.source_type} — <span className="font-mono text-xs">{selTask.source_id}</span>
@@ -343,40 +561,50 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
               )}
             </ol>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={CH_BTN_SECONDARY}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await patchWorkflowTask(tenantId, selTask.id, { status: "in_progress" });
-                  setSelTask(await fetchWorkflowTaskDetail(tenantId, selTask.id));
-                  await loadAll();
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Status: in progress
-            </button>
-            <button
-              type="button"
-              className={CH_BTN_PRIMARY}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await patchWorkflowTask(tenantId, selTask.id, { status: "done" });
-                  setSelId(null);
-                  setSelTask(null);
-                  await loadAll();
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Status: done
-            </button>
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-xs font-medium text-slate-600">
+                Neuer Status
+                <select
+                  className="mt-1 block min-w-[12rem] rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                  value={targetStatus}
+                  onChange={(e) => setTargetStatus(e.target.value as WorkflowTaskStatus)}
+                >
+                  {WORKFLOW_TASK_STATUS_VALUES.map((s) => {
+                    const allowed = isAllowedStatusTransition(selTask.status, s);
+                    return (
+                      <option key={s} value={s} disabled={!allowed}>
+                        {s}
+                        {!allowed ? " (gesperrt)" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <button
+                type="button"
+                className={CH_BTN_PRIMARY}
+                disabled={busy}
+                onClick={() => void applyStatusChange()}
+              >
+                Status übernehmen
+              </button>
+            </div>
+            {selTask.assignee_user_id ? (
+              <div>
+                <button
+                  type="button"
+                  className={CH_BTN_SECONDARY}
+                  disabled={busy}
+                  onClick={() => void onUnassign()}
+                >
+                  Zuweisung entfernen (null)
+                </button>
+                <p className="mt-1 text-xs text-slate-500">
+                  Setzt <code>assignee_user_id</code> per JSON <code>null</code> (explizit unassigned).
+                </p>
+              </div>
+            ) : null}
           </div>
         </article>
       ) : null}
@@ -479,7 +707,7 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
           { label: "Governance", href: "/tenant/governance/overview" },
           { label: "Workflows", href: "/tenant/governance/workflows" },
         ]}
-        toast={err ? { kind: "error", text: err } : null}
+        toast={notice}
         tabs={[
           { id: "main", label: "Übersicht", content: mainTab },
           { id: "events", label: "Ereignisse", content: eventsTab },
