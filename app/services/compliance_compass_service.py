@@ -43,9 +43,13 @@ def _clamp_int(n: float | int) -> int:
 
 
 def _count_tasks(session: Session, tenant_id: str, *extra) -> int:
-    q = select(func.count()).select_from(GovernanceWorkflowTaskTable).where(
-        GovernanceWorkflowTaskTable.tenant_id == tenant_id,
-        *extra,
+    q = (
+        select(func.count())
+        .select_from(GovernanceWorkflowTaskTable)
+        .where(
+            GovernanceWorkflowTaskTable.tenant_id == tenant_id,
+            *extra,
+        )
     )
     r = session.execute(q)
     return int(r.scalar() or 0)
@@ -150,9 +154,7 @@ def _narrative(
         "elevated": "mit erhöhtem Steuerungsbedarf",
     }.get(posture, "")
 
-    base = (
-        f"Der Compliance-Kompass-Fusionsindex: {fusion}/100 — {posture_de}."
-    )
+    base = f"Der Compliance-Kompass-Fusionsindex: {fusion}/100 — {posture_de}."
     if not weakest or not strongest:
         return base
     if weakest.key == strongest.key:

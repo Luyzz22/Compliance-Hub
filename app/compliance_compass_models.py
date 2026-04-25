@@ -39,9 +39,7 @@ class CompassProvenanceOut(BaseModel):
     """Rückverfolgbarkeit der Signalquellen (ohne PII) — RAI-Transparenz."""
 
     readiness_score: int = Field(ge=0, le=100)
-    readiness_level: str = Field(
-        description="Level Readiness-Modell: basic / managed / embedded"
-    )
+    readiness_level: str = Field(description="Level Readiness-Modell: basic / managed / embedded")
     workflow_open_or_active: int = Field(
         ge=0,
         description="Tasks: open+in_progress+escalated",
@@ -98,9 +96,6 @@ class ComplianceCompassSnapshotOut(BaseModel):
     provenance: CompassProvenanceOut
 
     privacy_de: str = Field(
-        default=(
-            "Berechnung pro Mandant. Keine personenbezogenen Details in "
-            "dieser Antwort."
-        ),
+        default=("Berechnung pro Mandant. Keine personenbezogenen Details in dieser Antwort."),
         description="Trust-Strip Text (UI).",
     )

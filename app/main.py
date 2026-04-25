@@ -146,6 +146,7 @@ from app.compliance_calendar_models import (
     ComplianceDeadlineResponse,
     ComplianceDeadlineUpdate,
 )
+from app.compliance_compass_routes import router as compliance_compass_router
 from app.compliance_gap_models import (
     REQUIREMENTS,
     REQUIREMENTS_BY_ID,
@@ -223,7 +224,6 @@ from app.governance_controls_routes import router as governance_controls_router
 from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturityBoardSummaryParseResult
 from app.governance_taxonomy import GovernanceAuditAction, GovernanceAuditEntity
-from app.compliance_compass_routes import router as compliance_compass_router
 from app.governance_workflow_routes import router as governance_workflow_router
 from app.incident_drilldown_models import TenantIncidentDrilldownOut
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
