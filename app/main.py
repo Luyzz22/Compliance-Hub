@@ -223,6 +223,7 @@ from app.governance_controls_routes import router as governance_controls_router
 from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturityBoardSummaryParseResult
 from app.governance_taxonomy import GovernanceAuditAction, GovernanceAuditEntity
+from app.governance_workflow_routes import router as governance_workflow_router
 from app.incident_drilldown_models import TenantIncidentDrilldownOut
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.ki_register_models import (
@@ -291,7 +292,6 @@ from app.rbac.dependencies import require_permission
 from app.rbac.permissions import Permission
 from app.rbac.roles import EnterpriseRole
 from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
-from app.governance_workflow_routes import router as governance_workflow_router
 from app.remediation_actions_routes import router as remediation_actions_router
 from app.remediation_automation_routes import router as remediation_automation_router
 from app.repositories.advisor_tenants import AdvisorTenantRepository

@@ -60,7 +60,5 @@ def test_tasks_list_two_tenants_ok() -> None:
 
 
 def test_invalid_rule_profile() -> None:
-    r = client.post(
-        f"{BASE}/run", headers=_headers(), json={"rule_profile": "nonexistent"}
-    )
+    r = client.post(f"{BASE}/run", headers=_headers(), json={"rule_profile": "nonexistent"})
     assert r.status_code == 400

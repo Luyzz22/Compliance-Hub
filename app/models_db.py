@@ -2361,9 +2361,7 @@ class GovernanceWorkflowRunTable(Base):
     """Lauf der Regel-Engine (Sync) — auditierbarer Stepp für Berater/Operations."""
 
     __tablename__ = "governance_workflow_runs"
-    __table_args__ = (
-        Index("idx_gwr_tenant_started", "tenant_id", "started_at_utc"),
-    )
+    __table_args__ = (Index("idx_gwr_tenant_started", "tenant_id", "started_at_utc"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -2418,9 +2416,7 @@ class GovernanceWorkflowTaskHistoryTable(Base):
     """Status-/Notiz-Historie pro Task (immutabel append-only)."""
 
     __tablename__ = "governance_workflow_task_history"
-    __table_args__ = (
-        Index("idx_gwthist_tenant_task", "tenant_id", "task_id", "at_utc"),
-    )
+    __table_args__ = (Index("idx_gwthist_tenant_task", "tenant_id", "task_id", "at_utc"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -2463,9 +2459,7 @@ class GovernanceWorkflowNotificationTable(Base):
     """Ausgehende Benachrichtigung (Queue / Stub); Deliveries separat."""
 
     __tablename__ = "governance_workflow_notifications"
-    __table_args__ = (
-        Index("idx_gwn_tenant_status", "tenant_id", "status", "created_at_utc"),
-    )
+    __table_args__ = (Index("idx_gwn_tenant_status", "tenant_id", "status", "created_at_utc"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -2488,9 +2482,7 @@ class GovernanceWorkflowNotificationDeliveryTable(Base):
     """Zustellprotokoll (E-Mail, Teams, Webhook); Audit-Trail der Zustellversuche."""
 
     __tablename__ = "governance_workflow_notification_deliveries"
-    __table_args__ = (
-        Index("idx_gwnd_tenant", "tenant_id", "delivered_at_utc"),
-    )
+    __table_args__ = (Index("idx_gwnd_tenant", "tenant_id", "delivered_at_utc"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

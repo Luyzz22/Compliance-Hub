@@ -35,7 +35,9 @@ def apply(engine: Engine) -> bool:
             )
             """)
         )
-        conn.execute(text("CREATE UNIQUE INDEX uq_gwt_code ON governance_workflow_templates (code)"))
+        conn.execute(
+            text("CREATE UNIQUE INDEX uq_gwt_code ON governance_workflow_templates (code)")
+        )
 
         conn.execute(
             text("""
@@ -134,14 +136,14 @@ def apply(engine: Engine) -> bool:
                 source_id VARCHAR(255) NOT NULL,
                 message VARCHAR(2000) NOT NULL DEFAULT '',
                 payload_json TEXT NOT NULL DEFAULT '{}',
-                FOREIGN KEY (ref_task_id) REFERENCES governance_workflow_tasks (id) ON DELETE SET NULL
+                FOREIGN KEY (ref_task_id) REFERENCES governance_workflow_tasks (id)
+                    ON DELETE SET NULL
             )
             """)
         )
         conn.execute(
             text(
-                "CREATE INDEX idx_gwev_tenant_at "
-                "ON governance_workflow_events (tenant_id, at_utc)"
+                "CREATE INDEX idx_gwev_tenant_at ON governance_workflow_events (tenant_id, at_utc)"
             )
         )
 
@@ -157,7 +159,8 @@ def apply(engine: Engine) -> bool:
                 body_text TEXT NOT NULL DEFAULT '',
                 created_at_utc DATETIME NOT NULL,
                 payload_json TEXT NOT NULL DEFAULT '{}',
-                FOREIGN KEY (ref_task_id) REFERENCES governance_workflow_tasks (id) ON DELETE SET NULL
+                FOREIGN KEY (ref_task_id) REFERENCES governance_workflow_tasks (id)
+                    ON DELETE SET NULL
             )
             """)
         )
@@ -179,7 +182,8 @@ def apply(engine: Engine) -> bool:
                 detail TEXT,
                 delivered_at_utc DATETIME NOT NULL,
                 payload_json TEXT NOT NULL DEFAULT '{}',
-                FOREIGN KEY (notification_id) REFERENCES governance_workflow_notifications (id) ON DELETE CASCADE
+                FOREIGN KEY (notification_id) REFERENCES governance_workflow_notifications (id)
+                    ON DELETE CASCADE
             )
             """)
         )
