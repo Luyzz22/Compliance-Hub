@@ -24,6 +24,9 @@ class GovernanceAuditEntity(StrEnum):
     GOVERNANCE_AUDIT_CASE = "governance_audit_case"
     BOARD_REPORT = "board_report"
     REMEDIATION_ACTION = "remediation_action"
+    GOVERNANCE_WORKFLOW_TASK = "governance_workflow_task"
+    GOVERNANCE_WORKFLOW_RUN = "governance_workflow_run"
+    GOVERNANCE_WORKFLOW_NOTIFICATION = "governance_workflow_notification"
 
 
 class GovernanceAuditAction(StrEnum):
@@ -65,6 +68,9 @@ class GovernanceAuditAction(StrEnum):
     REMEDIATION_ACTION_GENERATE = "remediation_action.generate"
     REMEDIATION_AUTOMATION_RUN = "remediation_automation.run"
     REMEDIATION_ESCALATION_ACK = "remediation_escalation.ack"
+    GOVERNANCE_WORKFLOW_RUN_SYNC = "governance_workflow.run_sync"
+    GOVERNANCE_WORKFLOW_TASK_UPDATE = "governance_workflow.task.update"
+    GOVERNANCE_WORKFLOW_NOTIFICATION_TEST = "governance_workflow.notification.test"
 
 
 class NIS2DeadlinePolicy:

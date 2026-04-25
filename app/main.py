@@ -223,6 +223,7 @@ from app.governance_controls_routes import router as governance_controls_router
 from app.governance_maturity_models import GovernanceMaturityResponse
 from app.governance_maturity_summary_models import GovernanceMaturityBoardSummaryParseResult
 from app.governance_taxonomy import GovernanceAuditAction, GovernanceAuditEntity
+from app.governance_workflow_routes import router as governance_workflow_router
 from app.incident_drilldown_models import TenantIncidentDrilldownOut
 from app.incident_models import AIIncidentBySystemEntry, AIIncidentOverview
 from app.ki_register_models import (
@@ -580,6 +581,7 @@ app.add_middleware(TelemetryMiddleware)
 app.include_router(operations_resilience_router)
 app.include_router(governance_controls_router)
 app.include_router(governance_audit_readiness_router)
+app.include_router(governance_workflow_router)
 app.include_router(board_reporting_router)
 app.include_router(remediation_automation_router)
 app.include_router(remediation_actions_router)

@@ -2341,3 +2341,158 @@ class TrustCenterAccessLogDB(Base):
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
+
+
+class GovernanceWorkflowTemplateTable(Base):
+    """Katalog-Template für deterministische Workflow-Tasks (systemweit, code-unique)."""
+
+    __tablename__ = "governance_workflow_templates"
+    __table_args__ = (UniqueConstraint("code", name="uq_gwt_code"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    default_sla_days: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    is_system: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+class GovernanceWorkflowRunTable(Base):
+    """Lauf der Regel-Engine (Sync) — auditierbarer Stepp für Berater/Operations."""
+
+    __tablename__ = "governance_workflow_runs"
+    __table_args__ = (Index("idx_gwr_tenant_started", "tenant_id", "started_at_utc"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    trigger_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="rule_sync")
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    rule_bundle_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    summary_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    started_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class GovernanceWorkflowTaskTable(Base):
+    """Operativer Task im Orchestration-Layer (Quellen: Gap, Remediation, …)."""
+
+    __tablename__ = "governance_workflow_tasks"
+    __table_args__ = (
+        Index("idx_gwtask_tenant_status_due", "tenant_id", "status", "due_at_utc"),
+        UniqueConstraint("tenant_id", "dedupe_key", name="uq_gwtask_tenant_dedupe"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    run_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("governance_workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    template_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, default="medium")
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_ref_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    assignee_user_id: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    due_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    framework_tags_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    dedupe_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    escalation_level: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class GovernanceWorkflowTaskHistoryTable(Base):
+    """Status-/Notiz-Historie pro Task (immutabel append-only)."""
+
+    __tablename__ = "governance_workflow_task_history"
+    __table_args__ = (Index("idx_gwthist_tenant_task", "tenant_id", "task_id", "at_utc"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    task_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("governance_workflow_tasks.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    from_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(255), nullable=False, default="system")
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class GovernanceWorkflowEventTable(Base):
+    """Deterministisches Ereignisprotokoll (Schnittstelle Auditing / später n8n)."""
+
+    __tablename__ = "governance_workflow_events"
+    __table_args__ = (Index("idx_gwev_tenant_at", "tenant_id", "at_utc"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False, default="info")
+    ref_task_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("governance_workflow_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    message: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class GovernanceWorkflowNotificationTable(Base):
+    """Ausgehende Benachrichtigung (Queue / Stub); Deliveries separat."""
+
+    __tablename__ = "governance_workflow_notifications"
+    __table_args__ = (Index("idx_gwn_tenant_status", "tenant_id", "status", "created_at_utc"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ref_task_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("governance_workflow_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    channel: Mapped[str] = mapped_column(String(32), nullable=False, default="n8n_webhook")
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    body_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class GovernanceWorkflowNotificationDeliveryTable(Base):
+    """Zustellprotokoll (E-Mail, Teams, Webhook); Audit-Trail der Zustellversuche."""
+
+    __tablename__ = "governance_workflow_notification_deliveries"
+    __table_args__ = (Index("idx_gwnd_tenant", "tenant_id", "delivered_at_utc"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    notification_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("governance_workflow_notifications.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    channel: Mapped[str] = mapped_column(String(32), nullable=False)
+    result: Mapped[str] = mapped_column(String(32), nullable=False)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delivered_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
