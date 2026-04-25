@@ -291,6 +291,7 @@ from app.rbac.dependencies import require_permission
 from app.rbac.permissions import Permission
 from app.rbac.roles import EnterpriseRole
 from app.readiness_score_models import ReadinessScoreExplainResponse, ReadinessScoreResponse
+from app.governance_workflow_routes import router as governance_workflow_router
 from app.remediation_actions_routes import router as remediation_actions_router
 from app.remediation_automation_routes import router as remediation_automation_router
 from app.repositories.advisor_tenants import AdvisorTenantRepository
@@ -580,6 +581,7 @@ app.add_middleware(TelemetryMiddleware)
 app.include_router(operations_resilience_router)
 app.include_router(governance_controls_router)
 app.include_router(governance_audit_readiness_router)
+app.include_router(governance_workflow_router)
 app.include_router(board_reporting_router)
 app.include_router(remediation_automation_router)
 app.include_router(remediation_actions_router)
