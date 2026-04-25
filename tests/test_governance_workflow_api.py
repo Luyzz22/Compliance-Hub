@@ -37,6 +37,20 @@ def test_workflow_dashboard_shape() -> None:
     }
 
 
+def test_dashboard_recent_run_summary_has_events_written_after_sync() -> None:
+    h = _headers()
+    r = client.post(f"{BASE}/run", headers=h, json={"rule_profile": "default"})
+    assert r.status_code == 201, r.text
+    d = client.get(BASE, headers=h)
+    assert d.status_code == 200, d.text
+    runs = d.json().get("recent_runs", [])
+    assert len(runs) >= 1
+    s0 = runs[0].get("summary") or {}
+    assert "events_written" in s0
+    assert isinstance(s0["events_written"], int)
+    assert s0["events_written"] >= 0
+
+
 def test_workflow_run_and_test_notification() -> None:
     h = _headers()
     run = client.post(f"{BASE}/run", headers=h, json={"rule_profile": "default"})
