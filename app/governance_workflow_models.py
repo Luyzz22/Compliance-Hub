@@ -113,8 +113,14 @@ class GovernanceWorkflowTaskDetailRead(BaseModel):
 
 
 class GovernanceWorkflowTaskUpdate(BaseModel):
-    status: str | None = None
-    assignee_user_id: str | None = None
+    status: str | None = Field(
+        default=None,
+        description="open, in_progress, done, cancelled, escalated; ungültige Werte → 422",
+    )
+    assignee_user_id: str | None = Field(
+        default=None,
+        description="Feld explizit mit `null` senden, um Bearbeiter zu leeren (PATCH-JSON).",
+    )
     last_comment: str | None = Field(
         default=None, max_length=5000, description="Kommentar / Zusatz zur letzten Änderung"
     )

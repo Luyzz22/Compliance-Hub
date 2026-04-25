@@ -255,6 +255,7 @@ async def patch_workflow_task(
     session: AsyncSession = Depends(get_async_db),
 ) -> GovernanceWorkflowTaskListItemRead:
     actor = _actor(request)
+    assignee_explicit = "assignee_user_id" in body.model_fields_set
     try:
         t = await gws.update_workflow_task(
             session,
@@ -262,6 +263,7 @@ async def patch_workflow_task(
             task_id,
             status=body.status,
             assignee_user_id=body.assignee_user_id,
+            assignee_explicit=assignee_explicit,
             last_comment=body.last_comment,
             actor_id=actor,
         )
@@ -270,6 +272,14 @@ async def patch_workflow_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found",
         ) from None
+    except ValueError as e:
+        if e.args and e.args[0] == "invalid_workflow_task_status":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid workflow task status. Allowed: open, in_progress, done, "
+                "cancelled, escalated",
+            ) from e
+        raise
     await _audit(
         session,
         tenant_id=tenant_id,
