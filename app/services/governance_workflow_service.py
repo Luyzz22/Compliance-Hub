@@ -75,6 +75,10 @@ SOURCE_CONTROL = "governance_control"
 SOURCE_BOARD_ACTION = "board_report_action"
 SOURCE_SERVICE_INCIDENT = "service_health_incident"
 OPEN_TASK_STATUSES = ("open", "in_progress", "escalated")
+# Erlaubte Werte für PATCH / tasks (und gespeicherte Zustände) — alles andere wird abgelehnt
+WORKFLOW_TASK_ALLOWED_STATUSES = frozenset(
+    {"open", "in_progress", "done", "cancelled", "escalated"}
+)
 
 
 def _now() -> datetime:
@@ -129,6 +133,7 @@ async def _append_event(
     severity: str = "info",
     ref_task_id: str | None = None,
     payload: dict[str, Any] | None = None,
+    event_tally: list[int] | None = None,
 ) -> None:
     session.add(
         GovernanceWorkflowEventTable(
@@ -144,6 +149,8 @@ async def _append_event(
             payload_json=payload or {},
         )
     )
+    if event_tally is not None:
+        event_tally[0] += 1
 
 
 async def _task_by_dedupe(
@@ -174,6 +181,7 @@ async def _materialize_task(
     due_at: datetime | None,
     priority: str,
     framework_tags: list[str] | None,
+    event_tally: list[int] | None = None,
 ) -> str | None:
     if await _task_by_dedupe(session, tenant_id, dedupe_key) is not None:
         return None
@@ -226,6 +234,7 @@ async def _materialize_task(
         ref_task_id=tid,
         message=title,
         payload={"template_code": template_code, "dedupe_key": dedupe_key},
+        event_tally=event_tally,
     )
     return tid
 
@@ -234,7 +243,12 @@ async def _materialize_task(
 
 
 async def _rule_remediation_overdue(
-    session: AsyncSession, *, tenant_id: str, run_id: str, now: datetime
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    run_id: str,
+    now: datetime,
+    event_tally: list[int] | None = None,
 ) -> tuple[int, int]:
     """
     Regel: überfällige open/in_progress/blocked Remediation-Actions
@@ -269,6 +283,7 @@ async def _rule_remediation_overdue(
             due_at=a.due_at_utc,
             priority="high" if a.priority in ("high", "critical") else a.priority,
             framework_tags=[],
+            event_tally=event_tally,
         )
         if t is not None:
             created += 1
@@ -284,6 +299,7 @@ async def _rule_remediation_overdue(
                 ref_task_id=t,
                 message=("Eskalation (Stub) für hochkritische, überfällige Maßnahme"),
                 payload={"queue": "governance_workflow_notification"},
+                event_tally=event_tally,
             )
             n_id = str(uuid4())
             session.add(
@@ -306,7 +322,12 @@ async def _rule_remediation_overdue(
 
 
 async def _rule_service_health_incidents(
-    session: AsyncSession, *, tenant_id: str, run_id: str, now: datetime
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    run_id: str,
+    now: datetime,
+    event_tally: list[int] | None = None,
 ) -> int:
     """
     Regel: offener kritische Incident (Betriebs-Monitoring)
@@ -339,6 +360,7 @@ async def _rule_service_health_incidents(
             due_at=now,
             priority="critical",
             framework_tags=["ISO_27001", "NIS2_OPERATIONS"],
+            event_tally=event_tally,
         )
         if t is not None:
             c += 1
@@ -346,7 +368,12 @@ async def _rule_service_health_incidents(
 
 
 async def _rule_board_actions(
-    session: AsyncSession, *, tenant_id: str, run_id: str, now: datetime
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    run_id: str,
+    now: datetime,
+    event_tally: list[int] | None = None,
 ) -> int:
     """
     Regel: offene Board-Action -> Follow-up-Task mit Due/Owner.
@@ -378,6 +405,7 @@ async def _rule_board_actions(
             due_at=d,
             priority=b.priority,
             framework_tags=[],
+            event_tally=event_tally,
         )
         if t is not None:
             c += 1
@@ -394,7 +422,12 @@ async def _control_ids_with_evidence(session: AsyncSession, tenant_id: str) -> s
 
 
 async def _rule_evidence_gaps(
-    session: AsyncSession, *, tenant_id: str, run_id: str, now: datetime
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    run_id: str,
+    now: datetime,
+    event_tally: list[int] | None = None,
 ) -> int:
     """
     Regel: Control ohne Evidence-Artefakt, Status noch nicht abgeschlossen
@@ -427,6 +460,7 @@ async def _rule_evidence_gaps(
             due_at=d,
             priority="high",
             framework_tags=(g.framework_tags_json or []) if g.framework_tags_json else [],
+            event_tally=event_tally,
         )
         if t is not None:
             c += 1
@@ -434,7 +468,12 @@ async def _rule_evidence_gaps(
 
 
 async def _rule_overdue_reviews(
-    session: AsyncSession, *, tenant_id: str, run_id: str, now: datetime
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    run_id: str,
+    now: datetime,
+    event_tally: list[int] | None = None,
 ) -> int:
     """
     Regel: next_review_at in der Vergangenheit -> "Review durchführen".
@@ -472,6 +511,7 @@ async def _rule_overdue_reviews(
             due_at=r_at,
             priority="high",
             framework_tags=(g.framework_tags_json or []) if g.framework_tags_json else [],
+            event_tally=event_tally,
         )
         if t is not None:
             c += 1
@@ -504,14 +544,44 @@ async def run_deterministic_sync(
     )
     session.add(run)
     await session.flush()
+    event_tally: list[int] = [0]
     t1, n_esc = await _rule_remediation_overdue(
-        session, tenant_id=tenant_id, run_id=run_id, now=now
+        session,
+        tenant_id=tenant_id,
+        run_id=run_id,
+        now=now,
+        event_tally=event_tally,
     )
-    t2 = await _rule_service_health_incidents(session, tenant_id=tenant_id, run_id=run_id, now=now)
-    t3 = await _rule_board_actions(session, tenant_id=tenant_id, run_id=run_id, now=now)
-    t4 = await _rule_evidence_gaps(session, tenant_id=tenant_id, run_id=run_id, now=now)
-    t5 = await _rule_overdue_reviews(session, tenant_id=tenant_id, run_id=run_id, now=now)
+    t2 = await _rule_service_health_incidents(
+        session,
+        tenant_id=tenant_id,
+        run_id=run_id,
+        now=now,
+        event_tally=event_tally,
+    )
+    t3 = await _rule_board_actions(
+        session,
+        tenant_id=tenant_id,
+        run_id=run_id,
+        now=now,
+        event_tally=event_tally,
+    )
+    t4 = await _rule_evidence_gaps(
+        session,
+        tenant_id=tenant_id,
+        run_id=run_id,
+        now=now,
+        event_tally=event_tally,
+    )
+    t5 = await _rule_overdue_reviews(
+        session,
+        tenant_id=tenant_id,
+        run_id=run_id,
+        now=now,
+        event_tally=event_tally,
+    )
     mat = t1 + t2 + t3 + t4 + t5
+    ev_n = int(event_tally[0])
     end = _now()
     run.status = "completed"
     run.completed_at_utc = end
@@ -523,13 +593,14 @@ async def run_deterministic_sync(
         "evidence_gaps": t4,
         "overdue_reviews": t5,
         "remediation_notification_events": n_esc,
+        "events_written": ev_n,
     }
     await session.flush()
     return {
         "run_id": run_id,
         "status": "completed",
         "tasks_materialized": mat,
-        "events_written": 0,
+        "events_written": ev_n,
         "notifications_queued": n_esc,
         "rule_bundle_version": RULE_BUNDLE_VERSION,
     }
@@ -786,6 +857,7 @@ async def update_workflow_task(
     *,
     status: str | None,
     assignee_user_id: str | None,
+    assignee_explicit: bool = False,
     last_comment: str | None,
     actor_id: str,
 ) -> GovernanceWorkflowTaskTable:
@@ -794,9 +866,11 @@ async def update_workflow_task(
         raise KeyError("not_found")
     now = _now()
     before = t.status
-    if status is not None and status != t.status:
+    if status is not None:
+        if status not in WORKFLOW_TASK_ALLOWED_STATUSES:
+            raise ValueError("invalid_workflow_task_status")
         t.status = status
-    if assignee_user_id is not None:
+    if assignee_explicit:
         t.assignee_user_id = assignee_user_id
     if last_comment is not None:
         t.last_comment = last_comment
