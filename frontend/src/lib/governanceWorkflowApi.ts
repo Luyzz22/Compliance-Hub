@@ -2,6 +2,10 @@
  * Governance Workflow Orchestration (deterministische Regeln, mandantisoliert).
  */
 
+import type { WorkflowRunListItem, WorkflowRunResponse, WorkflowRunSummary } from "@/lib/governanceWorkflowTypes";
+
+export type { WorkflowRunListItem, WorkflowRunResponse, WorkflowRunSummary } from "@/lib/governanceWorkflowTypes";
+
 function apiBase(): string {
   return (
     process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
@@ -29,6 +33,17 @@ function headers(tenantId: string, extra?: Record<string, string>): Record<strin
 
 const BASE = "/api/v1/governance/workflows";
 
+export class WorkflowApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly detail: string = ""
+  ) {
+    super(message);
+    this.name = "WorkflowApiError";
+  }
+}
+
 export interface GovernanceWorkflowKpisDto {
   open_tasks: number;
   overdue_tasks: number;
@@ -40,13 +55,7 @@ export interface GovernanceWorkflowKpisDto {
 export interface GovernanceWorkflowDashboardDto {
   kpis: GovernanceWorkflowKpisDto;
   rule_bundle_version: string;
-  recent_runs: {
-    id: string;
-    status: string;
-    rule_bundle_version: string;
-    started_at_utc: string;
-    completed_at_utc: string | null;
-  }[];
+  recent_runs: WorkflowRunListItem[];
   templates: {
     id: string;
     code: string;
@@ -67,18 +76,17 @@ export async function fetchWorkflowDashboard(
 
 export async function postWorkflowRun(
   tenantId: string
-): Promise<{ run_id: string; tasks_materialized: number; notifications_queued: number }> {
+): Promise<WorkflowRunResponse> {
   const r = await fetch(`${apiBase()}${BASE}/run`, {
     method: "POST",
     headers: headers(tenantId),
     body: JSON.stringify({ rule_profile: "default" }),
   });
-  if (!r.ok) throw new Error(`Run ${r.status}: ${await r.text()}`);
-  return (await r.json()) as {
-    run_id: string;
-    tasks_materialized: number;
-    notifications_queued: number;
-  };
+  if (!r.ok) {
+    const t = await r.text();
+    throw new WorkflowApiError(`Run ${r.status}`, r.status, t);
+  }
+  return (await r.json()) as WorkflowRunResponse;
 }
 
 export interface WorkflowTaskListItemDto {
@@ -211,6 +219,21 @@ export async function fetchWorkflowTaskDetail(
   return (await r.json()) as WorkflowTaskDetailDto;
 }
 
+function parseErrorDetailFromBody(raw: string): string {
+  try {
+    const j = JSON.parse(raw) as { detail?: unknown };
+    if (typeof j.detail === "string" && j.detail) {
+      return j.detail;
+    }
+  } catch {
+    // ignore
+  }
+  if (raw.length > 0 && raw.length < 500) {
+    return raw;
+  }
+  return "Ungültige Anforderung";
+}
+
 export async function patchWorkflowTask(
   tenantId: string,
   taskId: string,
@@ -221,8 +244,19 @@ export async function patchWorkflowTask(
     headers: headers(tenantId),
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`PATCH task ${r.status}: ${await r.text()}`);
-  return (await r.json()) as WorkflowTaskListItemDto;
+  const text = await r.text();
+  if (r.status === 422) {
+    const d = parseErrorDetailFromBody(text);
+    throw new WorkflowApiError(
+      "Ungültiger Task-Status oder Konflikt (422)",
+      422,
+      d
+    );
+  }
+  if (!r.ok) {
+    throw new WorkflowApiError(`PATCH task ${r.status}`, r.status, text);
+  }
+  return JSON.parse(text) as WorkflowTaskListItemDto;
 }
 
 export async function postTestNotification(

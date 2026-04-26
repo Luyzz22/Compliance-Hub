@@ -146,6 +146,7 @@ from app.compliance_calendar_models import (
     ComplianceDeadlineResponse,
     ComplianceDeadlineUpdate,
 )
+from app.compliance_compass_routes import router as compliance_compass_router
 from app.compliance_gap_models import (
     REQUIREMENTS,
     REQUIREMENTS_BY_ID,
@@ -582,6 +583,7 @@ app.include_router(operations_resilience_router)
 app.include_router(governance_controls_router)
 app.include_router(governance_audit_readiness_router)
 app.include_router(governance_workflow_router)
+app.include_router(compliance_compass_router)
 app.include_router(board_reporting_router)
 app.include_router(remediation_automation_router)
 app.include_router(remediation_actions_router)

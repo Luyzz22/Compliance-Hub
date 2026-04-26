@@ -17,6 +17,7 @@ const baseItems = [
   { href: "/tenant/governance/overview", label: "Risk & Control Overview" },
   { href: "/tenant/governance/controls", label: "Unified Controls" },
   { href: "/tenant/governance/audits", label: "Audit Readiness" },
+  { href: "/tenant/governance/compass", label: "Compliance Compass" },
   { href: "/tenant/governance/workflows", label: "Workflows & Tasks" },
   { href: "/tenant/governance/operations", label: "Betrieb & Resilienz" },
   { href: "/tenant/eu-ai-act", label: "EU AI Act" },
