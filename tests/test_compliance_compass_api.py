@@ -1,10 +1,13 @@
-"""Compliance Compass API — Shape & Mandanten-Isolation."""
+"""Compliance Compass API — Shape, Mandanten-Isolation, Error-Mapping."""
 
 from __future__ import annotations
+
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.compliance_compass_service import ComplianceCompassError
 
 client = TestClient(app)
 
@@ -55,3 +58,18 @@ def test_compass_tenant_a_ne_b() -> None:
 def test_compass_401_or_400_without_auth() -> None:
     r = client.get(COMPASS, headers={})
     assert r.status_code in (400, 401)
+
+
+def test_compass_returns_503_on_compass_error() -> None:
+    """ComplianceCompassError aus dem Service-Layer → HTTP 503 mit generischem Detail
+    (kein Leaking interner DB-Hinweise nach außen)."""
+    with patch(
+        "app.compliance_compass_routes.build_compass_snapshot",
+        side_effect=ComplianceCompassError("compass_snapshot_unavailable"),
+    ):
+        r = client.get(COMPASS, headers=_h("board-kpi-tenant"))
+    assert r.status_code == 503
+    body = r.json()
+    assert body["detail"] == "compass_snapshot_unavailable"
+    assert "boom" not in r.text.lower()
+    assert "operational" not in r.text.lower()
