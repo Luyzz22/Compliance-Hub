@@ -61,6 +61,14 @@ def _strategic_score(session: Session, tenant_id: str) -> tuple[int, str]:
         return rs.score, str(rs.level)
     except Exception:  # pragma: no cover - defensiv gegen DB-Edge-Cases
         logger.exception("compliance_compass: readiness failed tenant=%s", tenant_id)
+        # Sonst bleibt die Session ggf. in fehlgeschlagenem Zustand (PendingRollbackError).
+        try:
+            session.rollback()
+        except Exception:  # pragma: no cover
+            logger.exception(
+                "compliance_compass: rollback after readiness fail tenant=%s",
+                tenant_id,
+            )
         return 0, "basic"
 
 
@@ -127,16 +135,17 @@ def _confidence_0_100(
     strategic: int,
     events_24h: int,
 ) -> int:
-    c = 0.58
+    # Niedriger Prior: ohne Signale kein künstlich hoher Confidence-Wert (dünne Datenlage).
+    c = 0.22
     if has_tasks:
-        c += 0.14
+        c += 0.20
     if has_runs:
-        c += 0.14
+        c += 0.20
     if strategic > 0:
-        c += 0.10
+        c += 0.19
     if events_24h > 0:
-        c += 0.10
-    return _clamp_int(c * 100.0)
+        c += 0.19
+    return _clamp_int(min(1.0, c) * 100.0)
 
 
 def _narrative(
