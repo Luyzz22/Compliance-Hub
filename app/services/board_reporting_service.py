@@ -14,8 +14,15 @@ from app.models_db import (
     GovernanceControlEvidenceTable,
     GovernanceControlReviewTable,
     GovernanceControlTable,
+    GovernanceWorkflowEventTable,
     NIS2IncidentTable,
     ServiceHealthIncidentTable,
+)
+from app.services.compliance_compass_service import (
+    COMPASS_EVENT_SOURCE_TYPE,
+    COMPASS_EVENT_TYPE_COMPLETED,
+    COMPASS_EVENT_TYPE_FAILED,
+    LOW_CONFIDENCE_THRESHOLD,
 )
 
 TrendDirection = Literal["up", "down", "stable"]
@@ -62,6 +69,56 @@ def _trend(curr: float, prev: float, *, stable_delta: float = 0.5) -> tuple[Tren
 async def _scalar_int(session: AsyncSession, stmt: Select[tuple[int]]) -> int:
     raw = await session.scalar(stmt)
     return int(raw or 0)
+
+
+@dataclass(slots=True)
+class _CompassEventSummary:
+    """Reduzierte Sicht auf den jüngsten Compass-Event für Board-Metriken."""
+
+    latest_at: datetime | None
+    event_type: str | None
+    confidence: int | None
+    fusion: int | None
+    posture: str | None
+
+
+async def _latest_compass_event(session: AsyncSession, tenant_id: str) -> _CompassEventSummary:
+    row = await session.scalar(
+        select(GovernanceWorkflowEventTable)
+        .where(
+            GovernanceWorkflowEventTable.tenant_id == tenant_id,
+            GovernanceWorkflowEventTable.source_type == COMPASS_EVENT_SOURCE_TYPE,
+            GovernanceWorkflowEventTable.event_type.in_(
+                [COMPASS_EVENT_TYPE_COMPLETED, COMPASS_EVENT_TYPE_FAILED]
+            ),
+        )
+        .order_by(GovernanceWorkflowEventTable.at_utc.desc())
+        .limit(1)
+    )
+    if row is None:
+        return _CompassEventSummary(None, None, None, None, None)
+    payload = row.payload_json or {}
+    confidence_raw = payload.get("confidence_0_100")
+    fusion_raw = payload.get("fusion_index_0_100")
+    return _CompassEventSummary(
+        latest_at=row.at_utc,
+        event_type=row.event_type,
+        confidence=int(confidence_raw) if isinstance(confidence_raw, int | float) else None,
+        fusion=int(fusion_raw) if isinstance(fusion_raw, int | float) else None,
+        posture=str(payload.get("posture")) if payload.get("posture") else None,
+    )
+
+
+def _compass_traffic_light(event_type: str | None, confidence: int | None) -> TrafficLight:
+    if event_type == COMPASS_EVENT_TYPE_FAILED:
+        return "red"
+    if confidence is None:
+        return "amber"
+    if confidence < LOW_CONFIDENCE_THRESHOLD:
+        return "red"
+    if confidence < 70:
+        return "amber"
+    return "green"
 
 
 async def compute_snapshot(
@@ -297,6 +354,48 @@ async def compute_snapshot(
             narrative_de="Anzahl AI-Systeme mit Risk-Level HIGH/HIGH_RISK im Register.",
         ),
     ]
+
+    # 8) Compass-Box: letzter Compliance-Compass-Run als Confidence/Fusion-KPI.
+    compass = await _latest_compass_event(session, tenant_id)
+    compass_light = _compass_traffic_light(compass.event_type, compass.confidence)
+    if compass.event_type == COMPASS_EVENT_TYPE_FAILED:
+        compass_narrative = (
+            "Letzter Compass-Run war fehlerhaft (Run-Pipeline). Keine valide Confidence verfügbar."
+        )
+    elif compass.confidence is None:
+        compass_narrative = "Noch kein Compass-Run vorhanden — Run anstoßen für Board-Sicht."
+    else:
+        compass_narrative = (
+            f"Confidence {compass.confidence}/100 (Posture: {compass.posture or '-'})."
+        )
+    metrics.extend(
+        [
+            BoardMetric(
+                metric_key="compass_confidence_0_100",
+                label="Compass Confidence",
+                value=float(compass.confidence) if compass.confidence is not None else 0.0,
+                unit="score",
+                traffic_light=compass_light,
+                trend_direction="stable",
+                trend_delta=0.0,
+                narrative_de=compass_narrative,
+            ),
+            BoardMetric(
+                metric_key="compass_fusion_0_100",
+                label="Compass Fusion Index",
+                value=float(compass.fusion) if compass.fusion is not None else 0.0,
+                unit="score",
+                traffic_light=compass_light,
+                trend_direction="stable",
+                trend_delta=0.0,
+                narrative_de=(
+                    f"Fusions-Index {compass.fusion}/100"
+                    if compass.fusion is not None
+                    else "Fusions-Index noch nicht ermittelt."
+                ),
+            ),
+        ]
+    )
 
     top_risk_areas: list[str] = []
     if open_critical_controls >= 5:

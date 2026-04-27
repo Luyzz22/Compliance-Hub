@@ -9,7 +9,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -33,6 +34,21 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
+
+
+# --- Governance-Integration: Event-Channel für Compass-Runs ----------------------------
+# Wir reusen die bestehende `governance_workflow_events`-Tabelle (siehe models_db) als
+# Audit-Spur. Vorteile: keine neue Migration, das Workflow-Dashboard zeigt Compass-Runs
+# automatisch, und die Workflow-Engine kann Events als Trigger lesen (Phase 3 EU AI Act:
+# Transparenz, Fehlerursache, kein PII-Leak — direkt unterstützt durch payload_json).
+COMPASS_EVENT_SOURCE_TYPE = "compliance_compass"
+COMPASS_EVENT_TYPE_COMPLETED = "compass.run.completed"
+COMPASS_EVENT_TYPE_FAILED = "compass.run.failed"
+COMPASS_EVENT_TYPE_LOW_CONFIDENCE = "compass.run.low_confidence"
+
+# Schwelle, ab der ein erfolgreicher Run zusätzlich als low_confidence-Event markiert wird.
+# Eng gewählt, damit der Workflow-Trigger nicht flutet (siehe governance_workflow_service).
+LOW_CONFIDENCE_THRESHOLD = 30
 
 
 class ComplianceCompassError(RuntimeError):
@@ -110,6 +126,52 @@ def _safe_rollback(session: Session, *, reason: str, tenant_id: str) -> None:
             reason,
             tenant_id,
         )
+
+
+def _append_compass_event(
+    session: Session,
+    *,
+    tenant_id: str,
+    run_id: str,
+    event_type: str,
+    severity: str,
+    message: str,
+    payload: dict[str, Any],
+) -> None:
+    """Append-only Audit-Eintrag in `governance_workflow_events` (sync session).
+
+    NIS2/AI-Act-Audit-Sicht: Erfolgreiche und fehlgeschlagene Runs sind nachvollziehbar,
+    Ursache (`error_type`) und Schweregrad sind erkennbar — ohne personenbezogene Daten.
+    Der Schreibfehler ist nicht fatal: er wird WARN-geloggt, der Snapshot bleibt nutzbar.
+    """
+    try:
+        session.add(
+            GovernanceWorkflowEventTable(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                at_utc=datetime.now(UTC),
+                event_type=event_type,
+                severity=severity,
+                ref_task_id=None,
+                source_type=COMPASS_EVENT_SOURCE_TYPE,
+                source_id=run_id,
+                message=message[:2000],
+                payload_json=payload,
+            )
+        )
+        # Snapshot-Pipeline ist sonst read-only: ein expliziter Commit hier macht den
+        # Event-Eintrag dauerhaft, ohne fremde Writes mitzunehmen. Failures landen im
+        # except-Zweig und werden durch _safe_rollback bereinigt.
+        session.flush()
+        session.commit()
+    except SQLAlchemyError:
+        logger.warning(
+            "compliance_compass.event_log_failed tenant=%s run_id=%s event_type=%s",
+            tenant_id,
+            run_id,
+            event_type,
+        )
+        _safe_rollback(session, reason="event_log_failed", tenant_id=tenant_id)
 
 
 def _count_tasks(session: Session, tenant_id: str, *extra) -> int:
@@ -282,6 +344,8 @@ def _narrative(
 def _build_snapshot_unsafe(
     session: Session,
     tenant_id: str,
+    *,
+    run_id: str,
 ) -> ComplianceCompassSnapshotOut:
     """Eigentliche Snapshot-Berechnung. Wirft DB-/Infra-Fehler nach oben.
 
@@ -442,14 +506,137 @@ def build_compass_snapshot(
     Eine technische Fehlermeldung wird in den Logs hinterlegt; nach außen wird
     eine generische :class:`ComplianceCompassError` propagiert (kein Leaking
     interner Details, kein PII).
+
+    Jeder Run hinterlässt einen Audit-Eintrag in ``governance_workflow_events``
+    (Erfolg, Fehler oder zusätzlich `low_confidence`) — damit ist der Run für
+    NIS2/AI-Act-/ISO-42001-Auditfragen nachvollziehbar.
     """
+    run_id = str(uuid4())
     try:
-        return _build_snapshot_unsafe(session, tenant_id)
+        snapshot = _build_snapshot_unsafe(session, tenant_id, run_id=run_id)
     except SQLAlchemyError as exc:
+        exc_type = type(exc).__name__
         logger.exception(
-            "compliance_compass.snapshot_db_failed tenant=%s exc_type=%s",
+            "compliance_compass.snapshot_db_failed tenant=%s exc_type=%s run_id=%s",
             tenant_id,
-            type(exc).__name__,
+            exc_type,
+            run_id,
         )
         _safe_rollback(session, reason="snapshot_db_failed", tenant_id=tenant_id)
+        # Failure-Event auf einer frischen Transaktion (Rollback ist erfolgt).
+        _append_compass_event(
+            session,
+            tenant_id=tenant_id,
+            run_id=run_id,
+            event_type=COMPASS_EVENT_TYPE_FAILED,
+            severity="error",
+            message="compass snapshot build failed",
+            payload={
+                "error_type": exc_type,
+                "stage": "snapshot_pipeline",
+                "model_version": COMPASS_VERSION,
+            },
+        )
         raise ComplianceCompassError("compass_snapshot_unavailable") from exc
+
+    _append_compass_event(
+        session,
+        tenant_id=tenant_id,
+        run_id=run_id,
+        event_type=COMPASS_EVENT_TYPE_COMPLETED,
+        severity="info",
+        message=f"compass run completed posture={snapshot.posture}",
+        payload={
+            "fusion_index_0_100": snapshot.fusion_index_0_100,
+            "confidence_0_100": snapshot.confidence_0_100,
+            "posture": snapshot.posture,
+            "model_version": snapshot.model_version,
+            "readiness_level": snapshot.provenance.readiness_level,
+        },
+    )
+    if snapshot.confidence_0_100 < LOW_CONFIDENCE_THRESHOLD:
+        _append_compass_event(
+            session,
+            tenant_id=tenant_id,
+            run_id=run_id,
+            event_type=COMPASS_EVENT_TYPE_LOW_CONFIDENCE,
+            severity="warning",
+            message=(
+                f"compass confidence {snapshot.confidence_0_100} below "
+                f"threshold {LOW_CONFIDENCE_THRESHOLD}"
+            ),
+            payload={
+                "confidence_0_100": snapshot.confidence_0_100,
+                "threshold": LOW_CONFIDENCE_THRESHOLD,
+                "fusion_index_0_100": snapshot.fusion_index_0_100,
+                "posture": snapshot.posture,
+            },
+        )
+    return snapshot
+
+
+@dataclass(frozen=True, slots=True)
+class CompassRunSignal:
+    """Letzter Compass-Run als Governance-Signal (für Audit/Board/Workflow).
+
+    Werte spiegeln das jüngste ``compass.run.completed`` oder ``compass.run.failed``
+    Event des Tenants wider; ist kein Event vorhanden → ``result == "unknown"``.
+    """
+
+    latest_run_at: datetime | None
+    result: str  # ok | warning | error | unknown
+    confidence_0_100: int | None
+    fusion_index_0_100: int | None
+    posture: str | None
+    error_type: str | None
+
+
+def _classify_event_result(event_type: str, confidence: int | None) -> str:
+    if event_type == COMPASS_EVENT_TYPE_FAILED:
+        return "error"
+    if event_type == COMPASS_EVENT_TYPE_COMPLETED:
+        if confidence is not None and confidence < LOW_CONFIDENCE_THRESHOLD:
+            return "warning"
+        return "ok"
+    return "unknown"
+
+
+def get_latest_compass_signal(session: Session, tenant_id: str) -> CompassRunSignal:
+    """Liest den jüngsten Compass-Run-Event (Erfolg oder Fehler) aus dem Audit-Log.
+
+    Read-only, idempotent. Wird von Audit-Readiness, Board-Reporting und der
+    Workflow-Regel genutzt — damit die Integration deterministisch und ohne
+    KI-Magie funktioniert.
+    """
+    row = session.execute(
+        select(GovernanceWorkflowEventTable)
+        .where(
+            GovernanceWorkflowEventTable.tenant_id == tenant_id,
+            GovernanceWorkflowEventTable.source_type == COMPASS_EVENT_SOURCE_TYPE,
+            GovernanceWorkflowEventTable.event_type.in_(
+                [COMPASS_EVENT_TYPE_COMPLETED, COMPASS_EVENT_TYPE_FAILED]
+            ),
+        )
+        .order_by(GovernanceWorkflowEventTable.at_utc.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if row is None:
+        return CompassRunSignal(
+            latest_run_at=None,
+            result="unknown",
+            confidence_0_100=None,
+            fusion_index_0_100=None,
+            posture=None,
+            error_type=None,
+        )
+    payload = row.payload_json or {}
+    confidence = payload.get("confidence_0_100")
+    fusion = payload.get("fusion_index_0_100")
+    return CompassRunSignal(
+        latest_run_at=row.at_utc,
+        result=_classify_event_result(row.event_type, confidence),
+        confidence_0_100=int(confidence) if isinstance(confidence, int | float) else None,
+        fusion_index_0_100=int(fusion) if isinstance(fusion, int | float) else None,
+        posture=str(payload.get("posture")) if payload.get("posture") else None,
+        error_type=str(payload.get("error_type")) if payload.get("error_type") else None,
+    )
