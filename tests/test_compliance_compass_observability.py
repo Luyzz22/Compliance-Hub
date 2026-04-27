@@ -93,9 +93,12 @@ def test_db_failure_writes_failed_event_and_raises_compass_error() -> None:
     def _boom(*_args, **_kwargs):
         raise OperationalError("SELECT count(*)", {}, Exception("boom"))
 
-    with Session(engine) as s, patch(
-        "app.services.compliance_compass_service._count_tasks",
-        side_effect=_boom,
+    with (
+        Session(engine) as s,
+        patch(
+            "app.services.compliance_compass_service._count_tasks",
+            side_effect=_boom,
+        ),
     ):
         try:
             build_compass_snapshot(s, tenant)

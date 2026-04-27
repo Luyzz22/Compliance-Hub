@@ -360,8 +360,7 @@ async def compute_snapshot(
     compass_light = _compass_traffic_light(compass.event_type, compass.confidence)
     if compass.event_type == COMPASS_EVENT_TYPE_FAILED:
         compass_narrative = (
-            "Letzter Compass-Run war fehlerhaft (Run-Pipeline). "
-            "Keine valide Confidence verfügbar."
+            "Letzter Compass-Run war fehlerhaft (Run-Pipeline). Keine valide Confidence verfügbar."
         )
     elif compass.confidence is None:
         compass_narrative = "Noch kein Compass-Run vorhanden — Run anstoßen für Board-Sicht."

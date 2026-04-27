@@ -518,9 +518,7 @@ async def _rule_compass_low_confidence(
     payload = latest.payload_json or {}
     event_type = latest.event_type
     confidence_raw = payload.get("confidence_0_100")
-    confidence = (
-        int(confidence_raw) if isinstance(confidence_raw, int | float) else None
-    )
+    confidence = int(confidence_raw) if isinstance(confidence_raw, int | float) else None
     is_failure = event_type == "compass.run.failed"
     is_low_conf = (
         event_type == "compass.run.completed"
@@ -544,10 +542,7 @@ async def _rule_compass_low_confidence(
             "error_type": payload.get("error_type"),
         }
     else:
-        title = (
-            f"Compass-Confidence kritisch ({confidence}/100) — "
-            "Daten- und Konfigurationsprüfung"
-        )
+        title = f"Compass-Confidence kritisch ({confidence}/100) — Daten- und Konfigurationsprüfung"
         description = (
             "Compass meldet sehr niedrige Confidence. Datenbasis (Controls, "
             "Evidence, Tasks, Readiness) und Konfiguration im Governance-Stack prüfen."
