@@ -3,8 +3,37 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+CompassResult = Literal["ok", "warning", "error", "unknown"]
+
+
+class CompassAuditSignal(BaseModel):
+    """Governance-Signal aus dem letzten Compliance-Compass-Run für Audit/Board.
+
+    Deterministisch aus ``governance_workflow_events`` abgeleitet (kein LLM, kein PII).
+    """
+
+    latest_run_at: datetime | None = Field(
+        default=None,
+        description="Zeitstempel des jüngsten Compass-Runs (UTC); None falls nie gelaufen.",
+    )
+    result: CompassResult = Field(
+        default="unknown",
+        description="ok | warning (Low Confidence) | error (Run failed) | unknown.",
+    )
+    confidence_0_100: int | None = Field(default=None, ge=0, le=100)
+    fusion_index_0_100: int | None = Field(default=None, ge=0, le=100)
+    posture: str | None = Field(
+        default=None,
+        description="strong | steady | watch | elevated; None falls Run fehlgeschlagen.",
+    )
+    error_type: str | None = Field(
+        default=None,
+        description="Bei result=='error': technischer Exception-Typ (kein PII).",
+    )
 
 
 class GovernanceAuditCaseCreate(BaseModel):
@@ -62,6 +91,13 @@ class AuditReadinessSummaryRead(BaseModel):
     overdue_reviews_count: int
     by_framework: list[AuditReadinessFrameworkSlice]
     gaps: list[AuditEvidenceGapRow] = Field(default_factory=list)
+    compass_signal: CompassAuditSignal = Field(
+        default_factory=CompassAuditSignal,
+        description=(
+            "Letzter Compliance-Compass-Run (Confidence/Posture/Result) als "
+            "Governance-Kennzahl. ``result == 'unknown'`` falls noch kein Run lief."
+        ),
+    )
 
 
 class AuditReadinessControlRow(BaseModel):

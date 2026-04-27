@@ -68,12 +68,26 @@ _TEMPLATE_CATALOG: list[dict[str, Any]] = [
         "description": "Umsetzung der Board-Action inkl. Owner, Termin, Nachweis im Audit-Case.",
         "default_sla_days": 7,
     },
+    {
+        "code": "tpl_compass_data_quality",
+        "title": "Compass Daten-/Konfigurationsprüfung",
+        "description": (
+            "Compass-Run liefert kritisch niedrige Confidence oder ist fehlgeschlagen. "
+            "Datenbasis (Controls, Evidence, Tasks) und Konfiguration prüfen."
+        ),
+        "default_sla_days": 3,
+    },
 ]
 
 SOURCE_REMEDIATION = "remediation_action"
 SOURCE_CONTROL = "governance_control"
 SOURCE_BOARD_ACTION = "board_report_action"
 SOURCE_SERVICE_INCIDENT = "service_health_incident"
+SOURCE_COMPASS = "compliance_compass"
+
+# Compass: nur sehr niedrige Confidence triggert einen Task (sonst Flutgefahr).
+# Failures triggern immer.
+COMPASS_TASK_CONFIDENCE_FLOOR = 30
 OPEN_TASK_STATUSES = ("open", "in_progress", "escalated")
 # Erlaubte Werte für PATCH / tasks (und gespeicherte Zustände) — alles andere wird abgelehnt
 WORKFLOW_TASK_ALLOWED_STATUSES = frozenset(
@@ -467,6 +481,105 @@ async def _rule_evidence_gaps(
     return c
 
 
+async def _rule_compass_low_confidence(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    run_id: str,
+    now: datetime,
+    event_tally: list[int] | None = None,
+) -> int:
+    """
+    Regel: Letzter Compass-Run ist `failed` oder hat Confidence unter Floor → ein Task.
+
+    Eng gefasst, damit kein Task-Sturm entsteht:
+      * Idempotenz pro Tag und Tenant via dedupe_key (`wf:compass:lowconf:{tenant}:{YYYYMMDD}`).
+      * Nur das jüngste relevante Event wird betrachtet.
+      * Bei Erfolg ohne Low-Confidence: kein Task.
+
+    Phase-3-EU-AI-Act-Sicht: Niedrige Compass-Confidence ist ein Indikator für
+    schlechte Datenbasis im Governance-Stack — der Task „Daten-/Konfigurationsprüfung"
+    macht das auditierbar, ohne KI-Magie.
+    """
+    latest = await session.scalar(
+        select(GovernanceWorkflowEventTable)
+        .where(
+            GovernanceWorkflowEventTable.tenant_id == tenant_id,
+            GovernanceWorkflowEventTable.source_type == SOURCE_COMPASS,
+            GovernanceWorkflowEventTable.event_type.in_(
+                ["compass.run.completed", "compass.run.failed"]
+            ),
+        )
+        .order_by(desc(GovernanceWorkflowEventTable.at_utc))
+        .limit(1)
+    )
+    if latest is None:
+        return 0
+    payload = latest.payload_json or {}
+    event_type = latest.event_type
+    confidence_raw = payload.get("confidence_0_100")
+    confidence = (
+        int(confidence_raw) if isinstance(confidence_raw, int | float) else None
+    )
+    is_failure = event_type == "compass.run.failed"
+    is_low_conf = (
+        event_type == "compass.run.completed"
+        and confidence is not None
+        and confidence < COMPASS_TASK_CONFIDENCE_FLOOR
+    )
+    if not (is_failure or is_low_conf):
+        return 0
+
+    day_key = now.strftime("%Y%m%d")
+    dedupe_key = f"wf:compass:lowconf:{tenant_id}:{day_key}"
+    if is_failure:
+        title = "Compass-Run fehlgeschlagen — Daten/Konfiguration prüfen"
+        description = (
+            "Letzter Compass-Run wurde durch Infrastruktur-/Datenfehler abgebrochen. "
+            "Bitte Logs (governance_workflow_events) prüfen und Run wiederholen."
+        )
+        priority = "high"
+        source_ref = {
+            "event_type": event_type,
+            "error_type": payload.get("error_type"),
+        }
+    else:
+        title = (
+            f"Compass-Confidence kritisch ({confidence}/100) — "
+            "Daten- und Konfigurationsprüfung"
+        )
+        description = (
+            "Compass meldet sehr niedrige Confidence. Datenbasis (Controls, "
+            "Evidence, Tasks, Readiness) und Konfiguration im Governance-Stack prüfen."
+        )
+        priority = "medium"
+        source_ref = {
+            "event_type": event_type,
+            "confidence_0_100": confidence,
+            "threshold": COMPASS_TASK_CONFIDENCE_FLOOR,
+        }
+
+    due = now + timedelta(days=3)
+    t = await _materialize_task(
+        session,
+        tenant_id=tenant_id,
+        run_id=run_id,
+        title=title,
+        description=description,
+        source_type=SOURCE_COMPASS,
+        source_id=latest.source_id,
+        source_ref=source_ref,
+        dedupe_key=dedupe_key,
+        template_code="tpl_compass_data_quality",
+        assignee=None,
+        due_at=due,
+        priority=priority,
+        framework_tags=["EU_AI_ACT", "ISO_42001"],
+        event_tally=event_tally,
+    )
+    return 1 if t is not None else 0
+
+
 async def _rule_overdue_reviews(
     session: AsyncSession,
     *,
@@ -580,7 +693,14 @@ async def run_deterministic_sync(
         now=now,
         event_tally=event_tally,
     )
-    mat = t1 + t2 + t3 + t4 + t5
+    t6 = await _rule_compass_low_confidence(
+        session,
+        tenant_id=tenant_id,
+        run_id=run_id,
+        now=now,
+        event_tally=event_tally,
+    )
+    mat = t1 + t2 + t3 + t4 + t5 + t6
     ev_n = int(event_tally[0])
     end = _now()
     run.status = "completed"
@@ -592,6 +712,7 @@ async def run_deterministic_sync(
         "board_actions": t3,
         "evidence_gaps": t4,
         "overdue_reviews": t5,
+        "compass_low_confidence": t6,
         "remediation_notification_events": n_esc,
         "events_written": ev_n,
     }

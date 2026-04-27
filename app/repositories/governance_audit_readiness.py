@@ -12,6 +12,7 @@ from app.governance_audit_readiness_models import (
     AuditReadinessControlRow,
     AuditReadinessFrameworkSlice,
     AuditReadinessSummaryRead,
+    CompassAuditSignal,
     GovernanceAuditCaseCreate,
     GovernanceAuditCaseRead,
 )
@@ -24,6 +25,7 @@ from app.models_db import (
     GovernanceEvidenceRequirementTable,
 )
 from app.repositories.governance_controls import GovernanceControlRepository
+from app.services.compliance_compass_service import get_latest_compass_signal
 from app.services.governance_audit_readiness_rules import (
     ControlSignals,
     compute_control_metrics,
@@ -292,6 +294,7 @@ class GovernanceAuditReadinessRepository:
             )
             for fw, st in sorted(fw_stats.items())
         ]
+        compass_signal = self._build_compass_signal(tenant_id)
         return AuditReadinessSummaryRead(
             audit_case_id=audit_case_id,
             overall_readiness_pct=overall,
@@ -301,6 +304,19 @@ class GovernanceAuditReadinessRepository:
             overdue_reviews_count=overdue_reviews,
             by_framework=by_fw,
             gaps=gap_rows,
+            compass_signal=compass_signal,
+        )
+
+    def _build_compass_signal(self, tenant_id: str) -> CompassAuditSignal:
+        """Liefert das jüngste Compass-Signal für den Tenant; "unknown" falls keines."""
+        sig = get_latest_compass_signal(self._s, tenant_id)
+        return CompassAuditSignal(
+            latest_run_at=sig.latest_run_at,
+            result=sig.result,  # type: ignore[arg-type]
+            confidence_0_100=sig.confidence_0_100,
+            fusion_index_0_100=sig.fusion_index_0_100,
+            posture=sig.posture,
+            error_type=sig.error_type,
         )
 
     def list_control_rows(
