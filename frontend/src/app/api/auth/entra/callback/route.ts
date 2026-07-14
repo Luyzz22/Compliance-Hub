@@ -57,10 +57,9 @@ export async function GET(request: NextRequest) {
     if (!transaction || !secureValuesEqual(state, transaction.state)) {
       return loginError(request, "entra_transaction_invalid");
     }
-    if (code.length < 20 || code.length > 8192) {
-      return loginError(request, "entra_transaction_invalid");
-    }
 
+    // Authorization codes are opaque and must be validated by Entra/MSAL, not
+    // trusted or rejected based on a client-controlled representation.
     const identity = await redeemEntraAuthorizationCode(code, transaction);
     const backend = await fetch(`${complianceApiBaseUrl()}/api/v1/auth/session/entra`, {
       method: "POST",
