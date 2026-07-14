@@ -12,10 +12,11 @@ interface Props {
 /**
  * TODO: POST /api/v1/nis2/wizard/sessions — bis dahin lokale Session-ID (UUID).
  */
-export function StartNis2WizardButton({ tenantId: _tenantId }: Props) {
+export function StartNis2WizardButton({ tenantId }: Props) {
   const router = useRouter();
 
   function start() {
+    void tenantId;
     const id =
       typeof crypto !== "undefined" && crypto.randomUUID
         ? crypto.randomUUID()

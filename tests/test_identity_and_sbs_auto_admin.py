@@ -167,7 +167,7 @@ class TestRegistrationFlow:
         data = resp.json()
         assert data["email"] == "new.user@example.com"
         assert data["email_verified"] is False
-        assert "verification_token" in data
+        assert "verification_token" not in data
         assert "user_id" in data
 
     def test_register_duplicate_email(self) -> None:
@@ -190,40 +190,36 @@ class TestRegistrationFlow:
         assert resp.status_code == 400
 
     def test_verify_email_with_valid_token(self) -> None:
-        reg = client.post(
-            "/api/v1/auth/register",
-            json={"email": "verify.me@example.com", "password": "StrongPass123"},
-        )
-        token = reg.json()["verification_token"]
-        resp = client.post(f"/api/v1/auth/verify-email?token={token}")
+        with Session(engine) as s:
+            token = IdentityService(UserRepository(s)).register(
+                email="verify.me@example.com", password="StrongPass123"
+            )["verification_token"]
+        resp = client.post("/api/v1/auth/verify-email", json={"token": token})
         assert resp.status_code == 200
         data = resp.json()
         assert data["email_verified"] is True
 
     def test_verify_email_invalid_token(self) -> None:
-        resp = client.post("/api/v1/auth/verify-email?token=invalid-token-xyz")
+        resp = client.post(
+            "/api/v1/auth/verify-email", json={"token": "invalid-token-xyz-0000000000000000"}
+        )
         assert resp.status_code == 400
 
     def test_sbs_user_gets_auto_role_after_verification(self) -> None:
-        reg = client.post(
-            "/api/v1/auth/register",
-            json={
-                "email": "auto.admin@sbsdeutschland.de",
-                "password": "StrongPass123",
-            },
-        )
-        token = reg.json()["verification_token"]
-        resp = client.post(f"/api/v1/auth/verify-email?token={token}")
+        with Session(engine) as s:
+            token = IdentityService(UserRepository(s)).register(
+                email="auto.admin@sbsdeutschland.de", password="StrongPass123"
+            )["verification_token"]
+        resp = client.post("/api/v1/auth/verify-email", json={"token": token})
         data = resp.json()
         assert data["auto_role"] == "tenant_admin"
 
     def test_bootstrap_email_gets_super_admin_after_verification(self) -> None:
-        reg = client.post(
-            "/api/v1/auth/register",
-            json={"email": "ki@sbsdeutschland.de", "password": "StrongPass123"},
-        )
-        token = reg.json()["verification_token"]
-        resp = client.post(f"/api/v1/auth/verify-email?token={token}")
+        with Session(engine) as s:
+            token = IdentityService(UserRepository(s)).register(
+                email="ki@sbsdeutschland.de", password="StrongPass123"
+            )["verification_token"]
+        resp = client.post("/api/v1/auth/verify-email", json={"token": token})
         data = resp.json()
         assert data["auto_role"] == "super_admin"
 

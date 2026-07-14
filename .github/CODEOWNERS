@@ -1,0 +1,13 @@
+# Security-sensitive changes require explicit review by the repository owner.
+* @Luyzz22
+
+/.github/ @Luyzz22
+/app/auth_dependencies.py @Luyzz22
+/app/security.py @Luyzz22
+/app/security_credentials.py @Luyzz22
+/app/security_middleware.py @Luyzz22
+/app/services/identity_service.py @Luyzz22
+/app/services/llm_client.py @Luyzz22
+/app/services/llm_router.py @Luyzz22
+/frontend/next.config.ts @Luyzz22
+/frontend/scripts/verify-enterprise-readiness.mjs @Luyzz22

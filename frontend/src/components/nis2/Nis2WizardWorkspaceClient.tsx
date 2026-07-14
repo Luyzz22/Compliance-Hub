@@ -173,8 +173,9 @@ export function Nis2WizardWorkspaceClient({
   }, [appendAudit, drainInflightSaves, sessionId, tenantId]);
 
   useEffect(() => {
+    const activeTimers = timers.current;
     return () => {
-      for (const t of Object.values(timers.current)) {
+      for (const t of Object.values(activeTimers)) {
         clearTimeout(t);
       }
     };

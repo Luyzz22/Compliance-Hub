@@ -1,38 +1,110 @@
-name: ci
+name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint-test:
+  backend:
+    name: Backend / Python 3.11
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: Install dependencies
-        run: python -m pip install -e '.[dev,api]' rank-bm25
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade pip 'setuptools>=83.0.0' wheel
+          python -m pip install --disable-pip-version-check -e '.[dev,api]' rank-bm25 pip-audit bandit
 
-      - name: Lint
+      - name: Lint and format check
         run: |
           ruff check app/ tests/
           ruff format --check app/ tests/
 
-      - name: Setup OPA
-        uses: open-policy-agent/setup-opa@v2
-        with:
-          version: v0.70.0
+      - name: Dependency vulnerability audit
+        run: pip-audit --skip-editable --desc
 
-      - name: OPA Rego policy tests
-        run: opa test infra/opa/policies/compliancehub/regos/
+      - name: Static security analysis
+        run: bandit -q -r app -x app/db_migrations -lll
 
       - name: Test
         run: python -m pytest tests/ -q
-        # DB governance: tests/test_db_schema_alignment.py (ORM vs DB) +
-        # tests/test_db_migrations_kritis_sector.py (legacy upgrade). Deploy: migrate_all or API lifespan.
+
+  frontend:
+    name: Frontend / Node 24
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dependency vulnerability audit
+        run: npm audit --audit-level=moderate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Production compile
+        run: npm run build
+
+  policy:
+    name: Policy / OPA
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up OPA
+        uses: open-policy-agent/setup-opa@b2b258e089860efaadaaf71bf6e3aecb4a3eeff1 # v2.4.0
+        with:
+          version: v1.18.2
+
+      - name: Test Rego policies
+        run: opa test --v0-compatible infra/opa/policies/compliancehub/regos/
+
+  dependency-review:
+    name: Pull request dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Reject vulnerable dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate

@@ -2,18 +2,23 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.13.0 <23 || >=24.0.0"
+  },
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/verify-enterprise-readiness.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test:unit": "vitest run"
+    "lint": "eslint --max-warnings=0",
+    "test:unit": "vitest run",
+    "verify:enterprise": "node scripts/verify-enterprise-readiness.mjs"
   },
   "dependencies": {
     "jszip": "^3.10.1",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "next": "16.2.10",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "react-markdown": "^10.1.0"
   },
   "devDependencies": {
@@ -24,10 +29,13 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.10",
     "jsdom": "^25.0.1",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^3.0.5"
+    "vitest": "3.2.6"
+  },
+  "overrides": {
+    "postcss": "8.5.10"
   }
 }

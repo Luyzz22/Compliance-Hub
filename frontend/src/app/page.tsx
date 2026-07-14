@@ -3,7 +3,7 @@ import React from "react";
 
 import { TrackedContactLink } from "@/components/contact/TrackedContactLink";
 import { HomeProductPreview } from "@/components/home/HomeProductPreview";
-import { CH_BTN_PRIMARY, CH_BTN_SECONDARY } from "@/lib/boardLayout";
+import { CH_BTN_PRIMARY } from "@/lib/boardLayout";
 import { contactPageHref } from "@/lib/publicContact";
 
 function SectionTitle({
@@ -16,14 +16,14 @@ function SectionTitle({
   id?: string;
 }) {
   return (
-    <div className="mb-8 max-w-2xl">
+    <div className="mb-10 max-w-3xl">
       <h2
         id={id}
-        className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl"
+        className="text-2xl font-semibold tracking-[-0.035em] text-[#07111f] sm:text-3xl"
       >
         {title}
       </h2>
-      <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-[0.95rem]">
+      <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
         {subtitle}
       </p>
     </div>
@@ -35,34 +35,34 @@ export default function HomePage() {
     <div className="relative min-w-0">
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-70"
+        className="enterprise-grid pointer-events-none fixed inset-0 -z-20 opacity-70"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-80"
         style={{
           background:
-            "radial-gradient(circle at 0% 0%, rgba(14,165,233,0.12), transparent 50%), radial-gradient(circle at 100% 0%, rgba(34,197,94,0.1), transparent 55%)",
+            "radial-gradient(circle at 5% 0%, rgba(22,104,232,0.13), transparent 42%), radial-gradient(circle at 88% 2%, rgba(72,212,180,0.12), transparent 38%)",
         }}
       />
 
       {/* Hero */}
-      <section className="relative pb-12 pt-2 md:pb-16">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.12fr_1fr] lg:gap-12">
+      <section className="relative pb-20 pt-6 md:pb-28 md:pt-12">
+        <div className="grid items-center gap-14 lg:grid-cols-[1.08fr_0.92fr] lg:gap-20">
           <div>
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-700 sm:text-xs">
-              DACH · Enterprise · AI Governance
+            <p className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-sm backdrop-blur sm:text-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+              DACH · Enterprise AI Governance
             </p>
-            <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-[2.35rem] lg:leading-[1.12]">
-              Der Governance-Layer für Ihre{" "}
-              <span className="bg-gradient-to-r from-cyan-700 to-emerald-600 bg-clip-text text-transparent">
-                AI- und NIS2-Programme
-              </span>
-              .
+            <h1 className="mt-6 max-w-4xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] text-[#07111f] sm:text-5xl lg:text-[4.5rem]">
+              Governance, die mit Ihrer AI-Infrastruktur skaliert.
             </h1>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
-              Eine Plattform für Beratungen und Enterprise-Teams: Unterstützung bei Vorbereitung
-              und strukturierter Dokumentation im Kontext von EU AI Act, NIS2 und ISO-Standards –
-              mit Board-KPIs, Evidence und Mandantenfähigkeit. Keine Rechtsberatung; konkrete
-              Bewertungen verbleiben bei Ihnen und Ihren Beauftragten.
+            <p className="mt-6 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+              Ein kontrollierter Arbeitsraum für AI-Systeme, Risiken, Controls und Evidence –
+              mandantenfähig, nachvollziehbar und für EU AI Act, NIS2 sowie ISO 42001
+              vorbereitet. Fachliche Entscheidungen bleiben bei den verantwortlichen Personen.
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-9 flex flex-wrap gap-3">
               <TrackedContactLink
                 href={contactPageHref({
                   quelle: "home-hero",
@@ -71,24 +71,24 @@ export default function HomePage() {
                 })}
                 ctaId="home-hero-demo"
                 quelle="home-hero"
-                className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-900/15 transition hover:from-emerald-700 hover:to-emerald-600"
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#07111f] px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-slate-800"
               >
                 Demo anfragen
               </TrackedContactLink>
               <Link
-                href="/auth/register?onboarding=true"
-                className="inline-flex items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 px-5 py-2.5 text-sm font-semibold text-cyan-900 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-100"
+                href="/trust-center"
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300"
               >
-                Kostenlos starten
+                Trust Center
               </Link>
               <Link
                 href="/board/kpis"
-                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex min-h-12 items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-slate-600 transition hover:text-slate-950"
               >
                 Board öffnen
               </Link>
             </div>
-            <p className="mt-6 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:text-xs">
+            <p className="mt-8 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-slate-500 sm:text-xs">
               EU AI Act · NIS2 · ISO 27001/27701 · ISO 42001 · DSGVO
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function HomePage() {
       <div className="border-t border-slate-200/80" />
 
       {/* Drei Gründe */}
-      <section className="py-12 md:py-14" aria-labelledby="home-reasons">
+      <section className="py-20 md:py-28" aria-labelledby="home-reasons">
         <div className="mx-auto max-w-7xl">
           <SectionTitle
             id="home-reasons"
@@ -109,22 +109,19 @@ export default function HomePage() {
           <div className="grid gap-5 md:grid-cols-3">
             {[
               {
-                accent: "bg-cyan-500",
-                icon: "🧩",
+                index: "01",
                 title: "Ein Policy-Layer für alle Normen",
                 tag: "Framework Graph",
                 text: "EU AI Act, ISO 42001, ISO 27001/27701, NIS2 und DSGVO in einem gemeinsamen Kontrollmodell.",
               },
               {
-                accent: "bg-indigo-500",
-                icon: "👥",
+                index: "02",
                 title: "Berater-ready Plattform",
                 tag: "Mandanten-Engine",
                 text: "Mandantenfähigkeit, Rollenmodell und exportfähige Reports für skalierbare Beratungsprojekte.",
               },
               {
-                accent: "bg-emerald-500",
-                icon: "📄",
+                index: "03",
                 title: "Evidence strukturiert bereitstellen",
                 tag: "Evidence Engine",
                 text: "Gap-Analysen, KI-Register und Board-Reports aus einem gemeinsamen Datenmodell – zur Prüfung und zum Review vorbereitet.",
@@ -132,15 +129,12 @@ export default function HomePage() {
             ].map((c) => (
               <article
                 key={c.title}
-                className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-md shadow-slate-200/40"
+                className="premium-surface group relative overflow-hidden rounded-[1.75rem] p-7 transition duration-300 hover:-translate-y-1"
               >
-                <div className={`absolute inset-x-0 top-0 h-1 ${c.accent}`} aria-hidden />
-                <div className="mt-1 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-lg">
-                    {c.icon}
-                  </div>
+                <div className="flex items-center gap-3">
+                  <div className="font-mono text-xs font-semibold text-blue-600">{c.index}</div>
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900 sm:text-[0.95rem]">
+                    <h3 className="text-base font-semibold tracking-[-0.02em] text-slate-950">
                       {c.title}
                     </h3>
                     <p className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
@@ -148,7 +142,7 @@ export default function HomePage() {
                     </p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed text-slate-600">{c.text}</p>
+                <p className="mt-5 text-sm leading-7 text-slate-600">{c.text}</p>
               </article>
             ))}
           </div>
@@ -158,7 +152,7 @@ export default function HomePage() {
       <div className="border-t border-slate-200/80" />
 
       {/* Datenfluss */}
-      <section className="py-12 md:py-14" aria-labelledby="home-flow">
+      <section className="py-20 md:py-28" aria-labelledby="home-flow">
         <div className="mx-auto max-w-7xl">
           <SectionTitle
             id="home-flow"
@@ -176,7 +170,6 @@ export default function HomePage() {
                 t: "Scope",
                 sub: "Normen, Standorte, KI-Systeme",
                 d: "Mandat, Geltungsbereich und kritische Systeme definieren.",
-                icon: "📥",
                 ring: "border-cyan-500",
               },
               {
@@ -184,7 +177,6 @@ export default function HomePage() {
                 t: "Inventory",
                 sub: "Assets, Controls, Evidence",
                 d: "Daten einspielen – per UI, Import oder API.",
-                icon: "📊",
                 ring: "border-cyan-500",
               },
               {
@@ -192,7 +184,6 @@ export default function HomePage() {
                 t: "Engine",
                 sub: "Policy & Risiko",
                 d: "Violations, Empfehlungen und Prioritäten zusammenführen (unterstützend, keine automatische Rechtsbewertung).",
-                icon: "🤖",
                 ring: "border-cyan-500",
               },
               {
@@ -200,15 +191,14 @@ export default function HomePage() {
                 t: "Output",
                 sub: "Reports & Nachweise",
                 d: "Board-Reports, Auditor-Dossiers und Exporte erzeugen.",
-                icon: "📤",
                 ring: "border-emerald-500",
               },
             ].map((step) => (
               <div key={step.n} className="relative z-[1] text-center">
                 <div
-                  className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border-2 bg-white text-2xl shadow-sm ${step.ring}`}
+                  className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border bg-white font-mono text-sm font-semibold text-slate-950 shadow-sm ${step.ring}`}
                 >
-                  {step.icon}
+                  0{step.n}
                 </div>
                 <div className="text-xs font-semibold text-slate-900 sm:text-sm">
                   {step.n}. {step.t}
@@ -226,7 +216,7 @@ export default function HomePage() {
       <div className="border-t border-slate-200/80" />
 
       {/* Integrationen */}
-      <section className="py-12 md:py-14" aria-labelledby="home-integrations">
+      <section className="py-20 md:py-28" aria-labelledby="home-integrations">
         <div className="mx-auto max-w-7xl">
           <SectionTitle
             id="home-integrations"
@@ -235,21 +225,21 @@ export default function HomePage() {
           />
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:gap-4">
             {[
-              { icon: "🤖", name: "OpenAI", sub: "Foundation Models" },
-              { icon: "🧠", name: "Anthropic", sub: "LLMs" },
-              { icon: "⚙️", name: "Vertex AI", sub: "Cloud AI" },
-              { icon: "☁️", name: "Azure AI", sub: "Cloud AI" },
-              { icon: "📊", name: "Snowflake", sub: "Data Platform" },
-              { icon: "📈", name: "Databricks", sub: "Lakehouse" },
-              { icon: "🛡️", name: "OneTrust", sub: "GRC" },
-              { icon: "📋", name: "Jira", sub: "Tickets" },
+              { mark: "OA", name: "OpenAI", sub: "Foundation Models" },
+              { mark: "AN", name: "Anthropic", sub: "LLMs" },
+              { mark: "VX", name: "Vertex AI", sub: "Cloud AI" },
+              { mark: "AZ", name: "Azure AI", sub: "EU AI Plane" },
+              { mark: "SF", name: "Snowflake", sub: "Data Platform" },
+              { mark: "DB", name: "Databricks", sub: "Lakehouse" },
+              { mark: "OT", name: "OneTrust", sub: "GRC" },
+              { mark: "JR", name: "Jira", sub: "Tickets" },
             ].map((p) => (
               <div
                 key={p.name}
-                className="rounded-xl border border-slate-200/90 bg-white px-3 py-4 text-center shadow-sm transition hover:border-cyan-200/80 hover:shadow-md"
+                className="premium-surface rounded-2xl px-3 py-5 text-center transition hover:-translate-y-0.5"
               >
-                <span className="text-2xl" aria-hidden>
-                  {p.icon}
+                <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 font-mono text-[0.65rem] font-semibold text-white" aria-hidden>
+                  {p.mark}
                 </span>
                 <div className="mt-2 text-xs font-semibold text-slate-900 sm:text-sm">
                   {p.name}
@@ -280,12 +270,13 @@ export default function HomePage() {
       <div className="border-t border-slate-200/80" />
 
       {/* CTA */}
-      <section className="py-10 md:py-12">
-        <div className="mx-auto max-w-3xl rounded-2xl border border-cyan-200/80 bg-gradient-to-br from-cyan-50/90 via-white to-emerald-50/50 px-6 py-8 text-center shadow-lg shadow-slate-200/50 sm:px-10">
-          <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
+      <section className="py-20 md:py-28">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-[#07111f] px-6 py-12 text-center text-white shadow-2xl shadow-slate-950/20 sm:px-12 md:py-16">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">Enterprise briefing</p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-white sm:text-3xl">
             Integration in Ihre Governance-Landschaft besprechen?
           </h2>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-300">
             Wir zeigen, wie Compliance Hub in GRC-Tools, Ticketing, DMS und SIEM passt – und wo
             der größte Hebel liegt. Pakete von AI Act Readiness bis Enterprise Connectors besprechen
             wir gern im Gespräch.
@@ -299,17 +290,14 @@ export default function HomePage() {
               })}
               ctaId="home-mid-cta-demo"
               quelle="home-mid-cta"
-              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:from-emerald-700 hover:to-emerald-600"
+              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 shadow-md transition hover:-translate-y-0.5"
             >
               Demo anfragen
             </TrackedContactLink>
-            <Link href="/auth/register" className={`${CH_BTN_PRIMARY} px-6 py-3`}>
-              Jetzt registrieren
-            </Link>
-            <Link href="/auth/login" className={`${CH_BTN_SECONDARY} px-6 py-3`}>
+            <Link href="/auth/login" className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15">
               Anmelden
             </Link>
-            <Link href="/board/kpis" className={CH_BTN_SECONDARY}>
+            <Link href="/board/kpis" className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-slate-300 transition hover:text-white">
               Board-Ansicht
             </Link>
           </div>
@@ -319,25 +307,24 @@ export default function HomePage() {
       <div className="border-t border-slate-200/80" />
 
       {/* Security */}
-      <section className="py-12 md:pb-4" aria-labelledby="home-security">
+      <section className="py-20 md:pb-12 md:pt-28" aria-labelledby="home-security">
         <div className="mx-auto grid max-w-7xl items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
             <h2
               id="home-security"
               className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl"
             >
-              Security, DSGVO &amp; Hosting in der EU
+              Security und Datenschutz als Release Gate
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-600">
-              Für Industrie, Mittelstand und Kanzleien im DACH-Raum: EU-Hosting, klare
-              Trennung der Umgebungen und ein Setup, das bei der Einordnung von NIS2, EU AI Act,
-              DSGVO sowie ISO 27001/42001 unterstützt.
+              Produktivbetrieb wird nur freigegeben, wenn Identität, Datenregion, rechtliche
+              Angaben und technische Kontrollen nachweislich konfiguriert sind.
             </p>
             <ul className="mt-6 flex list-none flex-col gap-3 p-0">
               {[
-                "EU-Hosting mit DACH-Fokus: Frontend z. B. auf Vercel (EU-Regionen), Backend und Orchestrierung wahlweise in Deutschland.",
-                "PostgreSQL mit Verschlüsselung at Rest, Backups und getrennten Umgebungen (Dev/Staging/Prod) je Mandant.",
-                "Mandanten-Isolation (z. B. PostgreSQL RLS), SSO (SAML 2.0, Azure AD, SAP IAS) und Audit-Logs für Board und Prüfer.",
+                "Azure OpenAI ist nur nach EU-Region-/Data-Zone-Attestierung aktiv; Managed Identity ist der Produktionsstandard.",
+                "LLM-Funktionen sind standardmäßig aus. Personenbezogene Daten und Prompt-Injection-Muster werden vor Modellaufrufen blockiert.",
+                "Produktive Builds scheitern bei fehlenden Legal-, Auth-, Host-, Tenant- oder Datenschutzfreigaben bewusst.",
               ].map((line) => (
                 <li key={line} className="flex gap-3 text-sm leading-relaxed text-slate-800">
                   <span
@@ -349,16 +336,16 @@ export default function HomePage() {
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-b from-sky-50/80 to-white p-5 shadow-md shadow-slate-200/40">
+          <div className="premium-surface rounded-[1.75rem] p-6">
             <div className="flex justify-between text-xs text-slate-500">
               <span>Infrastruktur-Snapshot</span>
               <span>Architektur</span>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
-                { t: "Vercel", m: "Frontend & Edge", s: "EU-Regionen, TLS" },
-                { t: "Postgres", m: "Supabase / Neon", s: "PostgreSQL mit RLS" },
-                { t: "Hetzner (DE)", m: "Compute & Storage", s: "DE/EU-Hosting" },
+                { t: "Identity plane", m: "SSO & RBAC", s: "Release-gated" },
+                { t: "Data plane", m: "Tenant isolation", s: "Evidence required" },
+                { t: "AI plane", m: "Azure OpenAI", s: "Managed Identity" },
               ].map((b) => (
                 <div
                   key={b.t}

@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import logging
+import re
 import secrets
 from datetime import UTC, datetime, timedelta
 
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
+
 from app.repositories.users import UserRepository
+from app.security_credentials import hash_opaque_token
 from app.services.sbs_domain_auto_admin import resolve_auto_role
 
 logger = logging.getLogger(__name__)
@@ -18,14 +24,42 @@ MAX_FAILED_LOGINS = 5
 LOCKOUT_DURATION_MINUTES = 15
 PASSWORD_RESET_TOKEN_TTL_HOURS = 1
 
+# OWASP-aligned Argon2id baseline: 64 MiB memory, three iterations, four lanes.
+_PASSWORD_HASHER = PasswordHasher(
+    time_cost=3,
+    memory_cost=65_536,
+    parallelism=4,
+    hash_len=32,
+    salt_len=16,
+)
+_LEGACY_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
 
 def _hash_password(password: str) -> str:
-    """SHA-256 password hash (production would use bcrypt/argon2)."""
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    """Hash a password with memory-hard Argon2id and a per-password salt."""
+    return _PASSWORD_HASHER.hash(password)
 
 
 def _verify_password(password: str, hashed: str) -> bool:
-    return _hash_password(password) == hashed
+    """Verify Argon2id, with constant-time legacy SHA-256 migration support."""
+    if hashed.startswith("$argon2"):
+        try:
+            return bool(_PASSWORD_HASHER.verify(hashed, password))
+        except (InvalidHashError, VerificationError, VerifyMismatchError):
+            return False
+    if _LEGACY_SHA256_RE.fullmatch(hashed):
+        legacy = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return hmac.compare_digest(legacy, hashed)
+    return False
+
+
+def _password_hash_needs_upgrade(hashed: str) -> bool:
+    if not hashed.startswith("$argon2"):
+        return True
+    try:
+        return _PASSWORD_HASHER.check_needs_rehash(hashed)
+    except InvalidHashError:
+        return True
 
 
 # 48 bytes → 64-character URL-safe base64 token (sufficient entropy for verification/reset).
@@ -80,7 +114,7 @@ class IdentityService:
             company=company,
             language=language,
             timezone=timezone_str,
-            email_verification_token=verification_token,
+            email_verification_token=hash_opaque_token(verification_token),
         )
         return {
             "user_id": user.id,
@@ -136,6 +170,9 @@ class IdentityService:
                 }
             return {"error": "invalid_credentials", "detail": "Invalid email or password"}
 
+        if _password_hash_needs_upgrade(user.password_hash):
+            self._repo.update_password_hash(user.id, _hash_password(password))
+
         self._repo.clear_failed_logins(user.id)
         roles = self._repo.list_roles_for_user(user.id)
         return {
@@ -155,7 +192,7 @@ class IdentityService:
 
         token = _generate_token()
         expires = datetime.now(UTC) + timedelta(hours=PASSWORD_RESET_TOKEN_TTL_HOURS)
-        self._repo.set_password_reset_token(user.id, token, expires)
+        self._repo.set_password_reset_token(user.id, hash_opaque_token(token), expires)
         return {
             "message": "If the email exists, a reset link has been sent",
             "reset_token": token,

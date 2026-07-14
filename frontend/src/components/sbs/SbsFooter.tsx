@@ -6,11 +6,11 @@ import { contactPageHref } from "@/lib/publicContact";
 export function SbsFooter() {
   const y = new Date().getFullYear();
   return (
-    <footer className="mt-auto border-t border-slate-200/90 bg-white py-10">
-      <div className="mx-auto min-w-0 max-w-7xl px-4 md:px-6">
+    <footer className="sbs-premium-footer mt-auto border-t border-slate-200/70 bg-[#07111f] py-12 text-white">
+      <div className="mx-auto min-w-0 max-w-[90rem] px-4 md:px-8">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5">
           <div>
-            <h3 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">
+            <h3 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
               Plattform
             </h3>
             <ul className="mt-3 space-y-2 text-xs">
@@ -156,11 +156,6 @@ export function SbsFooter() {
               <li>
                 <Link href="/datenschutz" className="font-medium text-slate-600 hover:text-slate-900">
                   Datenschutz
-                </Link>
-              </li>
-              <li>
-                <Link href="/agb" className="font-medium text-slate-600 hover:text-slate-900">
-                  AGB
                 </Link>
               </li>
             </ul>

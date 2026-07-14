@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models_db import UserDB, UserTenantRoleDB
+from app.security_credentials import opaque_token_lookup_candidates
 
 
 class UserRepository:
@@ -54,11 +55,17 @@ class UserRepository:
         return self._session.execute(stmt).scalar_one_or_none()
 
     def get_by_verification_token(self, token: str) -> UserDB | None:
-        stmt = select(UserDB).where(UserDB.email_verification_token == token)
+        candidates = opaque_token_lookup_candidates(token)
+        if not candidates:
+            return None
+        stmt = select(UserDB).where(UserDB.email_verification_token.in_(candidates))
         return self._session.execute(stmt).scalar_one_or_none()
 
     def get_by_password_reset_token(self, token: str) -> UserDB | None:
-        stmt = select(UserDB).where(UserDB.password_reset_token == token)
+        candidates = opaque_token_lookup_candidates(token)
+        if not candidates:
+            return None
+        stmt = select(UserDB).where(UserDB.password_reset_token.in_(candidates))
         return self._session.execute(stmt).scalar_one_or_none()
 
     # ── UPDATE ────────────────────────────────────────────────────────
@@ -91,6 +98,16 @@ class UserRepository:
         user.password_reset_expires = None
         user.failed_login_attempts = 0
         user.locked_until = None
+        user.updated_at_utc = datetime.now(UTC)
+        self._session.commit()
+        return True
+
+    def update_password_hash(self, user_id: str, password_hash: str) -> bool:
+        """Replace a legacy password digest after successful authentication."""
+        user = self.get_by_id(user_id)
+        if user is None:
+            return False
+        user.password_hash = password_hash
         user.updated_at_utc = datetime.now(UTC)
         self._session.commit()
         return True

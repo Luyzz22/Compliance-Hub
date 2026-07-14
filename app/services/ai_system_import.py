@@ -319,7 +319,7 @@ def _after_create(
     audit_event_repo.log_event(
         tenant_id=tenant_id,
         actor_type="api_key",
-        actor_id=auth.api_key,
+        actor_id=auth.actor_id,
         entity_type="ai_system",
         entity_id=created.id,
         action="created",
@@ -332,7 +332,7 @@ def _after_create(
         violation_repository=violation_repo,
         audit_repository=audit_event_repo,
         actor_type="api_key",
-        actor_id=auth.api_key,
+        actor_id=auth.actor_id,
     )
 
 
@@ -347,7 +347,7 @@ def _after_update(
     audit_event_repo.log_event(
         tenant_id=tenant_id,
         actor_type="api_key",
-        actor_id=auth.api_key,
+        actor_id=auth.actor_id,
         entity_type="ai_system",
         entity_id=updated.id,
         action="updated",
@@ -360,7 +360,7 @@ def _after_update(
         violation_repository=violation_repo,
         audit_repository=audit_event_repo,
         actor_type="api_key",
-        actor_id=auth.api_key,
+        actor_id=auth.actor_id,
     )
 
 

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import React from "react";
 
-import { CH_CARD, CH_SHELL } from "@/lib/boardLayout";
+import { LegalReleaseGate } from "@/components/legal/LegalReleaseGate";
+import { CH_SHELL } from "@/lib/boardLayout";
 
 export const metadata: Metadata = {
-  title: "AGB · Compliance Hub",
+  title: "Vertragsbedingungen · Compliance Hub",
+  robots: { index: false, follow: false },
 };
 
 export default function AgbPage() {
@@ -15,19 +17,13 @@ export default function AgbPage() {
           Rechtliches
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
-          Allgemeine Geschäftsbedingungen
+          Vertragsbedingungen
         </h1>
         <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600">
-          Nutzungsbedingungen der Compliance Hub Plattform.
+          Geprüfte Bedingungen für die Compliance Hub Plattform.
         </p>
       </header>
-      <div className={CH_CARD}>
-        <p className="text-sm leading-relaxed text-slate-600">
-          <strong>Hinweis:</strong> Bitte ersetzen Sie diesen Platzhalter durch Ihre
-          vollständigen Allgemeinen Geschäftsbedingungen. Diese sollten Vertragsgegenstand,
-          Leistungsbeschreibung, Vergütung, Haftung, Laufzeit und Kündigung regeln.
-        </p>
-      </div>
+      <LegalReleaseGate />
     </div>
   );
 }

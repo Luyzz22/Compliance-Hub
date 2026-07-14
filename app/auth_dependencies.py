@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
@@ -10,7 +11,15 @@ from sqlalchemy.orm import Session
 from app.db import get_session
 from app.demo_tenant_guard import ensure_tenant_writes_allowed_if_not_demo
 from app.repositories.tenant_api_keys import TenantApiKeyRepository
-from app.security import AuthContext, get_settings
+from app.security import AuthContext, get_settings, secret_matches_any
+
+
+def _global_api_keys_allowed() -> bool:
+    environment = os.getenv("COMPLIANCEHUB_ENV", "dev").strip().lower()
+    if environment not in {"prod", "production"}:
+        return True
+    raw = os.getenv("COMPLIANCEHUB_ALLOW_GLOBAL_API_KEYS", "false").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
 
 
 def resolve_tenant_id_for_api_key(
@@ -37,7 +46,7 @@ def resolve_tenant_id_for_api_key(
     api_key = str(x_api_key).strip()
 
     settings = get_settings()
-    if api_key in settings.api_keys:
+    if _global_api_keys_allowed() and secret_matches_any(api_key, settings.api_keys):
         return tenant_id, api_key
 
     repo = TenantApiKeyRepository(session)

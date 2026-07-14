@@ -31,6 +31,8 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.advisor.metrics import AdvisorMetricsResponse, aggregate_advisor_metrics
 from app.advisor.preset_models import (
@@ -328,6 +330,8 @@ from app.security import (
     require_advisor_rag_headers,
     require_demo_seed_api_key,
 )
+from app.security_credentials import pseudonymous_subject
+from app.security_middleware import SecurityHeadersMiddleware
 from app.services import llm_client as llm_client_mod
 from app.services import usage_event_logger as usage_event_logger
 from app.services import workspace_telemetry
@@ -540,6 +544,7 @@ from app.workflows.config import temporal_task_queue
 
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
+IS_PRODUCTION = APP_ENVIRONMENT.strip().lower() in {"prod", "production"}
 
 
 class LLMInvokeRequest(BaseModel):
@@ -563,6 +568,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Shutdown: Graceful connection cleanup, audit log flush
     """
     # Startup phase
+    if IS_PRODUCTION:
+        trusted_hosts = os.getenv("COMPLIANCEHUB_TRUSTED_HOSTS", "").strip()
+        audit_key = os.getenv("COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY", "")
+        if not trusted_hosts:
+            raise RuntimeError("COMPLIANCEHUB_TRUSTED_HOSTS is required in production")
+        if len(audit_key) < 32:
+            raise RuntimeError(
+                "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY must contain at least 32 characters"
+            )
+        if os.getenv("COMPLIANCEHUB_ALLOW_GLOBAL_API_KEYS", "false").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
+            raise RuntimeError("Global API keys are forbidden in production")
     Base.metadata.create_all(bind=engine)
     run_all_db_migrations(engine)
     configure_telemetry()
@@ -575,10 +596,35 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="ComplianceHub API",
-    version="0.1.0",
+    version=APP_VERSION,
     lifespan=lifespan,
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
 )
 app.add_middleware(TelemetryMiddleware)
+app.add_middleware(SecurityHeadersMiddleware, production=IS_PRODUCTION)
+
+_trusted_hosts = [
+    host.strip() for host in os.getenv("COMPLIANCEHUB_TRUSTED_HOSTS", "").split(",") if host.strip()
+]
+if _trusted_hosts:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=_trusted_hosts)
+
+_cors_origins = [
+    origin.strip()
+    for origin in os.getenv("COMPLIANCEHUB_CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "x-api-key", "x-tenant-id"],
+        max_age=600,
+    )
 app.include_router(operations_resilience_router)
 app.include_router(governance_controls_router)
 app.include_router(governance_audit_readiness_router)
@@ -1027,7 +1073,7 @@ def create_ai_system(
     audit_event_repo.log_event(
         tenant_id=tenant_id,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
         entity_type="ai_system",
         entity_id=created.id,
         action="created",
@@ -1040,7 +1086,7 @@ def create_ai_system(
         violation_repository=violation_repo,
         audit_repository=audit_event_repo,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
     )
     return created
 
@@ -1269,7 +1315,7 @@ def update_ai_system(
     audit_event_repo.log_event(
         tenant_id=tenant_id,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
         entity_type="ai_system",
         entity_id=updated.id,
         action="updated",
@@ -1282,7 +1328,7 @@ def update_ai_system(
         violation_repository=violation_repo,
         audit_repository=audit_event_repo,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
     )
     return updated
 
@@ -1326,7 +1372,7 @@ def update_ai_system_status(
     audit_event_repo.log_event(
         tenant_id=tenant_id,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
         entity_type="ai_system",
         entity_id=updated.id,
         action="status_changed",
@@ -1339,7 +1385,7 @@ def update_ai_system_status(
         violation_repository=violation_repo,
         audit_repository=audit_event_repo,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
     )
 
     return updated
@@ -1388,12 +1434,12 @@ def put_ai_system_inventory_profile(
         auth_context.tenant_id,
         ai_system_id,
         body,
-        actor=auth_context.api_key,
+        actor=auth_context.actor_id,
     )
     audit_repo.log_event(
         tenant_id=auth_context.tenant_id,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
         entity_type="ai_system_inventory",
         entity_id=ai_system_id,
         action="upserted",
@@ -1438,12 +1484,12 @@ def put_ki_register_entry(
         auth_context.tenant_id,
         ai_system_id,
         body,
-        auth_context.api_key,
+        auth_context.actor_id,
     )
     audit_repo.log_event(
         tenant_id=auth_context.tenant_id,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
         entity_type="ki_register_entry",
         entity_id=ai_system_id,
         action="versioned_upsert",
@@ -2416,7 +2462,7 @@ def create_board_report_audit_record(
 ) -> BoardReportAuditRecord:
     """Legt einen Audit-Record für den aktuellen Board-Report an (Version = Hash)."""
     tenant_id = auth_context.tenant_id
-    created_by = (auth_context.api_key[:8] + "…") if auth_context.api_key else "api"
+    created_by = auth_context.actor_id
     report = _build_board_report(
         session,
         tenant_id=tenant_id,
@@ -4081,7 +4127,7 @@ def get_ai_system_policy_report(
         violation_repository=violation_repo,
         audit_repository=audit_repo,
         actor_type="api_key",
-        actor_id=auth.api_key,
+        actor_id=auth.actor_id,
     )
 
     # Optional: zusätzliche Actions aus Violations ableiten
@@ -4120,7 +4166,7 @@ def classify_system(
     audit_repo.log_event(
         tenant_id=tenant_id,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
         entity_type="ai_system",
         entity_id=ai_system_id,
         action="classified",
@@ -4157,7 +4203,7 @@ def override_classification(
         raise HTTPException(status_code=404, detail="AI system not found")
 
     previous = cls_repo.get_for_system(tenant_id, ai_system_id)
-    saved = cls_repo.save_override(tenant_id, ai_system_id, override, auth_context.api_key)
+    saved = cls_repo.save_override(tenant_id, ai_system_id, override, auth_context.actor_id)
 
     if saved.risk_level == "high_risk":
         gap_repo.ensure_requirements_exist(tenant_id, ai_system_id, "high_risk")
@@ -4165,7 +4211,7 @@ def override_classification(
     audit_repo.log_event(
         tenant_id=tenant_id,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
         entity_type="ai_system",
         entity_id=ai_system_id,
         action="classification_overridden",
@@ -4214,7 +4260,7 @@ def update_compliance_status(
         raise HTTPException(status_code=400, detail=f"Unknown requirement: {requirement_id}")
 
     result = gap_repo.update_status(
-        auth_context.tenant_id, ai_system_id, requirement_id, update, auth_context.api_key
+        auth_context.tenant_id, ai_system_id, requirement_id, update, auth_context.actor_id
     )
     if result is None:
         raise HTTPException(status_code=404, detail="Compliance status entry not found")
@@ -4222,7 +4268,7 @@ def update_compliance_status(
     audit_repo.log_event(
         tenant_id=auth_context.tenant_id,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
         entity_type="compliance_status",
         entity_id=f"{ai_system_id}/{requirement_id}",
         action="compliance_updated",
@@ -4769,7 +4815,7 @@ def export_authority_ai_act(
     audit_repo.log_event(
         tenant_id=auth_context.tenant_id,
         actor_type="api_key",
-        actor_id=auth_context.api_key,
+        actor_id=auth_context.actor_id,
         entity_type=GovernanceAuditEntity.AUTHORITY_EXPORT.value,
         entity_id=scope.value,
         action=GovernanceAuditAction.AUTHORITY_EXPORT_GENERATED.value,
@@ -4777,7 +4823,7 @@ def export_authority_ai_act(
     )
     audit_log_repo.record_event(
         tenant_id=auth_context.tenant_id,
-        actor=auth_context.api_key,
+        actor=auth_context.actor_id,
         action=GovernanceAuditAction.AUTHORITY_EXPORT_API_ACTION.value,
         entity_type="AuthorityExport",
         entity_id=scope.value,
@@ -7328,6 +7374,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=32, max_length=256)
+
+
 class PasswordResetRequest(BaseModel):
     email: str
 
@@ -7376,31 +7426,37 @@ def register_user(
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
         tenant_id="system",
-        actor=result["email"],
+        actor=result["user_id"],
         action="user.registered",
         entity_type="user",
         entity_id=result["user_id"],
         before=None,
-        after=result["email"],
+        after=None,
     )
-    return result
+    # Verification credentials are delivered out-of-band. Never return bearer
+    # tokens to an unauthenticated browser/API caller.
+    return {
+        "user_id": result["user_id"],
+        "email": result["email"],
+        "email_verified": result["email_verified"],
+    }
 
 
 @app.post("/api/v1/auth/verify-email", tags=["identity"])
 def verify_email(
-    token: str = Query(...),
-    session: Session = Depends(get_session),
+    body: VerifyEmailRequest,
+    session: Annotated[Session, Depends(get_session)],
 ) -> dict:
     repo = UserRepository(session)
     svc = IdentityService(repo)
-    result = svc.verify_email(token)
+    result = svc.verify_email(body.token)
     if "error" in result:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"])
     # Audit log
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
         tenant_id="system",
-        actor=result["email"],
+        actor=result["user_id"],
         action="user.email_verified",
         entity_type="user",
         entity_id=result["user_id"],
@@ -7432,7 +7488,7 @@ def login_user(
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
         tenant_id="system",
-        actor=result["email"],
+        actor=result["user_id"],
         action="user.login",
         entity_type="user",
         entity_id=result["user_id"],
@@ -7454,7 +7510,7 @@ def request_password_reset(
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
         tenant_id="system",
-        actor=body.email,
+        actor=pseudonymous_subject("email", body.email),
         action="user.password_reset_requested",
         entity_type="user",
         entity_id="",

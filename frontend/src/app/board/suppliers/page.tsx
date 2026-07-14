@@ -16,6 +16,8 @@ import {
   CH_SECTION_LABEL,
 } from "@/lib/boardLayout";
 
+export const dynamic = "force-dynamic";
+
 function riskLevelLabel(level: string): string {
   const labels: Record<string, string> = {
     high: "Hoch",

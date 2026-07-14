@@ -43,6 +43,27 @@ def test_preference_chain_structured_output_openai_first() -> None:
     assert chain[0] == LLMProvider.OPENAI
 
 
+def test_preference_chain_can_prefer_configured_azure(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_LLM_PREFER_AZURE", "true")
+    p = default_tenant_llm_policy("t1")
+    chain = preference_chain(LLMTaskType.STRUCTURED_OUTPUT, p)
+    assert chain[0] == LLMProvider.AZURE_OPENAI
+
+
+def test_filter_eu_only_accepts_attested_azure(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_LLM_ASSUME_AZURE_EU", "true")
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com")
+    monkeypatch.setenv("AZURE_OPENAI_DEPLOYMENT", "gpt-enterprise")
+    monkeypatch.setenv("AZURE_OPENAI_AUTH", "managed_identity")
+    p = default_tenant_llm_policy("t-azure").model_copy(
+        update={
+            "allowed_providers": [LLMProvider.AZURE_OPENAI],
+            "data_residency": DataResidencyPolicy.EU_ONLY,
+        }
+    )
+    assert filter_candidates(p, [LLMProvider.AZURE_OPENAI]) == [LLMProvider.AZURE_OPENAI]
+
+
 def test_cost_sensitivity_high_gemini_first_for_classification() -> None:
     p = default_tenant_llm_policy("t1")
     p = p.model_copy(update={"cost_sensitivity": CostSensitivity.HIGH})

@@ -190,8 +190,9 @@ export function SelfAssessmentWorkspaceClient({
   }, [drainInflightSaves, sessionId, tenantId]);
 
   useEffect(() => {
+    const activeTimers = timers.current;
     return () => {
-      for (const t of Object.values(timers.current)) {
+      for (const t of Object.values(activeTimers)) {
         clearTimeout(t);
       }
     };
@@ -393,7 +394,6 @@ export function SelfAssessmentWorkspaceClient({
       saveState,
       savedAt,
       session.status,
-      sessionId,
       setAnswerField,
     ],
   );

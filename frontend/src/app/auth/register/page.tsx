@@ -6,7 +6,6 @@ import React, { useState } from "react";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   CH_BTN_PRIMARY,
-  CH_BTN_SECONDARY,
   CH_CARD,
   CH_SHELL,
 } from "@/lib/boardLayout";
@@ -17,7 +16,6 @@ const API_BASE_URL =
 type RegisterResult = {
   user_id: string;
   email: string;
-  verification_token?: string;
 };
 
 export default function RegisterPage() {
@@ -93,14 +91,10 @@ export default function RegisterPage() {
             </code>
             ).
           </p>
-          {result.verification_token && (
-            <p className="mt-2 text-sm text-slate-600">
-              Verifizierungstoken:{" "}
-              <code className="rounded bg-slate-100 px-1 text-xs">
-                {result.verification_token}
-              </code>
-            </p>
-          )}
+          <p className="mt-2 text-sm text-slate-600">
+            Wir senden den Bestätigungslink an Ihre E-Mail-Adresse. Aus
+            Sicherheitsgründen wird der Verifizierungscode nie im Browser angezeigt.
+          </p>
           <Link href="/auth/login" className={`${CH_BTN_PRIMARY} mt-4`}>
             Zum Login
           </Link>

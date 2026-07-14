@@ -19,7 +19,7 @@ GuardrailRiskLevel = Literal["low", "medium", "high"]
 
 
 class GuardrailScanResult(BaseModel):
-    """Heuristic scan of a prompt prior to LLM invocation (v1: log-only, no hard block)."""
+    """Heuristic scan result consumed by the fail-closed LLM wrapper."""
 
     has_pii: bool = False
     has_injection_markers: bool = False
@@ -104,6 +104,7 @@ def redact_obvious_pii_patterns(text: str) -> str:
     """Best-effort redaction for high-risk prompts; extend with DLP/HITL in production."""
     out = _EMAIL_RE.sub("[REDACTED_EMAIL]", text)
     out = _IBAN_LIKE_RE.sub("[REDACTED_IBAN]", out)
+    out = _PHONE_RE.sub("[REDACTED_PHONE]", out)
     return out
 
 

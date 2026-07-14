@@ -3,25 +3,25 @@
  * Referenz: https://sbsdeutschland.com/sbshomepage/ · Produktlinie https://kanzlei-ai.com/
  */
 :root {
-  --sbs-navy-deep: #003366;
-  --sbs-navy-mid: #0066b3;
-  --sbs-text-primary: #0f172a;
-  --sbs-text-secondary: #64748b;
-  --sbs-text-muted: #94a3b8;
-  --sbs-text-accent: #0066b3;
-  --sbs-bg-page: #f8fafc;
+  --sbs-navy-deep: #07111f;
+  --sbs-navy-mid: #1668e8;
+  --sbs-text-primary: #07111f;
+  --sbs-text-secondary: #526071;
+  --sbs-text-muted: #8793a3;
+  --sbs-text-accent: #1668e8;
+  --sbs-bg-page: #f5f7fb;
   --sbs-bg-elevated: #ffffff;
-  --sbs-bg-alt: #e2e8f0;
-  --sbs-border: #e2e8f0;
-  --sbs-border-hover: #cbd5e1;
-  --sbs-border-amber: #fbbf24;
-  --sbs-gradient-amber: linear-gradient(135deg, #fcd34d 0%, #fbbf24 45%, #f59e0b 100%);
-  --sbs-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --sbs-shadow-md: 0 8px 30px rgba(15, 23, 42, 0.08);
-  --sbs-shadow-amber: 0 8px 24px rgba(245, 158, 11, 0.35);
+  --sbs-bg-alt: #edf1f7;
+  --sbs-border: rgba(110, 128, 151, 0.18);
+  --sbs-border-hover: rgba(68, 88, 115, 0.3);
+  --sbs-border-amber: #8aaeff;
+  --sbs-gradient-amber: linear-gradient(135deg, #07111f 0%, #17263b 100%);
+  --sbs-shadow-sm: 0 1px 2px rgba(7, 17, 31, 0.05), 0 8px 28px rgba(7, 17, 31, 0.04);
+  --sbs-shadow-md: 0 24px 80px rgba(7, 17, 31, 0.12);
+  --sbs-shadow-amber: 0 12px 32px rgba(7, 17, 31, 0.18);
   --sbs-header-h: 64px;
-  --sbs-radius: 12px;
-  --sbs-radius-lg: 16px;
-  --sbs-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+  --sbs-radius: 14px;
+  --sbs-radius-lg: 22px;
+  --sbs-font: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
 }
