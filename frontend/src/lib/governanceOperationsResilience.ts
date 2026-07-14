@@ -1,8 +1,7 @@
 /**
  * Operational Resilience / Service Health (tenant governance).
  *
- * Client-seitig: NEXT_PUBLIC_API_BASE_URL + NEXT_PUBLIC_API_KEY (wie andere Tenant-Boards).
- * Server-only Secrets (COMPLIANCEHUB_*) greifen im Browser nicht — ggf. BFF-Route nachziehen.
+ * Client-seitig: authentisierter Same-Origin-BFF; keine Schlüssel im Browser-Bundle.
  *
  * APIs:
  * - GET /api/v1/governance/operations/kpis
@@ -12,6 +11,8 @@
  *
  * Cron: POST /api/internal/health/poll/run + X-HEALTH-KEY
  */
+
+import { browserCsrfHeaders } from "@/lib/clientSessionHeaders";
 
 export interface OperationsKpis {
   last_checked_at: string | null;
@@ -46,19 +47,16 @@ export interface ServiceHealthIncidentRow {
 }
 
 function apiBase(): string {
+  if (typeof window !== "undefined") return "/api/backend";
   return (
-    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
     process.env.COMPLIANCEHUB_API_BASE_URL?.trim() ||
     "http://localhost:8000"
   );
 }
 
 function apiKey(): string {
-  return (
-    process.env.NEXT_PUBLIC_API_KEY?.trim() ||
-    process.env.COMPLIANCEHUB_API_KEY?.trim() ||
-    "tenant-overview-key"
-  );
+  if (typeof window !== "undefined") return "";
+  return process.env.COMPLIANCEHUB_API_KEY?.trim() || "";
 }
 
 function tenantHeaders(tenantId: string): Record<string, string> {
@@ -66,6 +64,7 @@ function tenantHeaders(tenantId: string): Record<string, string> {
     "x-api-key": apiKey(),
     "x-tenant-id": tenantId,
     "Content-Type": "application/json",
+    ...browserCsrfHeaders(),
   };
 }
 

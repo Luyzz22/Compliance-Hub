@@ -1,13 +1,11 @@
 import { featureAdvisorWorkspace } from "./config";
+import { browserCsrfHeaders } from "./clientSessionHeaders";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.COMPLIANCEHUB_API_BASE_URL ||
-  "http://localhost:8000";
-const API_KEY =
-  process.env.NEXT_PUBLIC_API_KEY ||
-  process.env.COMPLIANCEHUB_API_KEY ||
-  "tenant-overview-key";
+const IS_BROWSER = typeof window !== "undefined";
+const API_BASE_URL = IS_BROWSER
+  ? "/api/backend"
+  : process.env.COMPLIANCEHUB_API_BASE_URL || "http://localhost:8000";
+const API_KEY = IS_BROWSER ? "" : process.env.COMPLIANCEHUB_API_KEY || "";
 export const TENANT_ID =
   process.env.NEXT_PUBLIC_TENANT_ID ||
   process.env.COMPLIANCEHUB_TENANT_ID ||
@@ -21,6 +19,7 @@ export function tenantRequestHeaders(
   const h: Record<string, string> = {
     "x-api-key": API_KEY,
     "x-tenant-id": tenantId,
+    ...browserCsrfHeaders(),
   };
   const opa = process.env.NEXT_PUBLIC_OPA_USER_ROLE?.trim();
   if (opa) {

@@ -6,8 +6,6 @@ describe("useFeatureGate", () => {
 
   beforeEach(() => {
     vi.resetModules();
-    process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8000";
-    process.env.NEXT_PUBLIC_API_KEY = "test-key";
     process.env.NEXT_PUBLIC_TENANT_ID = "test-tenant";
     // Prevent actual network calls from the useEffect
     vi.stubGlobal(

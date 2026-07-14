@@ -32,6 +32,7 @@ def setup_test_db() -> None:
     os.environ["COMPLIANCEHUB_DEMO_SEED_API_KEYS"] = "demo-seed-key"
     os.environ["COMPLIANCEHUB_DEMO_SEED_TENANT_IDS"] = _DEMO_SEED_TENANTS
     os.environ["COMPLIANCEHUB_ADMIN_API_KEYS"] = "provision-admin-test-key"
+    os.environ["COMPLIANCEHUB_OPA_TRUST_CLIENT_ROLE_HEADER"] = "true"
     get_settings.cache_clear()
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS schema_migrations"))
@@ -50,6 +51,7 @@ def _restore_api_keys_superset() -> None:
     os.environ["COMPLIANCEHUB_DEMO_SEED_API_KEYS"] = "demo-seed-key"
     os.environ["COMPLIANCEHUB_DEMO_SEED_TENANT_IDS"] = _DEMO_SEED_TENANTS
     os.environ["COMPLIANCEHUB_ADMIN_API_KEYS"] = "provision-admin-test-key"
+    os.environ["COMPLIANCEHUB_OPA_TRUST_CLIENT_ROLE_HEADER"] = "true"
     get_settings.cache_clear()
 
 

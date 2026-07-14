@@ -11,18 +11,13 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
+import { browserCsrfHeaders } from "@/lib/clientSessionHeaders";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-const API_KEY =
-  process.env.NEXT_PUBLIC_API_KEY ||
-  process.env.COMPLIANCEHUB_API_KEY ||
-  "tenant-overview-key";
+const API_BASE_URL = "/api/backend";
 
 type Role = {
   role: string;
-  scope?: string;
-  granted_at?: string;
+  tenant_id: string;
 };
 
 type UserProfile = {
@@ -36,14 +31,10 @@ type UserProfile = {
 };
 
 function authHeaders(): Record<string, string> {
-  return {
-    "Content-Type": "application/json",
-    "x-api-key": API_KEY,
-  };
+  return { "Content-Type": "application/json", ...browserCsrfHeaders() };
 }
 
 export default function ProfilePage() {
-  const [userId, setUserId] = useState("");
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const [displayName, setDisplayName] = useState("");
@@ -56,7 +47,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const loadProfile = useCallback(async (id: string) => {
+  const loadProfile = useCallback(async (id: string, signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     setProfile(null);
@@ -64,7 +55,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/v1/auth/profile/${encodeURIComponent(id)}`,
-        { headers: authHeaders() },
+        { headers: authHeaders(), signal },
       );
 
       if (!res.ok) {
@@ -78,6 +69,7 @@ export default function ProfilePage() {
       setLanguage(data.language ?? "de");
       setTimezone(data.timezone ?? "Europe/Berlin");
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unbekannter Fehler");
     } finally {
       setLoading(false);
@@ -85,20 +77,34 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("user_id") ?? "";
-    if (id) {
-      setUserId(id);
-      loadProfile(id);
-    }
-  }, [loadProfile]);
+    const controller = new AbortController();
 
-  async function handleLoadProfile(e: React.FormEvent) {
-    e.preventDefault();
-    if (userId.trim()) {
-      await loadProfile(userId.trim());
+    async function loadOwnProfile() {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/auth/session", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error("Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.");
+        }
+        const body = (await response.json()) as {
+          session?: { user_id?: string };
+        };
+        const id = body.session?.user_id;
+        if (!id) throw new Error("Die Sitzung enthält keine gültige Benutzeridentität.");
+        await loadProfile(id, controller.signal);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setLoading(false);
+        setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+      }
     }
-  }
+
+    void loadOwnProfile();
+    return () => controller.abort();
+  }, [loadProfile]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -148,33 +154,6 @@ export default function ProfilePage() {
           </Link>
         }
       />
-
-      {/* User-ID lookup */}
-      {!profile && !loading && (
-        <form onSubmit={handleLoadProfile} className={CH_CARD}>
-          <p className={CH_SECTION_LABEL}>Profil laden</p>
-          <div className="mt-3">
-            <label
-              htmlFor="prof-uid"
-              className="block text-sm font-medium text-slate-700"
-            >
-              Benutzer-ID
-            </label>
-            <input
-              id="prof-uid"
-              type="text"
-              required
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="z. B. usr_abc123"
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-            />
-          </div>
-          <button type="submit" className={`${CH_BTN_PRIMARY} mt-4`}>
-            Laden
-          </button>
-        </form>
-      )}
 
       {loading && (
         <div className={CH_CARD}>
@@ -307,20 +286,18 @@ export default function ProfilePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {profile.roles.map((r, i) => (
+                    {profile.roles.map((r) => (
                       <tr
-                        key={i}
+                        key={`${r.tenant_id}:${r.role}`}
                         className="border-b border-slate-100 last:border-0"
                       >
                         <td className="py-2 pr-4 font-medium text-slate-900">
                           {r.role}
                         </td>
                         <td className="py-2 pr-4 text-slate-600">
-                          {r.scope ?? "–"}
+                          {r.tenant_id}
                         </td>
-                        <td className="py-2 text-slate-600">
-                          {r.granted_at ?? "–"}
-                        </td>
+                        <td className="py-2 text-slate-600">Aktiv</td>
                       </tr>
                     ))}
                   </tbody>

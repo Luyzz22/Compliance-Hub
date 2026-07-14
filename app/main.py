@@ -320,6 +320,7 @@ from app.repositories.policies import PolicyRepository
 from app.repositories.tenant_ai_governance_setup import TenantAIGovernanceSetupRepository
 from app.repositories.tenant_api_keys import TenantApiKeyRepository
 from app.repositories.tenant_registry import TenantRegistryRepository
+from app.repositories.user_sessions import UserSessionRepository
 from app.repositories.violations import ViolationRepository
 from app.security import (
     AuthContext,
@@ -329,6 +330,7 @@ from app.security import (
     require_advisor_api_access,
     require_advisor_rag_headers,
     require_demo_seed_api_key,
+    secret_matches_any,
 )
 from app.security_credentials import pseudonymous_subject
 from app.security_middleware import SecurityHeadersMiddleware
@@ -516,6 +518,7 @@ from app.services.tenant_incident_drilldown import (
 )
 from app.services.tenant_provisioning import provision_tenant
 from app.services.tenant_usage_metrics import compute_tenant_usage_metrics
+from app.services.user_session_service import UserSessionService
 from app.services.what_if_simulator import simulate_board_impact
 from app.setup_models import TenantSetupStatus
 from app.supplier_risk_models import (
@@ -7374,6 +7377,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class SessionLoginRequest(LoginRequest):
+    tenant_id: str | None = Field(default=None, min_length=1, max_length=255)
+
+
 class VerifyEmailRequest(BaseModel):
     token: str = Field(min_length=32, max_length=256)
 
@@ -7471,6 +7478,11 @@ def login_user(
     body: LoginRequest,
     session: Annotated[Session, Depends(get_session)],
 ) -> dict:
+    if IS_PRODUCTION:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Direct password login is disabled; use the same-origin session BFF",
+        )
     repo = UserRepository(session)
     svc = IdentityService(repo)
     result = svc.login(email=body.email, password=body.password)
@@ -7496,6 +7508,133 @@ def login_user(
         after=None,
     )
     return result
+
+
+def _required_bearer_token(authorization: str | None) -> str:
+    raw = str(authorization or "").strip()
+    scheme, separator, token = raw.partition(" ")
+    if separator != " " or scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bearer session is required",
+        )
+    return token.strip()
+
+
+def _require_bff_caller(
+    x_bff_secret: Annotated[str | None, Header(alias="x-bff-secret")] = None,
+) -> None:
+    configured = os.getenv("COMPLIANCEHUB_BFF_SHARED_SECRET", "").strip()
+    if IS_PRODUCTION and len(configured) < 32:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Enterprise BFF trust boundary is not configured",
+        )
+    if configured and (not x_bff_secret or not secret_matches_any(x_bff_secret, [configured])):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="BFF caller authentication failed",
+        )
+
+
+@app.post("/api/v1/auth/session/login", tags=["identity"])
+def create_user_session(
+    body: SessionLoginRequest,
+    response: Response,
+    session: Annotated[Session, Depends(get_session)],
+    _bff: Annotated[None, Depends(_require_bff_caller)],
+) -> dict:
+    service = UserSessionService(UserRepository(session), UserSessionRepository(session))
+    result = service.login(
+        email=body.email,
+        password=body.password,
+        tenant_id=body.tenant_id,
+    )
+    if "error" in result:
+        code_map = {
+            "invalid_credentials": status.HTTP_401_UNAUTHORIZED,
+            "account_disabled": status.HTTP_403_FORBIDDEN,
+            "account_locked": status.HTTP_429_TOO_MANY_REQUESTS,
+            "email_not_verified": status.HTTP_403_FORBIDDEN,
+            "tenant_access_denied": status.HTTP_403_FORBIDDEN,
+            "tenant_access_required": status.HTTP_403_FORBIDDEN,
+            "tenant_selection_required": status.HTTP_409_CONFLICT,
+        }
+        detail: dict[str, object] = {
+            "code": result["error"],
+            "message": result["detail"],
+        }
+        if result.get("tenants"):
+            detail["tenants"] = result["tenants"]
+        raise HTTPException(
+            status_code=code_map.get(result["error"], status.HTTP_400_BAD_REQUEST),
+            detail=detail,
+        )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+    AuditLogRepository(session).record_event(
+        tenant_id=result["tenant_id"],
+        actor=f"user:{result['user_id']}",
+        action="user.session_created",
+        entity_type="user_session",
+        entity_id=result["session_id"],
+        before=None,
+        after=None,
+    )
+    return result
+
+
+@app.get("/api/v1/auth/session", tags=["identity"])
+def get_user_session(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    response: Response,
+    _bff: Annotated[None, Depends(_require_bff_caller)],
+) -> dict:
+    if auth.credential_kind != "user_session" or not auth.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User session is required",
+        )
+    user = UserRepository(session).get_by_id(auth.user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    response.headers["Cache-Control"] = "no-store"
+    return {
+        "session_id": auth.session_id,
+        "user_id": auth.user_id,
+        "email": user.email,
+        "display_name": user.display_name,
+        "tenant_id": auth.tenant_id,
+        "role": auth.role,
+        "auth_method": auth.auth_method,
+    }
+
+
+@app.delete("/api/v1/auth/session", status_code=status.HTTP_204_NO_CONTENT, tags=["identity"])
+def revoke_user_session(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _bff: Annotated[None, Depends(_require_bff_caller)],
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> Response:
+    if auth.credential_kind != "user_session" or not auth.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User session is required",
+        )
+    raw_token = _required_bearer_token(authorization)
+    AuditLogRepository(session).record_event(
+        tenant_id=auth.tenant_id,
+        actor=auth.actor_id,
+        action="user.session_revoked",
+        entity_type="user_session",
+        entity_id=auth.session_id or "",
+        before=None,
+        after=None,
+    )
+    UserSessionRepository(session).revoke(raw_token, reason="logout")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.post("/api/v1/auth/password-reset/request", tags=["identity"])
@@ -7530,6 +7669,7 @@ def confirm_password_reset(
     result = svc.reset_password(token=body.token, new_password=body.new_password)
     if "error" in result:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["detail"])
+    UserSessionRepository(session).revoke_all_for_user(result["user_id"], reason="password_reset")
     # Audit log
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
@@ -7547,9 +7687,14 @@ def confirm_password_reset(
 @app.get("/api/v1/auth/profile/{user_id}", tags=["identity"])
 def get_user_profile(
     user_id: str,
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
 ) -> dict:
+    if auth.credential_kind == "user_session" and auth.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="A user session may access only its own profile",
+        )
     repo = UserRepository(session)
     svc = IdentityService(repo)
     profile = svc.get_profile(user_id)
@@ -7562,9 +7707,14 @@ def get_user_profile(
 def update_user_profile(
     user_id: str,
     body: ProfileUpdateRequest,
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
 ) -> dict:
+    if auth.credential_kind == "user_session" and auth.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="A user session may update only its own profile",
+        )
     repo = UserRepository(session)
     svc = IdentityService(repo)
     profile = svc.update_profile(
@@ -7579,8 +7729,8 @@ def update_user_profile(
     # Audit log
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
-        tenant_id=tenant_id,
-        actor=user_id,
+        tenant_id=auth.tenant_id,
+        actor=auth.actor_id,
         action="user.profile_updated",
         entity_type="user",
         entity_id=user_id,

@@ -88,10 +88,10 @@ def test_auditor_has_export_audit_log() -> None:
 # ── Unit tests: role resolution ────────────────────────────────────────
 
 
-def test_resolve_role_defaults_to_contributor() -> None:
-    assert _resolve_role(None) == EnterpriseRole.CONTRIBUTOR
-    assert _resolve_role("") == EnterpriseRole.CONTRIBUTOR
-    assert _resolve_role("  ") == EnterpriseRole.CONTRIBUTOR
+def test_resolve_role_defaults_to_viewer() -> None:
+    assert _resolve_role(None) == EnterpriseRole.VIEWER
+    assert _resolve_role("") == EnterpriseRole.VIEWER
+    assert _resolve_role("  ") == EnterpriseRole.VIEWER
 
 
 def test_resolve_role_maps_legacy_roles() -> None:
@@ -143,13 +143,13 @@ def test_require_permission_allows_sufficient_role() -> None:
     assert resp.json()["role"] == "compliance_officer"
 
 
-def test_require_permission_default_role_is_contributor() -> None:
-    """No header → CONTRIBUTOR; CONTRIBUTOR can view dashboard."""
+def test_require_permission_default_role_is_viewer() -> None:
+    """No header resolves to the least-privileged role."""
     app = _build_app(Permission.VIEW_DASHBOARD)
     client = TestClient(app)
     resp = client.get("/protected")
     assert resp.status_code == 200
-    assert resp.json()["role"] == "contributor"
+    assert resp.json()["role"] == "viewer"
 
 
 def test_require_permission_super_admin_can_do_anything() -> None:

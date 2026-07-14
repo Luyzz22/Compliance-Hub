@@ -2,24 +2,22 @@
  * Governance Workflow Orchestration (deterministische Regeln, mandantisoliert).
  */
 
+import { browserCsrfHeaders } from "@/lib/clientSessionHeaders";
 import type { WorkflowRunListItem, WorkflowRunResponse } from "@/lib/governanceWorkflowTypes";
 
 export type { WorkflowRunListItem, WorkflowRunResponse, WorkflowRunSummary } from "@/lib/governanceWorkflowTypes";
 
 function apiBase(): string {
+  if (typeof window !== "undefined") return "/api/backend";
   return (
-    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
     process.env.COMPLIANCEHUB_API_BASE_URL?.trim() ||
     "http://localhost:8000"
   );
 }
 
 function apiKey(): string {
-  return (
-    process.env.NEXT_PUBLIC_API_KEY?.trim() ||
-    process.env.COMPLIANCEHUB_API_KEY?.trim() ||
-    "tenant-overview-key"
-  );
+  if (typeof window !== "undefined") return "";
+  return process.env.COMPLIANCEHUB_API_KEY?.trim() || "";
 }
 
 function headers(tenantId: string, extra?: Record<string, string>): Record<string, string> {
@@ -27,6 +25,7 @@ function headers(tenantId: string, extra?: Record<string, string>): Record<strin
     "x-api-key": apiKey(),
     "x-tenant-id": tenantId,
     "Content-Type": "application/json",
+    ...browserCsrfHeaders(),
     ...extra,
   };
 }

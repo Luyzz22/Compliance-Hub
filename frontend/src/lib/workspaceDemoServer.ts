@@ -4,13 +4,9 @@ import { featureDemoMode } from "@/lib/config";
 import { DEMO_MODE_SESSION_COOKIE } from "@/lib/workspaceTenantConstants";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.COMPLIANCEHUB_API_BASE_URL ||
   "http://localhost:8000";
-const API_KEY =
-  process.env.NEXT_PUBLIC_API_KEY ||
-  process.env.COMPLIANCEHUB_API_KEY ||
-  "tenant-overview-key";
+const API_KEY = process.env.COMPLIANCEHUB_API_KEY || "";
 
 export type TenantWorkspaceMeta = {
   tenant_id: string;

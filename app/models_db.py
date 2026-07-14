@@ -1807,6 +1807,35 @@ class UserTenantRoleDB(Base):
     )
 
 
+class UserSessionDB(Base):
+    """Revocable, tenant-bound browser/BFF session (token stored as digest only)."""
+
+    __tablename__ = "user_sessions"
+    __table_args__ = (
+        Index("uq_user_sessions_token_hash", "token_hash", unique=True),
+        Index("idx_user_sessions_user_active", "user_id", "revoked_at_utc"),
+        Index("idx_user_sessions_tenant_expiry", "tenant_id", "expires_at_utc"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(64), nullable=False)
+    auth_method: Mapped[str] = mapped_column(String(32), nullable=False, default="password")
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    last_seen_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    expires_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_reason: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+
 # ── Enterprise IAM: Identity Providers, SCIM, Access Reviews ────────────────
 
 

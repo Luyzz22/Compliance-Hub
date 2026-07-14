@@ -35,17 +35,7 @@ export const NAV_FEATURE_GATES: Readonly<
 /* ── Internals ─────────────────────────────────────────────────────── */
 
 const API_BASE_URL =
-  typeof window !== "undefined"
-    ? process.env.NEXT_PUBLIC_API_BASE_URL ||
-      process.env.COMPLIANCEHUB_API_BASE_URL ||
-      "http://localhost:8000"
-    : "";
-const API_KEY =
-  typeof window !== "undefined"
-    ? process.env.NEXT_PUBLIC_API_KEY ||
-      process.env.COMPLIANCEHUB_API_KEY ||
-      "tenant-overview-key"
-    : "";
+  typeof window !== "undefined" ? "/api/backend" : "";
 const TENANT_ID =
   typeof window !== "undefined"
     ? process.env.NEXT_PUBLIC_TENANT_ID ||
@@ -85,12 +75,7 @@ export function useFeatureGate(): FeatureGateResult {
     const entries = Object.entries(NAV_FEATURE_GATES);
     if (entries.length === 0) return;
 
-    const headers: Record<string, string> = {
-      "x-api-key": API_KEY,
-      "x-tenant-id": TENANT_ID,
-    };
-    const opaRole = process.env.NEXT_PUBLIC_OPA_USER_ROLE?.trim();
-    if (opaRole) headers["x-opa-user-role"] = opaRole;
+    const headers: Record<string, string> = { "x-tenant-id": TENANT_ID };
 
     Promise.allSettled(
       entries.map(async ([, gate]) => {

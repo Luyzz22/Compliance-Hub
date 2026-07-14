@@ -46,7 +46,11 @@ export default async function RootLayout({
   const showDemoUi = await isDemoUiDesiredForTenant(workspaceTenantId);
 
   return (
-    <html lang="de" className="scroll-smooth scroll-pt-[7.5rem]">
+    <html
+      lang="de"
+      className="scroll-smooth scroll-pt-[7.5rem]"
+      data-scroll-behavior="smooth"
+    >
       <body className="sbs-body flex min-h-screen flex-col bg-[#f5f7fb] antialiased">
         <Suspense fallback={null}>
           <SessionAttributionCapture />

@@ -11,37 +11,24 @@ import {
   CH_CARD,
   CH_SHELL,
 } from "@/lib/boardLayout";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+import { safeReturnTo } from "@/lib/safeReturnTo";
 
 type LoginResult = {
-  user_id: string;
-  email: string;
-  display_name?: string;
-  access_token?: string;
+  ok: true;
+  user: {
+    user_id: string;
+    email: string;
+    display_name?: string | null;
+    tenant_id: string;
+    role: string;
+  };
 };
 
-/**
- * Validate that a `next` redirect target is safe (relative path only).
- * Blocks absolute URLs, protocol-relative URLs, and other open-redirect vectors.
- */
-function safeReturnTo(raw: string | null): string {
-  const fallback = "/board";
-  if (!raw) return fallback;
-  // Must start with "/" and must NOT start with "//" (protocol-relative)
-  if (!raw.startsWith("/") || raw.startsWith("//")) return fallback;
-  // Block any URL that contains a protocol-like pattern
-  if (/^[a-z]+:/i.test(raw)) return fallback;
-  // Block encoded characters that could be used for header injection
-  try {
-    const decoded = decodeURIComponent(raw);
-    if (decoded.includes("\n") || decoded.includes("\r")) return fallback;
-  } catch {
-    return fallback;
-  }
-  return raw;
-}
+type LoginFailure = {
+  ok?: false;
+  error?: string;
+  detail?: { code?: string; message?: string; tenants?: string[] } | string;
+};
 
 function LoginPageInner() {
   const router = useRouter();
@@ -50,6 +37,8 @@ function LoginPageInner() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [tenantId, setTenantId] = useState("");
+  const [tenantOptions, setTenantOptions] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,15 +52,27 @@ function LoginPageInner() {
       setResult(null);
 
       try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          credentials: "same-origin",
+          body: JSON.stringify({
+            email,
+            password,
+            ...(tenantId ? { tenant_id: tenantId } : {}),
+          }),
         });
 
         if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          const code = body?.detail?.code ?? body?.detail ?? "";
+          const body = (await res.json().catch(() => null)) as LoginFailure | null;
+          const detail = body?.detail;
+          const code = typeof detail === "object" ? detail?.code : detail;
+          if (code === "tenant_selection_required" && typeof detail === "object") {
+            const tenants = detail.tenants ?? [];
+            setTenantOptions(tenants);
+            setTenantId(tenants[0] ?? "");
+            throw new Error("Bitte wählen Sie den Mandanten für diese Sitzung aus.");
+          }
           if (code === "invalid_credentials") {
             throw new Error("E-Mail oder Passwort ist ungültig.");
           }
@@ -87,15 +88,15 @@ function LoginPageInner() {
 
         const data: LoginResult = await res.json();
         setResult(data);
-        // Redirect to the safe returnTo target
-        router.push(returnTo);
+        router.replace(returnTo);
+        router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unbekannter Fehler");
       } finally {
         setLoading(false);
       }
     },
-    [email, password, returnTo, router],
+    [email, password, returnTo, router, tenantId],
   );
 
   return (
@@ -112,7 +113,8 @@ function LoginPageInner() {
             Anmeldung erfolgreich
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Willkommen{result.display_name ? `, ${result.display_name}` : ""}!
+            Willkommen
+            {result.user.display_name ? `, ${result.user.display_name}` : ""}!
             Sie werden zum Dashboard weitergeleitet.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
@@ -143,6 +145,30 @@ function LoginPageInner() {
                 className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
               />
             </div>
+
+            {tenantOptions.length > 0 && (
+              <div>
+                <label
+                  htmlFor="login-tenant"
+                  className="block text-sm font-medium text-slate-700"
+                >
+                  Mandant
+                </label>
+                <select
+                  id="login-tenant"
+                  required
+                  value={tenantId}
+                  onChange={(event) => setTenantId(event.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                >
+                  {tenantOptions.map((tenant) => (
+                    <option key={tenant} value={tenant}>
+                      {tenant}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label

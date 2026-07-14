@@ -7,12 +7,8 @@ import {
 
 const API_BASE =
   process.env.COMPLIANCEHUB_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
   "http://localhost:8000";
-const API_KEY =
-  process.env.COMPLIANCEHUB_API_KEY ||
-  process.env.NEXT_PUBLIC_API_KEY ||
-  "tenant-overview-key";
+const API_KEY = process.env.COMPLIANCEHUB_API_KEY || "";
 
 const ALLOWED = new Set<string>(WORKSPACE_GOVERNANCE_FEATURES);
 

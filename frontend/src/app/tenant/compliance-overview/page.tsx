@@ -279,10 +279,8 @@ export default async function TenantComplianceOverviewPage() {
               <dt className="font-semibold text-slate-500">API-Key</dt>
               <dd className="mt-0.5 text-slate-800">
                 Konfiguriert als{" "}
-                <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_API_KEY</code> /{" "}
-                <code className="rounded bg-slate-100 px-1">COMPLIANCEHUB_API_KEY</code>
-                . Werte werden hier nicht angezeigt; Geheimnisse besser nur serverseitig
-                (<code className="rounded bg-slate-100 px-1">COMPLIANCEHUB_*</code>) setzen.
+                Nur serverseitig über den authentisierten BFF konfiguriert. Im Browser werden
+                weder API-Schlüssel noch Sitzungstoken angezeigt.
               </dd>
             </div>
           </dl>
