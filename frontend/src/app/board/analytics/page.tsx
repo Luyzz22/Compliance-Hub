@@ -12,6 +12,7 @@ import {
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
+import { browserCsrfHeaders } from "@/lib/clientSessionHeaders";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,18 +57,15 @@ interface ActivityEntry {
 // API helpers
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+const API_BASE = "/api/backend";
 
 function buildApiHeaders(opaRole: string | null, tenantId: string): Record<string, string> {
   const headers: Record<string, string> = {
-    "x-api-key": API_KEY,
     "x-tenant-id": tenantId,
     "Content-Type": "application/json",
+    ...browserCsrfHeaders(),
   };
-  if (opaRole) {
-    headers["x-opa-user-role"] = opaRole;
-  }
+  void opaRole;
   return headers;
 }
 

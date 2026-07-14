@@ -59,7 +59,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   turbopack: {
-    root: process.cwd(),
+    root: __dirname,
   },
   async headers() {
     return [

@@ -8,8 +8,8 @@
 import { tenantRequestHeaders } from "@/lib/api";
 
 export function getComplianceHubApiBaseUrl(): string {
+  if (typeof window !== "undefined") return "/api/backend";
   return (
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
     process.env.COMPLIANCEHUB_API_BASE_URL ||
     "http://localhost:8000"
   );

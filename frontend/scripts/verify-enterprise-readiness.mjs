@@ -14,6 +14,8 @@ const errors = [];
 const required = [
   "COMPLIANCEHUB_API_BASE_URL",
   "COMPLIANCEHUB_API_KEY",
+  "COMPLIANCEHUB_APP_ORIGIN",
+  "COMPLIANCEHUB_BFF_SHARED_SECRET",
   "COMPLIANCEHUB_TRUSTED_HOSTS",
   "COMPLIANCEHUB_LEGAL_ENTITY_NAME",
   "COMPLIANCEHUB_LEGAL_REPRESENTATIVE",
@@ -46,6 +48,9 @@ if (process.env.COMPLIANCEHUB_ENTERPRISE_AUTH_READY !== "true") {
 }
 if ((process.env.COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY || "").length < 32) {
   errors.push("COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY must contain at least 32 characters");
+}
+if ((process.env.COMPLIANCEHUB_BFF_SHARED_SECRET || "").length < 32) {
+  errors.push("COMPLIANCEHUB_BFF_SHARED_SECRET must contain at least 32 characters");
 }
 if (process.env.NEXT_PUBLIC_API_KEY) {
   errors.push("NEXT_PUBLIC_API_KEY is forbidden because it exposes a bearer credential");

@@ -3,19 +3,16 @@
  */
 
 function apiBase(): string {
+  if (typeof window !== "undefined") return "/api/backend";
   return (
-    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ||
     process.env.COMPLIANCEHUB_API_BASE_URL?.trim() ||
     "http://localhost:8000"
   );
 }
 
 function apiKey(): string {
-  return (
-    process.env.NEXT_PUBLIC_API_KEY?.trim() ||
-    process.env.COMPLIANCEHUB_API_KEY?.trim() ||
-    "tenant-overview-key"
-  );
+  if (typeof window !== "undefined") return "";
+  return process.env.COMPLIANCEHUB_API_KEY?.trim() || "";
 }
 
 const PATH = "/api/v1/governance/compass/snapshot";

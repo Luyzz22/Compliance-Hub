@@ -12,11 +12,18 @@ from pydantic import BaseModel, Field
 
 class AuthContext(BaseModel):
     tenant_id: str
-    api_key: str
+    api_key: str = Field(default="", exclude=True, repr=False)
+    user_id: str | None = None
+    role: str | None = None
+    session_id: str | None = None
+    auth_method: str | None = None
+    credential_kind: str = "api_key"
 
     @property
     def actor_id(self) -> str:
         """Stable audit subject that never persists the bearer credential."""
+        if self.user_id:
+            return f"user:{self.user_id}"
         digest = hashlib.sha256(self.api_key.encode("utf-8")).hexdigest()
         return f"api_key:sha256:{digest[:16]}"
 

@@ -2,6 +2,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import {
+  isProtectedAppPath,
+  SESSION_COOKIE_NAME,
+} from "@/lib/authConstants";
+import {
   DEMO_MODE_SESSION_COOKIE,
   WORKSPACE_TENANT_COOKIE,
 } from "@/lib/workspaceTenantConstants";
@@ -58,7 +62,14 @@ export function proxy(request: NextRequest) {
   const tenantsRedirect = applyTenantsWorkspaceCookiePolicy(request, response);
   if (tenantsRedirect) return tenantsRedirect;
 
-  if (request.nextUrl.searchParams.get("demo") === "1") {
+  const publicDemoEnabled = process.env.COMPLIANCEHUB_PUBLIC_DEMO_ENABLED === "true";
+  const requestedDemo =
+    publicDemoEnabled && request.nextUrl.searchParams.get("demo") === "1";
+  const existingDemo =
+    publicDemoEnabled &&
+    request.cookies.get(DEMO_MODE_SESSION_COOKIE)?.value === "1";
+
+  if (requestedDemo) {
     response.cookies.set(DEMO_MODE_SESSION_COOKIE, "1", {
       path: "/",
       maxAge: 60 * 60 * 24 * 14,
@@ -76,6 +87,22 @@ export function proxy(request: NextRequest) {
       });
     }
   }
+
+  const hasSession = Boolean(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+  if (
+    isProtectedAppPath(request.nextUrl.pathname) &&
+    !hasSession &&
+    !requestedDemo &&
+    !existingDemo
+  ) {
+    const destination = request.nextUrl.clone();
+    const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+    destination.pathname = "/auth/login";
+    destination.search = "";
+    destination.searchParams.set("next", returnTo);
+    return NextResponse.redirect(destination);
+  }
+
   return response;
 }
 

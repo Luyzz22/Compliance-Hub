@@ -6,10 +6,7 @@ import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
 import { tenantRequestHeaders } from "@/lib/api";
 import { CH_BTN_PRIMARY } from "@/lib/boardLayout";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.COMPLIANCEHUB_API_BASE_URL ||
-  "http://localhost:8000";
+const API_BASE_URL = "/api/backend";
 
 export function PdfReportDownloadButton() {
   const workspaceTenantId = useWorkspaceTenantIdClient();
