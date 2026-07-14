@@ -41,7 +41,7 @@ variable without an approved, dated evidence record.
 | Discovery | `robots.txt`, sitemap and `security.txt` returned 404 | App Router metadata routes and a security contact route added |
 | Supply chain | Frontend audit reported 12 vulnerabilities, including one critical | Dependencies updated and PostCSS overridden; local `npm audit` reports zero known vulnerabilities as of this review |
 | CI | No frontend build/test/audit, SAST, dependency review, or scheduled analysis | CI expanded; pinned actions, frontend checks, pip/npm audits, Bandit, OPA, CodeQL, Dependabot and CODEOWNERS added |
-| Repository governance | Default branch was not protected; no security policy; no license | Security policy and ownership added. Branch rules and license selection require repository-owner action |
+| Repository governance | Default branch was not protected; no security policy; no license | Security policy and ownership added. Dependency graph, vulnerability alerts, secret scanning and push protection are enabled. Branch rules and license selection still require repository-owner action |
 
 ## Controls implemented in this wave
 
@@ -86,6 +86,8 @@ variable without an approved, dated evidence record.
 - Immutable commit pins for third-party GitHub Actions.
 - Backend lint/test/audit/SAST, frontend lint/test/build/audit, OPA tests, dependency review and
   CodeQL analysis in CI.
+- GitHub dependency graph and vulnerability alerts enabled and verified through the repository SBOM
+  endpoint on 15 July 2026; secret scanning and push protection remain enabled.
 - Weekly dependency updates for Python, npm and GitHub Actions.
 
 ## Mandatory exit criteria

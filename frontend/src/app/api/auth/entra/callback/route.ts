@@ -54,12 +54,10 @@ export async function GET(request: NextRequest) {
   try {
     const config = entraConfig();
     const transaction = openEntraTransaction(sealed, config.transactionSecret);
-    if (
-      !transaction ||
-      code.length < 20 ||
-      code.length > 8192 ||
-      !secureValuesEqual(state, transaction.state)
-    ) {
+    if (!transaction || !secureValuesEqual(state, transaction.state)) {
+      return loginError(request, "entra_transaction_invalid");
+    }
+    if (code.length < 20 || code.length > 8192) {
       return loginError(request, "entra_transaction_invalid");
     }
 
