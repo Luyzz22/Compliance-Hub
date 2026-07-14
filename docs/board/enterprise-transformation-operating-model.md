@@ -61,7 +61,9 @@ active delivery sequence is:
 1. implement server-side sessions and tenant-bound roles;
 2. introduce a same-origin Next.js BFF and remove browser bearer keys;
 3. enforce authorization again in every server route and backend operation;
-4. integrate Microsoft Entra ID OIDC and disable password authentication in production;
+4. activate the implemented Microsoft Entra ID OIDC boundary only after MFA/Conditional Access,
+   provisioning, credential and access-review evidence; password authentication is disabled by
+   production policy when Entra is active;
 5. migrate local JSON stores and simulated integrations to governed platform services;
 6. complete legal, privacy, Azure landing-zone and independent-assurance evidence.
 
@@ -72,7 +74,8 @@ the production gate remains closed. The board accepts the following sequence wit
 residual risks for production:
 
 1. merge the revocable tenant session and BFF foundation after CI-equivalent verification;
-2. integrate Entra ID with MFA/Conditional Access and group/tenant claims;
+2. configure and independently approve the implemented Entra ID flow, app roles, MFA/Conditional
+   Access, provisioning lifecycle and credential strategy;
 3. migrate every legacy Route Handler and Server Component from service keys/local identity hints;
 4. replace local JSON/file persistence with governed Azure data services and backup/restore evidence;
 5. complete Azure regional, DPA/subprocessor, DPIA, retention and independent penetration-test gates.

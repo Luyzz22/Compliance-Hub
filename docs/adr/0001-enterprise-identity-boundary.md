@@ -59,11 +59,29 @@ checks trust a client-supplied role header. This is incompatible with an enterpr
   gateway independently revalidate the session on the server.
 - Negative tests cover tenant mismatch, role spoofing, self-only profile access, revocation,
   verification, multi-tenant selection, BFF authentication, origin and CSRF rejection.
+- The Entra integration uses tenant-specific authorization code + PKCE, authenticated-encrypted
+  state/nonce transactions and independent Next.js/API token checks. The API allowlists RS256 and
+  validates signature, issuer, audience, time claims, nonce, token version and immutable `tid` +
+  `oid` claims.
+- Entra access requires both an assigned application role and an administrator-provisioned identity
+  link. Local tenant membership and role remain authoritative; mutable e-mail claims never grant
+  access.
+- Production policy disables password sessions when Entra is enabled and permanently disables the
+  legacy attribute callback. The production build gate requires Entra configuration, Conditional
+  Access and provisioning attestations and rejects placeholder identifiers.
+- The operator procedure and evidence requirements are defined in
+  `docs/enterprise-entra-oidc-runbook.md`.
 
 ## Residual production blockers
 
-- Microsoft Entra ID OIDC, MFA/Conditional Access and governed group-to-role mapping are not yet the
-  production login path; local password login remains a development-only transition.
+- Microsoft Entra ID OIDC is implemented but not production-enabled. Tenant/app registration,
+  MFA/Conditional Access, governed app-role assignment, joiner/mover/leaver evidence and access
+  recertification require external configuration and named approval.
+- The current BFF supports an Entra client secret. The architecture review board must approve and
+  test its storage/rotation or complete a certificate/workload-identity credential design before
+  G3/G4.
+- Step-up authentication for individual privileged actions and claims-challenge handling remains an
+  explicit production blocker.
 - All legacy Next.js route families and Server Components must be migrated to the session helpers
   and receive route-family authorization tests before the auth-readiness attestation may be true.
 - Login abuse controls still require Azure Front Door/WAF rate limits, alerting and a tested

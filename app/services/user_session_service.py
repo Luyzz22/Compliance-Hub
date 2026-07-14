@@ -11,7 +11,7 @@ from app.repositories.users import UserRepository
 from app.services.identity_service import IdentityService
 
 
-def _session_ttl() -> timedelta:
+def session_ttl() -> timedelta:
     raw = os.getenv("COMPLIANCEHUB_SESSION_TTL_MINUTES", "480")
     try:
         minutes = int(raw)
@@ -74,20 +74,51 @@ class UserSessionService:
                 "detail": "No active tenant assignment is available",
             }
 
-        role = resolve_enterprise_role(str(selected.get("role") or "viewer"))
-        row, raw_token = self._sessions.create(
+        return self.create_for_user(
             user_id=str(identity["user_id"]),
             tenant_id=str(selected["tenant_id"]),
+            auth_method=auth_method,
+        )
+
+    def create_for_user(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        auth_method: str,
+    ) -> dict:
+        """Create a session only from an already verified server-side identity decision."""
+        user = self._users.get_by_id(user_id)
+        if user is None:
+            return {"error": "user_not_found", "detail": "User does not exist"}
+        if not user.is_active:
+            return {"error": "account_disabled", "detail": "Account is disabled"}
+        if not user.email_verified:
+            return {
+                "error": "email_not_verified",
+                "detail": "Email verification is required before starting a session",
+            }
+        assignment = self._users.get_role(user_id, tenant_id)
+        if assignment is None:
+            return {
+                "error": "tenant_access_denied",
+                "detail": "The user is not assigned to the requested tenant",
+            }
+
+        role = resolve_enterprise_role(assignment.role)
+        row, raw_token = self._sessions.create(
+            user_id=user.id,
+            tenant_id=tenant_id,
             role=role.value,
             auth_method=auth_method,
-            ttl=_session_ttl(),
+            ttl=session_ttl(),
         )
         return {
             "session_token": raw_token,
             "session_id": row.id,
-            "user_id": identity["user_id"],
-            "email": identity["email"],
-            "display_name": identity.get("display_name"),
+            "user_id": user.id,
+            "email": user.email,
+            "display_name": user.display_name,
             "tenant_id": row.tenant_id,
             "role": row.role,
             "auth_method": row.auth_method,
