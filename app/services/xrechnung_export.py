@@ -1,7 +1,7 @@
 """XRechnung 3.0 / EN-16931 UBL 2.1 invoice export service.
 
 Generates XML invoices conforming to the XRechnung 3.0 standard
-(urn:xoev-de:kosit:standard:xrechnung_3.0) using stdlib xml.etree only.
+(urn:xoev-de:kosit:standard:xrechnung_3.0) with centralized hardened XML primitives.
 """
 
 from __future__ import annotations
@@ -10,7 +10,15 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from xml.etree.ElementTree import Element, SubElement, tostring
+from typing import Any
+
+from app.xml_security import (
+    XMLSecurityError,
+    append_xml_element,
+    new_xml_root,
+    parse_untrusted_xml,
+    serialize_xml,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,21 +59,22 @@ def _dec(value: float | int | str) -> Decimal:
     return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _cbc(parent: Element, tag: str, text: str, **attrs: str) -> Element:
+def _cbc(parent: Any, tag: str, text: str, **attrs: str) -> Any:
     """Create a CommonBasicComponents child element."""
-    el = SubElement(parent, f"{{{NS_CBC}}}{tag}")
-    el.text = text
-    for k, v in attrs.items():
-        el.set(k, v)
-    return el
+    return append_xml_element(
+        parent,
+        f"{{{NS_CBC}}}{tag}",
+        text=text,
+        attributes=attrs,
+    )
 
 
-def _cac(parent: Element, tag: str) -> Element:
+def _cac(parent: Any, tag: str) -> Any:
     """Create a CommonAggregateComponents child element."""
-    return SubElement(parent, f"{{{NS_CAC}}}{tag}")
+    return append_xml_element(parent, f"{{{NS_CAC}}}{tag}")
 
 
-def _build_party(parent_tag: Element, name: str, address: str, tax_id: str | None = None) -> None:
+def _build_party(parent_tag: Any, name: str, address: str, tax_id: str | None = None) -> None:
     """Build an AccountingSupplierParty or AccountingCustomerParty subtree."""
     party = _cac(parent_tag, "Party")
 
@@ -88,7 +97,7 @@ def _build_party(parent_tag: Element, name: str, address: str, tax_id: str | Non
 
 
 def _build_invoice_line(
-    parent: Element,
+    parent: Any,
     line_id: int,
     item: dict,
     currency: str,
@@ -125,7 +134,7 @@ def _build_invoice_line(
 
 def generate_xrechnung_xml(invoice: XRechnungInvoice) -> str:
     """Create a UBL 2.1 XML string conforming to XRechnung 3.0 / EN-16931."""
-    root = Element(f"{{{NS_INVOICE}}}Invoice")
+    root = new_xml_root(f"{{{NS_INVOICE}}}Invoice")
     root.set("xmlns", NS_INVOICE)
     root.set("xmlns:cac", NS_CAC)
     root.set("xmlns:cbc", NS_CBC)
@@ -188,7 +197,7 @@ def generate_xrechnung_xml(invoice: XRechnungInvoice) -> str:
     _cbc(monetary, "TaxInclusiveAmount", str(total_gross), currencyID=invoice.currency)
     _cbc(monetary, "PayableAmount", str(total_gross), currencyID=invoice.currency)
 
-    xml_str: str = tostring(root, encoding="unicode")
+    xml_str = serialize_xml(root)
     xml_declaration = '<?xml version="1.0" encoding="UTF-8"?>\n'
 
     logger.info(
@@ -206,14 +215,12 @@ def validate_xrechnung(xml_content: str) -> list[str]:
     Checks that required UBL 2.1 / XRechnung elements are present.
     Returns a list of error messages (empty list means valid).
     """
-    from xml.etree.ElementTree import ParseError, fromstring
-
     errors: list[str] = []
 
     try:
-        root = fromstring(xml_content)
-    except ParseError as exc:
-        errors.append(f"XML parse error: {exc}")
+        root = parse_untrusted_xml(xml_content)
+    except XMLSecurityError:
+        errors.append("XML parse error: document is malformed or contains forbidden constructs")
         return errors
 
     def _find(tag: str, ns: str = NS_CBC) -> bool:

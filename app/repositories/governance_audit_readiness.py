@@ -74,7 +74,8 @@ class GovernanceAuditReadinessRepository:
 
     def _case_read(self, audit_case_id: str, tenant_id: str) -> GovernanceAuditCaseRead:
         row = self._s.get(GovernanceAuditCaseTable, audit_case_id)
-        assert row is not None and row.tenant_id == tenant_id
+        if row is None or row.tenant_id != tenant_id:
+            raise LookupError("Tenant-bound governance audit case no longer exists")
         return GovernanceAuditCaseRead(
             id=row.id,
             tenant_id=row.tenant_id,
@@ -209,7 +210,8 @@ class GovernanceAuditReadinessRepository:
             return None
         self._attach_control_row(tenant_id, audit_case_id, control_id, datetime.now(UTC))
         ac = self._s.get(GovernanceAuditCaseTable, audit_case_id)
-        assert ac is not None
+        if ac is None or ac.tenant_id != tenant_id:
+            return None
         ac.updated_at_utc = datetime.now(UTC)
         self._s.flush()
         return self._case_read(audit_case_id, tenant_id)

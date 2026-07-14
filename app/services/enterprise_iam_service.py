@@ -28,11 +28,9 @@ PRIVILEGED_ROLES = frozenset({"super_admin", "tenant_admin", "compliance_admin",
 # Default access review period (days).
 ACCESS_REVIEW_PERIOD_DAYS = 90
 
-# Sentinel value for SSO/SCIM users who have no local password.
-# Downstream login logic (IdentityService.login) must reject local password authentication
-# for users whose password_hash equals this sentinel.  bcrypt.checkpw will never match it
-# because it is not a valid bcrypt hash, so local login attempts fail as expected.
-_NO_LOCAL_PASSWORD = "!SSO_OR_SCIM_NO_LOCAL_PASSWORD"
+# Sentinel value for SSO/SCIM users with no local credential. IdentityService accepts only
+# Argon2id or the explicit legacy SHA-256 migration format, so this value always fails closed.
+_DISABLED_LOCAL_CREDENTIAL = "!EXTERNAL_IDENTITY_ONLY"
 
 # Valid role values for role mapping validation.
 _VALID_ROLES = frozenset(r.value for r in EnterpriseRole)
@@ -231,7 +229,7 @@ class SSOCallbackService:
                 user = UserDB(
                     id=str(uuid.uuid4()),
                     email=email_norm,
-                    password_hash=_NO_LOCAL_PASSWORD,  # SSO-only user, no local password
+                    password_hash=_DISABLED_LOCAL_CREDENTIAL,
                     display_name=external_email.split("@")[0],
                     email_verified=True,
                     is_active=True,
@@ -341,7 +339,7 @@ class SCIMProvisioningService:
             user = UserDB(
                 id=str(uuid.uuid4()),
                 email=email_norm,
-                password_hash=_NO_LOCAL_PASSWORD,  # SCIM-provisioned, no local password
+                password_hash=_DISABLED_LOCAL_CREDENTIAL,
                 display_name=display_name,
                 email_verified=True,
                 is_active=True,

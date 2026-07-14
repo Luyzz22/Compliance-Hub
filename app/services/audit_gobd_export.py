@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from xml.etree.ElementTree import Element, SubElement, tostring
 
 from app.audit_models import AuditLog
+from app.xml_security import append_xml_element, new_xml_root, serialize_xml
 
 _NAMESPACE = "urn:compliancehub:gobd:audit:v1"
 
 
 def generate_gobd_xml(entries: list[AuditLog]) -> str:
     """Return a UTF-8 XML string representing the GoBD audit trail."""
-    root = Element("AuditTrail")
+    root = new_xml_root("AuditTrail")
     root.set("xmlns", _NAMESPACE)
     root.set("exportDate", datetime.now(UTC).isoformat())
 
@@ -31,11 +31,9 @@ def generate_gobd_xml(entries: list[AuditLog]) -> str:
             "outcome": entry.outcome or "",
             "correlationId": entry.correlation_id or "",
         }
-        el = SubElement(root, "Entry", attrs)
-        before_el = SubElement(el, "Before")
-        before_el.text = entry.before or ""
-        after_el = SubElement(el, "After")
-        after_el.text = entry.after or ""
+        el = append_xml_element(root, "Entry", attributes=attrs)
+        append_xml_element(el, "Before", text=entry.before or "")
+        append_xml_element(el, "After", text=entry.after or "")
 
-    xml_str: str = tostring(root, encoding="unicode")
+    xml_str = serialize_xml(root)
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_str

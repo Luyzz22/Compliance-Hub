@@ -10,13 +10,11 @@ from sqlalchemy.engine import Engine
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_MIGRATIONS_TABLE = "schema_migrations"
-
 
 def ensure_schema_migrations_table(engine: Engine) -> None:
     ddl = text(
-        f"""
-        CREATE TABLE IF NOT EXISTS {SCHEMA_MIGRATIONS_TABLE} (
+        """
+        CREATE TABLE IF NOT EXISTS schema_migrations (
             id VARCHAR(128) PRIMARY KEY NOT NULL,
             name VARCHAR(255) NOT NULL,
             applied_at VARCHAR(64) NOT NULL
@@ -30,7 +28,7 @@ def ensure_schema_migrations_table(engine: Engine) -> None:
 
 def has_migration_record(engine: Engine, migration_id: str) -> bool:
     stmt = text(
-        f"SELECT 1 FROM {SCHEMA_MIGRATIONS_TABLE} WHERE id = :id LIMIT 1",
+        "SELECT 1 FROM schema_migrations WHERE id = :id LIMIT 1",
     )
     with engine.connect() as conn:
         row = conn.execute(stmt, {"id": migration_id}).first()
@@ -40,8 +38,8 @@ def has_migration_record(engine: Engine, migration_id: str) -> bool:
 def record_migration_applied(engine: Engine, migration_id: str, name: str) -> None:
     applied_at = datetime.now(UTC).isoformat()
     stmt = text(
-        f"""
-        INSERT INTO {SCHEMA_MIGRATIONS_TABLE} (id, name, applied_at)
+        """
+        INSERT INTO schema_migrations (id, name, applied_at)
         VALUES (:id, :name, :applied_at)
         """
     )

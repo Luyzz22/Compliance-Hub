@@ -11,7 +11,7 @@ import hashlib
 import hmac
 import os
 
-TOKEN_HASH_PREFIX = "sha256$"
+_OPAQUE_DIGEST_PREFIX = "sha256$"
 
 
 def hash_opaque_token(raw_token: str) -> str:
@@ -19,7 +19,7 @@ def hash_opaque_token(raw_token: str) -> str:
     token = str(raw_token).strip()
     if not token:
         raise ValueError("token must not be empty")
-    return f"{TOKEN_HASH_PREFIX}{hashlib.sha256(token.encode('utf-8')).hexdigest()}"
+    return f"{_OPAQUE_DIGEST_PREFIX}{hashlib.sha256(token.encode('utf-8')).hexdigest()}"
 
 
 def opaque_token_lookup_candidates(raw_token: str) -> tuple[str, ...]:
@@ -27,7 +27,7 @@ def opaque_token_lookup_candidates(raw_token: str) -> tuple[str, ...]:
     token = str(raw_token).strip()
     if not token:
         return ()
-    if token.startswith(TOKEN_HASH_PREFIX):
+    if token.startswith(_OPAQUE_DIGEST_PREFIX):
         return (token,)
     return (hash_opaque_token(token), token)
 
