@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import secrets
 from functools import lru_cache
 from typing import Annotated
 
@@ -12,6 +13,12 @@ from pydantic import BaseModel, Field
 class AuthContext(BaseModel):
     tenant_id: str
     api_key: str
+
+    @property
+    def actor_id(self) -> str:
+        """Stable audit subject that never persists the bearer credential."""
+        digest = hashlib.sha256(self.api_key.encode("utf-8")).hexdigest()
+        return f"api_key:sha256:{digest[:16]}"
 
 
 class SecuritySettings(BaseModel):
@@ -29,6 +36,12 @@ def get_settings() -> SecuritySettings:
     return SecuritySettings.from_env()
 
 
+def secret_matches_any(candidate: str, allowed: list[str] | frozenset[str]) -> bool:
+    """Compare bearer credentials without data-dependent early equality checks."""
+    value = str(candidate).strip()
+    return bool(value) and any(secrets.compare_digest(value, expected) for expected in allowed)
+
+
 def validate_api_key_only(x_api_key: str | None) -> str:
     """Prüft nur den API-Key (ohne Tenant-Header), z. B. für Advisor-Portfolio."""
     if x_api_key is None or not x_api_key.strip():
@@ -37,7 +50,7 @@ def validate_api_key_only(x_api_key: str | None) -> str:
             detail="Missing API key",
         )
     settings = get_settings()
-    if x_api_key not in settings.api_keys:
+    if not secret_matches_any(x_api_key, settings.api_keys):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key",
@@ -136,7 +149,7 @@ def require_admin_provision_api_key(
             detail="Missing API key",
         )
     key = str(x_api_key).strip()
-    if key not in allowed:
+    if not secret_matches_any(key, allowed):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid admin API key",
@@ -179,7 +192,7 @@ def require_demo_seed_api_key(
             detail="Missing API key",
         )
     key = str(x_api_key).strip()
-    if key not in keys:
+    if not secret_matches_any(key, keys):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid demo seed API key",
@@ -207,4 +220,4 @@ def delete_evidence_allowed_for_api_key(api_key: str) -> bool:
     allowed = [k.strip() for k in raw.split(",") if k.strip()]
     if not allowed:
         return False
-    return api_key in allowed
+    return secret_matches_any(api_key, allowed)

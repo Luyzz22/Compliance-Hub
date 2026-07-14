@@ -36,6 +36,8 @@ export async function fetchNis2WizardAnswers(
   _tenantId: string,
   _sessionId: string,
 ): Promise<Nis2ApiResult<Record<string, unknown>>> {
+  void _tenantId;
+  void _sessionId;
   await Promise.resolve();
   return { ok: true, data: {} };
 }
@@ -47,6 +49,10 @@ export async function saveNis2WizardAnswer(
   _questionKey: string,
   _value: unknown,
 ): Promise<Nis2ApiResult<unknown>> {
+  void _tenantId;
+  void _sessionId;
+  void _questionKey;
+  void _value;
   await Promise.resolve();
   return { ok: true, data: {} };
 }
@@ -75,6 +81,8 @@ export async function exportNis2WizardSession(
   _tenantId: string,
   _sessionId: string,
 ): Promise<Nis2ApiResult<{ download_url?: string }>> {
+  void _tenantId;
+  void _sessionId;
   await Promise.resolve();
   return { ok: true, data: { download_url: undefined } };
 }
@@ -91,6 +99,8 @@ export async function fetchNis2WizardAuditEvents(
   _tenantId: string,
   _sessionId: string,
 ): Promise<Nis2ApiResult<Nis2WizardAuditEventStub[]>> {
+  void _tenantId;
+  void _sessionId;
   await Promise.resolve();
   return {
     ok: true,

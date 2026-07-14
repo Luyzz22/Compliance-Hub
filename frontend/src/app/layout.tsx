@@ -14,9 +14,27 @@ import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://complywithai.de"),
   title: "Compliance Hub · Enterprise GRC & AI Governance",
   description:
     "Mandantenfähige GRC-Plattform: EU AI Act, NIS2, ISO 42001, Board-KPIs und Exportpfade für Kanzlei-DMS – DSGVO-orientiert für den DACH-Markt. Unterstützung bei Dokumentation und Governance, keine Rechtsberatung.",
+  applicationName: "Compliance Hub",
+  category: "business",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "de_DE",
+    url: "/",
+    siteName: "Compliance Hub",
+    title: "Compliance Hub · Enterprise GRC & AI Governance",
+    description:
+      "Governance, Evidence und Board-Readiness für EU AI Act, NIS2 und ISO 42001.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 };
 
 export default async function RootLayout({
@@ -29,7 +47,7 @@ export default async function RootLayout({
 
   return (
     <html lang="de" className="scroll-smooth scroll-pt-[7.5rem]">
-      <body className="sbs-body flex min-h-screen flex-col bg-slate-50 antialiased">
+      <body className="sbs-body flex min-h-screen flex-col bg-[#f5f7fb] antialiased">
         <Suspense fallback={null}>
           <SessionAttributionCapture />
         </Suspense>
@@ -37,7 +55,7 @@ export default async function RootLayout({
         <DemoEnvironmentBanner visible={showDemoUi} />
         <main
           id="app-main"
-          className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 pb-16 pt-8 md:px-6 md:pb-20 md:pt-10"
+          className="mx-auto w-full min-w-0 max-w-[90rem] flex-1 px-4 pb-20 pt-8 md:px-8 md:pb-24 md:pt-12"
         >
           <DemoContextualHint enabled={showDemoUi} />
           {children}

@@ -6,8 +6,8 @@ Enterprise-Router für mandantenfähige Modellwahl (Qualität, Kosten, Datenschu
 
 | Task | Typische Nutzung | Standard-Präferenz (wenn Policy nichts anderes vorgibt) |
 |------|------------------|---------------------------------------------------------|
-| `legal_reasoning` | Norm-Mapping, Art.-Analysen, Audit-Texte | Claude, dann OpenAI |
-| `structured_output` | JSON/Markdown, Reports, Exporte | OpenAI (GPT-4o), dann Claude |
+| `legal_reasoning` | Norm-Mapping, Art.-Analysen, Audit-Texte | Azure OpenAI bei aktivierter Azure-Präferenz, sonst Policy-Kette |
+| `structured_output` | JSON/Markdown, Reports, Exporte | Azure OpenAI bei aktivierter Azure-Präferenz, sonst Policy-Kette |
 | `classification_tagging` | Kategorien, Stichworte, Heuristiken | Gemini, dann OpenAI |
 | `chat_assistant` | Interaktive UI-Hilfe | OpenAI, dann Claude |
 | `embedding_retrieval` | RAG-Embeddings | Llama (on-prem), dann OpenAI Embeddings |
@@ -19,10 +19,18 @@ Bei `cost_sensitivity=high` oder `latency_sensitivity=high` werden für `classif
 
 - `claude` – Anthropic Messages API (`CLAUDE_API_KEY` oder `ANTHROPIC_API_KEY`)
 - `openai` – Chat Completions / Embeddings (`OPENAI_API_KEY`, optional `OPENAI_BASE_URL`)
+- `azure_openai` – Azure OpenAI v1 Chat Completions / Embeddings
+  (`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, optional
+  `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`). Produktion verwendet
+  `AZURE_OPENAI_AUTH=managed_identity`; `azure-identity` bezieht ein Token für
+  `https://cognitiveservices.azure.com/.default`.
 - `gemini` – Google Generative Language API (`GEMINI_API_KEY` oder `GOOGLE_API_KEY`)
 - `llama` – OpenAI-kompatibler Endpunkt (`LLAMA_BASE_URL`, optional `LLAMA_API_KEY`)
 
-Modelle (überschreibbar): `COMPLIANCEHUB_CLAUDE_MODEL`, `COMPLIANCEHUB_OPENAI_MODEL`, `COMPLIANCEHUB_GEMINI_MODEL`, `COMPLIANCEHUB_LLAMA_MODEL`, `COMPLIANCEHUB_OPENAI_EMBEDDING_MODEL`, `COMPLIANCEHUB_LLAMA_EMBEDDING_MODEL`.
+Modelle (überschreibbar): `COMPLIANCEHUB_CLAUDE_MODEL`, `COMPLIANCEHUB_OPENAI_MODEL`,
+`AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`,
+`COMPLIANCEHUB_GEMINI_MODEL`, `COMPLIANCEHUB_LLAMA_MODEL`,
+`COMPLIANCEHUB_OPENAI_EMBEDDING_MODEL`, `COMPLIANCEHUB_LLAMA_EMBEDDING_MODEL`.
 
 ## Mandanten-Policy (`TenantLLMPolicy`)
 
@@ -44,10 +52,26 @@ Felder (Auszug):
 ## Datenschutz / Region (Annahmen)
 
 - `eu_only`: Ohne weitere Freigabe werden nur **Llama**-Routen genutzt (on-prem unter Ihrer Kontrolle).
+- Optional: `COMPLIANCEHUB_LLM_ASSUME_AZURE_EU=true` – Betreiber bestätigt anhand der
+  Azure-Ressource, Deployment-Art und Vertragsunterlagen die freigegebene EU/EEA-Verarbeitung.
+  Das Flag allein ist kein Nachweis.
 - Optional: `COMPLIANCEHUB_LLM_ASSUME_CLAUDE_EU=true` – Betreiber bestätigt EU-konforme Claude-Verarbeitung.
 - Optional: `COMPLIANCEHUB_LLM_US_CLOUD_OK=true` – Betreiber bestätigt zulässige Nutzung von US-SaaS-APIs (OpenAI/Gemini) trotz `eu_only` (z. B. eigene EU-Residency-Verträge).
 
 `public_api_policy=on_prem_only` erlaubt nur noch **Llama** (sofern konfiguriert).
+
+Mit `COMPLIANCEHUB_LLM_PREFER_AZURE=true` wird Azure OpenAI in allen kompatiblen Task-Ketten
+bevorzugt. Die Option wirkt nur, wenn Provider, Tenant-Policy, Residency-Policy und Feature-Flags
+den Aufruf erlauben.
+
+## Prompt-Schutz
+
+- `COMPLIANCEHUB_LLM_PII_MODE=block` ist der sichere Standard und in produktiven Builds zwingend.
+- Erkannte personenbezogene Daten und Prompt-Injection-Muster blockieren den Modellaufruf.
+- `COMPLIANCEHUB_LLM_PII_MODE=redact` ist ausschließlich eine explizite Nicht-Produktionsoption;
+  E-Mail-Adressen, Telefonnummern und weitere erkannte Muster werden vor dem Aufruf maskiert.
+- Upstream-Fehler enthalten nur Provider, Status, Fehlercode und Request-ID, niemals den
+  Response-Body des Providers.
 
 ## Feature-Flags
 

@@ -32,6 +32,7 @@ class LLMTaskType(StrEnum):
 class LLMProvider(StrEnum):
     CLAUDE = "claude"
     OPENAI = "openai"
+    AZURE_OPENAI = "azure_openai"
     GEMINI = "gemini"
     LLAMA = "llama"
 
@@ -43,6 +44,8 @@ class DataResidencyPolicy(StrEnum):
     Assumptions (documented in docs/llm-routing.md):
     - OPENAI / GEMINI vendor APIs are treated as US-cloud for routing unless you deploy
       EU data residency offerings and set COMPLIANCEHUB_LLM_US_CLOUD_OK=true.
+    - AZURE_OPENAI is allowed for EU_ONLY only after an operator has verified an EU
+      regional or EU Data Zone deployment and set COMPLIANCEHUB_LLM_ASSUME_AZURE_EU=true.
     - Anthropic (CLAUDE) may process in multiple regions; for strict EU_ONLY we only allow
       CLAUDE if COMPLIANCEHUB_LLM_ASSUME_CLAUDE_EU=true (operator attestation).
     - LLAMA is the default path for EU_ONLY / no public API when an on-prem URL is set.

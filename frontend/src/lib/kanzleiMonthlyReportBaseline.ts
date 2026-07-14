@@ -1,7 +1,6 @@
 import "server-only";
 
 import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join } from "path";
 
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
@@ -9,14 +8,7 @@ import { rowToBaselineTenant } from "@/lib/kanzleiMonthlyReportBuild";
 import type { KanzleiMonthlyBaselineTenant, KanzleiMonthlyReportBaselineState } from "@/lib/kanzleiMonthlyReportTypes";
 import type { KanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioTypes";
 
-function baselinePath(): string {
-  const fromEnv = process.env.KANZLEI_MONTHLY_REPORT_BASELINE_PATH?.trim();
-  if (fromEnv) return fromEnv;
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-kanzlei-monthly-report-baseline.json");
-  }
-  return join(process.cwd(), "data", "kanzlei-monthly-report-baseline.json");
-}
+const BASELINE_PATH = "/tmp/compliancehub-kanzlei-monthly-report-baseline.json";
 
 function parseTraffic(x: unknown): BoardReadinessTraffic {
   if (x === "red" || x === "amber" || x === "green") return x;
@@ -51,7 +43,7 @@ function parseBand(x: unknown): KanzleiMonthlyBaselineTenant["attention_band"] {
 }
 
 export async function readKanzleiMonthlyReportBaseline(): Promise<KanzleiMonthlyReportBaselineState | null> {
-  const path = baselinePath();
+  const path = BASELINE_PATH;
   try {
     const raw = await readFile(path, "utf8");
     const o = JSON.parse(raw) as Record<string, unknown>;
@@ -94,8 +86,8 @@ export async function writeKanzleiMonthlyReportBaseline(
   payload: KanzleiPortfolioPayload,
   periodLabel: string | null,
 ): Promise<void> {
-  const path = baselinePath();
-  await mkdir(dirname(path), { recursive: true });
+  const path = BASELINE_PATH;
+  await mkdir("/tmp", { recursive: true });
   const tenants: KanzleiMonthlyReportBaselineState["tenants"] = {};
   for (const row of payload.rows) {
     tenants[row.tenant_id] = rowToBaselineTenant(row);

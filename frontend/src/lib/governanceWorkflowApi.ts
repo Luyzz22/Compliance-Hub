@@ -2,7 +2,7 @@
  * Governance Workflow Orchestration (deterministische Regeln, mandantisoliert).
  */
 
-import type { WorkflowRunListItem, WorkflowRunResponse, WorkflowRunSummary } from "@/lib/governanceWorkflowTypes";
+import type { WorkflowRunListItem, WorkflowRunResponse } from "@/lib/governanceWorkflowTypes";
 
 export type { WorkflowRunListItem, WorkflowRunResponse, WorkflowRunSummary } from "@/lib/governanceWorkflowTypes";
 

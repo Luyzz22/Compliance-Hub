@@ -2,6 +2,12 @@
 
 Enterprise-SaaS-Prototyp für den DACH-Mittelstand: E-Rechnung, DSGVO und GoBD in einer integrierten Compliance-Maschine.
 
+> **Release-Status: Pre-Production / nicht freigegeben.** Der aktuelle technische und
+> organisatorische Readiness-Stand, offene Blocker und die verbindlichen Exit-Kriterien stehen im
+> [Enterprise-Readiness-Bericht](docs/enterprise-readiness-20260714.md). Insbesondere ersetzen
+> Software-Kontrollen keine Rechtsberatung, Datenschutz-Folgenabschätzung, Vertragsprüfung,
+> Zertifizierung oder Betreiberfreigabe.
+
 ### EU AI Act Risk Classification & Gap Analysis
 
 Dieses Modul klassifiziert registrierte KI-Systeme entlang der EU-AI-Act-Logik und erzeugt ein mandantenfähiges Gap-Analyse-Dashboard [file:1238].
@@ -60,6 +66,7 @@ Bestehende SQLite-/Postgres-Datenbanken: additive Schema-Updates (z. B. neue O
 
 ## Architektur-Dokumente
 
+- `docs/enterprise-readiness-20260714.md` (Audit, umgesetzte Kontrollen, Release-Blocker)
 - `docs/architecture.md`
 - `docs/db-migrations.md` (additive Schema-Updates neben `create_all`)
 - `docs/product-strategy.md`

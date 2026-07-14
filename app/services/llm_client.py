@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from functools import lru_cache
 from typing import Any
 
 import httpx
@@ -36,12 +37,14 @@ def chat_model_id(provider: LLMProvider) -> str:
     defaults = {
         LLMProvider.CLAUDE: "claude-sonnet-4-20250514",
         LLMProvider.OPENAI: "gpt-4o",
+        LLMProvider.AZURE_OPENAI: "",
         LLMProvider.GEMINI: "gemini-2.0-flash",
         LLMProvider.LLAMA: "llama-3.1-8b-instruct",
     }
     env_keys = {
         LLMProvider.CLAUDE: "COMPLIANCEHUB_CLAUDE_MODEL",
         LLMProvider.OPENAI: "COMPLIANCEHUB_OPENAI_MODEL",
+        LLMProvider.AZURE_OPENAI: "AZURE_OPENAI_DEPLOYMENT",
         LLMProvider.GEMINI: "COMPLIANCEHUB_GEMINI_MODEL",
         LLMProvider.LLAMA: "COMPLIANCEHUB_LLAMA_MODEL",
     }
@@ -52,6 +55,8 @@ def chat_model_id(provider: LLMProvider) -> str:
 def embedding_model_id(provider: LLMProvider) -> str:
     if provider == LLMProvider.OPENAI:
         return _env("COMPLIANCEHUB_OPENAI_EMBEDDING_MODEL") or "text-embedding-3-small"
+    if provider == LLMProvider.AZURE_OPENAI:
+        return _env("AZURE_OPENAI_EMBEDDING_DEPLOYMENT") or ""
     if provider == LLMProvider.LLAMA:
         return _env("COMPLIANCEHUB_LLAMA_EMBEDDING_MODEL") or chat_model_id(LLMProvider.LLAMA)
     return chat_model_id(provider)
@@ -62,6 +67,11 @@ def is_provider_configured(provider: LLMProvider) -> bool:
         return bool(_env("CLAUDE_API_KEY") or _env("ANTHROPIC_API_KEY"))
     if provider == LLMProvider.OPENAI:
         return bool(_env("OPENAI_API_KEY"))
+    if provider == LLMProvider.AZURE_OPENAI:
+        if not _env("AZURE_OPENAI_ENDPOINT") or not _env("AZURE_OPENAI_DEPLOYMENT"):
+            return False
+        auth_mode = (_env("AZURE_OPENAI_AUTH", "managed_identity") or "").lower()
+        return auth_mode == "managed_identity" or bool(_env("AZURE_OPENAI_API_KEY"))
     if provider == LLMProvider.GEMINI:
         return bool(_env("GEMINI_API_KEY") or _env("GOOGLE_API_KEY"))
     if provider == LLMProvider.LLAMA:
@@ -93,7 +103,7 @@ def _call_claude(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
     with httpx.Client(timeout=120.0) as client:
         r = client.post(url, json=payload, headers=headers)
     if r.status_code >= 400:
-        raise LLMProviderHTTPError(f"Anthropic HTTP {r.status_code}: {r.text[:500]}")
+        _raise_provider_http_error("Anthropic", r)
     data = r.json()
     parts = data.get("content") or []
     texts: list[str] = []
@@ -119,6 +129,30 @@ def _openai_key() -> str:
     return k
 
 
+def _raise_provider_http_error(provider: str, response: httpx.Response) -> None:
+    """Raise a sanitized error without persisting an upstream response body."""
+    request_id = (
+        response.headers.get("x-request-id")
+        or response.headers.get("apim-request-id")
+        or response.headers.get("request-id")
+    )
+    error_code: str | None = None
+    try:
+        payload = response.json()
+        if isinstance(payload, dict):
+            raw_error = payload.get("error")
+            if isinstance(raw_error, dict) and raw_error.get("code") is not None:
+                error_code = str(raw_error["code"])[:80]
+    except (ValueError, TypeError):
+        pass
+    detail = f"{provider} HTTP {response.status_code}"
+    if error_code:
+        detail += f" code={error_code}"
+    if request_id:
+        detail += f" request_id={request_id[:128]}"
+    raise LLMProviderHTTPError(detail)
+
+
 def _call_openai_chat(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
     base = _env("OPENAI_BASE_URL", "https://api.openai.com/v1")
     url = f"{base.rstrip('/')}/chat/completions"
@@ -132,7 +166,7 @@ def _call_openai_chat(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
     with httpx.Client(timeout=120.0) as client:
         r = client.post(url, json=payload, headers=headers)
     if r.status_code >= 400:
-        raise LLMProviderHTTPError(f"OpenAI HTTP {r.status_code}: {r.text[:500]}")
+        _raise_provider_http_error("OpenAI", r)
     data = r.json()
     choice0 = (data.get("choices") or [{}])[0]
     msg = choice0.get("message") or {}
@@ -146,6 +180,74 @@ def _call_openai_chat(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
         model_id=model_id,
         input_tokens_est=in_tok,
         output_tokens_est=out_tok,
+    )
+
+
+def _azure_openai_base() -> str:
+    endpoint = _env("AZURE_OPENAI_ENDPOINT")
+    if not endpoint:
+        raise LLMConfigurationError("AZURE_OPENAI_ENDPOINT is not set")
+    base = endpoint.rstrip("/")
+    if not base.endswith("/openai/v1"):
+        base = f"{base}/openai/v1"
+    if not base.startswith("https://") and not _env("COMPLIANCEHUB_ALLOW_INSECURE_LLM_ENDPOINTS"):
+        raise LLMConfigurationError("AZURE_OPENAI_ENDPOINT must use HTTPS")
+    return base
+
+
+@lru_cache(maxsize=1)
+def _azure_credential() -> Any:
+    try:
+        from azure.identity import DefaultAzureCredential
+    except ImportError as exc:  # pragma: no cover - dependency is part of production install
+        raise LLMConfigurationError("azure-identity is required for managed identity") from exc
+    return DefaultAzureCredential()
+
+
+def _azure_openai_headers() -> dict[str, str]:
+    auth_mode = (_env("AZURE_OPENAI_AUTH", "managed_identity") or "").lower()
+    headers = {"content-type": "application/json"}
+    if auth_mode == "api_key":
+        key = _env("AZURE_OPENAI_API_KEY")
+        if not key:
+            raise LLMConfigurationError("AZURE_OPENAI_API_KEY is not set")
+        headers["api-key"] = key
+        return headers
+    if auth_mode != "managed_identity":
+        raise LLMConfigurationError("AZURE_OPENAI_AUTH must be managed_identity or api_key")
+    token = _azure_credential().get_token("https://cognitiveservices.azure.com/.default")
+    headers["authorization"] = f"Bearer {token.token}"
+    return headers
+
+
+def _call_azure_openai_chat(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
+    if not model_id:
+        raise LLMConfigurationError("AZURE_OPENAI_DEPLOYMENT is not set")
+    payload: dict[str, Any] = {
+        "model": model_id,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    if kwargs.get("response_format") == "json_object":
+        payload["response_format"] = {"type": "json_object"}
+    with httpx.Client(timeout=120.0, follow_redirects=False) as client:
+        response = client.post(
+            f"{_azure_openai_base()}/chat/completions",
+            json=payload,
+            headers=_azure_openai_headers(),
+        )
+    if response.status_code >= 400:
+        _raise_provider_http_error("Azure OpenAI", response)
+    data = response.json()
+    choice0 = (data.get("choices") or [{}])[0]
+    message = choice0.get("message") or {}
+    text = str(message.get("content") or "").strip()
+    usage = data.get("usage") or {}
+    return LLMResponse(
+        text=text,
+        provider=LLMProvider.AZURE_OPENAI,
+        model_id=model_id,
+        input_tokens_est=int(usage.get("prompt_tokens") or _estimate_tokens(prompt)),
+        output_tokens_est=int(usage.get("completion_tokens") or _estimate_tokens(text)),
     )
 
 
@@ -164,7 +266,7 @@ def _call_gemini(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
     with httpx.Client(timeout=120.0) as client:
         r = client.post(url, params={"key": key}, json=payload)
     if r.status_code >= 400:
-        raise LLMProviderHTTPError(f"Gemini HTTP {r.status_code}: {r.text[:500]}")
+        _raise_provider_http_error("Gemini", r)
     data = r.json()
     candidates = data.get("candidates") or []
     text = ""
@@ -203,7 +305,7 @@ def _call_llama_chat(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
     with httpx.Client(timeout=120.0) as client:
         r = client.post(url, json=payload, headers=headers)
     if r.status_code >= 400:
-        raise LLMProviderHTTPError(f"Llama HTTP {r.status_code}: {r.text[:500]}")
+        _raise_provider_http_error("Llama", r)
     data = r.json()
     choice0 = (data.get("choices") or [{}])[0]
     msg = choice0.get("message") or {}
@@ -230,6 +332,8 @@ def call_model(provider: LLMProvider, model_id: str, prompt: str, **kwargs: Any)
         return _call_claude(model_id, prompt, **kwargs)
     if provider == LLMProvider.OPENAI:
         return _call_openai_chat(model_id, prompt, **kwargs)
+    if provider == LLMProvider.AZURE_OPENAI:
+        return _call_azure_openai_chat(model_id, prompt, **kwargs)
     if provider == LLMProvider.GEMINI:
         return _call_gemini(model_id, prompt, **kwargs)
     if provider == LLMProvider.LLAMA:
@@ -259,7 +363,7 @@ def call_embedding(provider: LLMProvider, model_id: str, input_text: str) -> LLM
         with httpx.Client(timeout=120.0) as client:
             r = client.post(url, json=payload, headers=headers)
         if r.status_code >= 400:
-            raise LLMProviderHTTPError(f"Llama embeddings HTTP {r.status_code}: {r.text[:500]}")
+            _raise_provider_http_error("Llama embeddings", r)
         data = r.json()
         vec = (data.get("data") or [{}])[0].get("embedding") or []
         text = json.dumps(vec)
@@ -278,7 +382,7 @@ def call_embedding(provider: LLMProvider, model_id: str, input_text: str) -> LLM
         with httpx.Client(timeout=120.0) as client:
             r = client.post(url, json=payload, headers=headers)
         if r.status_code >= 400:
-            raise LLMProviderHTTPError(f"OpenAI embeddings HTTP {r.status_code}: {r.text[:500]}")
+            _raise_provider_http_error("OpenAI embeddings", r)
         data = r.json()
         vec = (data.get("data") or [{}])[0].get("embedding") or []
         text = json.dumps(vec)
@@ -289,5 +393,27 @@ def call_embedding(provider: LLMProvider, model_id: str, input_text: str) -> LLM
             input_tokens_est=int((data.get("usage") or {}).get("prompt_tokens") or 0)
             or _estimate_tokens(input_text),
             output_tokens_est=len(vec),
+        )
+    if provider == LLMProvider.AZURE_OPENAI:
+        if not model_id:
+            raise LLMConfigurationError("AZURE_OPENAI_EMBEDDING_DEPLOYMENT is not set")
+        payload = {"model": model_id, "input": input_text}
+        with httpx.Client(timeout=120.0, follow_redirects=False) as client:
+            response = client.post(
+                f"{_azure_openai_base()}/embeddings",
+                json=payload,
+                headers=_azure_openai_headers(),
+            )
+        if response.status_code >= 400:
+            _raise_provider_http_error("Azure OpenAI embeddings", response)
+        data = response.json()
+        vector = (data.get("data") or [{}])[0].get("embedding") or []
+        return LLMResponse(
+            text=json.dumps(vector),
+            provider=LLMProvider.AZURE_OPENAI,
+            model_id=model_id,
+            input_tokens_est=int((data.get("usage") or {}).get("prompt_tokens") or 0)
+            or _estimate_tokens(input_text),
+            output_tokens_est=len(vector),
         )
     raise LLMConfigurationError(f"Embeddings not implemented for provider: {provider}")

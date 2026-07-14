@@ -48,21 +48,64 @@ def _claude_eu_attested() -> bool:
     return _parse_env_bool("COMPLIANCEHUB_LLM_ASSUME_CLAUDE_EU")
 
 
+def _azure_eu_attested() -> bool:
+    """Operator attestation: Azure deployment and processing remain in the EU/EEA."""
+    return _parse_env_bool("COMPLIANCEHUB_LLM_ASSUME_AZURE_EU")
+
+
+def _prefer_configured_azure(chain: list[LLMProvider]) -> list[LLMProvider]:
+    if not _parse_env_bool("COMPLIANCEHUB_LLM_PREFER_AZURE"):
+        return chain
+    if LLMProvider.AZURE_OPENAI not in chain:
+        return [LLMProvider.AZURE_OPENAI, *chain]
+    return [LLMProvider.AZURE_OPENAI, *[p for p in chain if p != LLMProvider.AZURE_OPENAI]]
+
+
 def _static_fallback_chain(task_type: LLMTaskType) -> list[LLMProvider]:
     if task_type == LLMTaskType.LEGAL_REASONING:
-        return [LLMProvider.CLAUDE, LLMProvider.OPENAI, LLMProvider.GEMINI, LLMProvider.LLAMA]
+        return [
+            LLMProvider.CLAUDE,
+            LLMProvider.OPENAI,
+            LLMProvider.AZURE_OPENAI,
+            LLMProvider.GEMINI,
+            LLMProvider.LLAMA,
+        ]
     if task_type == LLMTaskType.STRUCTURED_OUTPUT:
-        return [LLMProvider.OPENAI, LLMProvider.CLAUDE, LLMProvider.GEMINI, LLMProvider.LLAMA]
+        return [
+            LLMProvider.OPENAI,
+            LLMProvider.AZURE_OPENAI,
+            LLMProvider.CLAUDE,
+            LLMProvider.GEMINI,
+            LLMProvider.LLAMA,
+        ]
     if task_type == LLMTaskType.CLASSIFICATION_TAGGING:
-        return [LLMProvider.GEMINI, LLMProvider.OPENAI, LLMProvider.CLAUDE, LLMProvider.LLAMA]
+        return [
+            LLMProvider.GEMINI,
+            LLMProvider.OPENAI,
+            LLMProvider.AZURE_OPENAI,
+            LLMProvider.CLAUDE,
+            LLMProvider.LLAMA,
+        ]
     if task_type == LLMTaskType.CHAT_ASSISTANT:
-        return [LLMProvider.OPENAI, LLMProvider.CLAUDE, LLMProvider.GEMINI, LLMProvider.LLAMA]
+        return [
+            LLMProvider.OPENAI,
+            LLMProvider.AZURE_OPENAI,
+            LLMProvider.CLAUDE,
+            LLMProvider.GEMINI,
+            LLMProvider.LLAMA,
+        ]
     if task_type == LLMTaskType.EMBEDDING_RETRIEVAL:
-        return [LLMProvider.LLAMA, LLMProvider.OPENAI]
+        return [LLMProvider.LLAMA, LLMProvider.AZURE_OPENAI, LLMProvider.OPENAI]
     if task_type == LLMTaskType.ON_PREM_SENSITIVE:
         return [LLMProvider.LLAMA]
     if task_type == LLMTaskType.KPI_SUGGESTION_ASSIST:
-        return [LLMProvider.GEMINI, LLMProvider.OPENAI, LLMProvider.CLAUDE, LLMProvider.LLAMA]
+        return [
+            LLMProvider.GEMINI,
+            LLMProvider.OPENAI,
+            LLMProvider.AZURE_OPENAI,
+            LLMProvider.CLAUDE,
+            LLMProvider.LLAMA,
+        ]
     if task_type in (
         LLMTaskType.EXPLAIN_KPI_ALERT,
         LLMTaskType.ACTION_DRAFT_GENERATION,
@@ -74,7 +117,13 @@ def _static_fallback_chain(task_type: LLMTaskType) -> list[LLMProvider]:
         LLMTaskType.ADVISOR_GOVERNANCE_MATURITY_BRIEF,
         LLMTaskType.ADVISOR_REGULATORY_RAG,
     ):
-        return [LLMProvider.CLAUDE, LLMProvider.OPENAI, LLMProvider.GEMINI, LLMProvider.LLAMA]
+        return [
+            LLMProvider.CLAUDE,
+            LLMProvider.OPENAI,
+            LLMProvider.AZURE_OPENAI,
+            LLMProvider.GEMINI,
+            LLMProvider.LLAMA,
+        ]
     return list(LLMProvider)
 
 
@@ -121,7 +170,7 @@ def preference_chain(task_type: LLMTaskType, policy: TenantLLMPolicy) -> list[LL
         chain = base
     if _prefer_low_cost_gemini(task_type, policy) or _prefer_low_latency_gemini(task_type, policy):
         chain = _reorder_gemini_first(chain)
-    return chain
+    return _prefer_configured_azure(chain)
 
 
 def _allowed_by_residency(provider: LLMProvider, policy: TenantLLMPolicy) -> bool:
@@ -130,6 +179,8 @@ def _allowed_by_residency(provider: LLMProvider, policy: TenantLLMPolicy) -> boo
     if provider == LLMProvider.LLAMA:
         return True
     if provider == LLMProvider.CLAUDE and _claude_eu_attested():
+        return True
+    if provider == LLMProvider.AZURE_OPENAI and _azure_eu_attested():
         return True
     if provider in (LLMProvider.OPENAI, LLMProvider.GEMINI) and _us_cloud_eu_exception_allowed():
         return True

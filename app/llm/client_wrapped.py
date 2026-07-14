@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
 from typing import TYPE_CHECKING, TypeVar
 
 from pydantic import BaseModel
@@ -41,9 +42,17 @@ def _prompt_sha256_prefix(prompt: str, n: int = 16) -> str:
 
 
 def _prepare_prompt_after_scan(prompt: str, scan: GuardrailScanResult) -> str:
-    if scan.risk_level == "high":
-        # TODO: HITL queue, hard block, or tenant policy toggle for production.
-        return redact_obvious_pii_patterns(prompt)
+    if scan.has_injection_markers:
+        raise PermissionError("LLM request blocked by prompt-injection guardrail")
+    if scan.has_pii:
+        mode = os.getenv("COMPLIANCEHUB_LLM_PII_MODE", "block").strip().lower()
+        if mode == "redact":
+            return redact_obvious_pii_patterns(prompt)
+        if mode != "block":
+            raise llm_client.LLMConfigurationError(
+                "COMPLIANCEHUB_LLM_PII_MODE must be block or redact"
+            )
+        raise PermissionError("LLM request blocked by personal-data guardrail")
     return prompt
 
 
