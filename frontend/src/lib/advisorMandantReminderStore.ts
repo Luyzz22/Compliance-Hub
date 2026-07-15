@@ -17,12 +17,18 @@ import type {
 } from "@/lib/advisorMandantReminderTypes";
 import { MANDANT_REMINDER_MANUAL_CATEGORIES } from "@/lib/advisorMandantReminderTypes";
 import {
+  listAdvisorMandantRemindersPostgres,
+  mutateAdvisorMandantRemindersPostgres,
+  readAllAdvisorMandantRemindersPostgres,
+} from "@/lib/advisorRuntimePostgresStore";
+import {
   absoluteRuntimeFilePath,
   isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
   withRuntimeStorageLock,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
+import { resolveRelationalRuntimeBackend } from "@/lib/runtimePostgres";
 
 function remindersPath(): string {
   const fromEnv = process.env.ADVISOR_MANDANT_REMINDERS_PATH?.trim();
@@ -38,6 +44,9 @@ function emptyState(): AdvisorMandantRemindersState {
 }
 
 export async function readAdvisorMandantRemindersState(): Promise<AdvisorMandantRemindersState> {
+  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+    return readAllAdvisorMandantRemindersPostgres();
+  }
   const path = remindersPath();
   try {
     const raw = await readRuntimeTextFile(path);
@@ -76,6 +85,20 @@ async function writeAdvisorMandantRemindersState(state: AdvisorMandantRemindersS
   await writeRuntimeTextFile(path, JSON.stringify(state, null, 2));
 }
 
+async function mutateAdvisorMandantReminders<T>(
+  operation: (state: AdvisorMandantRemindersState) => Promise<T> | T,
+): Promise<T> {
+  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+    return mutateAdvisorMandantRemindersPostgres(operation);
+  }
+  return withRuntimeStorageLock(remindersPath(), async () => {
+    const state = await readAdvisorMandantRemindersState();
+    const result = await operation(state);
+    await writeAdvisorMandantRemindersState(state);
+    return result;
+  });
+}
+
 function findOpenAuto(state: AdvisorMandantRemindersState, tenantId: string, category: MandantReminderCategory) {
   return state.reminders.find(
     (x) => x.tenant_id === tenantId && x.category === category && x.status === "open" && x.source === "auto",
@@ -90,8 +113,7 @@ export async function syncAdvisorMandantRemindersFromPortfolio(
   manyOpenThreshold: number,
   nowMs: number,
 ): Promise<AdvisorMandantRemindersState> {
-  return withRuntimeStorageLock(remindersPath(), async () => {
-    const state = await readAdvisorMandantRemindersState();
+  return mutateAdvisorMandantReminders((state) => {
     const isoNow = new Date(nowMs).toISOString();
 
     for (const row of rows) {
@@ -120,7 +142,6 @@ export async function syncAdvisorMandantRemindersFromPortfolio(
       }
     }
 
-    await writeAdvisorMandantRemindersState(state);
     return state;
   });
 }
@@ -136,8 +157,7 @@ export async function syncAdvisorSlaEscalationReminders(
   escalate: boolean,
   nowMs: number,
 ): Promise<void> {
-  await withRuntimeStorageLock(remindersPath(), async () => {
-    const state = await readAdvisorMandantRemindersState();
+  await mutateAdvisorMandantReminders((state) => {
     const isoNow = new Date(nowMs).toISOString();
 
     const closeOpenSlaAuto = () => {
@@ -151,7 +171,6 @@ export async function syncAdvisorSlaEscalationReminders(
 
     if (!escalate) {
       closeOpenSlaAuto();
-      await writeAdvisorMandantRemindersState(state);
       return;
     }
 
@@ -189,7 +208,6 @@ export async function syncAdvisorSlaEscalationReminders(
       }
     }
 
-    await writeAdvisorMandantRemindersState(state);
   });
 }
 
@@ -202,8 +220,7 @@ export async function createAdvisorMandantReminderManual(input: {
   if (!MANDANT_REMINDER_MANUAL_CATEGORIES.includes(input.category)) {
     throw new Error("invalid_manual_category");
   }
-  return withRuntimeStorageLock(remindersPath(), async () => {
-    const state = await readAdvisorMandantRemindersState();
+  return mutateAdvisorMandantReminders((state) => {
     const isoNow = new Date().toISOString();
     const rec: MandantReminderRecord = {
       reminder_id: randomUUID(),
@@ -217,7 +234,6 @@ export async function createAdvisorMandantReminderManual(input: {
       updated_at: isoNow,
     };
     state.reminders.push(rec);
-    await writeAdvisorMandantRemindersState(state);
     return rec;
   });
 }
@@ -227,13 +243,11 @@ export async function updateAdvisorMandantReminderStatus(
   status: MandantReminderStatus,
 ): Promise<MandantReminderRecord | null> {
   if (status !== "done" && status !== "dismissed") return null;
-  return withRuntimeStorageLock(remindersPath(), async () => {
-    const state = await readAdvisorMandantRemindersState();
+  return mutateAdvisorMandantReminders((state) => {
     const rec = state.reminders.find((x) => x.reminder_id === reminderId);
     if (!rec || rec.status !== "open") return null;
     rec.status = status;
     rec.updated_at = new Date().toISOString();
-    await writeAdvisorMandantRemindersState(state);
     return rec;
   });
 }
@@ -242,6 +256,9 @@ export async function listAdvisorMandantReminders(filters?: {
   tenant_id?: string;
   status?: MandantReminderStatus;
 }): Promise<MandantReminderRecord[]> {
+  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+    return listAdvisorMandantRemindersPostgres(filters);
+  }
   const state = await readAdvisorMandantRemindersState();
   let out = state.reminders;
   if (filters?.tenant_id?.trim()) {

@@ -71,6 +71,7 @@ Bestehende SQLite-/Postgres-Datenbanken: additive Schema-Updates (z. B. neue O
 - `docs/security-parser-hardening-20260715.md` (XML-, SQL-, Signatur- und SAST-Hardening)
 - `docs/security-csp-hardening-20260715.md` (Nonce-CSP, Browser-Evidenz, Runtime-I/O-Grenze)
 - `docs/azure-runtime-storage-csp-reporting-20260715.md` (Azure-Blob-Persistenz, OIDC/Managed Identity, CSP-Reporting)
+- `docs/azure-postgresql-rls-runtime-state-20260715.md` (Azure PostgreSQL, Entra-Token, FORCE RLS, Retention/PITR-Gates)
 - `docs/architecture.md`
 - `docs/db-migrations.md` (additive Schema-Updates neben `create_all`)
 - `docs/product-strategy.md`

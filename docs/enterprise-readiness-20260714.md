@@ -162,6 +162,26 @@ intermediate persistence model and must move into governed Postgres domains wher
 retention and query concurrency are required. See
 `docs/azure-runtime-storage-csp-reporting-20260715.md`.
 
+## Normalized advisor runtime state — 15 July 2026
+
+Advisor mandant history and reminders now use normalized Azure PostgreSQL tables in production.
+The connection uses short-lived Entra tokens, verified TLS, bounded pools and no password or
+connection-string path. Tenant and platform transactions set local scope and actor context; FORCE
+RLS policies also require actual membership in the non-login, NOBYPASSRLS platform role before
+cross-tenant reads or writes are possible. Tenant roles cannot self-elevate by setting the platform
+flag.
+
+Versioned updates, approved retention deadlines, legal holds, serialized reminder reconciliation
+and reason/actor-gated deletion audit are included. A digest-pinned PostgreSQL 17 CI service executes
+real isolation, self-elevation and deletion tests and applies the migration twice. Production remains
+blocked pending live Azure, role, network, restore, retention and source-data migration evidence. Ten
+Blob-backed runtime stores remain on the domain-migration backlog. See
+`docs/azure-postgresql-rls-runtime-state-20260715.md`.
+
+The locked PostgreSQL client graph has no known npm vulnerability at this revision. Four transitive
+parser/helper packages carry informational OpenSSF scores below 3; production is separately gated
+on a reviewed SBOM and supplier-maintenance decision rather than silently accepting that signal.
+
 ## Static-analysis closure — 15 July 2026
 
 The previously documented Bandit findings were remediated without suppressions:

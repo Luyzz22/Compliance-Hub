@@ -29,6 +29,10 @@ long-lived storage credentials.
   replacing the platform default `iad1`. No cross-region Function failover is configured.
 - Whole-document writes use Azure Block Blobs. Lead event lines use Append Blobs. Distributed
   read-modify-write sections use 60-second Azure Blob leases with bounded acquisition retries.
+- Advisor mandant history and reminders now also have a normalized Azure PostgreSQL path with FORCE
+  RLS. Production does not fall back from PostgreSQL to Blob; see
+  `azure-postgresql-rls-runtime-state-20260715.md`. The other ten stores remain on this Blob boundary
+  pending their own domain migrations.
 - Object keys use a fixed validated prefix. Paths outside the application root are hashed before
   mapping, so host filesystem structure is not disclosed in Blob names.
 - Reads and writes have explicit size ceilings. Missing objects are distinguished from configuration,
@@ -110,8 +114,8 @@ Do not set either readiness attestation to `true` until the evidence below has n
   `style-src-attr`, the document origin, `inline`, enforcement disposition and status code. Injected
   query email and sample data were absent from the event.
 - The first immutable Preview audit exposed Vercel default Function placement in Washington, D.C.
-  (`iad1`). The repository now pins `fra1`; the replacement Preview deployment metadata must show
-  every generated Function in `fra1` before this item is considered closed.
+  (`iad1`). The repository now pins `fra1`; replacement Preview metadata showed all 256 Lambda
+  outputs exclusively in `fra1`.
 - The CI readiness helper's generic `urlopen` call was replaced with an HTTP(S)-only, HTTPS-by-default,
   non-redirecting, size-bounded client. Path/query inputs are encoded and seven negative tests cover
   unsafe schemes, credentials, fragments, remote plain HTTP and injection-shaped identifiers.
@@ -120,10 +124,10 @@ Do not set either readiness attestation to `true` until the evidence below has n
 
 - No live Azure account was changed or queried in this wave. Unit-level adapter evidence does not
   prove region, network controls, Entra federation, RBAC, encryption, diagnostics or restoreability.
-- Azure Blob makes the state durable but does not turn multi-tenant JSON documents into a relational,
-  row-isolated system. Lead, job and mutable portfolio state still require a planned migration to the
-  governed Postgres domain model for high concurrency, queryability, tenant-scoped retention and
-  database-level authorization.
+- Azure Blob makes state durable but does not turn JSON documents into a relational, row-isolated
+  system. Advisor history/reminders are the first normalized PostgreSQL slice. Lead, job and the
+  other mutable portfolio stores still require governed domain migrations for high concurrency,
+  queryability, tenant-scoped retention and database-level authorization.
 - CSP reporting is best-effort and cannot be the sole incident-detection channel.
 - Production release remains blocked until both readiness attestations are backed by immutable
   operator evidence and security/privacy/operations approval. This document is engineering evidence,

@@ -1,15 +1,9 @@
 import "server-only";
 
 import {
-  ClientAssertionCredential,
-  DefaultAzureCredential,
-  ManagedIdentityCredential,
-} from "@azure/identity";
-import {
   BlobServiceClient,
   type ContainerClient,
 } from "@azure/storage-blob";
-import { getVercelOidcToken } from "@vercel/oidc";
 import { createHash, randomUUID } from "node:crypto";
 import {
   appendFile,
@@ -29,6 +23,13 @@ import {
 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import {
+  AzureIdentityConfigurationError,
+  createAzureTokenCredential,
+  resolveAzureAuthMode as resolveSharedAzureAuthMode,
+} from "@/lib/azureIdentity";
+import type { AzureAuthMode } from "@/lib/azureIdentity";
+
 const RUNTIME_DOCUMENT_MAX_BYTES = 32 * 1024 * 1024;
 const RUNTIME_APPEND_MAX_BYTES = 256 * 1024;
 const DEFAULT_BLOB_PREFIX = "compliancehub/runtime/v1";
@@ -37,7 +38,6 @@ const CONTAINER_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/;
 const PREFIX_PATTERN = /^[a-z0-9](?:[a-z0-9/_-]{0,126}[a-z0-9])?$/;
 
 type RuntimeStorageBackend = "local" | "azure_blob";
-type AzureAuthMode = "managed_identity" | "vercel_oidc" | "default";
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 
 export class RuntimeStorageNotFoundError extends Error {
@@ -105,25 +105,14 @@ export function resolveRuntimeStorageBackend(
 export function resolveAzureAuthMode(
   env: RuntimeEnvironment = process.env,
 ): AzureAuthMode {
-  const configured = env.COMPLIANCEHUB_RUNTIME_STORAGE_AUTH?.trim().toLowerCase();
-  if (
-    configured === "managed_identity" ||
-    configured === "vercel_oidc" ||
-    configured === "default"
-  ) {
-    if (configured === "default" && isProductionRuntime(env)) {
-      throw new RuntimeStorageConfigurationError(
-        "Default Azure credential chaining is forbidden in production",
-      );
+  try {
+    return resolveSharedAzureAuthMode(env);
+  } catch (error) {
+    if (error instanceof AzureIdentityConfigurationError) {
+      throw new RuntimeStorageConfigurationError(error.message);
     }
-    return configured;
+    throw error;
   }
-  if (configured) {
-    throw new RuntimeStorageConfigurationError("Unsupported Azure authentication mode");
-  }
-  if (env.VERCEL) return "vercel_oidc";
-  if (env.NODE_ENV === "production") return "managed_identity";
-  return "default";
 }
 
 function requiredEnv(name: string, env: RuntimeEnvironment): string {
@@ -293,21 +282,10 @@ function getAzureContainerClient(): ContainerClient {
     throw new RuntimeStorageConfigurationError("Invalid Azure Blob container name");
   }
 
-  const authMode = resolveAzureAuthMode();
-  const credential = (() => {
-    if (authMode === "managed_identity") {
-      const clientId = process.env.AZURE_CLIENT_ID?.trim();
-      return new ManagedIdentityCredential(clientId ? { clientId } : undefined);
-    }
-    if (authMode === "vercel_oidc") {
-      return new ClientAssertionCredential(
-        requiredEnv("AZURE_TENANT_ID", process.env),
-        requiredEnv("AZURE_CLIENT_ID", process.env),
-        getVercelOidcToken,
-      );
-    }
-    return new DefaultAzureCredential();
-  })();
+  const credential = createAzureTokenCredential(
+    process.env,
+    RuntimeStorageConfigurationError,
+  );
 
   const serviceClient = new BlobServiceClient(
     `https://${accountName}.blob.core.windows.net`,

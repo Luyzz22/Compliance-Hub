@@ -95,6 +95,42 @@ jobs:
       - name: Test Rego policies
         run: opa test --v0-compatible infra/opa/policies/compliancehub/regos/
 
+  postgres-rls:
+    name: PostgreSQL 17 / RLS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.9-alpine@sha256:c7526c0f6c3f30260a563d7bcf8ad778effac59a44f8ffa86678c35418338609
+        env:
+          POSTGRES_DB: compliancehub_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: compliancehub-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d compliancehub_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGDATABASE: compliancehub_ci
+      PGUSER: postgres
+      PGPASSWORD: compliancehub-ci-only
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Apply governed runtime migration
+        run: |
+          psql --no-psqlrc --set=ON_ERROR_STOP=1 --file db/postgres/migrations/20260715_advisor_runtime_state_rls.sql
+          psql --no-psqlrc --set=ON_ERROR_STOP=1 --file db/postgres/migrations/20260715_advisor_runtime_state_rls.sql
+
+      - name: Verify tenant isolation and deletion audit
+        run: psql --no-psqlrc --set=ON_ERROR_STOP=1 --file tests/postgres/advisor_runtime_state_rls_test.sql
+
   dependency-review:
     name: Pull request dependency review
     if: github.event_name == 'pull_request'
