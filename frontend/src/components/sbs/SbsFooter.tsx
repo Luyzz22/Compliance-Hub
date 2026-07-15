@@ -25,9 +25,9 @@ export function SbsFooter({ publicSite = false }: SbsFooterProps) {
               Unternehmen
             </h2>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><Link href="/" className="text-slate-300 hover:text-white">Start</Link></li>
-              <li><Link href="/trust-center" className="text-slate-300 hover:text-white">Trust Center</Link></li>
-              <li><Link href="/kontakt" className="text-slate-300 hover:text-white">Kontakt</Link></li>
+              <li><Link href="/" prefetch={false} className="text-slate-300 hover:text-white">Start</Link></li>
+              <li><Link href="/trust-center" prefetch={false} className="text-slate-300 hover:text-white">Trust Center</Link></li>
+              <li><Link href="/kontakt" prefetch={false} className="text-slate-300 hover:text-white">Kontakt</Link></li>
             </ul>
           </nav>
           <nav aria-label="Rechtliches">
@@ -35,8 +35,8 @@ export function SbsFooter({ publicSite = false }: SbsFooterProps) {
               Rechtliches
             </h2>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><Link href="/impressum" className="text-slate-300 hover:text-white">Impressum</Link></li>
-              <li><Link href="/datenschutz" className="text-slate-300 hover:text-white">Datenschutz</Link></li>
+              <li><Link href="/impressum" prefetch={false} className="text-slate-300 hover:text-white">Impressum</Link></li>
+              <li><Link href="/datenschutz" prefetch={false} className="text-slate-300 hover:text-white">Datenschutz</Link></li>
             </ul>
           </nav>
           <p className="border-t border-white/10 pt-6 text-xs text-slate-500 md:col-span-3">
