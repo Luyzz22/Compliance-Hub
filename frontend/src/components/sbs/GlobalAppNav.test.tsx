@@ -137,4 +137,15 @@ describe("GlobalAppNav", () => {
     render(<GlobalAppNav />);
     expect(screen.getByRole("button", { name: /Menü öffnen/i })).toBeTruthy();
   });
+
+  it("exposes only public destinations in the public-site profile", () => {
+    setupDefaults();
+    render(<GlobalAppNav publicSite />);
+
+    expect(screen.getByRole("link", { name: /^Start$/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Trust Center/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Kontakt/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Board/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Konto/i })).toBeNull();
+  });
 });

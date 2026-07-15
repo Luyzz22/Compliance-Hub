@@ -356,7 +356,34 @@ function MobileNavContent({
 
 /* ── Main nav export ───────────────────────────────────────────────── */
 
-export function GlobalAppNav() {
+function PublicSiteNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="flex items-center justify-end gap-1" aria-label="Hauptnavigation">
+      <Link
+        href="/"
+        className={`${navLinkClass(pathname === "/")} hidden sm:inline-flex`}
+      >
+        Start
+      </Link>
+      <Link
+        href="/trust-center"
+        className={navLinkClass(pathname === "/trust-center")}
+      >
+        Trust Center
+      </Link>
+      <Link
+        href="/kontakt"
+        className="inline-flex min-h-9 items-center justify-center rounded-lg bg-[#07111f] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800"
+      >
+        Kontakt
+      </Link>
+    </nav>
+  );
+}
+
+function EnterpriseAppNav() {
   const pathname = usePathname();
 
   // RBAC visibility
@@ -536,3 +563,10 @@ export function GlobalAppNav() {
   );
 }
 
+type GlobalAppNavProps = {
+  publicSite?: boolean;
+};
+
+export function GlobalAppNav({ publicSite = false }: GlobalAppNavProps) {
+  return publicSite ? <PublicSiteNav /> : <EnterpriseAppNav />;
+}

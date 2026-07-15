@@ -5,6 +5,7 @@ import { TrackedContactLink } from "@/components/contact/TrackedContactLink";
 import { HomeProductPreview } from "@/components/home/HomeProductPreview";
 import { CH_BTN_PRIMARY } from "@/lib/boardLayout";
 import { contactPageHref } from "@/lib/publicContact";
+import { isPublicSiteRelease } from "@/lib/releaseProfile";
 
 function SectionTitle({
   title,
@@ -31,6 +32,8 @@ function SectionTitle({
 }
 
 export default function HomePage() {
+  const publicSite = isPublicSiteRelease();
+
   return (
     <div className="relative min-w-0">
       <div
@@ -67,6 +70,7 @@ export default function HomePage() {
                 })}
                 ctaId="home-hero-demo"
                 quelle="home-hero"
+                trackingEnabled={!publicSite}
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#07111f] px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-slate-800"
               >
                 Demo anfragen
@@ -77,12 +81,14 @@ export default function HomePage() {
               >
                 Trust Center
               </Link>
-              <Link
-                href="/board/kpis"
-                className="inline-flex min-h-12 items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-slate-600 transition hover:text-slate-950"
-              >
-                Board öffnen
-              </Link>
+              {!publicSite ? (
+                <Link
+                  href="/board/kpis"
+                  className="inline-flex min-h-12 items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-slate-600 transition hover:text-slate-950"
+                >
+                  Board öffnen
+                </Link>
+              ) : null}
             </div>
             <p className="mt-8 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-slate-500 sm:text-xs">
               EU AI Act · NIS2 · ISO 27001/27701 · ISO 42001 · DSGVO
@@ -254,6 +260,7 @@ export default function HomePage() {
               })}
               ctaId="home-integrations-kontakt"
               quelle="home-integrations"
+              trackingEnabled={!publicSite}
               className="font-medium text-cyan-700 underline-offset-2 hover:underline"
             >
               Kontakt aufnehmen
@@ -286,16 +293,21 @@ export default function HomePage() {
               })}
               ctaId="home-mid-cta-demo"
               quelle="home-mid-cta"
+              trackingEnabled={!publicSite}
               className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 shadow-md transition hover:-translate-y-0.5"
             >
               Demo anfragen
             </TrackedContactLink>
-            <Link href="/auth/login" className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15">
-              Anmelden
-            </Link>
-            <Link href="/board/kpis" className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-slate-300 transition hover:text-white">
-              Board-Ansicht
-            </Link>
+            {!publicSite ? (
+              <>
+                <Link href="/auth/login" className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15">
+                  Anmelden
+                </Link>
+                <Link href="/board/kpis" className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-slate-300 transition hover:text-white">
+                  Board-Ansicht
+                </Link>
+              </>
+            ) : null}
           </div>
         </div>
       </section>
@@ -355,8 +367,11 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-            <Link href="/settings" className={`${CH_BTN_PRIMARY} mt-5 w-full sm:w-auto`}>
-              Zu Mandant &amp; Einstellungen
+            <Link
+              href={publicSite ? "/trust-center" : "/settings"}
+              className={`${CH_BTN_PRIMARY} mt-5 w-full sm:w-auto`}
+            >
+              {publicSite ? "Zum Trust Center" : "Zu Mandant & Einstellungen"}
             </Link>
           </div>
         </div>

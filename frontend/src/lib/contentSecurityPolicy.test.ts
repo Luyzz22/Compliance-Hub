@@ -53,4 +53,17 @@ describe("content security policy", () => {
     expect(policy).toContain("connect-src 'self'");
     expect(policy).not.toContain("javascript:");
   });
+
+  it("keeps enforcement active when production reporting is not approved", () => {
+    const policy = buildContentSecurityPolicy({
+      nonce: createCspNonce(),
+      development: false,
+      reportingEnabled: false,
+    });
+
+    expect(policy).toContain("frame-ancestors 'none'");
+    expect(policy).toContain("upgrade-insecure-requests");
+    expect(policy).not.toContain("report-uri");
+    expect(policy).not.toContain("report-to");
+  });
 });

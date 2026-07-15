@@ -1,15 +1,27 @@
-const SECURITY_TXT = `Contact: https://complywithai.de/kontakt
-Expires: 2027-07-01T00:00:00.000Z
-Preferred-Languages: de, en
-Canonical: https://complywithai.de/.well-known/security.txt
-Policy: https://complywithai.de/trust-center
-`;
+const SIX_MONTHS_MS = 183 * 24 * 60 * 60 * 1_000;
+
+export const dynamic = "force-dynamic";
 
 export function GET(): Response {
-  return new Response(SECURITY_TXT, {
+  const contact =
+    process.env.COMPLIANCEHUB_SECURITY_CONTACT?.trim() ||
+    "https://complywithai.de/kontakt";
+  const expires = new Date(Date.now() + SIX_MONTHS_MS).toISOString();
+  const body = [
+    `Contact: ${contact}`,
+    `Expires: ${expires}`,
+    "Preferred-Languages: de, en",
+    "Canonical: https://complywithai.de/.well-known/security.txt",
+    "Policy: https://complywithai.de/trust-center#disclosure",
+    "",
+  ].join("\n");
+
+  return new Response(body, {
+    status: 200,
     headers: {
+      "Cache-Control": "public, max-age=86400",
       "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

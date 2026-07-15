@@ -15,8 +15,20 @@ import {
   CSP_REPORTING_GROUP,
   createCspNonce,
 } from "@/lib/contentSecurityPolicy";
+import { isPublicSiteRelease } from "@/lib/releaseProfile";
 
 const WORKSPACE_COOKIE_MAX_AGE_SEC = 90 * 24 * 60 * 60;
+const PUBLIC_SITE_PATHS = new Set([
+  "/",
+  "/kontakt",
+  "/trust-center",
+  "/impressum",
+  "/datenschutz",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/manifest.webmanifest",
+  "/.well-known/security.txt",
+]);
 
 function applyRequestSecurityPolicy(
   response: NextResponse,
@@ -79,16 +91,31 @@ function applyTenantsWorkspaceCookiePolicy(
 }
 
 export function proxy(request: NextRequest) {
+  const publicSiteRelease = isPublicSiteRelease();
   const nonce = createCspNonce();
   const contentSecurityPolicy = buildContentSecurityPolicy({
     nonce,
     development: process.env.NODE_ENV !== "production",
     apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+    reportingEnabled:
+      !publicSiteRelease &&
+      process.env.COMPLIANCEHUB_CSP_REPORTING_READY === "true",
   });
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
+
+  if (publicSiteRelease && !PUBLIC_SITE_PATHS.has(request.nextUrl.pathname)) {
+    return applyRequestSecurityPolicy(
+      new NextResponse("Not Found", {
+        status: 404,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      }),
+      contentSecurityPolicy,
+    );
+  }
+
   const tenantsRedirect = applyTenantsWorkspaceCookiePolicy(request, response);
   if (tenantsRedirect) {
     return applyRequestSecurityPolicy(tenantsRedirect, contentSecurityPolicy);

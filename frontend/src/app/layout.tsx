@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import React, { Suspense } from "react";
 
 import { DemoContextualHint } from "@/components/demo/DemoContextualHint";
@@ -8,6 +9,7 @@ import { SessionAttributionCapture } from "@/components/marketing/SessionAttribu
 import { CookieBanner } from "@/components/sbs/CookieBanner";
 import { SbsFooter } from "@/components/sbs/SbsFooter";
 import { SbsHeader } from "@/components/sbs/SbsHeader";
+import { isPublicSiteRelease } from "@/lib/releaseProfile";
 import { isDemoUiDesiredForTenant } from "@/lib/workspaceDemoServer";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
@@ -42,8 +44,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const workspaceTenantId = await getWorkspaceTenantIdServer();
-  const showDemoUi = await isDemoUiDesiredForTenant(workspaceTenantId);
+  await connection();
+  const publicSite = isPublicSiteRelease();
+  const workspaceTenantId = publicSite ? "" : await getWorkspaceTenantIdServer();
+  const showDemoUi = publicSite
+    ? false
+    : await isDemoUiDesiredForTenant(workspaceTenantId);
 
   return (
     <html
@@ -52,10 +58,12 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="sbs-body flex min-h-screen flex-col bg-[#f5f7fb] antialiased">
-        <Suspense fallback={null}>
-          <SessionAttributionCapture />
-        </Suspense>
-        <SbsHeader />
+        {!publicSite ? (
+          <Suspense fallback={null}>
+            <SessionAttributionCapture />
+          </Suspense>
+        ) : null}
+        <SbsHeader publicSite={publicSite} />
         <DemoEnvironmentBanner visible={showDemoUi} />
         <main
           id="app-main"
@@ -64,11 +72,15 @@ export default async function RootLayout({
           <DemoContextualHint enabled={showDemoUi} />
           {children}
         </main>
-        <DemoGuide tenantId={workspaceTenantId} enabled={showDemoUi} />
-        <SbsFooter />
-        <Suspense fallback={null}>
-          <CookieBanner />
-        </Suspense>
+        {!publicSite ? (
+          <DemoGuide tenantId={workspaceTenantId} enabled={showDemoUi} />
+        ) : null}
+        <SbsFooter publicSite={publicSite} />
+        {!publicSite ? (
+          <Suspense fallback={null}>
+            <CookieBanner />
+          </Suspense>
+        ) : null}
       </body>
     </html>
   );

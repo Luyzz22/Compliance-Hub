@@ -23,10 +23,12 @@ export function buildContentSecurityPolicy({
   nonce,
   development,
   apiBaseUrl,
+  reportingEnabled = !development,
 }: {
   nonce: string;
   development: boolean;
   apiBaseUrl?: string;
+  reportingEnabled?: boolean;
 }): string {
   if (nonce.length < 24 || !CSP_NONCE_PATTERN.test(nonce)) {
     throw new Error("CSP nonce must be an unpredictable base64 value");
@@ -64,7 +66,7 @@ export function buildContentSecurityPolicy({
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     ...(development ? [] : ["upgrade-insecure-requests"]),
-    ...(development
+    ...(development || !reportingEnabled
       ? []
       : [
           `report-uri ${CSP_REPORT_ENDPOINT}`,

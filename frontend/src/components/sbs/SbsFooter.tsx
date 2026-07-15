@@ -3,8 +3,50 @@ import React from "react";
 
 import { contactPageHref } from "@/lib/publicContact";
 
-export function SbsFooter() {
+type SbsFooterProps = {
+  publicSite?: boolean;
+};
+
+export function SbsFooter({ publicSite = false }: SbsFooterProps) {
   const y = new Date().getFullYear();
+  if (publicSite) {
+    return (
+      <footer className="sbs-premium-footer mt-auto border-t border-white/10 bg-[#07111f] py-12 text-white">
+        <div className="mx-auto grid min-w-0 max-w-[90rem] gap-10 px-4 md:grid-cols-[1.4fr_1fr_1fr] md:px-8">
+          <div className="max-w-md">
+            <p className="text-base font-semibold tracking-[-0.02em]">Compliance Hub</p>
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              Enterprise AI Governance für nachvollziehbare Controls, Evidence und
+              verantwortliche Entscheidungen.
+            </p>
+          </div>
+          <nav aria-label="Unternehmen">
+            <h2 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
+              Unternehmen
+            </h2>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li><Link href="/" className="text-slate-300 hover:text-white">Start</Link></li>
+              <li><Link href="/trust-center" className="text-slate-300 hover:text-white">Trust Center</Link></li>
+              <li><Link href="/kontakt" className="text-slate-300 hover:text-white">Kontakt</Link></li>
+            </ul>
+          </nav>
+          <nav aria-label="Rechtliches">
+            <h2 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
+              Rechtliches
+            </h2>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li><Link href="/impressum" className="text-slate-300 hover:text-white">Impressum</Link></li>
+              <li><Link href="/datenschutz" className="text-slate-300 hover:text-white">Datenschutz</Link></li>
+            </ul>
+          </nav>
+          <p className="border-t border-white/10 pt-6 text-xs text-slate-500 md:col-span-3">
+            © {y} Compliance Hub · Öffentliche Produktinformation · Keine Rechtsberatung
+          </p>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="sbs-premium-footer mt-auto border-t border-slate-200/70 bg-[#07111f] py-12 text-white">
       <div className="mx-auto min-w-0 max-w-[90rem] px-4 md:px-8">

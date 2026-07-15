@@ -10,16 +10,26 @@ type Props = {
   quelle: string;
   className: string;
   children: React.ReactNode;
+  trackingEnabled?: boolean;
 };
 
-export function TrackedContactLink({ href, ctaId, quelle, className, children }: Props) {
+export function TrackedContactLink({
+  href,
+  ctaId,
+  quelle,
+  className,
+  children,
+  trackingEnabled = true,
+}: Props) {
   return (
     <Link
       href={href}
       className={className}
       prefetch={false}
-      onClick={() =>
-        sendMarketingEvent({ event: "cta_click", cta_id: ctaId, quelle })
+      onClick={
+        trackingEnabled
+          ? () => sendMarketingEvent({ event: "cta_click", cta_id: ctaId, quelle })
+          : undefined
       }
     >
       {children}
