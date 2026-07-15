@@ -363,18 +363,21 @@ function PublicSiteNav() {
     <nav className="flex items-center justify-end gap-1" aria-label="Hauptnavigation">
       <Link
         href="/"
+        prefetch={false}
         className={`${navLinkClass(pathname === "/")} hidden sm:inline-flex`}
       >
         Start
       </Link>
       <Link
         href="/trust-center"
+        prefetch={false}
         className={navLinkClass(pathname === "/trust-center")}
       >
         Trust Center
       </Link>
       <Link
         href="/kontakt"
+        prefetch={false}
         className="inline-flex min-h-9 items-center justify-center rounded-lg bg-[#07111f] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800"
       >
         Kontakt
