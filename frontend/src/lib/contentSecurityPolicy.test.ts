@@ -20,6 +20,8 @@ describe("content security policy", () => {
     expect(policy).toContain("style-src-attr 'none'");
     expect(policy).toContain("connect-src 'self' https://api.complywithai.de");
     expect(policy).toContain("upgrade-insecure-requests");
+    expect(policy).toContain("report-uri /api/security/csp-report");
+    expect(policy).toContain("report-to csp-endpoint");
     expect(policy).not.toContain("unsafe-inline");
     expect(policy).not.toContain("unsafe-eval");
   });
@@ -34,6 +36,8 @@ describe("content security policy", () => {
     expect(policy).toContain("connect-src 'self' ws:");
     expect(policy).not.toContain("unsafe-inline");
     expect(policy).not.toContain("upgrade-insecure-requests");
+    expect(policy).not.toContain("report-uri");
+    expect(policy).not.toContain("report-to");
   });
 
   it("rejects malformed nonces and non-http API origins", () => {

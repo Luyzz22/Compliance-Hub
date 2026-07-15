@@ -1,5 +1,8 @@
 const CSP_NONCE_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
 
+export const CSP_REPORT_ENDPOINT = "/api/security/csp-report";
+export const CSP_REPORTING_GROUP = "csp-endpoint";
+
 function safeOrigin(value: string | undefined): string | null {
   if (!value) return null;
   try {
@@ -61,5 +64,11 @@ export function buildContentSecurityPolicy({
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     ...(development ? [] : ["upgrade-insecure-requests"]),
+    ...(development
+      ? []
+      : [
+          `report-uri ${CSP_REPORT_ENDPOINT}`,
+          `report-to ${CSP_REPORTING_GROUP}`,
+        ]),
   ].join("; ");
 }

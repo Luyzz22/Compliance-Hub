@@ -6,7 +6,9 @@ import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { KanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioTypes";
 import {
   absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
+  withRuntimeStorageLock,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
 import {
@@ -62,7 +64,8 @@ export async function readAdvisorKpiHistoryState(): Promise<AdvisorKpiHistorySta
     }
     snaps.sort((a, b) => Date.parse(a.captured_at) - Date.parse(b.captured_at));
     return { version: ADVISOR_KPI_HISTORY_FILE_VERSION, snapshots: snaps };
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return emptyState();
   }
 }
@@ -102,20 +105,22 @@ export async function upsertAdvisorKpiHistoryDaily(
   payload: KanzleiPortfolioPayload,
   snapshot: AdvisorKpiPortfolioSnapshot,
 ): Promise<AdvisorKpiHistoryState> {
-  const state = await readAdvisorKpiHistoryState();
-  const point = historyPointFromSnapshot(payload, snapshot);
-  const day = utcDayKey(point.captured_at);
-  if (!day) return state;
+  return withRuntimeStorageLock(historyPath(), async () => {
+    const state = await readAdvisorKpiHistoryState();
+    const point = historyPointFromSnapshot(payload, snapshot);
+    const day = utcDayKey(point.captured_at);
+    if (!day) return state;
 
-  const next = state.snapshots.filter((s) => utcDayKey(s.captured_at) !== day);
-  next.push(point);
-  next.sort((a, b) => Date.parse(a.captured_at) - Date.parse(b.captured_at));
-  while (next.length > MAX_SNAPSHOTS) next.shift();
+    const next = state.snapshots.filter((s) => utcDayKey(s.captured_at) !== day);
+    next.push(point);
+    next.sort((a, b) => Date.parse(a.captured_at) - Date.parse(b.captured_at));
+    while (next.length > MAX_SNAPSHOTS) next.shift();
 
-  const out: AdvisorKpiHistoryState = {
-    version: ADVISOR_KPI_HISTORY_FILE_VERSION,
-    snapshots: next,
-  };
-  await writeAdvisorKpiHistoryState(out);
-  return out;
+    const out: AdvisorKpiHistoryState = {
+      version: ADVISOR_KPI_HISTORY_FILE_VERSION,
+      snapshots: next,
+    };
+    await writeAdvisorKpiHistoryState(out);
+    return out;
+  });
 }

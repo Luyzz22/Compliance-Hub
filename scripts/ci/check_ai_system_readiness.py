@@ -29,11 +29,73 @@ Example GitHub Actions step:
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import sys
-import urllib.error
-import urllib.request
+from dataclasses import dataclass
+from urllib.parse import quote, urlencode, urlsplit
+
+MAX_RESPONSE_BYTES = 1024 * 1024
+LOCAL_HTTP_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+@dataclass(frozen=True)
+class ApiEndpoint:
+    scheme: str
+    host: str
+    port: int | None
+    target: str
+
+
+class ApiResponseError(RuntimeError):
+    def __init__(self, status: int, reason: str) -> None:
+        super().__init__(f"API returned {status}: {reason}")
+        self.status = status
+        self.reason = reason
+
+
+def build_api_endpoint(api_url: str, system_id: str, tenant_id: str) -> ApiEndpoint:
+    parsed = urlsplit(api_url.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("API URL must be an absolute HTTP(S) URL")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("API URL must not contain credentials, query parameters or fragments")
+    if parsed.scheme == "http" and parsed.hostname.lower() not in LOCAL_HTTP_HOSTS:
+        raise ValueError("Plain HTTP is permitted only for local development")
+
+    base_path = parsed.path.rstrip("/")
+    path = f"{base_path}/api/v1/ai-systems/{quote(system_id, safe='')}/deployment-check"
+    query: dict[str, str] = {"caller_type": "ci"}
+    if tenant_id:
+        query["tenant_id"] = tenant_id
+    return ApiEndpoint(
+        scheme=parsed.scheme,
+        host=parsed.hostname,
+        port=parsed.port,
+        target=f"{path}?{urlencode(query)}",
+    )
+
+
+def request_json(endpoint: ApiEndpoint, headers: dict[str, str]) -> dict[str, object]:
+    connection_type = (
+        http.client.HTTPSConnection if endpoint.scheme == "https" else http.client.HTTPConnection
+    )
+    connection = connection_type(endpoint.host, endpoint.port, timeout=30)
+    try:
+        connection.request("GET", endpoint.target, headers=headers)
+        response = connection.getresponse()
+        if response.status < 200 or response.status >= 300:
+            raise ApiResponseError(response.status, response.reason)
+        raw = response.read(MAX_RESPONSE_BYTES + 1)
+        if len(raw) > MAX_RESPONSE_BYTES:
+            raise ValueError("API response exceeds the 1 MiB safety limit")
+        payload = json.loads(raw.decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("API response must be a JSON object")
+        return payload
+    finally:
+        connection.close()
 
 
 def main() -> int:
@@ -58,26 +120,23 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    url = (
-        f"{args.api_url.rstrip('/')}/api/v1/ai-systems"
-        f"/{args.system_id}/deployment-check"
-        f"?caller_type=ci"
-    )
-    if args.tenant_id:
-        url += f"&tenant_id={args.tenant_id}"
-
     headers: dict[str, str] = {"Accept": "application/json"}
     if args.api_key:
         headers["Authorization"] = f"Bearer {args.api_key}"
 
     try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode())
-    except urllib.error.HTTPError as exc:
-        print(f"::error::API returned {exc.code}: {exc.reason}", file=sys.stderr)
+        endpoint = build_api_endpoint(args.api_url, args.system_id, args.tenant_id)
+        data = request_json(endpoint, headers)
+    except ApiResponseError as exc:
+        print(f"::error::API returned {exc.status}: {exc.reason}", file=sys.stderr)
         return 2
-    except Exception as exc:
+    except (
+        http.client.HTTPException,
+        json.JSONDecodeError,
+        OSError,
+        UnicodeError,
+        ValueError,
+    ) as exc:
         print(f"::error::API call failed: {exc}", file=sys.stderr)
         return 2
 

@@ -1,7 +1,7 @@
 # Frontend CSP and runtime-boundary hardening — 15 July 2026
 
-Status: implementation and local production-browser verification complete; deployed review and
-independent assurance still required
+Status: enforcement and privacy-minimized application reporting implemented; deployed reporting
+drain/alert evidence and independent assurance still required
 
 ## Control objective
 
@@ -28,14 +28,17 @@ prevent mutable runtime files from entering Next.js output traces.
   requires absolute paths and prevents mutable files from being included in Turbopack output traces.
 - Starlette `TestClient` uses the explicit `httpx2` development dependency. All deprecated 422
   constants use `HTTP_422_UNPROCESSABLE_CONTENT`.
+- Production responses declare a same-origin CSP Reporting API endpoint plus the legacy compatibility
+  directive. The bounded endpoint discards paths, queries, referrers, samples and request identity
+  before emitting a structured security event.
 
 ## Verification evidence
 
 - Frontend lint and the strict CSP prebuild gate passed.
-- All 270 frontend unit tests passed, including policy construction, nonce uniqueness, redirect CSP
+- All 284 frontend unit tests passed, including policy construction, nonce uniqueness, redirect CSP
   preservation and inline-style-free visualization tests.
 - The Next.js 16.2.10 production build completed without TypeScript, Turbopack or NFT warnings.
-- All 1,538 backend tests passed with `StarletteDeprecationWarning` promoted to an error.
+- All 1,545 backend tests passed with `StarletteDeprecationWarning` promoted to an error.
 - Bandit reported zero findings; `pip-audit` reported no known third-party vulnerabilities.
 - Two consecutive production-mode HTTP responses carried different nonces and `private, no-store`.
 - Browser verification confirmed meaningful rendering, interactive tab navigation, no error overlay,
@@ -48,12 +51,13 @@ prevent mutable runtime files from entering Next.js output traces.
 
 ## Residual release controls
 
-- Add a privacy-reviewed CSP reporting endpoint and alerting pipeline before production enforcement
-  is considered fully observable; reports may contain URLs and therefore require retention and data
-  minimization controls.
+- The privacy-minimized application endpoint is implemented. Production still requires an approved
+  SIEM drain, retention, alert test and WAF/rate-limit evidence before reporting is operationally
+  complete.
 - Repeat the browser/header checks on the immutable Vercel preview and production candidate.
-- The centralized runtime-I/O boundary prevents unsafe tracing but does not make `/tmp` durable.
-  Product state must be migrated to approved Azure/Postgres/Blob persistence before production.
+- The centralized boundary now maps production state to Azure Blob and rejects local `/tmp`
+  persistence. Live Azure region/RBAC/network/backup evidence and the later relational migration are
+  tracked in `docs/azure-runtime-storage-csp-reporting-20260715.md`.
 - Any future third-party script, frame, font or telemetry integration requires an explicit threat and
   privacy review plus a narrow policy amendment; no wildcard source is approved.
 - Independent penetration testing and security-owner approval remain required release evidence.

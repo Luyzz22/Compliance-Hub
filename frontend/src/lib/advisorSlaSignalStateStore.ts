@@ -4,6 +4,7 @@ import { join } from "path";
 
 import {
   absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
@@ -39,7 +40,8 @@ export async function readAdvisorSlaSignalState(): Promise<{ critical_rule_ids: 
       }
     }
     return { critical_rule_ids: ids };
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return { critical_rule_ids: [] };
   }
 }

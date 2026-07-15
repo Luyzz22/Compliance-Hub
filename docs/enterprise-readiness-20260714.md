@@ -140,8 +140,25 @@ are non-cacheable, redirects retain the policy and a prebuild source gate preven
 application React inline styles were migrated to static CSS or SVG geometry. Production-mode browser
 verification proved nonce uniqueness, framework nonce propagation, navigation and active rejection
 of an injected inline style without console or page errors. Detailed evidence and residual controls
-are recorded in `docs/security-csp-hardening-20260715.md`. A privacy-reviewed CSP-reporting pipeline
-and independent production-equivalent verification remain release requirements.
+are recorded in `docs/security-csp-hardening-20260715.md`. A bounded, privacy-minimized CSP endpoint
+now supports both Reporting API and legacy report formats. Production SIEM drain/retention/alert and
+WAF evidence plus independent production-equivalent verification remain release requirements.
+
+## Azure runtime persistence foundation — 15 July 2026
+
+The twelve Next.js runtime stores now use a production-fail-closed Azure Blob boundary. Vercel uses
+short-lived OIDC federation to Entra; Azure hosting uses Managed Identity; local/default credential
+chains are forbidden in production and Shared Key/connection-string code paths do not exist. Block
+Blob replacement, Append Blob event writes, bounded object sizes, private local development files and
+distributed Blob leases are covered by tests and a prebuild source gate. Missing objects are no
+longer conflated with configuration, corruption or service failures.
+
+This closes the ephemeral-filesystem dependency in application code, not the infrastructure release
+gate. Azure resource region, network, RBAC, encryption/CMK, diagnostics, backup/restore and concrete
+Vercel federated-credential evidence are still absent. Multi-tenant JSON objects also remain an
+intermediate persistence model and must move into governed Postgres domains where row isolation,
+retention and query concurrency are required. See
+`docs/azure-runtime-storage-csp-reporting-20260715.md`.
 
 ## Static-analysis closure — 15 July 2026
 

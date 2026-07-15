@@ -5,7 +5,9 @@ import type { GtmWeeklyReviewNote, GtmWeeklyReviewState } from "@/lib/gtmDashboa
 import { utcWeekStartMondayFromMs } from "@/lib/gtmDashboardTime";
 import {
   absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
+  withRuntimeStorageLock,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
 
@@ -51,7 +53,8 @@ export async function readGtmWeeklyReviewState(): Promise<GtmWeeklyReviewState> 
       last_reviewed_at: typeof o.last_reviewed_at === "string" ? o.last_reviewed_at : null,
       notes: notes.slice(0, MAX_NOTES),
     };
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return emptyState();
   }
 }
@@ -69,36 +72,38 @@ export async function updateGtmWeeklyReviewState(input: {
 }): Promise<GtmWeeklyReviewState> {
   const now = input.now ?? new Date();
   const path = resolvePath();
-  const prev = await readGtmWeeklyReviewState();
-  const created_at = now.toISOString();
-  const week_label = utcWeekStartMondayFromMs(now.getTime());
+  return withRuntimeStorageLock(path, async () => {
+    const prev = await readGtmWeeklyReviewState();
+    const created_at = now.toISOString();
+    const week_label = utcWeekStartMondayFromMs(now.getTime());
 
-  let notes = [...prev.notes];
-  const trimmed = input.note?.trim().slice(0, NOTE_MAX_LEN) ?? "";
-  if (trimmed) {
-    notes.unshift({
-      id: randomUUID(),
-      week_label,
-      text: trimmed,
-      created_at,
-    });
-  }
-  notes = notes.slice(0, MAX_NOTES);
+    let notes = [...prev.notes];
+    const trimmed = input.note?.trim().slice(0, NOTE_MAX_LEN) ?? "";
+    if (trimmed) {
+      notes.unshift({
+        id: randomUUID(),
+        week_label,
+        text: trimmed,
+        created_at,
+      });
+    }
+    notes = notes.slice(0, MAX_NOTES);
 
-  const last_reviewed_at = input.mark_reviewed
-    ? created_at
-    : (prev.last_reviewed_at ?? null);
+    const last_reviewed_at = input.mark_reviewed
+      ? created_at
+      : (prev.last_reviewed_at ?? null);
 
-  const next: GtmWeeklyReviewState = {
-    last_reviewed_at,
-    notes,
-  };
+    const next: GtmWeeklyReviewState = {
+      last_reviewed_at,
+      notes,
+    };
 
-  const payload: FileShape = {
-    last_reviewed_at: next.last_reviewed_at ?? undefined,
-    notes: next.notes,
-  };
+    const payload: FileShape = {
+      last_reviewed_at: next.last_reviewed_at ?? undefined,
+      notes: next.notes,
+    };
 
-  await writeRuntimeTextFile(path, `${JSON.stringify(payload, null, 2)}\n`);
-  return next;
+    await writeRuntimeTextFile(path, `${JSON.stringify(payload, null, 2)}\n`);
+    return next;
+  });
 }

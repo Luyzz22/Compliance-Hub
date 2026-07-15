@@ -4,6 +4,7 @@ import { extractEmailDomain } from "@/lib/leadIdentity";
 import type { LeadInboxItem } from "@/lib/leadInboxTypes";
 import {
   absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
@@ -70,7 +71,8 @@ export async function readGtmProductAccountMap(): Promise<GtmProductAccountMapSt
       }
     }
     return { entries };
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return emptyState();
   }
 }

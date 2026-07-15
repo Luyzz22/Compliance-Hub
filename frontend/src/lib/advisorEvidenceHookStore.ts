@@ -3,7 +3,11 @@ import "server-only";
 import { join } from "path";
 
 import type { EvidenceHookStoredRecord, EvidenceSourceSystemType } from "@/lib/advisorEvidenceHookTypes";
-import { absoluteRuntimeFilePath, readRuntimeTextFile } from "@/lib/runtimeFileIO";
+import {
+  absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
+  readRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 function hooksPath(): string {
   const fromEnv = process.env.ADVISOR_EVIDENCE_HOOKS_PATH?.trim();
@@ -81,7 +85,8 @@ export async function readAdvisorEvidenceHooks(): Promise<EvidenceHookStoredReco
       });
     }
     return out;
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return [];
   }
 }

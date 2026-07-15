@@ -11,6 +11,8 @@ import {
 } from "@/lib/workspaceTenantConstants";
 import {
   buildContentSecurityPolicy,
+  CSP_REPORT_ENDPOINT,
+  CSP_REPORTING_GROUP,
   createCspNonce,
 } from "@/lib/contentSecurityPolicy";
 
@@ -21,6 +23,12 @@ function applyRequestSecurityPolicy(
   contentSecurityPolicy: string,
 ): NextResponse {
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);
+  if (contentSecurityPolicy.includes(`report-to ${CSP_REPORTING_GROUP}`)) {
+    response.headers.set(
+      "Reporting-Endpoints",
+      `${CSP_REPORTING_GROUP}=\"${CSP_REPORT_ENDPOINT}\"`,
+    );
+  }
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }

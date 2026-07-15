@@ -14,7 +14,9 @@ import {
 } from "@/lib/mandantHistoryMerge";
 import {
   absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
+  withRuntimeStorageLock,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
 
@@ -101,7 +103,8 @@ async function readRawHistoryFile(): Promise<AdvisorMandantHistoryState> {
       }
     }
     return { entries };
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return emptyState();
   }
 }
@@ -135,7 +138,8 @@ async function readLegacyTouchpointsRows(): Promise<LegacyTouchRow[]> {
       });
     }
     return out;
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return [];
   }
 }
@@ -187,34 +191,38 @@ export async function recordMandantReadinessExport(tenantId: string, atIso?: str
   const t = (atIso ?? new Date().toISOString()).trim();
   const tid = tenantId.trim();
   if (!tid) return;
-  const state = await readRawHistoryFile();
-  const idx = state.entries.findIndex((e) => e.tenant_id === tid);
-  const prev = idx >= 0 ? state.entries[idx]! : emptyEntry(tid);
-  const next: AdvisorMandantHistoryEntry = {
-    ...prev,
-    tenant_id: tid,
-    last_mandant_readiness_export_at: maxIsoTimestamps(prev.last_mandant_readiness_export_at, t),
-  };
-  const entries = [...state.entries.filter((e) => e.tenant_id !== tid), next];
-  entries.sort((a, b) => a.tenant_id.localeCompare(b.tenant_id));
-  await writeHistoryState({ entries });
+  await withRuntimeStorageLock(historyPath(), async () => {
+    const state = await readRawHistoryFile();
+    const idx = state.entries.findIndex((e) => e.tenant_id === tid);
+    const prev = idx >= 0 ? state.entries[idx]! : emptyEntry(tid);
+    const next: AdvisorMandantHistoryEntry = {
+      ...prev,
+      tenant_id: tid,
+      last_mandant_readiness_export_at: maxIsoTimestamps(prev.last_mandant_readiness_export_at, t),
+    };
+    const entries = [...state.entries.filter((e) => e.tenant_id !== tid), next];
+    entries.sort((a, b) => a.tenant_id.localeCompare(b.tenant_id));
+    await writeHistoryState({ entries });
+  });
 }
 
 export async function recordDatevBundleExport(tenantId: string, atIso?: string): Promise<void> {
   const t = (atIso ?? new Date().toISOString()).trim();
   const tid = tenantId.trim();
   if (!tid) return;
-  const state = await readRawHistoryFile();
-  const idx = state.entries.findIndex((e) => e.tenant_id === tid);
-  const prev = idx >= 0 ? state.entries[idx]! : emptyEntry(tid);
-  const next: AdvisorMandantHistoryEntry = {
-    ...prev,
-    tenant_id: tid,
-    last_datev_bundle_export_at: maxIsoTimestamps(prev.last_datev_bundle_export_at, t),
-  };
-  const entries = [...state.entries.filter((e) => e.tenant_id !== tid), next];
-  entries.sort((a, b) => a.tenant_id.localeCompare(b.tenant_id));
-  await writeHistoryState({ entries });
+  await withRuntimeStorageLock(historyPath(), async () => {
+    const state = await readRawHistoryFile();
+    const idx = state.entries.findIndex((e) => e.tenant_id === tid);
+    const prev = idx >= 0 ? state.entries[idx]! : emptyEntry(tid);
+    const next: AdvisorMandantHistoryEntry = {
+      ...prev,
+      tenant_id: tid,
+      last_datev_bundle_export_at: maxIsoTimestamps(prev.last_datev_bundle_export_at, t),
+    };
+    const entries = [...state.entries.filter((e) => e.tenant_id !== tid), next];
+    entries.sort((a, b) => a.tenant_id.localeCompare(b.tenant_id));
+    await writeHistoryState({ entries });
+  });
 }
 
 export async function recordAdvisorReviewMarked(
@@ -225,24 +233,26 @@ export async function recordAdvisorReviewMarked(
   const t = (atIso ?? new Date().toISOString()).trim();
   const tid = tenantId.trim();
   if (!tid) return;
-  const state = await readRawHistoryFile();
-  const idx = state.entries.findIndex((e) => e.tenant_id === tid);
-  const prev = idx >= 0 ? state.entries[idx]! : emptyEntry(tid);
-  const nextNote =
-    noteDe === undefined
-      ? prev.last_review_note_de
-      : noteDe.trim()
-        ? noteDe.trim().slice(0, 500)
-        : null;
-  const next: AdvisorMandantHistoryEntry = {
-    ...prev,
-    tenant_id: tid,
-    last_review_marked_at: t,
-    last_review_note_de: nextNote,
-  };
-  const entries = [...state.entries.filter((e) => e.tenant_id !== tid), next];
-  entries.sort((a, b) => a.tenant_id.localeCompare(b.tenant_id));
-  await writeHistoryState({ entries });
+  await withRuntimeStorageLock(historyPath(), async () => {
+    const state = await readRawHistoryFile();
+    const idx = state.entries.findIndex((e) => e.tenant_id === tid);
+    const prev = idx >= 0 ? state.entries[idx]! : emptyEntry(tid);
+    const nextNote =
+      noteDe === undefined
+        ? prev.last_review_note_de
+        : noteDe.trim()
+          ? noteDe.trim().slice(0, 500)
+          : null;
+    const next: AdvisorMandantHistoryEntry = {
+      ...prev,
+      tenant_id: tid,
+      last_review_marked_at: t,
+      last_review_note_de: nextNote,
+    };
+    const entries = [...state.entries.filter((e) => e.tenant_id !== tid), next];
+    entries.sort((a, b) => a.tenant_id.localeCompare(b.tenant_id));
+    await writeHistoryState({ entries });
+  });
 }
 
 export async function getAdvisorMandantHistoryApiDto(
