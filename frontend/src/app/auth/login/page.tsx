@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { Suspense, useCallback, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
@@ -34,6 +34,9 @@ function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = safeReturnTo(searchParams.get("next"));
+  const entraCallbackError = searchParams.get("error")?.startsWith("entra_")
+    ? "Die Unternehmensanmeldung konnte nicht abgeschlossen werden. Bitte wenden Sie sich an Ihre Administration."
+    : null;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,6 +46,29 @@ function LoginPageInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LoginResult | null>(null);
+  const [entraEnabled, setEntraEnabled] = useState(false);
+  const [passwordLoginEnabled, setPasswordLoginEnabled] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/auth/entra/status", {
+      cache: "no-store",
+      credentials: "same-origin",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const body = (await response.json().catch(() => null)) as {
+          enabled?: boolean;
+          passwordLoginEnabled?: boolean;
+        } | null;
+        if (response.ok) {
+          setEntraEnabled(body?.enabled === true);
+          setPasswordLoginEnabled(body?.passwordLoginEnabled !== false);
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -64,14 +90,21 @@ function LoginPageInner() {
         });
 
         if (!res.ok) {
-          const body = (await res.json().catch(() => null)) as LoginFailure | null;
+          const body = (await res
+            .json()
+            .catch(() => null)) as LoginFailure | null;
           const detail = body?.detail;
           const code = typeof detail === "object" ? detail?.code : detail;
-          if (code === "tenant_selection_required" && typeof detail === "object") {
+          if (
+            code === "tenant_selection_required" &&
+            typeof detail === "object"
+          ) {
             const tenants = detail.tenants ?? [];
             setTenantOptions(tenants);
             setTenantId(tenants[0] ?? "");
-            throw new Error("Bitte wählen Sie den Mandanten für diese Sitzung aus.");
+            throw new Error(
+              "Bitte wählen Sie den Mandanten für diese Sitzung aus.",
+            );
           }
           if (code === "invalid_credentials") {
             throw new Error("E-Mail oder Passwort ist ungültig.");
@@ -121,102 +154,129 @@ function LoginPageInner() {
             <Link href={returnTo} className={CH_BTN_PRIMARY}>
               Weiter
             </Link>
-            <Link href="/tenant/compliance-overview" className={CH_BTN_SECONDARY}>
+            <Link
+              href="/tenant/compliance-overview"
+              className={CH_BTN_SECONDARY}
+            >
               Zum Workspace
             </Link>
           </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className={CH_CARD}>
-          <fieldset disabled={loading} className="space-y-4">
-            <div>
-              <label
-                htmlFor="login-email"
-                className="block text-sm font-medium text-slate-700"
+          {entraEnabled && (
+            <div className="mb-5 border-b border-slate-200 pb-5">
+              <a
+                href={`/api/auth/entra/start?next=${encodeURIComponent(returnTo)}`}
+                className={`${CH_BTN_SECONDARY} w-full justify-center`}
               >
-                E-Mail
-              </label>
-              <input
-                id="login-email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-              />
+                Mit Microsoft Entra ID anmelden
+              </a>
+              <p className="mt-2 text-xs text-slate-500">
+                Für durch Ihre Organisation provisionierte Unternehmenskonten.
+              </p>
             </div>
+          )}
 
-            {tenantOptions.length > 0 && (
+          {entraCallbackError && (
+            <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              {entraCallbackError}
+            </p>
+          )}
+
+          {passwordLoginEnabled && (
+            <fieldset disabled={loading} className="space-y-4">
               <div>
                 <label
-                  htmlFor="login-tenant"
+                  htmlFor="login-email"
                   className="block text-sm font-medium text-slate-700"
                 >
-                  Mandant
+                  E-Mail
                 </label>
-                <select
-                  id="login-tenant"
+                <input
+                  id="login-email"
+                  type="email"
                   required
-                  value={tenantId}
-                  onChange={(event) => setTenantId(event.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-                >
-                  {tenantOptions.map((tenant) => (
-                    <option key={tenant} value={tenant}>
-                      {tenant}
-                    </option>
-                  ))}
-                </select>
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                />
               </div>
-            )}
 
-            <div>
-              <label
-                htmlFor="login-password"
-                className="block text-sm font-medium text-slate-700"
-              >
-                Passwort
-              </label>
-              <input
-                id="login-password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-              />
-            </div>
+              {tenantOptions.length > 0 && (
+                <div>
+                  <label
+                    htmlFor="login-tenant"
+                    className="block text-sm font-medium text-slate-700"
+                  >
+                    Mandant
+                  </label>
+                  <select
+                    id="login-tenant"
+                    required
+                    value={tenantId}
+                    onChange={(event) => setTenantId(event.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  >
+                    {tenantOptions.map((tenant) => (
+                      <option key={tenant} value={tenant}>
+                        {tenant}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-            {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                {error}
+              <div>
+                <label
+                  htmlFor="login-password"
+                  className="block text-sm font-medium text-slate-700"
+                >
+                  Passwort
+                </label>
+                <input
+                  id="login-password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                />
+              </div>
+
+              {error && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {error}
+                </p>
+              )}
+
+              <button type="submit" className={CH_BTN_PRIMARY}>
+                {loading ? "Lädt…" : "Anmelden"}
+              </button>
+            </fieldset>
+          )}
+
+          {passwordLoginEnabled && (
+            <div className="mt-4 flex flex-col gap-1 text-sm text-slate-500">
+              <p>
+                <Link
+                  href="/auth/forgot-password"
+                  className="font-medium text-cyan-700 underline underline-offset-2"
+                >
+                  Passwort vergessen?
+                </Link>
               </p>
-            )}
-
-            <button type="submit" className={CH_BTN_PRIMARY}>
-              {loading ? "Lädt…" : "Anmelden"}
-            </button>
-          </fieldset>
-
-          <div className="mt-4 flex flex-col gap-1 text-sm text-slate-500">
-            <p>
-              <Link
-                href="/auth/forgot-password"
-                className="font-medium text-cyan-700 underline underline-offset-2"
-              >
-                Passwort vergessen?
-              </Link>
-            </p>
-            <p>
-              Noch kein Konto?{" "}
-              <Link
-                href="/auth/register"
-                className="font-medium text-cyan-700 underline underline-offset-2"
-              >
-                Jetzt registrieren
-              </Link>
-            </p>
-          </div>
+              <p>
+                Noch kein Konto?{" "}
+                <Link
+                  href="/auth/register"
+                  className="font-medium text-cyan-700 underline underline-offset-2"
+                >
+                  Jetzt registrieren
+                </Link>
+              </p>
+            </div>
+          )}
         </form>
       )}
     </div>

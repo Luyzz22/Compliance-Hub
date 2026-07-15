@@ -67,6 +67,7 @@ Bestehende SQLite-/Postgres-Datenbanken: additive Schema-Updates (z. B. neue O
 ## Architektur-Dokumente
 
 - `docs/enterprise-readiness-20260714.md` (Audit, umgesetzte Kontrollen, Release-Blocker)
+- `docs/enterprise-entra-oidc-runbook.md` (Entra-OIDC-Konfiguration, Betrieb und Release-Evidenz)
 - `docs/architecture.md`
 - `docs/db-migrations.md` (additive Schema-Updates neben `create_all`)
 - `docs/product-strategy.md`

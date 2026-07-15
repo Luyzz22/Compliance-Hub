@@ -11,6 +11,9 @@ if (!production) {
 }
 
 const errors = [];
+const guidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const nilGuid = "00000000-0000-0000-0000-000000000000";
 const required = [
   "COMPLIANCEHUB_API_BASE_URL",
   "COMPLIANCEHUB_API_KEY",
@@ -34,26 +37,75 @@ const required = [
   "COMPLIANCEHUB_PRIVACY_LEAD_RETENTION_DAYS",
   "COMPLIANCEHUB_SECURITY_CONTACT",
   "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY",
+  "COMPLIANCEHUB_ENTRA_TENANT_ID",
+  "COMPLIANCEHUB_ENTRA_CLIENT_ID",
+  "COMPLIANCEHUB_ENTRA_CLIENT_SECRET",
+  "COMPLIANCEHUB_ENTRA_PROVIDER_ID",
+  "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET",
 ];
 
 for (const key of required) {
   if (!process.env[key]?.trim()) errors.push(`${key} is required`);
 }
 
+for (const key of [
+  "COMPLIANCEHUB_ENTRA_TENANT_ID",
+  "COMPLIANCEHUB_ENTRA_CLIENT_ID",
+  "COMPLIANCEHUB_ENTRA_PROVIDER_ID",
+]) {
+  const value = process.env[key]?.trim().toLowerCase() || "";
+  if (value && (!guidPattern.test(value) || value === nilGuid)) {
+    errors.push(`${key} must be a non-placeholder GUID`);
+  }
+}
+
 if (process.env.COMPLIANCEHUB_LEGAL_PUBLISH_READY !== "true") {
-  errors.push("COMPLIANCEHUB_LEGAL_PUBLISH_READY must be true after legal review");
+  errors.push(
+    "COMPLIANCEHUB_LEGAL_PUBLISH_READY must be true after legal review",
+  );
 }
 if (process.env.COMPLIANCEHUB_ENTERPRISE_AUTH_READY !== "true") {
-  errors.push("COMPLIANCEHUB_ENTERPRISE_AUTH_READY must attest the reviewed auth boundary");
+  errors.push(
+    "COMPLIANCEHUB_ENTERPRISE_AUTH_READY must attest the reviewed auth boundary",
+  );
+}
+if (process.env.COMPLIANCEHUB_ENTRA_ENABLED !== "true") {
+  errors.push(
+    "COMPLIANCEHUB_ENTRA_ENABLED must be true for production identity",
+  );
+}
+if (process.env.COMPLIANCEHUB_ENTRA_CONDITIONAL_ACCESS_READY !== "true") {
+  errors.push("Entra MFA and Conditional Access evidence must be approved");
+}
+if (process.env.COMPLIANCEHUB_ENTRA_PROVISIONING_READY !== "true") {
+  errors.push(
+    "Entra identity provisioning and access recertification must be approved",
+  );
 }
 if ((process.env.COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY || "").length < 32) {
-  errors.push("COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY must contain at least 32 characters");
+  errors.push(
+    "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY must contain at least 32 characters",
+  );
 }
 if ((process.env.COMPLIANCEHUB_BFF_SHARED_SECRET || "").length < 32) {
-  errors.push("COMPLIANCEHUB_BFF_SHARED_SECRET must contain at least 32 characters");
+  errors.push(
+    "COMPLIANCEHUB_BFF_SHARED_SECRET must contain at least 32 characters",
+  );
+}
+if ((process.env.COMPLIANCEHUB_ENTRA_CLIENT_SECRET || "").length < 32) {
+  errors.push(
+    "COMPLIANCEHUB_ENTRA_CLIENT_SECRET must contain at least 32 characters",
+  );
+}
+if ((process.env.COMPLIANCEHUB_AUTH_TRANSACTION_SECRET || "").length < 32) {
+  errors.push(
+    "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET must contain at least 32 characters",
+  );
 }
 if (process.env.NEXT_PUBLIC_API_KEY) {
-  errors.push("NEXT_PUBLIC_API_KEY is forbidden because it exposes a bearer credential");
+  errors.push(
+    "NEXT_PUBLIC_API_KEY is forbidden because it exposes a bearer credential",
+  );
 }
 if (process.env.COMPLIANCEHUB_ALLOW_GLOBAL_API_KEYS === "true") {
   errors.push("Global cross-tenant API keys are forbidden in production");
@@ -63,13 +115,16 @@ if ((process.env.COMPLIANCEHUB_LLM_PII_MODE || "block") !== "block") {
 }
 if (process.env.COMPLIANCEHUB_LLM_PREFER_AZURE === "true") {
   for (const key of ["AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_DEPLOYMENT"]) {
-    if (!process.env[key]?.trim()) errors.push(`${key} is required for Azure OpenAI`);
+    if (!process.env[key]?.trim())
+      errors.push(`${key} is required for Azure OpenAI`);
   }
   if (process.env.AZURE_OPENAI_AUTH !== "managed_identity") {
     errors.push("AZURE_OPENAI_AUTH must be managed_identity in production");
   }
   if (process.env.COMPLIANCEHUB_LLM_ASSUME_AZURE_EU !== "true") {
-    errors.push("Azure EU regional/Data Zone processing must be reviewed and attested");
+    errors.push(
+      "Azure EU regional/Data Zone processing must be reviewed and attested",
+    );
   }
 }
 
@@ -86,7 +141,9 @@ function scanPublicCredentials(directory) {
     } else if (sourceExtensions.has(extname(path))) {
       const content = readFileSync(path, "utf8");
       if (publicCredentialPattern.test(content)) {
-        errors.push(`${path}: public credential environment variables are forbidden`);
+        errors.push(
+          `${path}: public credential environment variables are forbidden`,
+        );
       }
     }
   }
@@ -95,7 +152,9 @@ function scanPublicCredentials(directory) {
 scanPublicCredentials(sourceRoot);
 
 if (errors.length) {
-  process.stderr.write(`Enterprise release gate failed:\n- ${errors.join("\n- ")}\n`);
+  process.stderr.write(
+    `Enterprise release gate failed:\n- ${errors.join("\n- ")}\n`,
+  );
   process.exit(1);
 }
 

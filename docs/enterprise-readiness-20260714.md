@@ -16,7 +16,8 @@ variable without an approved, dated evidence record.
 
 ## Evidence reviewed
 
-- Repository `Luyzz22/Compliance-Hub`, default branch `main`, through commit `c43fbb3`.
+- Repository `Luyzz22/Compliance-Hub`, default branch `main`, through commit `6f77506`, plus the
+  current Entra identity hardening change set.
 - Public deployment `https://complywithai.de/`, including public legal routes, selected protected
   product routes, HTTP response headers, SEO/security discovery routes, desktop rendering, and
   unauthenticated behavior.
@@ -29,7 +30,7 @@ variable without an approved, dated evidence record.
 | Area | Baseline finding | Current disposition |
 |---|---|---|
 | Legal identity | Imprint, privacy notice and terms contained explicit placeholders | Replaced by structured operator data and a fail-closed legal release gate; real data and legal approval remain required |
-| Authentication | Login returned identity data but created no durable session; protected UI routes were publicly reachable | **Open release blocker.** A reviewed OIDC/BFF or equivalent session boundary must replace the prototype flow |
+| Authentication | Login returned identity data but created no durable session; protected UI routes were publicly reachable | Revocable tenant sessions, same-origin BFF and Entra OIDC code+PKCE are implemented. **Production remains blocked** pending Entra/Conditional Access/provisioning evidence, privileged step-up and complete route-family migration |
 | Browser credentials | Multiple client modules referenced `NEXT_PUBLIC_API_KEY` and a shipped fallback key | Production scan now rejects public credential variables; legacy call sites remain an explicit blocker until migrated behind the authenticated BFF |
 | Tenant isolation | Global API key could select an arbitrary tenant header | Global keys are disabled by default in production; tenant-specific key verification remains. Full user-to-tenant authorization evidence is still required |
 | Password storage | Unsalted SHA-256 password digests | New passwords use Argon2id; successful legacy login rehashes automatically |
@@ -40,7 +41,7 @@ variable without an approved, dated evidence record.
 | Discovery | `robots.txt`, sitemap and `security.txt` returned 404 | App Router metadata routes and a security contact route added |
 | Supply chain | Frontend audit reported 12 vulnerabilities, including one critical | Dependencies updated and PostCSS overridden; local `npm audit` reports zero known vulnerabilities as of this review |
 | CI | No frontend build/test/audit, SAST, dependency review, or scheduled analysis | CI expanded; pinned actions, frontend checks, pip/npm audits, Bandit, OPA, CodeQL, Dependabot and CODEOWNERS added |
-| Repository governance | Default branch was not protected; no security policy; no license | Security policy and ownership added. Branch rules and license selection require repository-owner action |
+| Repository governance | Default branch was not protected; no security policy; no license | Security policy and ownership added. Dependency graph, vulnerability alerts, secret scanning and push protection are enabled. Branch rules and license selection still require repository-owner action |
 
 ## Controls implemented in this wave
 
@@ -52,6 +53,12 @@ variable without an approved, dated evidence record.
   rows remain readable only for migration compatibility.
 - No verification token in the public registration response.
 - Global cross-tenant API keys disabled by default for production environments.
+- Encrypted OIDC state/nonce/PKCE transaction, tenant-specific Entra ID token verification and
+  immutable `tid` + `oid` identity binding.
+- Entra application-role enforcement plus explicit local identity provisioning; local tenant role
+  remains authoritative and e-mail claims never grant access.
+- Production password sessions are disabled when Entra is active; the unverified legacy SSO
+  attribute callback is unavailable in production.
 
 ### Azure OpenAI
 
@@ -79,6 +86,8 @@ variable without an approved, dated evidence record.
 - Immutable commit pins for third-party GitHub Actions.
 - Backend lint/test/audit/SAST, frontend lint/test/build/audit, OPA tests, dependency review and
   CodeQL analysis in CI.
+- GitHub dependency graph and vulnerability alerts enabled and verified through the repository SBOM
+  endpoint on 15 July 2026; secret scanning and push protection remain enabled.
 - Weekly dependency updates for Python, npm and GitHub Actions.
 
 ## Mandatory exit criteria
@@ -86,10 +95,12 @@ variable without an approved, dated evidence record.
 All items below require a named owner, dated evidence, reviewer, expiry/review date, and an accepted
 residual-risk record. Production remains blocked until every item is closed.
 
-1. **Enterprise identity boundary** — implement Entra ID/OIDC (or approved equivalent), server-side
-   sessions using secure HttpOnly cookies, CSRF protection, session rotation/revocation, MFA/conditional
-   access, tenant membership claims, step-up authentication for privileged actions, and server-side
-   route enforcement. Remove every browser API-key call and direct tenant-ID trust path.
+1. **Enterprise identity boundary** — the Entra ID/OIDC code+PKCE flow, secure HttpOnly session,
+   CSRF protection, session revocation, pre-provisioned `tid` + `oid` binding and app-role gate are
+   implemented. Production still requires approved MFA/Conditional Access and lifecycle evidence,
+   privileged-action step-up/claims challenges, a reviewed credential strategy, complete server-side
+   route-family enforcement and removal of every browser API-key/direct tenant-ID trust path. Follow
+   `docs/enterprise-entra-oidc-runbook.md`.
 2. **Authorization and tenant isolation** — threat model and test every endpoint, background job,
    export, object store path, cache key and observability stream for cross-tenant access. Add negative
    integration tests against a production-equivalent Postgres deployment.
@@ -124,6 +135,15 @@ residual-risk record. Production remains blocked until every item is closed.
 The current static frontend CSP still permits inline script/style execution for Next.js compatibility.
 Before release, replace it with a reviewed nonce- or hash-based request-specific CSP and add browser
 tests that prove both application behavior and policy enforcement.
+
+## Open static-analysis findings
+
+The full Bandit scan on 14 July 2026 reported zero high-severity findings and four medium-severity
+findings. One is a high-confidence use of `xml.etree.ElementTree.fromstring` for XRechnung validation;
+it must be replaced with a hardened parser and receive malicious-XML tests. Three low-confidence SQL
+construction findings use migration/schema identifiers, but still require documented code review or
+remediation rather than silent suppression. These findings predate the Entra change set and remain
+production blockers until resolved or formally adjudicated with evidence.
 
 ## Azure deployment checklist
 

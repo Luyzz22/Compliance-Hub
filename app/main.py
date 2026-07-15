@@ -7360,6 +7360,10 @@ from app.services.enterprise_iam_service import (  # noqa: E402
     SSOCallbackService,
     UserLifecycleService,
 )
+from app.services.entra_oidc_service import (  # noqa: E402
+    EntraIdentityLinkService,
+    EntraOIDCSessionService,
+)
 from app.services.identity_service import IdentityService  # noqa: E402
 
 
@@ -7379,6 +7383,12 @@ class LoginRequest(BaseModel):
 
 class SessionLoginRequest(LoginRequest):
     tenant_id: str | None = Field(default=None, min_length=1, max_length=255)
+
+
+class EntraSessionLoginRequest(BaseModel):
+    provider_id: str = Field(min_length=36, max_length=36)
+    id_token: str = Field(min_length=100, max_length=24_000)
+    expected_nonce: str = Field(min_length=16, max_length=256)
 
 
 class VerifyEmailRequest(BaseModel):
@@ -7544,6 +7554,14 @@ def create_user_session(
     session: Annotated[Session, Depends(get_session)],
     _bff: Annotated[None, Depends(_require_bff_caller)],
 ) -> dict:
+    if IS_PRODUCTION and os.getenv("COMPLIANCEHUB_ENTRA_ENABLED", "false").lower() == "true":
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={
+                "code": "password_login_disabled",
+                "message": "Password sessions are disabled; use Microsoft Entra ID",
+            },
+        )
     service = UserSessionService(UserRepository(session), UserSessionRepository(session))
     result = service.login(
         email=body.email,
@@ -7580,6 +7598,59 @@ def create_user_session(
         entity_id=result["session_id"],
         before=None,
         after=None,
+    )
+    return result
+
+
+@app.post("/api/v1/auth/session/entra", tags=["identity"])
+def create_entra_user_session(
+    body: EntraSessionLoginRequest,
+    response: Response,
+    session: Annotated[Session, Depends(get_session)],
+    _bff: Annotated[None, Depends(_require_bff_caller)],
+) -> dict:
+    if os.getenv("COMPLIANCEHUB_ENTRA_ENABLED", "false").strip().lower() != "true":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Enterprise identity provider is not enabled",
+        )
+    configured_bff_secret = os.getenv("COMPLIANCEHUB_BFF_SHARED_SECRET", "").strip()
+    if len(configured_bff_secret) < 32:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Enterprise BFF trust boundary is not configured",
+        )
+    result = EntraOIDCSessionService(session).login(
+        provider_id=body.provider_id,
+        id_token=body.id_token,
+        expected_nonce=body.expected_nonce,
+    )
+    if "error" in result:
+        code_map = {
+            "provider_not_found": status.HTTP_404_NOT_FOUND,
+            "provider_access_role_required": status.HTTP_503_SERVICE_UNAVAILABLE,
+            "invalid_identity_token": status.HTTP_401_UNAUTHORIZED,
+            "required_app_role_missing": status.HTTP_403_FORBIDDEN,
+            "identity_not_provisioned": status.HTTP_403_FORBIDDEN,
+            "user_not_found": status.HTTP_403_FORBIDDEN,
+            "account_disabled": status.HTTP_403_FORBIDDEN,
+            "email_not_verified": status.HTTP_403_FORBIDDEN,
+            "tenant_access_denied": status.HTTP_403_FORBIDDEN,
+        }
+        raise HTTPException(
+            status_code=code_map.get(result["error"], status.HTTP_400_BAD_REQUEST),
+            detail={"code": result["error"], "message": result["detail"]},
+        )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+    AuditLogRepository(session).record_event(
+        tenant_id=result["tenant_id"],
+        actor=f"user:{result['user_id']}",
+        action="user.entra_session_created",
+        entity_type="user_session",
+        entity_id=result["session_id"],
+        before=None,
+        after=f"provider={result['provider_id']}",
     )
     return result
 
@@ -7819,6 +7890,12 @@ class IdPUpdateRequest(BaseModel):
     enabled: bool | None = None
 
 
+class EntraIdentityLinkRequest(BaseModel):
+    user_id: str = Field(min_length=36, max_length=36)
+    entra_tenant_id: str = Field(min_length=36, max_length=36)
+    entra_object_id: str = Field(min_length=36, max_length=36)
+
+
 @app.post(
     "/api/v1/enterprise/identity-providers",
     status_code=status.HTTP_201_CREATED,
@@ -7949,6 +8026,53 @@ def delete_identity_provider(
     )
 
 
+@app.post(
+    "/api/v1/enterprise/identity-providers/{provider_id}/entra-links",
+    status_code=status.HTTP_201_CREATED,
+    tags=["enterprise-iam"],
+)
+def create_entra_identity_link(
+    provider_id: str,
+    body: EntraIdentityLinkRequest,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    session: Annotated[Session, Depends(get_session)],
+    _role: Annotated[
+        EnterpriseRole, Depends(require_permission(Permission.MANAGE_IDENTITY_PROVIDERS))
+    ],
+) -> dict:
+    result = EntraIdentityLinkService(session).link(
+        local_tenant_id=auth_context.tenant_id,
+        provider_id=provider_id,
+        user_id=body.user_id,
+        entra_tenant_id=body.entra_tenant_id,
+        entra_object_id=body.entra_object_id,
+    )
+    if "error" in result:
+        code_map = {
+            "provider_not_found": status.HTTP_404_NOT_FOUND,
+            "invalid_entra_identity": status.HTTP_400_BAD_REQUEST,
+            "tenant_mismatch": status.HTTP_400_BAD_REQUEST,
+            "local_membership_required": status.HTTP_403_FORBIDDEN,
+            "identity_already_linked": status.HTTP_409_CONFLICT,
+            "user_already_linked": status.HTTP_409_CONFLICT,
+            "identity_link_conflict": status.HTTP_409_CONFLICT,
+        }
+        raise HTTPException(
+            status_code=code_map.get(result["error"], status.HTTP_400_BAD_REQUEST),
+            detail={"code": result["error"], "message": result["detail"]},
+        )
+    AuditLogRepository(session).record_event(
+        tenant_id=auth_context.tenant_id,
+        actor=auth_context.actor_id,
+        action="idp.entra_identity_linked",
+        entity_type="external_identity",
+        entity_id=result["id"],
+        before=None,
+        after=f"provider={provider_id} user={body.user_id}",
+    )
+    return result
+
+
 # ── Enterprise IAM: SSO Callback ────────────────────────────────────────────
 
 
@@ -7965,6 +8089,15 @@ def sso_callback(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     session: Annotated[Session, Depends(get_session)],
 ) -> dict:
+    legacy_enabled = (
+        not IS_PRODUCTION
+        and os.getenv("COMPLIANCEHUB_ALLOW_LEGACY_SSO_CALLBACK", "false").lower() == "true"
+    )
+    if not legacy_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Legacy attribute callbacks are disabled; use the verified Entra OIDC flow",
+        )
     svc = SSOCallbackService(session)
     result = svc.process_sso_login(
         provider_id=body.provider_id,
