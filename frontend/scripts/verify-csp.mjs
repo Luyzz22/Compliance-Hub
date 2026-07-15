@@ -35,6 +35,19 @@ if (nextConfig.includes("Content-Security-Policy")) {
   errors.push("next.config.ts: CSP must be generated per request in proxy.ts, not statically");
 }
 
+const rootLayout = readFileSync(resolve("src/app/layout.tsx"), "utf8");
+if (!rootLayout.includes('import { connection } from "next/server";')) {
+  errors.push("src/app/layout.tsx: nonce CSP requires Next.js request connection import");
+}
+if (!rootLayout.includes("await connection();")) {
+  errors.push("src/app/layout.tsx: nonce CSP requires dynamic request rendering");
+}
+
+const proxy = readFileSync(resolve("src/proxy.ts"), "utf8");
+if (!proxy.includes('requestHeaders.set("x-nonce", nonce);')) {
+  errors.push("src/proxy.ts: the CSP nonce must be forwarded to Next.js rendering");
+}
+
 if (errors.length) {
   process.stderr.write(`Strict CSP verification failed:\n- ${errors.join("\n- ")}\n`);
   process.exit(1);

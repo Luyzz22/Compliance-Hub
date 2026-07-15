@@ -6,7 +6,11 @@ import { BRAND_TAGLINE } from "@/lib/appNavConfig";
 import { AppSecondaryNav } from "./AppSecondaryNav";
 import { GlobalAppNav } from "./GlobalAppNav";
 
-export function SbsHeader() {
+type SbsHeaderProps = {
+  publicSite?: boolean;
+};
+
+export function SbsHeader({ publicSite = false }: SbsHeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/70 bg-white/80 shadow-[0_1px_0_rgba(7,17,31,0.06)] backdrop-blur-2xl backdrop-saturate-150">
       <div className="mx-auto flex min-h-16 max-w-[90rem] items-center justify-between gap-4 px-4 py-2 md:px-8 md:py-2.5">
@@ -26,9 +30,9 @@ export function SbsHeader() {
             </span>
           </span>
         </Link>
-        <GlobalAppNav />
+        <GlobalAppNav publicSite={publicSite} />
       </div>
-      <AppSecondaryNav />
+      {!publicSite ? <AppSecondaryNav /> : null}
     </header>
   );
 }
