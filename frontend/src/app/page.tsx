@@ -2,6 +2,7 @@ import Link from "next/link";
 import React from "react";
 
 import { TrackedContactLink } from "@/components/contact/TrackedContactLink";
+import { HomeHeroSlides } from "@/components/home/HomeHeroSlides";
 import { HomeProductPreview } from "@/components/home/HomeProductPreview";
 import { CH_BTN_PRIMARY } from "@/lib/boardLayout";
 import { contactPageHref } from "@/lib/publicContact";
@@ -47,55 +48,38 @@ export default function HomePage() {
 
       {/* Hero */}
       <section className="relative pb-20 pt-6 md:pb-28 md:pt-12">
-        <div className="grid items-center gap-14 lg:grid-cols-[1.08fr_0.92fr] lg:gap-20">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-sm backdrop-blur sm:text-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-              DACH · Enterprise AI Governance
-            </p>
-            <h1 className="mt-6 max-w-4xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] text-[#07111f] sm:text-5xl lg:text-[4.5rem]">
-              Governance, die mit Ihrer AI-Infrastruktur skaliert.
-            </h1>
-            <p className="mt-6 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-              Ein kontrollierter Arbeitsraum für AI-Systeme, Risiken, Controls und Evidence –
-              mandantenfähig, nachvollziehbar und für EU AI Act, NIS2 sowie ISO 42001
-              vorbereitet. Fachliche Entscheidungen bleiben bei den verantwortlichen Personen.
-            </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <TrackedContactLink
-                href={contactPageHref({
-                  quelle: "home-hero",
-                  ctaId: "home-hero-demo",
-                  ctaLabel: "Demo anfragen",
-                })}
-                ctaId="home-hero-demo"
-                quelle="home-hero"
-                trackingEnabled={!publicSite}
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#07111f] px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-slate-800"
-              >
-                Demo anfragen
-              </TrackedContactLink>
-              <Link
-                href="/trust-center"
-                className="inline-flex min-h-12 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300"
-              >
-                Trust Center
-              </Link>
-              {!publicSite ? (
-                <Link
-                  href="/board/kpis"
-                  className="inline-flex min-h-12 items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-slate-600 transition hover:text-slate-950"
-                >
-                  Board öffnen
-                </Link>
-              ) : null}
-            </div>
-            <p className="mt-8 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-slate-500 sm:text-xs">
-              EU AI Act · NIS2 · ISO 27001/27701 · ISO 42001 · DSGVO
-            </p>
-          </div>
-          <HomeProductPreview />
+        <header className="mx-auto max-w-5xl text-center">
+          <p className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-sm backdrop-blur sm:text-xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+            DACH · Enterprise AI Governance
+          </p>
+          <h1 className="mt-6 text-4xl font-semibold leading-[0.98] tracking-[-0.055em] text-[#07111f] sm:text-5xl lg:text-[4.75rem]">
+            AI Governance, die Komplexität in Klarheit verwandelt.
+          </h1>
+          <p className="mx-auto mt-6 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+            Compliance Hub verbindet Systeme, Pflichten, Controls und Evidence in einem
+            nachvollziehbaren Arbeitsraum. Die Plattform unterstützt Analyse und Review;
+            Verantwortung und Freigabe bleiben beim Menschen.
+          </p>
+        </header>
+
+        <div className="mt-12">
+          <HomeHeroSlides />
         </div>
+
+        <dl className="mx-auto mt-8 grid max-w-5xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-200/80 shadow-sm lg:grid-cols-4">
+          {[
+            ["Stateless", "Öffentlicher Release"],
+            ["Strict CSP", "Nonce-basiert"],
+            ["Human review", "Verbindliche Freigabe"],
+            ["0", "Drittanbieter-Analytics"],
+          ].map(([value, label]) => (
+            <div key={label} className="bg-white/90 px-4 py-5 text-center backdrop-blur">
+              <dt className="text-xs text-slate-500">{label}</dt>
+              <dd className="mt-1 font-mono text-sm font-semibold text-slate-950">{value}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       <div className="border-t border-slate-200/80" />
@@ -148,6 +132,34 @@ export default function HomePage() {
               </article>
             ))}
           </div>
+        </div>
+      </section>
+
+      <div className="border-t border-slate-200/80" />
+
+      {/* Product workspace */}
+      <section className="py-20 md:py-28" aria-labelledby="home-workspace">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.78fr_1.22fr] lg:gap-16">
+          <div>
+            <SectionTitle
+              id="home-workspace"
+              title="Ein Arbeitsraum für Governance, Evidence und Entscheidung."
+              subtitle="Erkunden Sie, wie das Produkt operative Kontrolle und Management-Kontext zusammenführt. Die Vorschau zeigt die Produktlogik, nicht einen zertifizierten Kundenbetrieb."
+            />
+            <ul className="space-y-4 text-sm leading-7 text-slate-700">
+              {[
+                "Kontrollstatus, Evidence und Verantwortliche in einem gemeinsamen Kontext.",
+                "Priorisierte offene Punkte statt unverbundener Checklisten.",
+                "Nachvollziehbare Reviews ohne automatische Rechts- oder Freigabeentscheidung.",
+              ].map((item) => (
+                <li key={item} className="flex gap-3">
+                  <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <HomeProductPreview />
         </div>
       </section>
 
