@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import type { Metadata } from "next";
 
+import { TrustAssuranceExplorer } from "@/components/trust/TrustAssuranceExplorer";
+
 export const metadata: Metadata = {
   title: "Trust Center – ComplianceHub",
   description:
@@ -64,6 +66,8 @@ export default function TrustCenterPublicPage() {
           </Link>
         </div>
       </header>
+
+      <TrustAssuranceExplorer />
 
       {/* Security Overview */}
       <section aria-labelledby="security-overview">
