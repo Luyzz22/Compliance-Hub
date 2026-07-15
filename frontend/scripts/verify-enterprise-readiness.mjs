@@ -123,6 +123,11 @@ if (process.env.COMPLIANCEHUB_POSTGRES_DATA_MIGRATION_READY !== "true") {
     "PostgreSQL source-to-target counts, checksums and cutover rollback evidence must be approved",
   );
 }
+if (process.env.COMPLIANCEHUB_POSTGRES_SUPPLY_CHAIN_READY !== "true") {
+  errors.push(
+    "PostgreSQL client dependency inventory and upstream supply-chain review must be approved",
+  );
+}
 const advisorRetentionDays = Number(
   process.env.COMPLIANCEHUB_ADVISOR_RUNTIME_RETENTION_DAYS,
 );

@@ -178,6 +178,10 @@ blocked pending live Azure, role, network, restore, retention and source-data mi
 Blob-backed runtime stores remain on the domain-migration backlog. See
 `docs/azure-postgresql-rls-runtime-state-20260715.md`.
 
+The locked PostgreSQL client graph has no known npm vulnerability at this revision. Four transitive
+parser/helper packages carry informational OpenSSF scores below 3; production is separately gated
+on a reviewed SBOM and supplier-maintenance decision rather than silently accepting that signal.
+
 ## Static-analysis closure — 15 July 2026
 
 The previously documented Bandit findings were remediated without suppressions:

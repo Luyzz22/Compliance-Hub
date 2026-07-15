@@ -46,6 +46,20 @@ The CI database job runs PostgreSQL 17.9 from a digest-pinned image, applies the
 prove idempotency, and executes real cross-tenant denial, self-elevation, platform-scope and deletion
 audit tests.
 
+## Software supply-chain observation
+
+The dependency graph is lockfile-pinned and the dependency review rejects newly introduced known
+vulnerabilities at moderate severity or above. At review time, npm audit reported no known
+vulnerability. GitHub's OpenSSF enrichment nevertheless reported scores below the repository's
+informational threshold of 3 for the transitive `pg-types` packages `pg-int8@1.0.1`,
+`postgres-array@2.0.0`, `postgres-bytea@1.0.1` and `xtend@4.0.2`. A low Scorecard value is not a
+vulnerability finding, but it is a supplier-maintenance signal and is not suppressed here.
+
+Production therefore also requires `COMPLIANCEHUB_POSTGRES_SUPPLY_CHAIN_READY=true` after the
+software bill of materials, package provenance, licenses, maintenance status and available client
+alternatives have been reviewed and the decision has been linked from the release record. Any
+future advisory still fails the existing dependency and audit gates according to severity.
+
 ## Passwordless connection boundary
 
 The application never accepts a PostgreSQL password or connection string. It connects only to a
@@ -125,6 +139,7 @@ COMPLIANCEHUB_POSTGRES_NETWORK_READY=false
 COMPLIANCEHUB_POSTGRES_BACKUP_RESTORE_READY=false
 COMPLIANCEHUB_POSTGRES_RETENTION_READY=false
 COMPLIANCEHUB_POSTGRES_DATA_MIGRATION_READY=false
+COMPLIANCEHUB_POSTGRES_SUPPLY_CHAIN_READY=false
 ```
 
 For Azure-hosted execution use `managed_identity` instead of `vercel_oidc`. Do not set any of
@@ -198,6 +213,7 @@ change ticket.
 - HA, PITR and successful isolated restore evidence with measured RPO/RTO.
 - Approved retention schedule, legal-hold workflow and deletion-audit sample.
 - Source-to-target reconciliation and rollback decision.
+- PostgreSQL client SBOM and documented review of the transitive OpenSSF maintenance signals.
 - SIEM routing, alerts, on-call ownership and incident drill.
 - Independent application-security, database, privacy and operations approval.
 
