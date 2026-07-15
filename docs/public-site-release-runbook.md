@@ -44,10 +44,13 @@ automation without the named owner and review evidence in the change record.
 
 ## Prohibited production configuration
 
-The build fails if the public profile inherits any `NEXT_PUBLIC_*`, `POSTGRES_*`,
-`SUPABASE_*`, `AZURE_*`, `DATABASE_URL`, `PGPASSWORD`, or unapproved
-`COMPLIANCEHUB_*` value. Remove integration-created variables from the Vercel
-production environment before deployment; do not replace them with dummy values.
+The build fails if the public profile inherits any application-defined
+`NEXT_PUBLIC_*`, `POSTGRES_*`, `SUPABASE_*`, `AZURE_*`, `DATABASE_URL`,
+`PGPASSWORD`, or unapproved `COMPLIANCEHUB_*` value. Vercel-generated
+`NEXT_PUBLIC_VERCEL_*` deployment metadata is permitted because Vercel injects it
+into builds and it contains no application credential. Remove integration-created
+variables from the Vercel production environment before deployment; do not replace
+them with dummy values.
 
 The following capabilities must be unset or `false`:
 
