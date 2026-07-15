@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 
+import { HorizontalMetricBar } from "@/components/visualization/StrictCspMetrics";
 import {
   fetchTenantReadinessScore,
   postTenantReadinessScoreExplain,
@@ -60,12 +61,12 @@ function DimBar({
         <span title={hint}>{label}</span>
         <span className="tabular-nums text-slate-800">{v}</span>
       </div>
-      <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full bg-cyan-600 transition-[width]"
-          style={{ width: `${v}%` }}
-        />
-      </div>
+      <HorizontalMetricBar
+        value={v}
+        label={`${label}: ${v} von 100`}
+        className="mt-0.5 h-1.5 w-full"
+        trackClassName="fill-slate-100"
+      />
     </div>
   );
 }

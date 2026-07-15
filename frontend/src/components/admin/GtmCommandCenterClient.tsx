@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { VerticalMetricBar } from "@/components/visualization/StrictCspMetrics";
 import { GTM_READINESS_LABELS_DE, GTM_READINESS_SHORT_DE } from "@/lib/gtmAccountReadiness";
 import type {
   GtmDashboardSnapshot,
@@ -839,11 +840,12 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
                 {snapshot.trends.inquiries_per_day_utc.map((d) => {
                   const h = maxDaily > 0 ? Math.max(4, (d.inquiries / maxDaily) * 100) : 4;
                   return (
-                    <div
+                    <VerticalMetricBar
                       key={d.day}
-                      className="min-w-0 flex-1 rounded-t bg-slate-700"
-                      style={{ height: `${h}%` }}
-                      title={`${d.day}: ${d.inquiries}`}
+                      className="h-full min-w-0 flex-1"
+                      value={h}
+                      label={`${d.day}: ${d.inquiries} Anfragen`}
+                      indicatorClassName="fill-slate-700"
                     />
                   );
                 })}

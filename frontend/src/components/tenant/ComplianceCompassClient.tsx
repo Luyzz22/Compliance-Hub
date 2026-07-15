@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { HorizontalMetricBar } from "@/components/visualization/StrictCspMetrics";
 import { fetchComplianceCompass, type ComplianceCompassSnapshot } from "@/lib/complianceCompassApi";
-
-const SF = "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif";
 
 function postureLabel(p: string): { de: string; chip: string } {
   const m: Record<string, { de: string; chip: string }> = {
@@ -91,10 +90,7 @@ export function ComplianceCompassClient({ tenantId }: Props) {
   const pMeta = data ? postureLabel(data.posture) : null;
 
   return (
-    <div
-      className="min-h-[calc(100vh-8rem)] -mx-4 -mt-2 rounded-[2rem] bg-gradient-to-b from-slate-50 via-white to-slate-100/80 px-4 py-8 sm:px-8"
-      style={{ fontFamily: SF }}
-    >
+    <div className="min-h-[calc(100vh-8rem)] -mx-4 -mt-2 rounded-[2rem] bg-gradient-to-b from-slate-50 via-white to-slate-100/80 px-4 py-8 font-sans sm:px-8">
       {err ? (
         <div
           className="rounded-2xl border border-rose-200/60 bg-rose-50/80 px-4 py-3 text-sm text-rose-900"
@@ -134,10 +130,7 @@ export function ComplianceCompassClient({ tenantId }: Props) {
                 <div className="relative">
                   <FusionRing value={data.fusion_index_0_100} size={220} />
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span
-                      className="text-5xl font-extralight tabular-nums tracking-tight text-slate-900"
-                      style={{ fontFeatureSettings: '"tnum" 1' }}
-                    >
+                    <span className="text-5xl font-extralight tabular-nums tracking-tight text-slate-900">
                       {data.fusion_index_0_100}
                     </span>
                     <span className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-slate-500">
@@ -184,12 +177,13 @@ export function ComplianceCompassClient({ tenantId }: Props) {
                     <span className="text-2xl font-light tabular-nums text-slate-800">{p.score_0_100}</span>
                   </div>
                   <p className="mt-1 text-xs text-slate-500">Gewicht: {Math.round(p.weight_in_fusion * 100)} %</p>
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/60">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-sky-500 via-indigo-500 to-emerald-500 transition-all duration-500"
-                      style={{ width: `${p.score_0_100}%` }}
-                    />
-                  </div>
+                  <HorizontalMetricBar
+                    value={p.score_0_100}
+                    label={`${p.label_de}: ${p.score_0_100} von 100`}
+                    className="mt-3 h-1.5 w-full"
+                    trackClassName="fill-slate-200/60"
+                    indicatorClassName="fill-indigo-500"
+                  />
                   <p className="mt-3 text-sm leading-relaxed text-slate-600">{p.detail_de}</p>
                 </div>
               ))}

@@ -1,13 +1,13 @@
 import "server-only";
 
-import { readFile } from "fs/promises";
 import { join } from "path";
 
 import type { EvidenceHookStoredRecord, EvidenceSourceSystemType } from "@/lib/advisorEvidenceHookTypes";
+import { absoluteRuntimeFilePath, readRuntimeTextFile } from "@/lib/runtimeFileIO";
 
 function hooksPath(): string {
   const fromEnv = process.env.ADVISOR_EVIDENCE_HOOKS_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) return join("/tmp", "compliancehub-advisor-evidence-hooks.json");
   return join(process.cwd(), "data", "advisor-evidence-hooks.json");
 }
@@ -53,7 +53,7 @@ export type AdvisorEvidenceHooksFile = { version?: string; hooks?: unknown };
 export async function readAdvisorEvidenceHooks(): Promise<EvidenceHookStoredRecord[]> {
   const path = hooksPath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as AdvisorEvidenceHooksFile;
     if (!o || typeof o !== "object" || !Array.isArray(o.hooks)) return [];
     const out: EvidenceHookStoredRecord[] = [];

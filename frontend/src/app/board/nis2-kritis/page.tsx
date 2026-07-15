@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 
 import { KpiExplainButton } from "@/components/ai/KpiExplainButton";
+import { VerticalMetricBar } from "@/components/visualization/StrictCspMetrics";
 import {
   fetchBoardKpis,
   fetchNis2KritisKpiDrilldown,
@@ -61,10 +62,11 @@ function VerticalBucketChart({
               className="flex min-w-0 flex-1 flex-col items-center gap-2"
             >
               <div className="flex h-36 w-full items-end justify-center rounded-t-xl bg-slate-100/90 sm:h-40">
-                <div
-                  className="w-[72%] min-h-[3px] rounded-t-lg bg-gradient-to-t from-cyan-700 to-teal-400 shadow-sm transition-all"
-                  style={{ height: `${h}%` }}
-                  title={`${b.count} Systeme`}
+                <VerticalMetricBar
+                  value={h}
+                  label={`${b.count} Systeme im Bereich ${b.range_min_inclusive} bis ${hi} Prozent`}
+                  className="h-full min-h-[3px] w-[72%]"
+                  indicatorClassName="fill-cyan-700"
                 />
               </div>
               <span className="text-center text-[0.65rem] font-semibold leading-tight text-slate-600">

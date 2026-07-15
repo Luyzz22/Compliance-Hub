@@ -36,6 +36,12 @@
   mask-image: linear-gradient(to bottom, black, transparent 82%);
 }
 
+.enterprise-ambient {
+  background:
+    radial-gradient(circle at 5% 0%, rgba(22, 104, 232, 0.13), transparent 42%),
+    radial-gradient(circle at 88% 2%, rgba(72, 212, 180, 0.12), transparent 38%);
+}
+
 .premium-surface {
   border: 1px solid rgba(110, 128, 151, 0.16);
   background: rgba(255, 255, 255, 0.82);

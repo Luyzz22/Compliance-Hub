@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { AiKpiPortfolioStrip } from "@/components/ai/AiKpiPortfolioStrip";
 import { CrossRegulationLlmGapPanel } from "@/app/tenant/cross-regulation-dashboard/CrossRegulationLlmGapPanel";
+import { HorizontalMetricBar } from "@/components/visualization/StrictCspMetrics";
 import {
   fetchRequirementControlsDetail,
   type CrossRegFrameworkSummaryDto,
@@ -156,12 +157,11 @@ export function CrossRegulationDashboardClient({
                     {f.coverage_percent}%
                   </span>
                 </div>
-                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                  <div
-                    className="h-full rounded-full bg-cyan-600 transition-[width]"
-                    style={{ width: `${Math.min(100, f.coverage_percent)}%` }}
-                  />
-                </div>
+                <HorizontalMetricBar
+                  value={f.coverage_percent}
+                  label={`${f.name} Coverage: ${f.coverage_percent}%`}
+                  className="mt-1 h-2 w-full"
+                />
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
                 <div>

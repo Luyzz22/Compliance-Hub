@@ -4,6 +4,10 @@ import Link from "next/link";
 import { ReadinessActionDraftButton } from "@/components/board/ReadinessActionDraftButton";
 import { GovernanceActionsTableWithEvidence } from "@/components/board/GovernanceActionsTableWithEvidence";
 import {
+  HorizontalMetricBar,
+  MetricRing,
+} from "@/components/visualization/StrictCspMetrics";
+import {
   fetchEuAiActReadiness,
   type EUAIActReadinessOverview,
   type ReadinessRequirementTraffic,
@@ -63,23 +67,18 @@ function requirementGapSummary(traffic: ReadinessRequirementTraffic): string {
 function ReadinessRing({ percent }: { percent: number }) {
   const p = Math.min(100, Math.max(0, percent));
   return (
-    <div
-      className="relative mx-auto h-36 w-36 shrink-0"
-      aria-hidden
+    <MetricRing
+      value={p}
+      label={`EU AI Act Readiness: ${p}%`}
+      className="mx-auto h-36 w-36"
     >
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: `conic-gradient(rgb(8 145 178) 0% ${p}%, rgb(226 232 240) ${p}% 100%)`,
-        }}
-      />
-      <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-white shadow-inner">
+      <div className="text-center">
         <span className="text-3xl font-semibold tabular-nums text-slate-900">{p}%</span>
-        <span className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
+        <span className="block text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
           Readiness
         </span>
       </div>
-    </div>
+    </MetricRing>
   );
 }
 
@@ -158,12 +157,13 @@ export default async function EuAiActReadinessPage() {
           <div className="min-w-0 space-y-6">
             <div>
               <p className={CH_SECTION_LABEL}>Fortschritt</p>
-              <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-teal-500 transition-all"
-                  style={{ width: `${readinessPct}%` }}
-                />
-              </div>
+              <HorizontalMetricBar
+                value={readinessPct}
+                label={`Gesamt-Readiness: ${readinessPct}%`}
+                className="mt-2 h-3 w-full"
+                trackClassName="fill-slate-100"
+                indicatorClassName="fill-cyan-600"
+              />
               <p className="mt-2 text-sm text-slate-600">
                 Ziel empfohlen: ≥ 85&nbsp;% vor Stichtag.
               </p>

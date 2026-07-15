@@ -1,13 +1,18 @@
 import "server-only";
 
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join } from "path";
+import { join } from "path";
+
+import {
+  absoluteRuntimeFilePath,
+  readRuntimeTextFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 const FILE_VERSION = "wave47-v1";
 
 function statePath(): string {
   const fromEnv = process.env.ADVISOR_SLA_SIGNAL_STATE_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-advisor-sla-signal-state.json");
   }
@@ -24,7 +29,7 @@ export type AdvisorSlaSignalStateFile = {
 export async function readAdvisorSlaSignalState(): Promise<{ critical_rule_ids: string[] }> {
   const path = statePath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as Record<string, unknown>;
     if (!o || typeof o !== "object") return { critical_rule_ids: [] };
     const ids: string[] = [];
@@ -46,6 +51,5 @@ export async function writeAdvisorSlaSignalState(criticalRuleIds: string[]): Pro
     updated_at: new Date().toISOString(),
     last_critical_rule_ids: [...new Set(criticalRuleIds)],
   };
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  await writeRuntimeTextFile(path, `${JSON.stringify(state, null, 2)}\n`);
 }

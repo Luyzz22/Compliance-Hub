@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { SegmentedMetricBar } from "@/components/visualization/StrictCspMetrics";
 import {
   type AdvisorMetricsDto,
   fetchAdvisorMetrics,
@@ -20,42 +21,39 @@ function pct(value: number | null | undefined): string {
   return `${(value * 100).toFixed(1)} %`;
 }
 
-function BarSegment({ color, ratio, label }: { color: string; ratio: number; label: string }) {
-  if (ratio <= 0) return null;
-  return (
-    <div
-      className={`flex items-center justify-center text-xs font-semibold text-white ${color}`}
-      style={{ width: `${Math.max(ratio * 100, 8)}%`, minWidth: "2rem" }}
-      title={label}
-    >
-      {label}
-    </div>
-  );
-}
-
 function DistributionBar({ data, total }: { data: Record<string, number>; total: number }) {
   if (total === 0) {
     return <p className="text-xs text-slate-500">Keine Daten</p>;
   }
   const colors: Record<string, string> = {
-    high: "bg-emerald-500",
-    medium: "bg-amber-500",
-    low: "bg-red-500",
-    bm25: "bg-cyan-600",
-    hybrid: "bg-violet-600",
-    answered: "bg-emerald-600",
-    escalated: "bg-rose-500",
+    high: "fill-emerald-500",
+    medium: "fill-amber-500",
+    low: "fill-red-500",
+    bm25: "fill-cyan-600",
+    hybrid: "fill-violet-600",
+    answered: "fill-emerald-600",
+    escalated: "fill-rose-500",
   };
+  const entries = Object.entries(data).filter(([, count]) => count > 0);
   return (
-    <div className="flex h-7 w-full overflow-hidden rounded-lg">
-      {Object.entries(data).map(([key, count]) => (
-        <BarSegment
-          key={key}
-          color={colors[key] ?? "bg-slate-400"}
-          ratio={count / total}
-          label={`${key}: ${count}`}
-        />
-      ))}
+    <div>
+      <SegmentedMetricBar
+        label="Advisor-Verteilung"
+        max={total}
+        className="h-3 w-full"
+        segments={entries.map(([key, count]) => ({
+          label: key,
+          value: count,
+          className: colors[key] ?? "fill-slate-400",
+        }))}
+      />
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
+        {entries.map(([key, count]) => (
+          <span key={key} className="tabular-nums">
+            {key}: {count}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

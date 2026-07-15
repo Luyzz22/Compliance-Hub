@@ -9,8 +9,21 @@ import {
   DEMO_MODE_SESSION_COOKIE,
   WORKSPACE_TENANT_COOKIE,
 } from "@/lib/workspaceTenantConstants";
+import {
+  buildContentSecurityPolicy,
+  createCspNonce,
+} from "@/lib/contentSecurityPolicy";
 
 const WORKSPACE_COOKIE_MAX_AGE_SEC = 90 * 24 * 60 * 60;
+
+function applyRequestSecurityPolicy(
+  response: NextResponse,
+  contentSecurityPolicy: string,
+): NextResponse {
+  response.headers.set("Content-Security-Policy", contentSecurityPolicy);
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
 
 function safeDecodeWorkspaceCookie(raw: string): string {
   const value = raw.trim();
@@ -58,9 +71,20 @@ function applyTenantsWorkspaceCookiePolicy(
 }
 
 export function proxy(request: NextRequest) {
-  const response = NextResponse.next();
+  const nonce = createCspNonce();
+  const contentSecurityPolicy = buildContentSecurityPolicy({
+    nonce,
+    development: process.env.NODE_ENV !== "production",
+    apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+  });
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   const tenantsRedirect = applyTenantsWorkspaceCookiePolicy(request, response);
-  if (tenantsRedirect) return tenantsRedirect;
+  if (tenantsRedirect) {
+    return applyRequestSecurityPolicy(tenantsRedirect, contentSecurityPolicy);
+  }
 
   const publicDemoEnabled = process.env.COMPLIANCEHUB_PUBLIC_DEMO_ENABLED === "true";
   const requestedDemo =
@@ -100,10 +124,13 @@ export function proxy(request: NextRequest) {
     destination.pathname = "/auth/login";
     destination.search = "";
     destination.searchParams.set("next", returnTo);
-    return NextResponse.redirect(destination);
+    return applyRequestSecurityPolicy(
+      NextResponse.redirect(destination),
+      contentSecurityPolicy,
+    );
   }
 
-  return response;
+  return applyRequestSecurityPolicy(response, contentSecurityPolicy);
 }
 
 export const config = {

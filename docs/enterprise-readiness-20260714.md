@@ -132,9 +132,16 @@ residual-risk record. Production remains blocked until every item is closed.
     the same immutable release-evidence package. Re-run tests and scanning against the release commit
     and production configuration.
 
-The current static frontend CSP still permits inline script/style execution for Next.js compatibility.
-Before release, replace it with a reviewed nonce- or hash-based request-specific CSP and add browser
-tests that prove both application behavior and policy enforcement.
+## Frontend CSP closure — 15 July 2026
+
+The static frontend CSP was replaced by a request-specific nonce policy. Production no longer permits
+`unsafe-inline` or `unsafe-eval`; script and style attributes are explicitly blocked, nonce responses
+are non-cacheable, redirects retain the policy and a prebuild source gate prevents regression. All
+application React inline styles were migrated to static CSS or SVG geometry. Production-mode browser
+verification proved nonce uniqueness, framework nonce propagation, navigation and active rejection
+of an injected inline style without console or page errors. Detailed evidence and residual controls
+are recorded in `docs/security-csp-hardening-20260715.md`. A privacy-reviewed CSP-reporting pipeline
+and independent production-equivalent verification remain release requirements.
 
 ## Static-analysis closure — 15 July 2026
 

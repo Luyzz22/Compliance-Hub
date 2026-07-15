@@ -10,6 +10,7 @@ import {
   CH_SKELETON,
 } from "@/lib/boardLayout";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { SegmentedMetricBar } from "@/components/visualization/StrictCspMetrics";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useWorkspaceTenantIdClient } from "@/hooks/useWorkspaceTenantIdClient";
 import { browserCsrfHeaders } from "@/lib/clientSessionHeaders";
@@ -124,17 +125,15 @@ function CoverageBar({ fw }: { fw: FrameworkCoverage }) {
           {fw.covered}/{fw.total_requirements} Anforderungen
         </span>
       </div>
-      <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100">
-        {pctCovered > 0 && (
-          <div className="bg-emerald-500 transition-all" style={{ width: `${pctCovered}%` }} />
-        )}
-        {pctPartial > 0 && (
-          <div className="bg-amber-400 transition-all" style={{ width: `${pctPartial}%` }} />
-        )}
-        {pctPlanned > 0 && (
-          <div className="bg-slate-300 transition-all" style={{ width: `${pctPlanned}%` }} />
-        )}
-      </div>
+      <SegmentedMetricBar
+        label={`${fw.framework} Coverage-Verteilung`}
+        max={100}
+        segments={[
+          { label: "Vollständig", value: pctCovered, className: "fill-emerald-500" },
+          { label: "Teilweise", value: pctPartial, className: "fill-amber-400" },
+          { label: "Geplant", value: pctPlanned, className: "fill-slate-300" },
+        ]}
+      />
       <div className="flex gap-3 text-[0.65rem] text-slate-500">
         <span>🟢 Vollständig {fw.covered}</span>
         <span>🟡 Teilweise {fw.partial}</span>

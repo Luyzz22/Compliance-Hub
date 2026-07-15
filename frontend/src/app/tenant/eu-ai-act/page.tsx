@@ -4,6 +4,7 @@ import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { HorizontalMetricBar } from "@/components/visualization/StrictCspMetrics";
 import {
   fetchNis2KritisKpis,
   TENANT_ID,
@@ -203,13 +204,14 @@ const STEP_TITLES: Record<WizardStep, string> = {
 // ─── Components ─────────────────────────────────────────────────────────────
 
 function ProgressBar({ value, className }: { value: number; className?: string }) {
+  const percentage = Math.round(value * 100);
   return (
-    <div className={cn("h-2 w-full rounded-full bg-slate-200", className)}>
-      <div
-        className="h-full rounded-full bg-emerald-500 transition-all"
-        style={{ width: `${Math.round(value * 100)}%` }}
-      />
-    </div>
+    <HorizontalMetricBar
+      value={percentage}
+      label={`Readiness: ${percentage}%`}
+      className={cn("h-2 w-full", className)}
+      indicatorClassName="fill-emerald-500"
+    />
   );
 }
 
@@ -951,12 +953,12 @@ export default function EUAIActPage() {
                     </span>
                   </div>
                   {recPct != null && (
-                    <div className="mt-1 h-1.5 w-full rounded-full bg-slate-200">
-                      <div
-                        className="h-full rounded-full bg-emerald-500/40"
-                        style={{ width: `${recPct}%` }}
-                      />
-                    </div>
+                    <HorizontalMetricBar
+                      value={recPct}
+                      label={`${NIS2_KPI_LABEL[kpiType]} Empfehlung: ${recPct}%`}
+                      className="mt-1 h-1.5 w-full"
+                      indicatorClassName="fill-emerald-500/40"
+                    />
                   )}
                   <label className="mt-2 block text-xs text-slate-500">
                     Evidenz (optional, z. B. NormEvidence-IDs)
