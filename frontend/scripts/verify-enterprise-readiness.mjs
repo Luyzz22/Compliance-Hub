@@ -155,7 +155,6 @@ if (releaseProfile === "public_site") {
     "COMPLIANCEHUB_LLM_PII_MODE",
   ]);
   const forbiddenPublicPrefixes = [
-    "NEXT_PUBLIC_",
     "POSTGRES_",
     "SUPABASE_",
     "AZURE_",
@@ -166,10 +165,16 @@ if (releaseProfile === "public_site") {
     if (!rawValue?.trim()) continue;
     const unapprovedComplianceHubKey =
       key.startsWith("COMPLIANCEHUB_") && !allowedComplianceHubKeys.has(key);
+    const unapprovedBrowserKey =
+      key.startsWith("NEXT_PUBLIC_") && !key.startsWith("NEXT_PUBLIC_VERCEL_");
     const forbiddenInfrastructureKey =
       forbiddenPublicExact.has(key) ||
       forbiddenPublicPrefixes.some((prefix) => key.startsWith(prefix));
-    if (unapprovedComplianceHubKey || forbiddenInfrastructureKey) {
+    if (
+      unapprovedComplianceHubKey ||
+      unapprovedBrowserKey ||
+      forbiddenInfrastructureKey
+    ) {
       errors.push(`${key} is forbidden in the stateless public_site release`);
     }
   }

@@ -70,6 +70,23 @@ describe("enterprise release gate profiles", () => {
     );
   });
 
+  it("accepts Vercel system metadata but rejects application browser variables", () => {
+    const platformResult = runGate({
+      ...publicSiteEnvironment(),
+      NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA: "abc123",
+    });
+    const applicationResult = runGate({
+      ...publicSiteEnvironment(),
+      NEXT_PUBLIC_APPLICATION_FLAG: "true",
+    });
+
+    expect(platformResult.status, platformResult.stderr).toBe(0);
+    expect(applicationResult.status).toBe(1);
+    expect(applicationResult.stderr).toContain(
+      "NEXT_PUBLIC_APPLICATION_FLAG is forbidden in the stateless public_site release",
+    );
+  });
+
   it("requires explicit legal approval for the public-site release", () => {
     const environment = publicSiteEnvironment();
     delete environment.COMPLIANCEHUB_LEGAL_PUBLISH_READY;
