@@ -192,12 +192,14 @@ export function HomeHeroSlides() {
                 <div className="mt-7 flex flex-wrap gap-3">
                   <Link
                     href={slide.ctaHref}
+                    prefetch={false}
                     className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#07111f] px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-slate-800 sm:text-sm"
                   >
                     {slide.ctaLabel}
                   </Link>
                   <Link
                     href="/trust-center"
+                    prefetch={false}
                     className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:border-slate-300 sm:text-sm"
                   >
                     Trust Center
