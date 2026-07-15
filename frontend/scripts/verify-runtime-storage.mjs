@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 const errors = [];
 const runtimeBoundary = readFileSync(resolve("src/lib/runtimeFileIO.ts"), "utf8");
 const packageJson = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
+const vercelConfig = JSON.parse(readFileSync(resolve("vercel.json"), "utf8"));
 const stores = [
   "advisorEvidenceHookStore.ts",
   "advisorKpiHistoryStore.ts",
@@ -23,6 +24,13 @@ for (const dependency of ["@azure/identity", "@azure/storage-blob", "@vercel/oid
   if (!packageJson.dependencies?.[dependency]) {
     errors.push(`package.json: ${dependency} must be a pinned runtime dependency`);
   }
+}
+
+if (JSON.stringify(vercelConfig.regions) !== JSON.stringify(["fra1"])) {
+  errors.push("vercel.json: production functions must be pinned exclusively to fra1");
+}
+if (vercelConfig.functionFailoverRegions !== undefined) {
+  errors.push("vercel.json: unreviewed cross-region function failover is forbidden");
 }
 
 for (const invariant of [

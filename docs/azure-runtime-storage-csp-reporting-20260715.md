@@ -25,6 +25,8 @@ long-lived storage credentials.
   rejected by a source gate.
 - Blob clients are initialized lazily. Containers are never created by application code; lifecycle,
   region, network and access policy remain controlled infrastructure concerns.
+- Vercel Functions are pinned by version-controlled project configuration to Frankfurt (`fra1`),
+  replacing the platform default `iad1`. No cross-region Function failover is configured.
 - Whole-document writes use Azure Block Blobs. Lead event lines use Append Blobs. Distributed
   read-modify-write sections use 60-second Azure Blob leases with bounded acquisition retries.
 - Object keys use a fixed validated prefix. Paths outside the application root are hashed before
@@ -107,6 +109,9 @@ Do not set either readiness attestation to `true` until the evidence below has n
   same-origin report POST returned bodyless HTTP 204; the server event retained only
   `style-src-attr`, the document origin, `inline`, enforcement disposition and status code. Injected
   query email and sample data were absent from the event.
+- The first immutable Preview audit exposed Vercel default Function placement in Washington, D.C.
+  (`iad1`). The repository now pins `fra1`; the replacement Preview deployment metadata must show
+  every generated Function in `fra1` before this item is considered closed.
 - The CI readiness helper's generic `urlopen` call was replaced with an HTTP(S)-only, HTTPS-by-default,
   non-redirecting, size-bounded client. Path/query inputs are encoded and seven negative tests cover
   unsafe schemes, credentials, fragments, remote plain HTTP and injection-shaped identifiers.

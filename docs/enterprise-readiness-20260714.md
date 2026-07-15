@@ -151,7 +151,9 @@ short-lived OIDC federation to Entra; Azure hosting uses Managed Identity; local
 chains are forbidden in production and Shared Key/connection-string code paths do not exist. Block
 Blob replacement, Append Blob event writes, bounded object sizes, private local development files and
 distributed Blob leases are covered by tests and a prebuild source gate. Missing objects are no
-longer conflated with configuration, corruption or service failures.
+longer conflated with configuration, corruption or service failures. Vercel Function execution is
+version-pinned to Frankfurt (`fra1`) with no unreviewed cross-region failover; the source gate rejects
+region regression.
 
 This closes the ephemeral-filesystem dependency in application code, not the infrastructure release
 gate. Azure resource region, network, RBAC, encryption/CMK, diagnostics, backup/restore and concrete
