@@ -5,6 +5,7 @@ import { join } from "path";
 import type { BoardReadinessBriefingBaselineFile } from "@/lib/boardReadinessBriefingTypes";
 import {
   absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
@@ -27,7 +28,8 @@ export async function readBoardReadinessBriefingBaseline(): Promise<BoardReadine
     if (typeof o.saved_at !== "string" || typeof o.overall_status !== "string") return null;
     if (!o.pillar_status || typeof o.pillar_status !== "object") return null;
     return o;
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return null;
   }
 }

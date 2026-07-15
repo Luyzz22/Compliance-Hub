@@ -42,6 +42,10 @@ const required = [
   "COMPLIANCEHUB_ENTRA_CLIENT_SECRET",
   "COMPLIANCEHUB_ENTRA_PROVIDER_ID",
   "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET",
+  "COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND",
+  "COMPLIANCEHUB_RUNTIME_STORAGE_AUTH",
+  "AZURE_STORAGE_ACCOUNT_NAME",
+  "AZURE_STORAGE_CONTAINER_NAME",
 ];
 
 for (const key of required) {
@@ -81,6 +85,31 @@ if (process.env.COMPLIANCEHUB_ENTRA_PROVISIONING_READY !== "true") {
   errors.push(
     "Entra identity provisioning and access recertification must be approved",
   );
+}
+if (process.env.COMPLIANCEHUB_RUNTIME_STORAGE_READY !== "true") {
+  errors.push(
+    "Azure runtime storage region, RBAC, network, diagnostics and restore evidence must be approved",
+  );
+}
+if (process.env.COMPLIANCEHUB_CSP_REPORTING_READY !== "true") {
+  errors.push(
+    "CSP reporting privacy, SIEM retention, alerting and abuse controls must be approved",
+  );
+}
+if (process.env.COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND !== "azure_blob") {
+  errors.push("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND must be azure_blob in production");
+}
+const runtimeStorageAuth = process.env.COMPLIANCEHUB_RUNTIME_STORAGE_AUTH;
+if (runtimeStorageAuth !== "managed_identity" && runtimeStorageAuth !== "vercel_oidc") {
+  errors.push("Runtime storage must use managed_identity or vercel_oidc authentication");
+}
+if (process.env.VERCEL && runtimeStorageAuth !== "vercel_oidc") {
+  errors.push("Vercel production runtime storage must use OIDC federation");
+}
+if (runtimeStorageAuth === "vercel_oidc") {
+  for (const key of ["AZURE_TENANT_ID", "AZURE_CLIENT_ID"]) {
+    if (!process.env[key]?.trim()) errors.push(`${key} is required for Vercel OIDC federation`);
+  }
 }
 if ((process.env.COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY || "").length < 32) {
   errors.push(

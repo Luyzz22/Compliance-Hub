@@ -6,8 +6,9 @@ import "server-only";
 import type { LeadSyncJob, LeadSyncPayloadV1, LeadSyncTarget } from "@/lib/leadSyncTypes";
 import {
   absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
-  replaceRuntimeFile,
+  withRuntimeStorageLock,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
 
@@ -45,16 +46,15 @@ export async function readLeadSyncStore(): Promise<JobsStoreFile> {
       p.idempotency_index = {};
     }
     return p;
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return emptyStore();
   }
 }
 
 export async function writeLeadSyncStore(store: JobsStoreFile): Promise<void> {
   const path = resolveSyncStorePath();
-  const tmp = `${path}.tmp`;
-  await writeRuntimeTextFile(tmp, `${JSON.stringify(store)}\n`);
-  await replaceRuntimeFile(tmp, path);
+  await writeRuntimeTextFile(path, `${JSON.stringify(store)}\n`);
 }
 
 export async function getLeadSyncJobById(jobId: string): Promise<LeadSyncJob | null> {
@@ -86,44 +86,48 @@ export async function ensureLeadSyncJob(input: {
   idempotency_key: string;
   payload_snapshot: LeadSyncPayloadV1;
 }): Promise<{ job: LeadSyncJob; created: boolean }> {
-  const store = await readLeadSyncStore();
-  const existingId = store.idempotency_index[input.idempotency_key];
-  if (existingId && store.jobs[existingId]) {
-    return { job: store.jobs[existingId]!, created: false };
-  }
+  return withRuntimeStorageLock(resolveSyncStorePath(), async () => {
+    const store = await readLeadSyncStore();
+    const existingId = store.idempotency_index[input.idempotency_key];
+    if (existingId && store.jobs[existingId]) {
+      return { job: store.jobs[existingId]!, created: false };
+    }
 
-  const now = new Date().toISOString();
-  const job: LeadSyncJob = {
-    job_id: randomUUID(),
-    lead_id: input.lead_id,
-    lead_contact_key: input.lead_contact_key,
-    target: input.target,
-    payload_version: input.payload_version,
-    status: "pending",
-    attempt_count: 0,
-    idempotency_key: input.idempotency_key,
-    created_at: now,
-    updated_at: now,
-    payload_snapshot: input.payload_snapshot,
-  };
-  store.jobs[job.job_id] = job;
-  store.idempotency_index[input.idempotency_key] = job.job_id;
-  await writeLeadSyncStore(store);
-  return { job, created: true };
+    const now = new Date().toISOString();
+    const job: LeadSyncJob = {
+      job_id: randomUUID(),
+      lead_id: input.lead_id,
+      lead_contact_key: input.lead_contact_key,
+      target: input.target,
+      payload_version: input.payload_version,
+      status: "pending",
+      attempt_count: 0,
+      idempotency_key: input.idempotency_key,
+      created_at: now,
+      updated_at: now,
+      payload_snapshot: input.payload_snapshot,
+    };
+    store.jobs[job.job_id] = job;
+    store.idempotency_index[input.idempotency_key] = job.job_id;
+    await writeLeadSyncStore(store);
+    return { job, created: true };
+  });
 }
 
 export async function updateLeadSyncJob(
   jobId: string,
   mutator: (job: LeadSyncJob) => LeadSyncJob,
 ): Promise<LeadSyncJob | null> {
-  const store = await readLeadSyncStore();
-  const prev = store.jobs[jobId];
-  if (!prev) return null;
-  const next = mutator({ ...prev });
-  next.updated_at = new Date().toISOString();
-  store.jobs[jobId] = next;
-  await writeLeadSyncStore(store);
-  return next;
+  return withRuntimeStorageLock(resolveSyncStorePath(), async () => {
+    const store = await readLeadSyncStore();
+    const prev = store.jobs[jobId];
+    if (!prev) return null;
+    const next = mutator({ ...prev });
+    next.updated_at = new Date().toISOString();
+    store.jobs[jobId] = next;
+    await writeLeadSyncStore(store);
+    return next;
+  });
 }
 
 export async function listProcessableLeadSyncJobs(limit: number): Promise<LeadSyncJob[]> {

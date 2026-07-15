@@ -11,8 +11,9 @@ import type {
 import { coerceOpsEntry } from "@/lib/leadOpsSelectors";
 import {
   absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
-  replaceRuntimeFile,
+  withRuntimeStorageLock,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
 import type { LeadTriageStatus } from "@/lib/leadTriage";
@@ -42,7 +43,8 @@ export async function readLeadOpsState(): Promise<LeadOpsFile> {
       return { version: OPS_VERSION, entries: {} };
     }
     return parsed;
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return { version: OPS_VERSION, entries: {} };
   }
 }
@@ -71,80 +73,68 @@ export async function mutateLeadOps(
   },
 ): Promise<{ entry: LeadOpsEntry; path: string; changed: boolean }> {
   const path = resolveOpsPath();
+  return withRuntimeStorageLock(path, async () => {
+    const state = await readLeadOpsState();
+    const prev = coerceOpsEntry(state.entries[leadId]);
+    const nextOwner =
+      patch.owner !== undefined ? patch.owner.trim().slice(0, 120) : prev.owner;
+    const nextNote =
+      patch.internal_note !== undefined
+        ? patch.internal_note.trim().slice(0, 4000)
+        : prev.internal_note;
+    const nextTriage = patch.triage_status ?? prev.triage_status;
+    const nextRelated =
+      patch.manual_related_lead_ids !== undefined
+        ? [...new Set(patch.manual_related_lead_ids.map((x) => x.trim()).filter(Boolean))].slice(0, 20)
+        : prev.manual_related_lead_ids;
+    const nextDupReview = patch.duplicate_review ?? prev.duplicate_review;
 
-  const state = await readLeadOpsState();
-  const prev = coerceOpsEntry(state.entries[leadId]);
-  const nextOwner =
-    patch.owner !== undefined ? patch.owner.trim().slice(0, 120) : prev.owner;
-  const nextNote =
-    patch.internal_note !== undefined
-      ? patch.internal_note.trim().slice(0, 4000)
-      : prev.internal_note;
-  const nextTriage = patch.triage_status ?? prev.triage_status;
-  const nextRelated =
-    patch.manual_related_lead_ids !== undefined
-      ? [...new Set(patch.manual_related_lead_ids.map((x) => x.trim()).filter(Boolean))].slice(0, 20)
-      : prev.manual_related_lead_ids;
-  const nextDupReview = patch.duplicate_review ?? prev.duplicate_review;
+    const entry: LeadOpsEntry = {
+      ...prev,
+      triage_status: nextTriage,
+      owner: nextOwner,
+      internal_note: nextNote,
+      manual_related_lead_ids: nextRelated,
+      duplicate_review: nextDupReview,
+      updated_at: prev.updated_at,
+      activities: [...prev.activities],
+    };
 
-  const entry: LeadOpsEntry = {
-    ...prev,
-    triage_status: nextTriage,
-    owner: nextOwner,
-    internal_note: nextNote,
-    manual_related_lead_ids: nextRelated,
-    duplicate_review: nextDupReview,
-    updated_at: prev.updated_at,
-    activities: [...prev.activities],
-  };
+    let changed = false;
+    if (patch.triage_status !== undefined && patch.triage_status !== prev.triage_status) {
+      pushActivity(entry, "triage_status_changed", `${prev.triage_status} → ${patch.triage_status}`);
+      changed = true;
+    }
+    if (patch.owner !== undefined && nextOwner !== prev.owner) {
+      pushActivity(entry, "owner_set", nextOwner || "(leer)");
+      changed = true;
+    }
+    if (patch.internal_note !== undefined && nextNote !== prev.internal_note) {
+      pushActivity(entry, "internal_note_updated", "Notiz aktualisiert");
+      changed = true;
+    }
+    if (
+      patch.manual_related_lead_ids !== undefined &&
+      sortedIds(nextRelated) !== sortedIds(prev.manual_related_lead_ids)
+    ) {
+      pushActivity(
+        entry,
+        "manual_related_leads_updated",
+        nextRelated.length ? nextRelated.join(", ") : "(leer)",
+      );
+      changed = true;
+    }
+    if (patch.duplicate_review !== undefined && patch.duplicate_review !== prev.duplicate_review) {
+      pushActivity(entry, "duplicate_review_updated", `${prev.duplicate_review} → ${patch.duplicate_review}`);
+      changed = true;
+    }
 
-  let changed = false;
-  if (patch.triage_status !== undefined && patch.triage_status !== prev.triage_status) {
-    pushActivity(
-      entry,
-      "triage_status_changed",
-      `${prev.triage_status} → ${patch.triage_status}`,
-    );
-    changed = true;
-  }
-  if (patch.owner !== undefined && nextOwner !== prev.owner) {
-    pushActivity(entry, "owner_set", nextOwner || "(leer)");
-    changed = true;
-  }
-  if (patch.internal_note !== undefined && nextNote !== prev.internal_note) {
-    pushActivity(entry, "internal_note_updated", "Notiz aktualisiert");
-    changed = true;
-  }
-  if (
-    patch.manual_related_lead_ids !== undefined &&
-    sortedIds(nextRelated) !== sortedIds(prev.manual_related_lead_ids)
-  ) {
-    pushActivity(
-      entry,
-      "manual_related_leads_updated",
-      nextRelated.length ? nextRelated.join(", ") : "(leer)",
-    );
-    changed = true;
-  }
-  if (patch.duplicate_review !== undefined && patch.duplicate_review !== prev.duplicate_review) {
-    pushActivity(
-      entry,
-      "duplicate_review_updated",
-      `${prev.duplicate_review} → ${patch.duplicate_review}`,
-    );
-    changed = true;
-  }
+    if (!changed) return { entry: prev, path, changed: false };
 
-  if (!changed) {
-    return { entry: prev, path, changed: false };
-  }
-
-  state.entries[leadId] = entry;
-
-  const tmp = `${path}.tmp`;
-  await writeRuntimeTextFile(tmp, `${JSON.stringify(state, null, 0)}\n`);
-  await replaceRuntimeFile(tmp, path);
-  return { entry, path, changed: true };
+    state.entries[leadId] = entry;
+    await writeRuntimeTextFile(path, `${JSON.stringify(state, null, 0)}\n`);
+    return { entry, path, changed: true };
+  });
 }
 
 export async function appendLeadOpsActivity(
@@ -153,11 +143,11 @@ export async function appendLeadOpsActivity(
   detail?: string,
 ): Promise<void> {
   const path = resolveOpsPath();
-  const state = await readLeadOpsState();
-  const prev = coerceOpsEntry(state.entries[leadId]);
-  pushActivity(prev, action, detail);
-  state.entries[leadId] = prev;
-  const tmp = `${path}.tmp`;
-  await writeRuntimeTextFile(tmp, `${JSON.stringify(state, null, 0)}\n`);
-  await replaceRuntimeFile(tmp, path);
+  await withRuntimeStorageLock(path, async () => {
+    const state = await readLeadOpsState();
+    const prev = coerceOpsEntry(state.entries[leadId]);
+    pushActivity(prev, action, detail);
+    state.entries[leadId] = prev;
+    await writeRuntimeTextFile(path, `${JSON.stringify(state, null, 0)}\n`);
+  });
 }

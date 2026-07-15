@@ -18,7 +18,9 @@ import type {
 import { MANDANT_REMINDER_MANUAL_CATEGORIES } from "@/lib/advisorMandantReminderTypes";
 import {
   absoluteRuntimeFilePath,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
+  withRuntimeStorageLock,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
 
@@ -63,7 +65,8 @@ export async function readAdvisorMandantRemindersState(): Promise<AdvisorMandant
       });
     }
     return { reminders };
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return emptyState();
   }
 }
@@ -87,37 +90,39 @@ export async function syncAdvisorMandantRemindersFromPortfolio(
   manyOpenThreshold: number,
   nowMs: number,
 ): Promise<AdvisorMandantRemindersState> {
-  const state = await readAdvisorMandantRemindersState();
-  const isoNow = new Date(nowMs).toISOString();
+  return withRuntimeStorageLock(remindersPath(), async () => {
+    const state = await readAdvisorMandantRemindersState();
+    const isoNow = new Date(nowMs).toISOString();
 
-  for (const row of rows) {
-    for (const category of AUTO_MANDANT_REMINDER_CATEGORIES) {
-      const active = isAutoReminderConditionActive(row, category, manyOpenThreshold);
-      const open = findOpenAuto(state, row.tenant_id, category);
+    for (const row of rows) {
+      for (const category of AUTO_MANDANT_REMINDER_CATEGORIES) {
+        const active = isAutoReminderConditionActive(row, category, manyOpenThreshold);
+        const open = findOpenAuto(state, row.tenant_id, category);
 
-      if (!active && open) {
-        open.status = "done";
-        open.updated_at = isoNow;
-      }
+        if (!active && open) {
+          open.status = "done";
+          open.updated_at = isoNow;
+        }
 
-      if (active && !open) {
-        state.reminders.push({
-          reminder_id: randomUUID(),
-          tenant_id: row.tenant_id,
-          category,
-          due_at: defaultAutoDueAtIso(nowMs),
-          status: "open",
-          note: null,
-          source: "auto",
-          created_at: isoNow,
-          updated_at: isoNow,
-        });
+        if (active && !open) {
+          state.reminders.push({
+            reminder_id: randomUUID(),
+            tenant_id: row.tenant_id,
+            category,
+            due_at: defaultAutoDueAtIso(nowMs),
+            status: "open",
+            note: null,
+            source: "auto",
+            created_at: isoNow,
+            updated_at: isoNow,
+          });
+        }
       }
     }
-  }
 
-  await writeAdvisorMandantRemindersState(state);
-  return state;
+    await writeAdvisorMandantRemindersState(state);
+    return state;
+  });
 }
 
 const SLA_ESCALATION_NOTE_DE =
@@ -131,59 +136,61 @@ export async function syncAdvisorSlaEscalationReminders(
   escalate: boolean,
   nowMs: number,
 ): Promise<void> {
-  const state = await readAdvisorMandantRemindersState();
-  const isoNow = new Date(nowMs).toISOString();
+  await withRuntimeStorageLock(remindersPath(), async () => {
+    const state = await readAdvisorMandantRemindersState();
+    const isoNow = new Date(nowMs).toISOString();
 
-  const closeOpenSlaAuto = () => {
+    const closeOpenSlaAuto = () => {
+      for (const r of state.reminders) {
+        if (r.category === "sla_escalation" && r.source === "auto" && r.status === "open") {
+          r.status = "done";
+          r.updated_at = isoNow;
+        }
+      }
+    };
+
+    if (!escalate) {
+      closeOpenSlaAuto();
+      await writeAdvisorMandantRemindersState(state);
+      return;
+    }
+
+    const top = attentionQueue.slice(0, 3);
+    const activeTenants = new Set(top.map((t) => t.tenant_id));
+
     for (const r of state.reminders) {
-      if (r.category === "sla_escalation" && r.source === "auto" && r.status === "open") {
+      if (r.category !== "sla_escalation" || r.source !== "auto" || r.status !== "open") continue;
+      if (!activeTenants.has(r.tenant_id)) {
         r.status = "done";
         r.updated_at = isoNow;
       }
     }
-  };
 
-  if (!escalate) {
-    closeOpenSlaAuto();
+    for (const q of top) {
+      const open = state.reminders.find(
+        (x) =>
+          x.tenant_id === q.tenant_id &&
+          x.category === "sla_escalation" &&
+          x.source === "auto" &&
+          x.status === "open",
+      );
+      if (!open) {
+        state.reminders.push({
+          reminder_id: randomUUID(),
+          tenant_id: q.tenant_id,
+          category: "sla_escalation",
+          due_at: defaultAutoDueAtIso(nowMs),
+          status: "open",
+          note: SLA_ESCALATION_NOTE_DE,
+          source: "auto",
+          created_at: isoNow,
+          updated_at: isoNow,
+        });
+      }
+    }
+
     await writeAdvisorMandantRemindersState(state);
-    return;
-  }
-
-  const top = attentionQueue.slice(0, 3);
-  const activeTenants = new Set(top.map((t) => t.tenant_id));
-
-  for (const r of state.reminders) {
-    if (r.category !== "sla_escalation" || r.source !== "auto" || r.status !== "open") continue;
-    if (!activeTenants.has(r.tenant_id)) {
-      r.status = "done";
-      r.updated_at = isoNow;
-    }
-  }
-
-  for (const q of top) {
-    const open = state.reminders.find(
-      (x) =>
-        x.tenant_id === q.tenant_id &&
-        x.category === "sla_escalation" &&
-        x.source === "auto" &&
-        x.status === "open",
-    );
-    if (!open) {
-      state.reminders.push({
-        reminder_id: randomUUID(),
-        tenant_id: q.tenant_id,
-        category: "sla_escalation",
-        due_at: defaultAutoDueAtIso(nowMs),
-        status: "open",
-        note: SLA_ESCALATION_NOTE_DE,
-        source: "auto",
-        created_at: isoNow,
-        updated_at: isoNow,
-      });
-    }
-  }
-
-  await writeAdvisorMandantRemindersState(state);
+  });
 }
 
 export async function createAdvisorMandantReminderManual(input: {
@@ -195,22 +202,24 @@ export async function createAdvisorMandantReminderManual(input: {
   if (!MANDANT_REMINDER_MANUAL_CATEGORIES.includes(input.category)) {
     throw new Error("invalid_manual_category");
   }
-  const state = await readAdvisorMandantRemindersState();
-  const isoNow = new Date().toISOString();
-  const rec: MandantReminderRecord = {
-    reminder_id: randomUUID(),
-    tenant_id: input.tenant_id.trim(),
-    category: input.category,
-    due_at: input.due_at.trim(),
-    status: "open",
-    note: input.note?.trim() ? input.note.trim().slice(0, 500) : null,
-    source: "manual",
-    created_at: isoNow,
-    updated_at: isoNow,
-  };
-  state.reminders.push(rec);
-  await writeAdvisorMandantRemindersState(state);
-  return rec;
+  return withRuntimeStorageLock(remindersPath(), async () => {
+    const state = await readAdvisorMandantRemindersState();
+    const isoNow = new Date().toISOString();
+    const rec: MandantReminderRecord = {
+      reminder_id: randomUUID(),
+      tenant_id: input.tenant_id.trim(),
+      category: input.category,
+      due_at: input.due_at.trim(),
+      status: "open",
+      note: input.note?.trim() ? input.note.trim().slice(0, 500) : null,
+      source: "manual",
+      created_at: isoNow,
+      updated_at: isoNow,
+    };
+    state.reminders.push(rec);
+    await writeAdvisorMandantRemindersState(state);
+    return rec;
+  });
 }
 
 export async function updateAdvisorMandantReminderStatus(
@@ -218,13 +227,15 @@ export async function updateAdvisorMandantReminderStatus(
   status: MandantReminderStatus,
 ): Promise<MandantReminderRecord | null> {
   if (status !== "done" && status !== "dismissed") return null;
-  const state = await readAdvisorMandantRemindersState();
-  const rec = state.reminders.find((x) => x.reminder_id === reminderId);
-  if (!rec || rec.status !== "open") return null;
-  rec.status = status;
-  rec.updated_at = new Date().toISOString();
-  await writeAdvisorMandantRemindersState(state);
-  return rec;
+  return withRuntimeStorageLock(remindersPath(), async () => {
+    const state = await readAdvisorMandantRemindersState();
+    const rec = state.reminders.find((x) => x.reminder_id === reminderId);
+    if (!rec || rec.status !== "open") return null;
+    rec.status = status;
+    rec.updated_at = new Date().toISOString();
+    await writeAdvisorMandantRemindersState(state);
+    return rec;
+  });
 }
 
 export async function listAdvisorMandantReminders(filters?: {

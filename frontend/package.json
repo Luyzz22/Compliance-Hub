@@ -7,16 +7,20 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/verify-csp.mjs && node scripts/verify-enterprise-readiness.mjs",
+    "prebuild": "node scripts/verify-csp.mjs && node scripts/verify-runtime-storage.mjs && node scripts/verify-enterprise-readiness.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings=0",
     "test:unit": "vitest run",
     "verify:enterprise": "node scripts/verify-enterprise-readiness.mjs",
-    "verify:csp": "node scripts/verify-csp.mjs"
+    "verify:csp": "node scripts/verify-csp.mjs",
+    "verify:runtime-storage": "node scripts/verify-runtime-storage.mjs"
   },
   "dependencies": {
+    "@azure/identity": "4.13.1",
     "@azure/msal-node": "5.4.0",
+    "@azure/storage-blob": "12.33.0",
+    "@vercel/oidc": "3.8.0",
     "jszip": "^3.10.1",
     "next": "16.2.10",
     "react": "19.2.7",

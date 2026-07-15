@@ -5,7 +5,11 @@ import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 import { rowToBaselineTenant } from "@/lib/kanzleiMonthlyReportBuild";
 import type { KanzleiMonthlyBaselineTenant, KanzleiMonthlyReportBaselineState } from "@/lib/kanzleiMonthlyReportTypes";
 import type { KanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioTypes";
-import { readRuntimeTextFile, writeRuntimeTextFile } from "@/lib/runtimeFileIO";
+import {
+  isRuntimeStorageNotFoundError,
+  readRuntimeTextFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 const BASELINE_PATH = "/tmp/compliancehub-kanzlei-monthly-report-baseline.json";
 
@@ -76,7 +80,8 @@ export async function readKanzleiMonthlyReportBaseline(): Promise<KanzleiMonthly
       portfolio_generated_at: typeof o.portfolio_generated_at === "string" ? o.portfolio_generated_at : null,
       tenants,
     };
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return null;
   }
 }

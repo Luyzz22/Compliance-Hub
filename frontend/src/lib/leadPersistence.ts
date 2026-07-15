@@ -9,6 +9,7 @@ import type { LeadOutboundPayloadV1 } from "@/lib/leadOutbound";
 import {
   absoluteRuntimeFilePath,
   appendRuntimeTextFile,
+  isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
 
@@ -98,7 +99,8 @@ async function mergeAllLeadAdminRowsFromPath(path: string): Promise<LeadAdminRow
     return Array.from(byId.values()).sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return [];
   }
 }
@@ -156,7 +158,8 @@ export async function findLeadInquiryRecord(leadId: string): Promise<LeadStoreRe
       }
     }
     return found;
-  } catch {
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
     return null;
   }
 }
@@ -185,8 +188,8 @@ export async function getMergedLeadAdminRow(leadId: string): Promise<LeadAdminRo
         /* skip */
       }
     }
-  } catch {
-    /* keep base row */
+  } catch (error) {
+    if (!isRuntimeStorageNotFoundError(error)) throw error;
   }
   return row;
 }
