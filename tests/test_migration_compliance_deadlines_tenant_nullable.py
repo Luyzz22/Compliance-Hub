@@ -39,6 +39,19 @@ def test_m20260417_sqlite_allows_null_tenant_after_rebuild(tmp_path: Path) -> No
     )
     with engine.begin() as conn:
         conn.execute(text(_legacy_compliance_deadlines_ddl()))
+        conn.execute(
+            text(
+                """
+                INSERT INTO compliance_deadlines (
+                    id, tenant_id, title, category, due_date, status,
+                    is_system, source_type, source_id, created_at_utc
+                ) VALUES (
+                    'legacy-row-1', 'tenant-a', 'Legacy deadline', 'nis2', '2026-07-31',
+                    'open', 0, 'legacy', 'legacy-source', datetime('now')
+                )
+                """
+            )
+        )
 
     assert m17.satisfied(engine) is False
     assert m17.apply(engine) is True
@@ -50,6 +63,13 @@ def test_m20260417_sqlite_allows_null_tenant_after_rebuild(tmp_path: Path) -> No
     assert tenant_col["nullable"] is True
 
     with engine.begin() as conn:
+        preserved = conn.execute(
+            text(
+                "SELECT tenant_id, title, source_id FROM compliance_deadlines "
+                "WHERE id = 'legacy-row-1'"
+            )
+        ).one()
+        assert preserved == ("tenant-a", "Legacy deadline", "legacy-source")
         conn.execute(
             text(
                 """

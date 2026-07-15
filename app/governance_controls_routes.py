@@ -275,7 +275,11 @@ def patch_control(
     if before is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Control not found")
     updated = repo.update_control(tenant_id, control_id, body, changed_by="api:governance-controls")
-    assert updated is not None
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Control changed concurrently; reload and retry",
+        )
     record_governance_audit(
         audit_repo,
         tenant_id=tenant_id,

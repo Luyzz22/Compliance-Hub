@@ -130,9 +130,8 @@ async def run_remediation_automation(
     for row in actions:
         due = row.due_at_utc
         st = row.status
-        if not _is_overdue_work_item(st, due, ts):
+        if due is None or not _is_overdue_work_item(st, due, ts):
             continue
-        assert due is not None
         if not await _open_escalation_exists(session, tenant_id, row.id, REASON_OVERDUE):
             eid = str(uuid4())
             session.add(

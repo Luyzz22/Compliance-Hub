@@ -956,6 +956,40 @@ def test_empty_registry_503(_session) -> None:
         os.environ.pop("TRUST_CENTER_SIGNING_KEYS", None)
 
 
+def test_non_ec_signing_key_is_rejected_fail_closed(_session, monkeypatch) -> None:
+    """An RSA key cannot silently enter the ECDSA evidence-signing boundary."""
+    import json
+
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives.serialization import (
+        Encoding,
+        NoEncryption,
+        PrivateFormat,
+    )
+
+    from app.services.trust_center_service import (
+        KeyRegistryError,
+        generate_evidence_bundle,
+        sign_evidence_bundle,
+    )
+
+    rsa_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    rsa_pem = rsa_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()).decode()
+    monkeypatch.setenv(
+        "TRUST_CENTER_SIGNING_KEYS",
+        json.dumps([{"kid": "invalid-rsa", "key_pem": rsa_pem, "active": True}]),
+    )
+    bundle = generate_evidence_bundle(_session, "tenant-invalid-signing-key", "iso_27001")
+
+    with pytest.raises(KeyRegistryError, match="elliptic-curve"):
+        sign_evidence_bundle(
+            _session,
+            "tenant-invalid-signing-key",
+            bundle["id"],
+            "tenant_admin",
+        )
+
+
 def test_migration_phase13_satisfied(_engine) -> None:
     """Phase 13 migration is satisfied after create_all."""
     from app.db_migrations.migrations.m20260422_phase13_tenant_onboarding_completed import (

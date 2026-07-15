@@ -239,6 +239,32 @@ class TestXRechnungExport:
         assert len(errors) > 0
         assert any("parse error" in e.lower() for e in errors)
 
+    def test_validate_xrechnung_rejects_dtd_entities_and_external_references(self):
+        from app.services.xrechnung_export import validate_xrechnung
+
+        malicious = """<?xml version="1.0"?>
+        <!DOCTYPE Invoice [
+          <!ENTITY xxe SYSTEM "file:///etc/passwd">
+        ]>
+        <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2">&xxe;</Invoice>
+        """
+        errors = validate_xrechnung(malicious)
+        assert errors == ["XML parse error: document is malformed or contains forbidden constructs"]
+        assert "root:" not in "".join(errors).lower()
+
+    def test_validate_xrechnung_rejects_entity_expansion(self):
+        from app.services.xrechnung_export import validate_xrechnung
+
+        malicious = """<?xml version="1.0"?>
+        <!DOCTYPE Invoice [
+          <!ENTITY a "1234567890">
+          <!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">
+        ]>
+        <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2">&b;</Invoice>
+        """
+        errors = validate_xrechnung(malicious)
+        assert errors == ["XML parse error: document is malformed or contains forbidden constructs"]
+
     def test_validate_xrechnung_missing_elements(self):
         from app.services.xrechnung_export import validate_xrechnung
 

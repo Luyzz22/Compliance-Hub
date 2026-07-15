@@ -136,14 +136,22 @@ The current static frontend CSP still permits inline script/style execution for 
 Before release, replace it with a reviewed nonce- or hash-based request-specific CSP and add browser
 tests that prove both application behavior and policy enforcement.
 
-## Open static-analysis findings
+## Static-analysis closure — 15 July 2026
 
-The full Bandit scan on 14 July 2026 reported zero high-severity findings and four medium-severity
-findings. One is a high-confidence use of `xml.etree.ElementTree.fromstring` for XRechnung validation;
-it must be replaced with a hardened parser and receive malicious-XML tests. Three low-confidence SQL
-construction findings use migration/schema identifiers, but still require documented code review or
-remediation rather than silent suppression. These findings predate the Entra change set and remain
-production blockers until resolved or formally adjudicated with evidence.
+The previously documented Bandit findings were remediated without suppressions:
+
+- untrusted XRechnung XML now uses a centralized `defusedxml` boundary that rejects oversized
+  documents, DTDs, entities and external references; malicious XXE and entity-expansion tests are
+  included;
+- all application XML generators use the centralized escaped element factory and serializer;
+- the compliance-deadline rebuild copies only reflected, target-compatible columns through
+  SQLAlchemy Core, and the migration ledger uses static SQL with bound values;
+- production `assert` statements in governance, remediation and Trust Center signing were replaced
+  by explicit fail-closed branches; non-EC signing keys are rejected and tested;
+- opaque-token and external-identity sentinel names no longer resemble embedded credentials.
+
+The full application Bandit scan now reports zero findings. This is implementation evidence, not a
+replacement for independent review, penetration testing or continuous scanning of future changes.
 
 ## Azure deployment checklist
 

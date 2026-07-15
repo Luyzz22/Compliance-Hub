@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from sqlalchemy import inspect, text
+from sqlalchemy import MetaData, Table, inspect, select, text
 from sqlalchemy.engine import Connection, Engine
 
 from app.db_migrations.util import table_exists
@@ -13,9 +13,6 @@ logger = logging.getLogger(__name__)
 
 MIGRATION_ID = "20260417_compliance_deadlines_tenant_id_nullable"
 DISPLAY_NAME = "compliance_deadlines_tenant_id_nullable"
-
-_IDX_TENANT_DUE = "idx_compliance_deadlines_tenant_due_date"
-_IDX_SEED_UNIQUE = "uq_compliance_deadlines_tenant_source"
 
 
 def _tenant_id_nullable(engine: Engine) -> bool:
@@ -35,8 +32,8 @@ def satisfied(engine: Engine) -> bool:
 
 
 def _sqlite_rebuild_nullable_tenant_id(conn: Connection) -> None:
-    conn.execute(text(f"DROP INDEX IF EXISTS {_IDX_TENANT_DUE}"))
-    conn.execute(text(f"DROP INDEX IF EXISTS {_IDX_SEED_UNIQUE}"))
+    conn.execute(text("DROP INDEX IF EXISTS idx_compliance_deadlines_tenant_due_date"))
+    conn.execute(text("DROP INDEX IF EXISTS uq_compliance_deadlines_tenant_source"))
     conn.execute(
         text(
             """
@@ -59,23 +56,25 @@ def _sqlite_rebuild_nullable_tenant_id(conn: Connection) -> None:
             """
         )
     )
-    rows = conn.execute(text("PRAGMA table_info(compliance_deadlines)")).fetchall()
-    col_names = [r[1] for r in sorted(rows, key=lambda x: x[0])]
-    cols_sql = ", ".join(col_names)
-    conn.execute(
-        text(
-            f"INSERT INTO compliance_deadlines__tid_null ({cols_sql}) "
-            f"SELECT {cols_sql} FROM compliance_deadlines"
-        )
-    )
+    metadata = MetaData()
+    source = Table("compliance_deadlines", metadata, autoload_with=conn)
+    target = Table("compliance_deadlines__tid_null", metadata, autoload_with=conn)
+    column_names = [column.name for column in source.columns if column.name in target.c]
+    if not column_names:
+        raise RuntimeError("compliance_deadlines migration found no compatible columns")
+    copy_query = select(*(source.c[name] for name in column_names))
+    conn.execute(target.insert().from_select(column_names, copy_query))
     conn.execute(text("DROP TABLE compliance_deadlines"))
     conn.execute(text("ALTER TABLE compliance_deadlines__tid_null RENAME TO compliance_deadlines"))
     conn.execute(
-        text(f"CREATE INDEX {_IDX_TENANT_DUE} ON compliance_deadlines (tenant_id, due_date)")
+        text(
+            "CREATE INDEX idx_compliance_deadlines_tenant_due_date "
+            "ON compliance_deadlines (tenant_id, due_date)"
+        )
     )
     conn.execute(
         text(
-            f"CREATE UNIQUE INDEX {_IDX_SEED_UNIQUE} ON compliance_deadlines "
+            "CREATE UNIQUE INDEX uq_compliance_deadlines_tenant_source ON compliance_deadlines "
             "(tenant_id, source_type, source_id) "
             "WHERE source_type IS NOT NULL AND source_id IS NOT NULL"
         )

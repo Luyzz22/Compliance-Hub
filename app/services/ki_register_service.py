@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
 from datetime import datetime
 
 from app.ai_governance_action_models import GovernanceActionStatus
@@ -16,6 +15,7 @@ from app.ki_register_models import (
 from app.repositories.ai_governance_actions import AIGovernanceActionRepository
 from app.repositories.ai_systems import AISystemRepository
 from app.repositories.classifications import ClassificationRepository
+from app.xml_security import append_xml_element, new_xml_root, serialize_xml
 
 
 def build_ki_register_entry(
@@ -84,24 +84,28 @@ def build_authority_export(
 
 def authority_export_xml(export: KIRegisterAuthorityExport) -> str:
     """Render KI-Register als XML für Behörden-Schnittstelle."""
-    root = ET.Element("KIRegisterExport")
-    ET.SubElement(root, "tenantId").text = export.tenant_id
-    ET.SubElement(root, "exportTimestamp").text = export.export_timestamp.isoformat()
-    systems_el = ET.SubElement(root, "systems")
+    root = new_xml_root("KIRegisterExport")
+    append_xml_element(root, "tenantId", text=export.tenant_id)
+    append_xml_element(root, "exportTimestamp", text=export.export_timestamp.isoformat())
+    systems_el = append_xml_element(root, "systems")
     for sys in export.systems:
-        s_el = ET.SubElement(systems_el, "system")
-        ET.SubElement(s_el, "id").text = sys.ai_system_id
-        ET.SubElement(s_el, "name").text = sys.name
-        ET.SubElement(s_el, "description").text = sys.description or ""
-        ET.SubElement(s_el, "intendedPurpose").text = sys.intended_purpose or ""
-        ET.SubElement(s_el, "trainingDataProvenance").text = sys.training_data_provenance or ""
-        ET.SubElement(s_el, "friaReference").text = sys.fria_reference or ""
-        ET.SubElement(s_el, "providerName").text = sys.provider_name or ""
-        ET.SubElement(s_el, "deployerName").text = sys.deployer_name or ""
-        ET.SubElement(s_el, "riskCategory").text = sys.risk_category or ""
-        ET.SubElement(s_el, "aiActCategory").text = sys.ai_act_category or ""
-        ET.SubElement(s_el, "pmsStatus").text = sys.pms_status.value
-    return ET.tostring(root, encoding="unicode", xml_declaration=True)
+        s_el = append_xml_element(systems_el, "system")
+        append_xml_element(s_el, "id", text=sys.ai_system_id)
+        append_xml_element(s_el, "name", text=sys.name)
+        append_xml_element(s_el, "description", text=sys.description or "")
+        append_xml_element(s_el, "intendedPurpose", text=sys.intended_purpose or "")
+        append_xml_element(
+            s_el,
+            "trainingDataProvenance",
+            text=sys.training_data_provenance or "",
+        )
+        append_xml_element(s_el, "friaReference", text=sys.fria_reference or "")
+        append_xml_element(s_el, "providerName", text=sys.provider_name or "")
+        append_xml_element(s_el, "deployerName", text=sys.deployer_name or "")
+        append_xml_element(s_el, "riskCategory", text=sys.risk_category or "")
+        append_xml_element(s_el, "aiActCategory", text=sys.ai_act_category or "")
+        append_xml_element(s_el, "pmsStatus", text=sys.pms_status.value)
+    return serialize_xml(root, declaration=True)
 
 
 def build_board_aggregation(

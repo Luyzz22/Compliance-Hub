@@ -13,6 +13,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
 from sqlalchemy.orm import Session
 
 from app.models_db import (
@@ -443,6 +444,20 @@ class KeyRegistryError(Exception):
     """Raised when the key registry is empty or misconfigured."""
 
 
+def _load_ec_private_key(key_pem: bytes) -> EllipticCurvePrivateKey:
+    """Load a configured ECDSA key or reject the signing registry fail-closed."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    try:
+        private_key = serialization.load_pem_private_key(key_pem, password=None)
+    except (TypeError, ValueError) as exc:
+        raise KeyRegistryError("Signing key is not a valid unencrypted PEM private key") from exc
+    if not isinstance(private_key, ec.EllipticCurvePrivateKey):
+        raise KeyRegistryError("Signing key must be an elliptic-curve private key")
+    return private_key
+
+
 def _get_key_registry() -> dict[str, bytes]:
     """Load all signing keys from ``TRUST_CENTER_SIGNING_KEYS`` (JSON array).
 
@@ -492,10 +507,8 @@ def _get_active_signing_key() -> tuple[str, bytes]:
 def _compute_key_fingerprint(key_pem: bytes) -> str:
     """Compute SHA-256 fingerprint of the public key encoded in *key_pem*."""
     from cryptography.hazmat.primitives import serialization
-    from cryptography.hazmat.primitives.asymmetric import ec
 
-    private_key = serialization.load_pem_private_key(key_pem, password=None)
-    assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+    private_key = _load_ec_private_key(key_pem)
     pub_der = private_key.public_key().public_bytes(
         serialization.Encoding.DER,
         serialization.PublicFormat.SubjectPublicKeyInfo,
@@ -576,8 +589,7 @@ def sign_evidence_bundle(
     payload = f"{row.id}|{row.tenant_id}|{now.isoformat()}".encode()
 
     kid, key_pem = _get_active_signing_key()
-    private_key = serialization.load_pem_private_key(key_pem, password=None)
-    assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+    private_key = _load_ec_private_key(key_pem)
 
     sig_bytes = private_key.sign(payload, ec.ECDSA(hashes.SHA256()))
 
@@ -621,7 +633,7 @@ def verify_evidence_bundle(
     """
     import logging
 
-    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import ec
 
     logger = logging.getLogger(__name__)
@@ -748,8 +760,7 @@ def verify_evidence_bundle(
     # --- Cryptographic Verification ---
     try:
         key_pem = registry[kid]
-        private_key = serialization.load_pem_private_key(key_pem, password=None)
-        assert isinstance(private_key, ec.EllipticCurvePrivateKey)
+        private_key = _load_ec_private_key(key_pem)
         public_key = private_key.public_key()
 
         sig_bytes = bytes.fromhex(row.signature)
