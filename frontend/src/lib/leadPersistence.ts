@@ -1,5 +1,4 @@
-import { appendFile, mkdir, readFile } from "fs/promises";
-import { dirname, join } from "path";
+import { join } from "path";
 
 import {
   deriveLeadAccountKeyFromStoredRecord,
@@ -7,6 +6,11 @@ import {
 } from "@/lib/leadIdentity";
 import type { LeadDuplicateHint } from "@/lib/leadIdentity";
 import type { LeadOutboundPayloadV1 } from "@/lib/leadOutbound";
+import {
+  absoluteRuntimeFilePath,
+  appendRuntimeTextFile,
+  readRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 export type LeadStoreStatus = "received" | "forwarded" | "failed" | "reviewed";
 
@@ -39,7 +43,7 @@ export type LeadWebhookResultLine = {
 
 function resolveStorePath(): string {
   const fromEnv = process.env.LEAD_INQUIRY_STORE_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-lead-inquiries.jsonl");
   }
@@ -48,14 +52,13 @@ function resolveStorePath(): string {
 
 export async function persistLeadReceived(record: LeadStoreRecord): Promise<{ path: string }> {
   const path = resolveStorePath();
-  await mkdir(dirname(path), { recursive: true });
-  await appendFile(path, `${JSON.stringify(record)}\n`, "utf8");
+  await appendRuntimeTextFile(path, `${JSON.stringify(record)}\n`);
   return { path };
 }
 
 export async function appendLeadWebhookResult(line: LeadWebhookResultLine): Promise<void> {
   const path = resolveStorePath();
-  await appendFile(path, `${JSON.stringify(line)}\n`, "utf8");
+  await appendRuntimeTextFile(path, `${JSON.stringify(line)}\n`);
 }
 
 export type LeadAdminRow = LeadStoreRecord & {
@@ -66,7 +69,7 @@ export type LeadAdminRow = LeadStoreRecord & {
 
 async function mergeAllLeadAdminRowsFromPath(path: string): Promise<LeadAdminRow[]> {
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const lines = raw.trim().split("\n").filter(Boolean);
     const byId = new Map<string, LeadAdminRow>();
     for (const line of lines) {
@@ -139,7 +142,7 @@ export function countOtherContactKeysOnAccount(
 export async function findLeadInquiryRecord(leadId: string): Promise<LeadStoreRecord | null> {
   const path = resolveStorePath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const lines = raw.trim().split("\n").filter(Boolean);
     let found: LeadStoreRecord | null = null;
     for (const line of lines) {
@@ -165,7 +168,7 @@ export async function getMergedLeadAdminRow(leadId: string): Promise<LeadAdminRo
   const row: LeadAdminRow = { ...base };
   const path = resolveStorePath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const lines = raw.trim().split("\n").filter(Boolean);
     for (const line of lines) {
       try {

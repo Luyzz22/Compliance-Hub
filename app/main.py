@@ -1586,7 +1586,7 @@ def post_nis2_kritis_kpi_suggestions(
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
     except llm_client_mod.LLMConfigurationError as exc:
@@ -4930,7 +4930,7 @@ def post_tenant_ai_system_kpi(
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
 
@@ -8873,7 +8873,7 @@ def create_datev_extf_export(
 
     errors = validate_records(records)
     if errors:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=errors)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=errors)
 
     content = render_extf_export(
         records,
@@ -9146,7 +9146,7 @@ def create_xrechnung_export(
 
     if errors:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"validation_errors": errors},
         )
 

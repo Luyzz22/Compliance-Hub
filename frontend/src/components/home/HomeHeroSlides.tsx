@@ -2,6 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 
+import {
+  MetricRing,
+  VerticalMetricBar,
+} from "@/components/visualization/StrictCspMetrics";
+
 const slides = [
   {
     id: "kpis",
@@ -61,9 +66,10 @@ const slides = [
         <div className="mt-4 flex h-32 items-end gap-2 sm:gap-3">
           {[45, 72, 58, 88, 64].map((h, i) => (
             <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end">
-              <div
-                className="w-full rounded-t-lg bg-gradient-to-t from-slate-800 to-slate-600 shadow-inner"
-                style={{ height: `${h}%` }}
+              <VerticalMetricBar
+                value={h}
+                label={`NIS2-Kennzahl ${i + 1}: ${h}%`}
+                indicatorClassName="fill-slate-700"
               />
             </div>
           ))}
@@ -99,17 +105,13 @@ const slides = [
         <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           High-Risk Readiness
         </div>
-        <div className="relative mx-auto mt-3 h-28 w-28">
-          <div
-            className="absolute inset-0 rounded-full"
-            style={{
-              background: `conic-gradient(rgb(8 145 178) 0% 68%, rgb(226 232 240) 68% 100%)`,
-            }}
-          />
-          <div className="absolute inset-[10px] flex items-center justify-center rounded-full bg-white shadow-inner">
-            <span className="text-2xl font-semibold tabular-nums text-slate-900">68%</span>
-          </div>
-        </div>
+        <MetricRing
+          value={68}
+          label="EU AI Act High-Risk Readiness: 68 Prozent"
+          className="mx-auto mt-3 h-28 w-28"
+        >
+          <span className="text-2xl font-semibold tabular-nums text-slate-900">68%</span>
+        </MetricRing>
         <ul className="mt-4 space-y-2 text-left text-sm leading-snug text-slate-600">
           <li className="flex gap-2">
             <span className="shrink-0 text-cyan-600">·</span>

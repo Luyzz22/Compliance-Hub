@@ -1,7 +1,6 @@
 import "server-only";
 
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join } from "path";
+import { join } from "path";
 
 import type { AdvisorMandantHistoryApiDto } from "@/lib/kanzleiPortfolioTypes";
 import {
@@ -13,6 +12,11 @@ import {
   isNonEmptyUnparsableIso,
   maxIsoTimestamps,
 } from "@/lib/mandantHistoryMerge";
+import {
+  absoluteRuntimeFilePath,
+  readRuntimeTextFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 /**
  * Persistente Kanzlei-Historie pro Mandant (Wave 40): Export-Zeitpunkte und Review-Markierung.
@@ -34,7 +38,7 @@ export type AdvisorMandantHistoryState = {
 
 function historyPath(): string {
   const fromEnv = process.env.ADVISOR_MANDANT_HISTORY_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-advisor-mandant-history.json");
   }
@@ -43,7 +47,7 @@ function historyPath(): string {
 
 function legacyTouchpointsPath(): string {
   const fromEnv = process.env.ADVISOR_PORTFOLIO_TOUCHPOINTS_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-advisor-portfolio-touchpoints.json");
   }
@@ -67,7 +71,7 @@ function emptyState(): AdvisorMandantHistoryState {
 async function readRawHistoryFile(): Promise<AdvisorMandantHistoryState> {
   const path = historyPath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as { entries?: unknown };
     if (!o || typeof o !== "object") return emptyState();
     const entries: AdvisorMandantHistoryEntry[] = [];
@@ -112,7 +116,7 @@ type LegacyTouchRow = {
 async function readLegacyTouchpointsRows(): Promise<LegacyTouchRow[]> {
   const path = legacyTouchpointsPath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as { entries?: unknown };
     if (!o || !Array.isArray(o.entries)) return [];
     const out: LegacyTouchRow[] = [];
@@ -176,8 +180,7 @@ export async function readAdvisorMandantHistoryEntry(
 
 async function writeHistoryState(state: AdvisorMandantHistoryState): Promise<void> {
   const path = historyPath();
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify({ entries: state.entries }, null, 2)}\n`, "utf8");
+  await writeRuntimeTextFile(path, `${JSON.stringify({ entries: state.entries }, null, 2)}\n`);
 }
 
 export async function recordMandantReadinessExport(tenantId: string, atIso?: string): Promise<void> {

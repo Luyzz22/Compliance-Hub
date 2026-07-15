@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { HorizontalMetricBar } from "@/components/visualization/StrictCspMetrics";
 import type { TenantSetupStatus } from "@/lib/api";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
 import { featureAiGovernancePlaybook } from "@/lib/config";
@@ -243,19 +244,13 @@ export function GuidedSetupWizard({ initialStatus, loadFailed = false }: GuidedS
           </span>
           <span className="tabular-nums text-[var(--sbs-text-secondary)]">{pct}%</span>
         </div>
-        <div
-          className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200"
-          role="progressbar"
-          aria-valuenow={doneCount}
-          aria-valuemin={0}
-          aria-valuemax={total}
-          aria-label="Guided-Setup-Fortschritt"
-        >
-          <div
-            className="h-full rounded-full bg-emerald-600 transition-[width] duration-300"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <HorizontalMetricBar
+          value={doneCount}
+          max={total}
+          label="Guided-Setup-Fortschritt"
+          className="mt-2 h-2 w-full"
+          indicatorClassName="fill-emerald-600"
+        />
       </div>
 
       <ol className="mt-6 space-y-3">

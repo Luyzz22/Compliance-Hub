@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { HorizontalMetricBar } from "@/components/visualization/StrictCspMetrics";
 import {
   CH_BTN_PRIMARY,
   CH_BTN_SECONDARY,
@@ -338,12 +339,12 @@ function Step2({
       </div>
       {state.frameworks.length > 0 && (
         <div className="mt-4 rounded-lg bg-slate-50 p-3">
-          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full rounded-full bg-cyan-500 transition-all"
-              style={{ width: `${(state.frameworks.length / FRAMEWORKS.length) * 100}%` }}
-            />
-          </div>
+          <HorizontalMetricBar
+            value={state.frameworks.length}
+            max={FRAMEWORKS.length}
+            label="Ausgewählte Compliance-Frameworks"
+            indicatorClassName="fill-cyan-500"
+          />
           <p className="mt-1 text-xs text-slate-600">
             {state.frameworks.length} von {FRAMEWORKS.length} Frameworks ausgewählt
           </p>

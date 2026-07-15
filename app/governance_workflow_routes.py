@@ -275,7 +275,7 @@ async def patch_workflow_task(
     except ValueError as e:
         if e.args and e.args[0] == "invalid_workflow_task_status":
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Invalid workflow task status. Allowed: open, in_progress, done, "
                 "cancelled, escalated",
             ) from e

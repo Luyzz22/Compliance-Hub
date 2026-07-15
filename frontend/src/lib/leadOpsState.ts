@@ -1,5 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "fs/promises";
-import { dirname, join } from "path";
+import { join } from "path";
 
 import "server-only";
 
@@ -10,6 +9,12 @@ import type {
   LeadOpsFile,
 } from "@/lib/leadOpsTypes";
 import { coerceOpsEntry } from "@/lib/leadOpsSelectors";
+import {
+  absoluteRuntimeFilePath,
+  readRuntimeTextFile,
+  replaceRuntimeFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 import type { LeadTriageStatus } from "@/lib/leadTriage";
 
 const MAX_ACTIVITIES_PER_LEAD = 120;
@@ -21,7 +26,7 @@ export { getOpsEntryForLead } from "@/lib/leadOpsSelectors";
 
 function resolveOpsPath(): string {
   const fromEnv = process.env.LEAD_INQUIRY_OPS_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-lead-ops-state.json");
   }
@@ -31,7 +36,7 @@ function resolveOpsPath(): string {
 export async function readLeadOpsState(): Promise<LeadOpsFile> {
   const path = resolveOpsPath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const parsed = JSON.parse(raw) as LeadOpsFile;
     if (parsed?.version !== OPS_VERSION || typeof parsed.entries !== "object" || !parsed.entries) {
       return { version: OPS_VERSION, entries: {} };
@@ -66,7 +71,6 @@ export async function mutateLeadOps(
   },
 ): Promise<{ entry: LeadOpsEntry; path: string; changed: boolean }> {
   const path = resolveOpsPath();
-  await mkdir(dirname(path), { recursive: true });
 
   const state = await readLeadOpsState();
   const prev = coerceOpsEntry(state.entries[leadId]);
@@ -138,8 +142,8 @@ export async function mutateLeadOps(
   state.entries[leadId] = entry;
 
   const tmp = `${path}.tmp`;
-  await writeFile(tmp, `${JSON.stringify(state, null, 0)}\n`, "utf8");
-  await rename(tmp, path);
+  await writeRuntimeTextFile(tmp, `${JSON.stringify(state, null, 0)}\n`);
+  await replaceRuntimeFile(tmp, path);
   return { entry, path, changed: true };
 }
 
@@ -149,12 +153,11 @@ export async function appendLeadOpsActivity(
   detail?: string,
 ): Promise<void> {
   const path = resolveOpsPath();
-  await mkdir(dirname(path), { recursive: true });
   const state = await readLeadOpsState();
   const prev = coerceOpsEntry(state.entries[leadId]);
   pushActivity(prev, action, detail);
   state.entries[leadId] = prev;
   const tmp = `${path}.tmp`;
-  await writeFile(tmp, `${JSON.stringify(state, null, 0)}\n`, "utf8");
-  await rename(tmp, path);
+  await writeRuntimeTextFile(tmp, `${JSON.stringify(state, null, 0)}\n`);
+  await replaceRuntimeFile(tmp, path);
 }

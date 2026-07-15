@@ -1,9 +1,13 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join } from "path";
 import { randomUUID } from "crypto";
+import { join } from "path";
 
 import type { GtmWeeklyReviewNote, GtmWeeklyReviewState } from "@/lib/gtmDashboardTypes";
 import { utcWeekStartMondayFromMs } from "@/lib/gtmDashboardTime";
+import {
+  absoluteRuntimeFilePath,
+  readRuntimeTextFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 const MAX_NOTES = 40;
 const NOTE_MAX_LEN = 2000;
@@ -15,7 +19,7 @@ type FileShape = {
 
 function resolvePath(): string {
   const fromEnv = process.env.GTM_WEEKLY_REVIEW_STORE_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-gtm-weekly-review.json");
   }
@@ -29,7 +33,7 @@ function emptyState(): GtmWeeklyReviewState {
 export async function readGtmWeeklyReviewState(): Promise<GtmWeeklyReviewState> {
   const path = resolvePath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as FileShape;
     if (!o || typeof o !== "object") return emptyState();
     const notes = Array.isArray(o.notes)
@@ -95,7 +99,6 @@ export async function updateGtmWeeklyReviewState(input: {
     notes: next.notes,
   };
 
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  await writeRuntimeTextFile(path, `${JSON.stringify(payload, null, 2)}\n`);
   return next;
 }

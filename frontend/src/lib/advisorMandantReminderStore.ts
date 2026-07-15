@@ -1,8 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join } from "path";
+import { join } from "path";
 
 import type { KanzleiAttentionQueueItem, KanzleiPortfolioRow } from "@/lib/kanzleiPortfolioTypes";
 import {
@@ -17,10 +16,15 @@ import type {
   MandantReminderStatus,
 } from "@/lib/advisorMandantReminderTypes";
 import { MANDANT_REMINDER_MANUAL_CATEGORIES } from "@/lib/advisorMandantReminderTypes";
+import {
+  absoluteRuntimeFilePath,
+  readRuntimeTextFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 function remindersPath(): string {
   const fromEnv = process.env.ADVISOR_MANDANT_REMINDERS_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-advisor-mandant-reminders.json");
   }
@@ -34,7 +38,7 @@ function emptyState(): AdvisorMandantRemindersState {
 export async function readAdvisorMandantRemindersState(): Promise<AdvisorMandantRemindersState> {
   const path = remindersPath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as { reminders?: unknown };
     if (!o || !Array.isArray(o.reminders)) return emptyState();
     const reminders: MandantReminderRecord[] = [];
@@ -66,8 +70,7 @@ export async function readAdvisorMandantRemindersState(): Promise<AdvisorMandant
 
 async function writeAdvisorMandantRemindersState(state: AdvisorMandantRemindersState): Promise<void> {
   const path = remindersPath();
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, JSON.stringify(state, null, 2), "utf8");
+  await writeRuntimeTextFile(path, JSON.stringify(state, null, 2));
 }
 
 function findOpenAuto(state: AdvisorMandantRemindersState, tenantId: string, category: MandantReminderCategory) {

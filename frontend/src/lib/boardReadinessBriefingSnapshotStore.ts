@@ -1,13 +1,17 @@
 import "server-only";
 
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join } from "path";
+import { join } from "path";
 
 import type { BoardReadinessBriefingBaselineFile } from "@/lib/boardReadinessBriefingTypes";
+import {
+  absoluteRuntimeFilePath,
+  readRuntimeTextFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 function resolvePath(): string {
   const fromEnv = process.env.BOARD_READINESS_BRIEFING_BASELINE_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-board-readiness-briefing-baseline.json");
   }
@@ -17,7 +21,7 @@ function resolvePath(): string {
 export async function readBoardReadinessBriefingBaseline(): Promise<BoardReadinessBriefingBaselineFile | null> {
   const path = resolvePath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as BoardReadinessBriefingBaselineFile;
     if (!o || typeof o !== "object") return null;
     if (typeof o.saved_at !== "string" || typeof o.overall_status !== "string") return null;
@@ -32,6 +36,5 @@ export async function writeBoardReadinessBriefingBaseline(
   baseline: BoardReadinessBriefingBaselineFile,
 ): Promise<void> {
   const path = resolvePath();
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
+  await writeRuntimeTextFile(path, `${JSON.stringify(baseline, null, 2)}\n`);
 }

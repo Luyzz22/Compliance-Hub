@@ -7,12 +7,13 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/verify-enterprise-readiness.mjs",
+    "prebuild": "node scripts/verify-csp.mjs && node scripts/verify-enterprise-readiness.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings=0",
     "test:unit": "vitest run",
-    "verify:enterprise": "node scripts/verify-enterprise-readiness.mjs"
+    "verify:enterprise": "node scripts/verify-enterprise-readiness.mjs",
+    "verify:csp": "node scripts/verify-csp.mjs"
   },
   "dependencies": {
     "@azure/msal-node": "5.4.0",

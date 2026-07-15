@@ -39,11 +39,7 @@ export default function HomePage() {
       />
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-80"
-        style={{
-          background:
-            "radial-gradient(circle at 5% 0%, rgba(22,104,232,0.13), transparent 42%), radial-gradient(circle at 88% 2%, rgba(72,212,180,0.12), transparent 38%)",
-        }}
+        className="enterprise-ambient pointer-events-none fixed inset-0 -z-10 opacity-80"
       />
 
       {/* Hero */}

@@ -1,4 +1,5 @@
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
+import { HorizontalMetricBar } from "@/components/visualization/StrictCspMetrics";
 import {
   CH_BTN_SECONDARY,
   CH_CARD,
@@ -151,12 +152,13 @@ export default function TenantComplianceMappingPage() {
                 </span>
                 <span className="text-sm font-semibold text-slate-900">{fw.ratio}%</span>
               </div>
-              <div className="mt-2 h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-2 rounded-full bg-cyan-500 transition-all"
-                  style={{ width: `${fw.ratio}%` }}
-                />
-              </div>
+              <HorizontalMetricBar
+                value={fw.ratio}
+                label={`${fw.label} Framework-Abdeckung: ${fw.ratio}%`}
+                className="mt-2 h-2 w-full"
+                trackClassName="fill-slate-100"
+                indicatorClassName="fill-cyan-500"
+              />
               <p className="mt-1 text-xs text-slate-500">
                 {fw.covered} von {fw.total} Controls abgedeckt
               </p>

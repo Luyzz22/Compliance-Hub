@@ -1,12 +1,11 @@
 import "server-only";
 
-import { mkdir, readFile, writeFile } from "fs/promises";
-
 import type { BoardReadinessPillarKey, BoardReadinessTraffic } from "@/lib/boardReadinessTypes";
 import type { GtmReadinessClass } from "@/lib/gtmAccountReadiness";
 import { rowToBaselineTenant } from "@/lib/kanzleiMonthlyReportBuild";
 import type { KanzleiMonthlyBaselineTenant, KanzleiMonthlyReportBaselineState } from "@/lib/kanzleiMonthlyReportTypes";
 import type { KanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioTypes";
+import { readRuntimeTextFile, writeRuntimeTextFile } from "@/lib/runtimeFileIO";
 
 const BASELINE_PATH = "/tmp/compliancehub-kanzlei-monthly-report-baseline.json";
 
@@ -45,7 +44,7 @@ function parseBand(x: unknown): KanzleiMonthlyBaselineTenant["attention_band"] {
 export async function readKanzleiMonthlyReportBaseline(): Promise<KanzleiMonthlyReportBaselineState | null> {
   const path = BASELINE_PATH;
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as Record<string, unknown>;
     if (!o || typeof o.saved_at !== "string") return null;
     const tenants: KanzleiMonthlyReportBaselineState["tenants"] = {};
@@ -87,7 +86,6 @@ export async function writeKanzleiMonthlyReportBaseline(
   periodLabel: string | null,
 ): Promise<void> {
   const path = BASELINE_PATH;
-  await mkdir("/tmp", { recursive: true });
   const tenants: KanzleiMonthlyReportBaselineState["tenants"] = {};
   for (const row of payload.rows) {
     tenants[row.tenant_id] = rowToBaselineTenant(row);
@@ -98,5 +96,5 @@ export async function writeKanzleiMonthlyReportBaseline(
     portfolio_generated_at: payload.generated_at,
     tenants,
   };
-  await writeFile(path, JSON.stringify(state, null, 2), "utf8");
+  await writeRuntimeTextFile(path, JSON.stringify(state, null, 2));
 }

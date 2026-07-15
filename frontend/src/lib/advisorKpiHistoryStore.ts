@@ -1,10 +1,14 @@
 import "server-only";
 
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join } from "path";
+import { join } from "path";
 
 import type { AdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiTypes";
 import type { KanzleiPortfolioPayload } from "@/lib/kanzleiPortfolioTypes";
+import {
+  absoluteRuntimeFilePath,
+  readRuntimeTextFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 import {
   ADVISOR_KPI_HISTORY_FILE_VERSION,
   type AdvisorKpiHistoryPoint,
@@ -15,7 +19,7 @@ const MAX_SNAPSHOTS = 120;
 
 function historyPath(): string {
   const fromEnv = process.env.ADVISOR_KPI_HISTORY_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-advisor-kpi-history.json");
   }
@@ -29,7 +33,7 @@ function emptyState(): AdvisorKpiHistoryState {
 export async function readAdvisorKpiHistoryState(): Promise<AdvisorKpiHistoryState> {
   const path = historyPath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as Record<string, unknown>;
     if (!o || typeof o !== "object") return emptyState();
     const snaps: AdvisorKpiHistoryPoint[] = [];
@@ -65,8 +69,7 @@ export async function readAdvisorKpiHistoryState(): Promise<AdvisorKpiHistorySta
 
 async function writeAdvisorKpiHistoryState(state: AdvisorKpiHistoryState): Promise<void> {
   const path = historyPath();
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  await writeRuntimeTextFile(path, `${JSON.stringify(state, null, 2)}\n`);
 }
 
 function utcDayKey(iso: string): string {

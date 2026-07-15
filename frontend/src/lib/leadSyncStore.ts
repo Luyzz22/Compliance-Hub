@@ -1,10 +1,15 @@
 import { randomUUID } from "crypto";
-import { mkdir, readFile, rename, writeFile } from "fs/promises";
-import { dirname, join } from "path";
+import { join } from "path";
 
 import "server-only";
 
 import type { LeadSyncJob, LeadSyncPayloadV1, LeadSyncTarget } from "@/lib/leadSyncTypes";
+import {
+  absoluteRuntimeFilePath,
+  readRuntimeTextFile,
+  replaceRuntimeFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 const STORE_VERSION = 1;
 
@@ -17,7 +22,7 @@ type JobsStoreFile = {
 
 function resolveSyncStorePath(): string {
   const fromEnv = process.env.LEAD_SYNC_JOBS_STORE_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-lead-sync-jobs.json");
   }
@@ -31,7 +36,7 @@ function emptyStore(): JobsStoreFile {
 export async function readLeadSyncStore(): Promise<JobsStoreFile> {
   const path = resolveSyncStorePath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const p = JSON.parse(raw) as JobsStoreFile;
     if (p?.version !== STORE_VERSION || typeof p.jobs !== "object" || !p.jobs) {
       return emptyStore();
@@ -47,10 +52,9 @@ export async function readLeadSyncStore(): Promise<JobsStoreFile> {
 
 export async function writeLeadSyncStore(store: JobsStoreFile): Promise<void> {
   const path = resolveSyncStorePath();
-  await mkdir(dirname(path), { recursive: true });
   const tmp = `${path}.tmp`;
-  await writeFile(tmp, `${JSON.stringify(store)}\n`, "utf8");
-  await rename(tmp, path);
+  await writeRuntimeTextFile(tmp, `${JSON.stringify(store)}\n`);
+  await replaceRuntimeFile(tmp, path);
 }
 
 export async function getLeadSyncJobById(jobId: string): Promise<LeadSyncJob | null> {

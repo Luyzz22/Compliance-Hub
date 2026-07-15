@@ -1,8 +1,12 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import { dirname, join } from "path";
+import { join } from "path";
 
 import { extractEmailDomain } from "@/lib/leadIdentity";
 import type { LeadInboxItem } from "@/lib/leadInboxTypes";
+import {
+  absoluteRuntimeFilePath,
+  readRuntimeTextFile,
+  writeRuntimeTextFile,
+} from "@/lib/runtimeFileIO";
 
 export type GtmProductMapEntry = {
   tenant_id: string;
@@ -22,7 +26,7 @@ export type GtmProductAccountMapState = {
 
 function resolvePath(): string {
   const fromEnv = process.env.GTM_PRODUCT_ACCOUNT_MAP_PATH?.trim();
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
   if (process.env.VERCEL) {
     return join("/tmp", "compliancehub-gtm-product-account-map.json");
   }
@@ -40,7 +44,7 @@ function emptyState(): GtmProductAccountMapState {
 export async function readGtmProductAccountMap(): Promise<GtmProductAccountMapState> {
   const path = resolvePath();
   try {
-    const raw = await readFile(path, "utf8");
+    const raw = await readRuntimeTextFile(path);
     const o = JSON.parse(raw) as { entries?: unknown };
     if (!o || typeof o !== "object") return emptyState();
     const entries: GtmProductMapEntry[] = [];
@@ -92,6 +96,5 @@ export function findGtmProductMapEntry(
 
 export async function writeGtmProductAccountMap(state: GtmProductAccountMapState): Promise<void> {
   const path = resolvePath();
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify({ entries: state.entries }, null, 2)}\n`, "utf8");
+  await writeRuntimeTextFile(path, `${JSON.stringify({ entries: state.entries }, null, 2)}\n`);
 }
