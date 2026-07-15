@@ -3,6 +3,17 @@ import "server-only";
 import { join } from "path";
 
 import type { AdvisorMandantHistoryApiDto } from "@/lib/kanzleiPortfolioTypes";
+import type {
+  AdvisorMandantHistoryEntry,
+  AdvisorMandantHistoryState,
+} from "@/lib/advisorMandantHistoryTypes";
+import {
+  readAdvisorMandantHistoryPostgres,
+  readAllAdvisorMandantHistoryPostgres,
+  recordAdvisorReviewMarkedPostgres,
+  recordDatevBundleExportPostgres,
+  recordMandantReadinessExportPostgres,
+} from "@/lib/advisorRuntimePostgresStore";
 import {
   KANZLEI_ANY_EXPORT_MAX_AGE_DAYS,
   KANZLEI_REVIEW_STALE_DAYS,
@@ -19,6 +30,7 @@ import {
   withRuntimeStorageLock,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
+import { resolveRelationalRuntimeBackend } from "@/lib/runtimePostgres";
 
 /**
  * Persistente Kanzlei-Historie pro Mandant (Wave 40): Export-Zeitpunkte und Review-Markierung.
@@ -26,17 +38,10 @@ import {
  * Liest optional legacy advisor-portfolio-touchpoints.json ein (Migration Wave 39).
  */
 
-export type AdvisorMandantHistoryEntry = {
-  tenant_id: string;
-  last_mandant_readiness_export_at: string | null;
-  last_datev_bundle_export_at: string | null;
-  last_review_marked_at: string | null;
-  last_review_note_de: string | null;
-};
-
-export type AdvisorMandantHistoryState = {
-  entries: AdvisorMandantHistoryEntry[];
-};
+export type {
+  AdvisorMandantHistoryEntry,
+  AdvisorMandantHistoryState,
+} from "@/lib/advisorMandantHistoryTypes";
 
 function historyPath(): string {
   const fromEnv = process.env.ADVISOR_MANDANT_HISTORY_PATH?.trim();
@@ -165,6 +170,10 @@ function mergeLegacyIntoMap(map: Map<string, AdvisorMandantHistoryEntry>, legacy
  * Alle Einträge als Map (inkl. Legacy-Touchpoints aus Wave 39, falls vorhanden).
  */
 export async function readAdvisorMandantHistoryMap(): Promise<Map<string, AdvisorMandantHistoryEntry>> {
+  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+    const state = await readAllAdvisorMandantHistoryPostgres();
+    return new Map(state.entries.map((entry) => [entry.tenant_id, { ...entry }]));
+  }
   const base = await readRawHistoryFile();
   const map = new Map<string, AdvisorMandantHistoryEntry>();
   for (const e of base.entries) {
@@ -178,6 +187,9 @@ export async function readAdvisorMandantHistoryMap(): Promise<Map<string, Adviso
 export async function readAdvisorMandantHistoryEntry(
   tenantId: string,
 ): Promise<AdvisorMandantHistoryEntry> {
+  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+    return (await readAdvisorMandantHistoryPostgres(tenantId)) ?? emptyEntry(tenantId);
+  }
   const m = await readAdvisorMandantHistoryMap();
   return m.get(tenantId) ?? emptyEntry(tenantId);
 }
@@ -191,6 +203,10 @@ export async function recordMandantReadinessExport(tenantId: string, atIso?: str
   const t = (atIso ?? new Date().toISOString()).trim();
   const tid = tenantId.trim();
   if (!tid) return;
+  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+    await recordMandantReadinessExportPostgres(tid, t);
+    return;
+  }
   await withRuntimeStorageLock(historyPath(), async () => {
     const state = await readRawHistoryFile();
     const idx = state.entries.findIndex((e) => e.tenant_id === tid);
@@ -210,6 +226,10 @@ export async function recordDatevBundleExport(tenantId: string, atIso?: string):
   const t = (atIso ?? new Date().toISOString()).trim();
   const tid = tenantId.trim();
   if (!tid) return;
+  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+    await recordDatevBundleExportPostgres(tid, t);
+    return;
+  }
   await withRuntimeStorageLock(historyPath(), async () => {
     const state = await readRawHistoryFile();
     const idx = state.entries.findIndex((e) => e.tenant_id === tid);
@@ -233,6 +253,10 @@ export async function recordAdvisorReviewMarked(
   const t = (atIso ?? new Date().toISOString()).trim();
   const tid = tenantId.trim();
   if (!tid) return;
+  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+    await recordAdvisorReviewMarkedPostgres(tid, noteDe, t);
+    return;
+  }
   await withRuntimeStorageLock(historyPath(), async () => {
     const state = await readRawHistoryFile();
     const idx = state.entries.findIndex((e) => e.tenant_id === tid);

@@ -46,6 +46,11 @@ const required = [
   "COMPLIANCEHUB_RUNTIME_STORAGE_AUTH",
   "AZURE_STORAGE_ACCOUNT_NAME",
   "AZURE_STORAGE_CONTAINER_NAME",
+  "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND",
+  "AZURE_POSTGRES_HOST",
+  "AZURE_POSTGRES_DATABASE",
+  "AZURE_POSTGRES_USER",
+  "COMPLIANCEHUB_ADVISOR_RUNTIME_RETENTION_DAYS",
 ];
 
 for (const key of required) {
@@ -96,8 +101,68 @@ if (process.env.COMPLIANCEHUB_CSP_REPORTING_READY !== "true") {
     "CSP reporting privacy, SIEM retention, alerting and abuse controls must be approved",
   );
 }
+if (process.env.COMPLIANCEHUB_RELATIONAL_RUNTIME_READY !== "true") {
+  errors.push(
+    "Azure PostgreSQL region, Entra role membership, TLS, schema and connection evidence must be approved",
+  );
+}
+if (process.env.COMPLIANCEHUB_POSTGRES_RLS_READY !== "true") {
+  errors.push("PostgreSQL FORCE RLS and cross-tenant denial evidence must be approved");
+}
+if (process.env.COMPLIANCEHUB_POSTGRES_NETWORK_READY !== "true") {
+  errors.push("Azure PostgreSQL private network and firewall evidence must be approved");
+}
+if (process.env.COMPLIANCEHUB_POSTGRES_BACKUP_RESTORE_READY !== "true") {
+  errors.push("Azure PostgreSQL PITR and restore-test evidence must be approved");
+}
+if (process.env.COMPLIANCEHUB_POSTGRES_RETENTION_READY !== "true") {
+  errors.push("PostgreSQL retention, legal-hold and deletion-audit evidence must be approved");
+}
+if (process.env.COMPLIANCEHUB_POSTGRES_DATA_MIGRATION_READY !== "true") {
+  errors.push(
+    "PostgreSQL source-to-target counts, checksums and cutover rollback evidence must be approved",
+  );
+}
+const advisorRetentionDays = Number(
+  process.env.COMPLIANCEHUB_ADVISOR_RUNTIME_RETENTION_DAYS,
+);
+if (
+  !Number.isSafeInteger(advisorRetentionDays) ||
+  advisorRetentionDays < 30 ||
+  advisorRetentionDays > 3_650
+) {
+  errors.push(
+    "COMPLIANCEHUB_ADVISOR_RUNTIME_RETENTION_DAYS must be an approved value between 30 and 3650",
+  );
+}
 if (process.env.COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND !== "azure_blob") {
   errors.push("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND must be azure_blob in production");
+}
+if (process.env.COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND !== "azure_postgres") {
+  errors.push(
+    "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND must be azure_postgres in production",
+  );
+}
+const postgresHost = process.env.AZURE_POSTGRES_HOST?.trim().toLowerCase() || "";
+if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.postgres\.database\.azure\.com$/.test(postgresHost)) {
+  errors.push("AZURE_POSTGRES_HOST must be an Azure PostgreSQL hostname");
+}
+if (
+  ["postgres", "azure_pg_admin", "azuresu"].includes(
+    process.env.AZURE_POSTGRES_USER?.trim().toLowerCase() || "",
+  )
+) {
+  errors.push("Azure PostgreSQL administrator identities are forbidden for application runtime");
+}
+for (const forbiddenCredential of [
+  "AZURE_POSTGRES_PASSWORD",
+  "PGPASSWORD",
+  "POSTGRES_URL",
+  "DATABASE_URL",
+]) {
+  if (process.env[forbiddenCredential]?.trim()) {
+    errors.push(`${forbiddenCredential} is forbidden; use short-lived Microsoft Entra tokens`);
+  }
 }
 const runtimeStorageAuth = process.env.COMPLIANCEHUB_RUNTIME_STORAGE_AUTH;
 if (runtimeStorageAuth !== "managed_identity" && runtimeStorageAuth !== "vercel_oidc") {
