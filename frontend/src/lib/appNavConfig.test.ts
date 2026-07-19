@@ -30,6 +30,7 @@ describe("appNavConfig", () => {
     expect(REPORTING_NAV_ITEMS.length).toBeGreaterThanOrEqual(5);
     const hrefs = REPORTING_NAV_ITEMS.map((i) => i.href);
     expect(hrefs).toContain("/board/executive-dashboard");
+    expect(hrefs).toContain("/board/investment-portfolio");
     expect(hrefs).toContain("/board/gap-analysis");
     expect(hrefs).toContain("/board/datev-export");
   });

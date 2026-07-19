@@ -2826,6 +2826,67 @@ export async function fetchEnterpriseConnectorCandidates(
   ) as Promise<EnterpriseConnectorCandidatesResponseDto>;
 }
 
+export type InvestmentDecisionDto = "fund_now" | "sequence" | "validate" | "hold";
+export type InvestmentEnvelopeBandDto = "small" | "medium" | "large";
+export type TimeToValueBandDto = "near_term" | "mid_term" | "long_term";
+
+export interface EnterpriseInvestmentInitiativeDto {
+  initiative_id: string;
+  tenant_id: string;
+  connector_type: IntegrationBlueprintSourceSystemTypeDto;
+  initiative_name_de: string;
+  baseline_rank: number;
+  recommended_decision: InvestmentDecisionDto;
+  investment_envelope_band: InvestmentEnvelopeBandDto;
+  time_to_value_band: TimeToValueBandDto;
+  strategic_value_score: number;
+  risk_reduction_score: number;
+  execution_confidence_score: number;
+  capital_efficiency_score: number;
+  blocker_score: number;
+  portfolio_score: number;
+  decision_rationale_de: string;
+  funding_preconditions_de: string[];
+  source_refs: string[];
+  requires_finance_input: boolean;
+  is_financial_estimate: boolean;
+}
+
+export interface EnterpriseInvestmentPortfolioResponseDto {
+  tenant_id: string;
+  generated_at_utc: string;
+  baseline_weights: {
+    strategic_value_weight: number;
+    risk_reduction_weight: number;
+    execution_confidence_weight: number;
+    capital_efficiency_weight: number;
+  };
+  summary: {
+    total_initiatives: number;
+    fund_now_count: number;
+    sequence_count: number;
+    validate_count: number;
+    hold_count: number;
+    large_envelope_count: number;
+    missing_finance_inputs: number;
+    top_recommendation_de: string | null;
+  };
+  initiatives: EnterpriseInvestmentInitiativeDto[];
+  assumptions_de: string[];
+  markdown_de?: string | null;
+}
+
+export async function fetchEnterpriseInvestmentPortfolio(
+  tenantId: string,
+  includeMarkdown = false,
+): Promise<EnterpriseInvestmentPortfolioResponseDto> {
+  const qs = includeMarkdown ? "?include_markdown=true" : "";
+  return tenantApiFetch(
+    `/api/internal/enterprise/investment-portfolio${qs}`,
+    tenantId,
+  ) as Promise<EnterpriseInvestmentPortfolioResponseDto>;
+}
+
 export type ConnectorConnectionStatusDto = "not_configured" | "connected" | "degraded";
 
 export type SyncRunLifecycleDto =

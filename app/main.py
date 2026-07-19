@@ -199,6 +199,7 @@ from app.enterprise_integration_blueprint_models import (
     EnterpriseIntegrationBlueprintResponse,
     EnterpriseIntegrationBlueprintUpsert,
 )
+from app.enterprise_investment_portfolio_models import EnterpriseInvestmentPortfolioResponse
 from app.enterprise_onboarding_models import (
     EnterpriseOnboardingReadinessResponse,
     EnterpriseOnboardingReadinessUpsert,
@@ -443,6 +444,9 @@ from app.services.enterprise_connector_runtime import (
 from app.services.enterprise_control_center import build_enterprise_control_center
 from app.services.enterprise_integration_blueprint import (
     build_enterprise_integration_blueprint_response,
+)
+from app.services.enterprise_investment_portfolio import (
+    build_enterprise_investment_portfolio,
 )
 from app.services.eu_ai_act_readiness import compute_eu_ai_act_readiness_overview
 from app.services.eu_ai_act_wizard_decision import evaluate_wizard_decision
@@ -5963,6 +5967,60 @@ def get_enterprise_connector_candidates(
         incident_repo=incident_repo,
         deadline_repo=deadline_repo,
         ai_repo=ai_repo,
+        include_markdown=include_markdown,
+    )
+
+
+@app.get(
+    "/api/internal/enterprise/investment-portfolio",
+    response_model=EnterpriseInvestmentPortfolioResponse,
+    tags=["internal", "enterprise"],
+)
+def get_enterprise_investment_portfolio(
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    _: Annotated[
+        EnterpriseRole,
+        Depends(require_permission(Permission.VIEW_EXECUTIVE_DASHBOARD)),
+    ],
+    session: Annotated[Session, Depends(get_session)],
+    onboarding_repo: Annotated[
+        EnterpriseOnboardingRepository,
+        Depends(get_enterprise_onboarding_repository),
+    ],
+    blueprint_repo: Annotated[
+        EnterpriseIntegrationBlueprintRepository,
+        Depends(get_enterprise_integration_blueprint_repository),
+    ],
+    audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
+    incident_repo: Annotated[NIS2IncidentRepository, Depends(get_nis2_incident_repository)],
+    deadline_repo: Annotated[
+        ComplianceDeadlineRepository,
+        Depends(get_compliance_deadline_repository),
+    ],
+    ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
+    include_markdown: bool = Query(False),
+) -> EnterpriseInvestmentPortfolioResponse:
+    onboarding = onboarding_repo.get(auth.tenant_id)
+    blueprints = build_enterprise_integration_blueprint_response(
+        tenant_id=auth.tenant_id,
+        blueprint_rows=blueprint_repo.list_for_tenant(auth.tenant_id),
+        onboarding=onboarding,
+        include_markdown=False,
+    ).blueprint_rows
+    candidates = build_connector_candidates_response(
+        tenant_id=auth.tenant_id,
+        session=session,
+        onboarding=onboarding,
+        blueprints=blueprints,
+        audit_repo=audit_repo,
+        incident_repo=incident_repo,
+        deadline_repo=deadline_repo,
+        ai_repo=ai_repo,
+        include_markdown=False,
+    )
+    return build_enterprise_investment_portfolio(
+        tenant_id=auth.tenant_id,
+        candidates=candidates,
         include_markdown=include_markdown,
     )
 
