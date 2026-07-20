@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@azure/identity": "4.13.1",
-    "@azure/msal-node": "5.4.0",
+    "@azure/msal-node": "5.4.1",
     "@azure/storage-blob": "12.33.0",
     "@vercel/oidc": "3.8.0",
     "jszip": "^3.10.1",
