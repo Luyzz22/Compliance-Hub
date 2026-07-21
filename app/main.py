@@ -125,6 +125,7 @@ from app.ai_system_models import (
     AISystemStatus,
     AISystemUpdate,
 )
+from app.ai_transparency_assurance_routes import router as ai_transparency_assurance_router
 from app.audit_models import AuditEvent, AuditLog
 from app.auth_dependencies import (
     get_api_key_and_tenant,
@@ -640,6 +641,7 @@ app.include_router(compliance_compass_router)
 app.include_router(board_reporting_router)
 app.include_router(remediation_automation_router)
 app.include_router(remediation_actions_router)
+app.include_router(ai_transparency_assurance_router)
 
 logger = logging.getLogger(__name__)
 

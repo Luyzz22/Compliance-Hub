@@ -52,6 +52,8 @@ class AuditRepository:
         action: str,
         actor_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        *,
+        commit: bool = True,
     ) -> AuditEvent:
         row = AuditEventTable(
             id=str(uuid.uuid4()),
@@ -65,7 +67,10 @@ class AuditRepository:
             metadata_json=metadata,
         )
         self._session.add(row)
-        self._session.commit()
+        if commit:
+            self._session.commit()
+        else:
+            self._session.flush()
         self._session.refresh(row)
         return self._to_domain(row)
 

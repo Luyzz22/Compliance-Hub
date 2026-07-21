@@ -46,6 +46,8 @@ class Permission(StrEnum):
     MANAGE_BILLING = "manage_billing"
     VIEW_TRUST_CENTER = "view_trust_center"
     MANAGE_TRUST_CENTER = "manage_trust_center"
+    VIEW_TRANSPARENCY_ASSURANCE = "view_transparency_assurance"
+    MANAGE_TRANSPARENCY_ASSURANCE = "manage_transparency_assurance"
     ACCESS_EVIDENCE_BUNDLES = "access_evidence_bundles"
     DOWNLOAD_ASSURANCE_DOCS = "download_assurance_docs"
     VIEW_ANALYTICS = "view_analytics"
@@ -68,6 +70,7 @@ _CONTRIBUTOR_PERMS = _VIEWER_PERMS | frozenset(
         Permission.VIEW_INCIDENTS,
         Permission.VIEW_AUDIT_LOG,
         Permission.DOWNLOAD_ASSURANCE_DOCS,
+        Permission.VIEW_TRANSPARENCY_ASSURANCE,
     }
 )
 
@@ -96,6 +99,7 @@ _COMPLIANCE_OFFICER_PERMS = _EDITOR_PERMS | frozenset(
         Permission.GENERATE_BOARD_REPORTS,
         Permission.MANAGE_COMPLIANCE_CALENDAR,
         Permission.MANAGE_ONBOARDING_READINESS,
+        Permission.MANAGE_TRANSPARENCY_ASSURANCE,
     }
 )
 
@@ -119,6 +123,7 @@ _BOARD_MEMBER_PERMS = frozenset(
         Permission.VIEW_EXECUTIVE_DASHBOARD,
         Permission.VIEW_GAP_REPORTS,
         Permission.GENERATE_PDF_REPORT,
+        Permission.VIEW_TRANSPARENCY_ASSURANCE,
     }
 )
 

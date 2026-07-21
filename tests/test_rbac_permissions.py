@@ -25,6 +25,10 @@ def test_viewer_cannot_edit() -> None:
     assert not has_permission(EnterpriseRole.VIEWER, Permission.EDIT_RISK_REGISTER)
     assert not has_permission(EnterpriseRole.VIEWER, Permission.MANAGE_INCIDENTS)
     assert not has_permission(EnterpriseRole.VIEWER, Permission.MANAGE_POLICIES)
+    assert not has_permission(
+        EnterpriseRole.VIEWER,
+        Permission.VIEW_TRANSPARENCY_ASSURANCE,
+    )
 
 
 def test_compliance_officer_can_manage_incidents() -> None:
@@ -32,6 +36,10 @@ def test_compliance_officer_can_manage_incidents() -> None:
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.MANAGE_POLICIES)
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.GENERATE_BOARD_REPORTS)
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.MANAGE_COMPLIANCE_CALENDAR)
+    assert has_permission(
+        EnterpriseRole.COMPLIANCE_OFFICER,
+        Permission.MANAGE_TRANSPARENCY_ASSURANCE,
+    )
     # Also inherits editor/contributor perms
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.EDIT_AI_SYSTEMS)
     assert has_permission(EnterpriseRole.COMPLIANCE_OFFICER, Permission.VIEW_DASHBOARD)
@@ -75,6 +83,7 @@ def test_board_member_has_restricted_view() -> None:
             Permission.VIEW_EXECUTIVE_DASHBOARD,
             Permission.VIEW_GAP_REPORTS,
             Permission.GENERATE_PDF_REPORT,
+            Permission.VIEW_TRANSPARENCY_ASSURANCE,
         }
     )
 
@@ -83,6 +92,10 @@ def test_auditor_has_export_audit_log() -> None:
     assert has_permission(EnterpriseRole.AUDITOR, Permission.EXPORT_AUDIT_LOG)
     assert has_permission(EnterpriseRole.AUDITOR, Permission.VIEW_AUDIT_LOG)
     assert not has_permission(EnterpriseRole.AUDITOR, Permission.EDIT_AI_SYSTEMS)
+    assert has_permission(
+        EnterpriseRole.AUDITOR,
+        Permission.VIEW_TRANSPARENCY_ASSURANCE,
+    )
 
 
 # ── Unit tests: role resolution ────────────────────────────────────────

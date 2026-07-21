@@ -199,6 +199,20 @@ The previously documented Bandit findings were remediated without suppressions:
 The full application Bandit scan now reports zero findings. This is implementation evidence, not a
 replacement for independent review, penetration testing or continuous scanning of future changes.
 
+## Article 50 transparency assurance — 21 July 2026
+
+The AI-system inventory now has a normalized, tenant-scoped Article 50 and GDPR transparency
+assurance register. Six controls retain independent status, rationale and evidence references;
+verification requires resolved value-chain role, a control owner, a distinct reviewer, a dated review
+and a next review boundary. Optimistic version checks prevent silent overwrite, and audit snapshots deliberately
+retain only status/presence signals rather than evidence paths or reviewer labels. Unassessed systems
+remain visible and score as unresolved rather than disappearing from the denominator.
+
+This closes the missing operational register, not the legal or production-compliance gate. Evidence
+authenticity, technical marking effectiveness, exception applicability, core-domain PostgreSQL RLS,
+retention and independent legal/privacy review remain mandatory. See
+`docs/enterprise/wave60-article50-transparency-assurance.md`.
+
 ## Azure deployment checklist
 
 The application expects:
