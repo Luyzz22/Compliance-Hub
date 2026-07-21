@@ -3199,3 +3199,124 @@ export async function sendN8nWebhook(
     },
   ) as Promise<N8nWebhookResponse>;
 }
+
+// ─── Article 50 / GDPR Transparency Assurance ───────────────────────────
+
+export type AIValueChainRoleDto = "unknown" | "provider" | "deployer" | "both";
+export type TransparencyControlStatusDto =
+  | "not_assessed"
+  | "not_applicable"
+  | "planned"
+  | "implemented"
+  | "verified";
+export type TransparencyControlKeyDto =
+  | "ai_interaction_disclosure"
+  | "synthetic_content_marking"
+  | "emotion_biometric_notice"
+  | "deepfake_disclosure"
+  | "public_interest_text_review_or_disclosure"
+  | "gdpr_transparency_notice";
+
+export interface TransparencyControlDto {
+  control_key: TransparencyControlKeyDto;
+  status: TransparencyControlStatusDto;
+  evidence_reference: string | null;
+  rationale: string | null;
+  title_de: string;
+  description_de: string;
+  legal_basis: string;
+  accountable_role: string;
+  updated_at_utc: string | null;
+}
+
+export interface AITransparencyAssessmentDto {
+  id: string | null;
+  tenant_id: string;
+  ai_system_id: string;
+  role_scope: AIValueChainRoleDto;
+  control_owner: string | null;
+  reviewer: string | null;
+  reviewed_at_utc: string | null;
+  review_due_at_utc: string | null;
+  version: number;
+  controls: TransparencyControlDto[];
+  created_at_utc: string | null;
+  updated_at_utc: string | null;
+  updated_by: string | null;
+}
+
+export interface AITransparencySystemRowDto {
+  ai_system_id: string;
+  ai_system_name: string;
+  business_unit: string;
+  risk_level: string;
+  ai_act_category: string;
+  assessment: AITransparencyAssessmentDto;
+  readiness_score_pct: number;
+  posture: string;
+  applicable_controls: number;
+  verified_controls: number;
+  review_overdue: boolean;
+}
+
+export interface AITransparencyAssuranceResponseDto {
+  tenant_id: string;
+  generated_at_utc: string;
+  article_50_application_at_utc: string;
+  days_until_application: number;
+  readiness_score_pct: number;
+  posture: string;
+  framework_version: string;
+  source_url: string;
+  legal_disclaimer_de: string;
+  summary: {
+    total_systems: number;
+    assessed_systems: number;
+    requires_scope_count: number;
+    verified_systems: number;
+    overdue_review_count: number;
+    applicable_controls: number;
+    verified_controls: number;
+  };
+  systems: AITransparencySystemRowDto[];
+}
+
+export interface AITransparencyAssessmentUpsertDto {
+  expected_version: number;
+  role_scope: AIValueChainRoleDto;
+  control_owner: string | null;
+  reviewer: string | null;
+  reviewed_at_utc: string | null;
+  review_due_at_utc: string | null;
+  controls: {
+    control_key: TransparencyControlKeyDto;
+    status: TransparencyControlStatusDto;
+    evidence_reference: string | null;
+    rationale: string | null;
+  }[];
+}
+
+export async function fetchAITransparencyAssurance(
+  tenantId: string,
+): Promise<AITransparencyAssuranceResponseDto> {
+  return tenantApiFetch(
+    "/api/v1/transparency-assurance",
+    tenantId,
+  ) as Promise<AITransparencyAssuranceResponseDto>;
+}
+
+export async function updateAITransparencyAssessment(
+  tenantId: string,
+  aiSystemId: string,
+  body: AITransparencyAssessmentUpsertDto,
+): Promise<AITransparencyAssessmentDto> {
+  const sid = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(
+    `/api/v1/ai-systems/${sid}/transparency-assurance`,
+    tenantId,
+    {
+      method: "PUT",
+      body: JSON.stringify(body),
+    },
+  ) as Promise<AITransparencyAssessmentDto>;
+}

@@ -59,10 +59,11 @@ const VALID_ROLES: ReadonlySet<string> = new Set<UserRole>([
 ]);
 
 function resolveRole(): UserRole | null {
-  const raw =
-    typeof window !== "undefined"
-      ? process.env.NEXT_PUBLIC_OPA_USER_ROLE?.trim().toLowerCase() ?? null
-      : null;
+  // NEXT_PUBLIC_* values are embedded into the client bundle by Next.js and
+  // are also available while rendering Client Components on the server. Read
+  // the same value in both environments so the initial navigation markup is
+  // hydration-stable. API/session authorization remains authoritative.
+  const raw = process.env.NEXT_PUBLIC_OPA_USER_ROLE?.trim().toLowerCase() ?? null;
   if (!raw || !VALID_ROLES.has(raw)) return null;
   return raw as UserRole;
 }

@@ -380,6 +380,80 @@ class AISystemInventoryProfileDB(Base):
     updated_by: Mapped[str] = mapped_column(String(320), nullable=False, default="api_client")
 
 
+class AITransparencyAssessmentTable(Base):
+    """Versioned assurance header for Article 50 and GDPR transparency controls."""
+
+    __tablename__ = "ai_transparency_assessments"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "ai_system_id",
+            name="uq_ai_transparency_assessment_tenant_system",
+        ),
+        Index(
+            "ix_ai_transparency_assessments_tenant_review_due",
+            "tenant_id",
+            "review_due_at_utc",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    control_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reviewer: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reviewed_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_due_at_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
+class AITransparencyControlTable(Base):
+    """Per-control evidence record; evidence never gets inferred from a global checkbox."""
+
+    __tablename__ = "ai_transparency_controls"
+    __table_args__ = (
+        UniqueConstraint(
+            "assessment_id",
+            "control_key",
+            name="uq_ai_transparency_control_assessment_key",
+        ),
+        Index(
+            "ix_ai_transparency_controls_tenant_status",
+            "tenant_id",
+            "status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    assessment_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ai_transparency_assessments.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    control_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_assessed")
+    evidence_reference: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
 class AIRegisterEntryDB(Base):
     __tablename__ = "ai_register_entries"
     __table_args__ = (
