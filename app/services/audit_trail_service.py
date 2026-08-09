@@ -14,12 +14,12 @@ from sqlalchemy.orm import Session
 from app.models_db import AuditAlertDB, AuditLogTable
 from app.repositories.audit_logs import AuditLogRepository, _compute_entry_hash
 from app.services.audit_trail_types import (
+    AuditActivityExport,
+    AuditActivitySummaryEntry,
     AuditAlertItem,
     AuditLogItem,
     AuditLogPage,
     ChainIntegrityResult,
-    VVTEntry,
-    VVTExport,
 )
 
 
@@ -176,41 +176,49 @@ class AuditTrailService:
             default=str,
         )
 
-    def generate_vvt_export(self, tenant_id: str) -> VVTExport:
-        """Generate DSGVO Art. 30 Verarbeitungsverzeichnis from audit data."""
+    def generate_activity_export(self, tenant_id: str) -> AuditActivityExport:
+        """
+        Aggregate recorded audit actions for the tenant.
+
+        Purely descriptive: it reports which actions occurred, on which entity types and
+        how often. It deliberately does **not** state processing purposes, legal bases,
+        retention periods or technical measures — those are determinations the
+        controller has to make and cannot be derived from audit log rows.
+        """
         entries = self._repo.list_for_tenant(tenant_id=tenant_id, limit=50_000)
 
-        activity_map: dict[str, set[str]] = {}
+        entity_types_by_action: dict[str, set[str]] = {}
+        counts: dict[str, int] = {}
+        first_seen: dict[str, datetime] = {}
+        last_seen: dict[str, datetime] = {}
+
         for entry in entries:
             key = entry.action
-            if key not in activity_map:
-                activity_map[key] = set()
-            activity_map[key].add(entry.entity_type)
+            entity_types_by_action.setdefault(key, set()).add(entry.entity_type)
+            counts[key] = counts.get(key, 0) + 1
+            created = entry.created_at_utc
+            if created is not None:
+                if key not in first_seen or created < first_seen[key]:
+                    first_seen[key] = created
+                if key not in last_seen or created > last_seen[key]:
+                    last_seen[key] = created
 
-        vvt_entries: list[VVTEntry] = []
-        for action_key, entity_types in sorted(activity_map.items()):
-            vvt_entries.append(
-                VVTEntry(
-                    processing_activity=action_key,
-                    data_categories=sorted(entity_types),
-                    purpose=f"Compliance-Verarbeitung: {action_key}",
-                    legal_basis="Art. 6 Abs. 1 lit. c/f DSGVO",
-                    recipients=["Compliance-Hub System", "Tenant-Administratoren"],
-                    retention_period="10 Jahre (GoBD / AO)",
-                    technical_measures=[
-                        "SHA-256 Hashketten-Integrität",
-                        "Append-only Speicherung",
-                        "Row-Level-Security",
-                        "TLS 1.3 Verschlüsselung",
-                    ],
-                )
+        summary_entries = [
+            AuditActivitySummaryEntry(
+                action=action_key,
+                entity_types=sorted(entity_types),
+                event_count=counts.get(action_key, 0),
+                first_seen_at_utc=first_seen.get(action_key),
+                last_seen_at_utc=last_seen.get(action_key),
             )
+            for action_key, entity_types in sorted(entity_types_by_action.items())
+        ]
 
-        return VVTExport(
+        return AuditActivityExport(
             tenant_id=tenant_id,
             generated_at=datetime.now(UTC),
-            entries=vvt_entries,
-            total_processing_activities=len(vvt_entries),
+            entries=summary_entries,
+            total_actions=len(summary_entries),
         )
 
 

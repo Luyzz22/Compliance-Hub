@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
+from app import sovereignty
 from app.db import SessionLocal
 from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.llm_models import (
@@ -25,6 +26,23 @@ from app.services.llm_router import LLMRouter, filter_candidates, preference_cha
 from app.services.tenant_llm_policy import default_tenant_llm_policy
 
 client = TestClient(app)
+
+
+@pytest.fixture
+def unrestricted_sovereignty(monkeypatch: pytest.MonkeyPatch):
+    """
+    Permit every LLM provider for this test.
+
+    The deployment default is ``standard_dach``, which removes direct US model APIs from
+    the fallback chain entirely. Tests that exercise cross-provider fallback therefore
+    have to state explicitly that they run in the unrestricted mode — otherwise they
+    would be asserting behaviour the shipped default deliberately prevents.
+    """
+    monkeypatch.setenv("COMPLIANCEHUB_SOVEREIGNTY_MODE", "unrestricted")
+    sovereignty.current_mode.cache_clear()
+    yield
+    monkeypatch.delenv("COMPLIANCEHUB_SOVEREIGNTY_MODE", raising=False)
+    sovereignty.current_mode.cache_clear()
 
 
 def test_llm_master_feature_defaults_off() -> None:
@@ -98,7 +116,9 @@ def test_filter_on_prem_only_public_api(monkeypatch: pytest.MonkeyPatch) -> None
     assert c == [LLMProvider.LLAMA]
 
 
-def test_router_skips_unconfigured_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_router_skips_unconfigured_provider(
+    monkeypatch: pytest.MonkeyPatch, unrestricted_sovereignty: None
+) -> None:
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_ENABLED", "true")
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_LEGAL_REASONING", "true")
     monkeypatch.delenv("CLAUDE_API_KEY", raising=False)
@@ -119,7 +139,9 @@ def test_router_skips_unconfigured_provider(monkeypatch: pytest.MonkeyPatch) -> 
     assert resp.provider == LLMProvider.OPENAI
 
 
-def test_router_fallback_on_provider_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_router_fallback_on_provider_failure(
+    monkeypatch: pytest.MonkeyPatch, unrestricted_sovereignty: None
+) -> None:
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_ENABLED", "true")
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_LEGAL_REASONING", "true")
     monkeypatch.setenv("CLAUDE_API_KEY", "k")
@@ -149,7 +171,9 @@ def test_on_prem_sensitive_requires_llama_url(monkeypatch: pytest.MonkeyPatch) -
         router.route_and_call(LLMTaskType.ON_PREM_SENSITIVE, "x", "t-prem")
 
 
-def test_metadata_inserted_when_session_provided(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_metadata_inserted_when_session_provided(
+    monkeypatch: pytest.MonkeyPatch, unrestricted_sovereignty: None
+) -> None:
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_ENABLED", "true")
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_CLASSIFICATION_TAGGING", "true")
     monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key-for-routing")

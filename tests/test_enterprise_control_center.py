@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -29,6 +31,7 @@ def test_control_center_returns_compact_operational_view() -> None:
             "affected_systems": ["erp-1"],
             "kritis_relevant": True,
             "personal_data_affected": False,
+            "became_aware_at": datetime.now(UTC).isoformat(),
         },
         headers=_headers(tenant),
     )

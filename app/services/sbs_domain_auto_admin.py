@@ -10,6 +10,7 @@ Only verified emails may receive auto-admin privileges.
 from __future__ import annotations
 
 import logging
+import os
 
 from app.rbac.roles import EnterpriseRole
 
@@ -30,15 +31,34 @@ def is_sbs_domain(email: str) -> bool:
     return domain in SBS_ADMIN_DOMAINS
 
 
+def auto_admin_enabled() -> bool:
+    """Return True if domain-based auto-admin may assign privileges.
+
+    Binding a privileged role to an e-mail domain makes administrative access depend on
+    control over that domain and on the mail-verification path. That is acceptable for
+    operator bootstrapping in development, but it must not be the default in production.
+    Production therefore requires an explicit opt-in.
+    """
+    environment = os.getenv("COMPLIANCEHUB_ENV", "dev").strip().lower()
+    if environment not in {"prod", "production"}:
+        return True
+    raw = os.getenv("COMPLIANCEHUB_ALLOW_DOMAIN_AUTO_ADMIN", "false").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
 def resolve_auto_role(email: str, *, email_verified: bool) -> EnterpriseRole | None:
     """Determine the automatic role for *email*, or None if no auto-assignment applies.
 
+    - Disabled in production unless ``COMPLIANCEHUB_ALLOW_DOMAIN_AUTO_ADMIN`` is set.
     - Only verified SBS-domain emails receive auto-admin privileges.
     - ``ki@sbsdeutschland.de`` receives SUPER_ADMIN.
     - Other verified SBS-domain emails receive TENANT_ADMIN.
     - Non-SBS or unverified emails return None (no auto-assignment).
     """
     if not email_verified:
+        return None
+    if not auto_admin_enabled():
+        logger.info("domain_auto_admin_suppressed_in_production")
         return None
     normalised = email.strip().lower()
     if not is_sbs_domain(normalised):

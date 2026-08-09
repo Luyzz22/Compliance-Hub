@@ -709,6 +709,10 @@ class EvidenceFileTable(Base):
     filename_original: Mapped[str] = mapped_column(String(512), nullable=False)
     storage_key: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
     content_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    # SHA-256 over the stored bytes. Without it the platform cannot demonstrate that a
+    # piece of evidence is unchanged since upload, which is the core requirement auditors
+    # place on evidence in ISO 27001 and GoBD reviews.
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     uploaded_by: Mapped[str] = mapped_column(String(320), nullable=False)
     norm_framework: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -1773,6 +1777,13 @@ class NIS2IncidentTable(Base):
     )
     final_report_deadline: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # NIS2 Art. 23 anchors the 24h/72h/one-month cascade on the moment of awareness.
+    # ``deadline_basis`` records whether that anchor is real or a backfilled fallback,
+    # so an auditor can tell a computed deadline from an approximated one.
+    became_aware_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deadline_basis: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="awareness", server_default="awareness"
     )
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     contained_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

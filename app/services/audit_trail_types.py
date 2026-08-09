@@ -84,18 +84,38 @@ class ChainIntegrityResult(BaseModel):
     first_invalid_id: int | None = None
 
 
-class VVTEntry(BaseModel):
-    processing_activity: str
-    data_categories: list[str]
-    purpose: str
-    legal_basis: str
-    recipients: list[str]
-    retention_period: str
-    technical_measures: list[str]
+AUDIT_ACTIVITY_EXPORT_DISCLAIMER = (
+    "Dies ist eine Aggregation protokollierter Systemaktivitäten aus dem Audit-Trail. "
+    "Es ist KEIN Verzeichnis von Verarbeitungstätigkeiten nach Art. 30 DSGVO. "
+    "Zweck, Rechtsgrundlage, Empfängerkategorien, Löschfristen und technisch-"
+    "organisatorische Maßnahmen sind vom Verantwortlichen eigenständig zu bestimmen "
+    "und zu dokumentieren; sie können nicht aus Audit-Log-Einträgen abgeleitet werden."
+)
 
 
-class VVTExport(BaseModel):
+class AuditActivitySummaryEntry(BaseModel):
+    """Aggregierte Systemaktivität – rein deskriptiv, ohne rechtliche Bewertung."""
+
+    action: str
+    entity_types: list[str]
+    event_count: int
+    first_seen_at_utc: datetime | None = None
+    last_seen_at_utc: datetime | None = None
+
+
+class AuditActivityExport(BaseModel):
+    """
+    Aktivitätsübersicht aus dem Audit-Trail.
+
+    Bewusst **kein** VVT/ROPA: Die Felder ``purpose``, ``legal_basis``,
+    ``retention_period`` und ``technical_measures`` wurden entfernt, weil sie zuvor mit
+    konstanten Platzhaltern befüllt wurden. Ein aus Platzhaltern erzeugtes Dokument, das
+    wie ein Art.-30-Verzeichnis aussieht, ist gegenüber einer Aufsichtsbehörde
+    irreführend.
+    """
+
     tenant_id: str
     generated_at: datetime
-    entries: list[VVTEntry]
-    total_processing_activities: int
+    entries: list[AuditActivitySummaryEntry]
+    total_actions: int
+    disclaimer: str = AUDIT_ACTIVITY_EXPORT_DISCLAIMER

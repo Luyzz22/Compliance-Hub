@@ -385,10 +385,10 @@ from app.services.ai_system_import import import_ai_systems_from_file
 from app.services.audit_gobd_export import generate_gobd_xml
 from app.services.audit_trail_service import AuditTrailService, NIS2AlertService
 from app.services.audit_trail_types import (
+    AuditActivityExport,
     AuditAlertItem,
     AuditLogPage,
     ChainIntegrityResult,
-    VVTExport,
 )
 from app.services.authority_ai_export import build_authority_export
 from app.services.authority_audit_preparation_pack import (
@@ -456,6 +456,7 @@ from app.services.evidence_service import (
 )
 from app.services.evidence_service import (
     download_evidence,
+    verify_evidence_integrity,
 )
 from app.services.evidence_service import (
     list_evidence as list_evidence_files,
@@ -526,6 +527,12 @@ from app.services.tenant_usage_metrics import compute_tenant_usage_metrics
 from app.services.user_session_service import UserSessionService
 from app.services.what_if_simulator import simulate_board_impact
 from app.setup_models import TenantSetupStatus
+from app.sovereignty import (
+    public_profile_payload as sovereignty_public_profile_payload,
+)
+from app.sovereignty import (
+    verify_startup_configuration as verify_sovereignty_configuration,
+)
 from app.supplier_risk_models import (
     AISupplierRiskBySystemEntry,
     AISupplierRiskOverview,
@@ -592,6 +599,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "on",
         }:
             raise RuntimeError("Global API keys are forbidden in production")
+        # A database file default would put a multi-tenant GRC workload on SQLite:
+        # no row-level security, no PITR, no role-based database permissions.
+        db_url = os.getenv("COMPLIANCEHUB_DB_URL", "").strip()
+        if not db_url:
+            raise RuntimeError("COMPLIANCEHUB_DB_URL is required in production")
+        if db_url.startswith("sqlite"):
+            raise RuntimeError(
+                "SQLite is not permitted in production; configure PostgreSQL via "
+                "COMPLIANCEHUB_DB_URL"
+            )
+    # Fail closed when the configured vendors contradict the sovereignty mode: booting
+    # anyway would silently invalidate every claim that mode authorises.
+    verify_sovereignty_configuration()
     Base.metadata.create_all(bind=engine)
     run_all_db_migrations(engine)
     configure_telemetry()
@@ -911,6 +931,22 @@ class OamiExplainPocRequestBody(BaseModel):
 @app.get("/api/v1/health")
 def health_v1() -> dict[str, str]:
     return _health_payload()
+
+
+@app.get("/api/v1/sovereignty/profile", tags=["trust"])
+def sovereignty_profile() -> dict[str, object]:
+    """
+    Publish the deployment's data-sovereignty mode and the claims it authorises.
+
+    Deliberately unauthenticated: a residency commitment that a prospect cannot verify
+    is only a marketing statement. This endpoint lets the trust center — and a customer
+    running a security review — read the enforced vendor ceiling, the statements that
+    may truthfully be made under it, and the residual risks that remain, instead of
+    taking the website's word for it.
+
+    Contains no tenant data. See ``docs/market-readiness/06-target-architecture-modes.md``.
+    """
+    return sovereignty_public_profile_payload()
 
 
 class NormEvidenceWithAudit(BaseModel):
@@ -1263,6 +1299,26 @@ def download_evidence_api(
         content=blob,
         media_type=content_type,
         headers={"Content-Disposition": _evidence_content_disposition(filename)},
+    )
+
+
+@app.get("/api/v1/evidence/{evidence_id}/verify")
+def verify_evidence_api(
+    evidence_id: str,
+    auth_context: Annotated[AuthContext, Depends(get_auth_context)],
+    evidence_repo: Annotated[EvidenceFileRepository, Depends(get_evidence_file_repository)],
+) -> dict[str, object]:
+    """
+    Recompute the stored evidence hash and report whether it still matches upload.
+
+    ``status`` is ``verified``, ``mismatch`` or ``unverifiable`` (files uploaded before
+    hashing existed have no baseline to compare against).
+    """
+    return verify_evidence_integrity(
+        auth_context.tenant_id,
+        evidence_id,
+        evidence_repo=evidence_repo,
+        storage=get_evidence_storage(),
     )
 
 
@@ -5654,15 +5710,38 @@ def export_audit_logs_json(
     )
 
 
-@app.get("/api/v1/audit-logs/vvt-export", response_model=VVTExport)
-def export_vvt(
+@app.get("/api/v1/audit-logs/activity-export", response_model=AuditActivityExport)
+def export_audit_activity(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
     session: Annotated[Session, Depends(get_session)],
-) -> VVTExport:
-    """DSGVO Art. 30 Verarbeitungsverzeichnis export."""
+) -> AuditActivityExport:
+    """
+    Aggregierte Übersicht der protokollierten Systemaktivitäten.
+
+    Ausdrücklich **kein** Verzeichnis von Verarbeitungstätigkeiten nach Art. 30 DSGVO.
+    Der frühere Pfad ``/api/v1/audit-logs/vvt-export`` trug diese Bezeichnung zu
+    Unrecht und befüllte Zweck, Rechtsgrundlage, Löschfrist und TOM mit Konstanten.
+    """
     svc = AuditTrailService(session)
-    return svc.generate_vvt_export(tenant_id)
+    return svc.generate_activity_export(tenant_id)
+
+
+@app.get(
+    "/api/v1/audit-logs/vvt-export",
+    response_model=AuditActivityExport,
+    deprecated=True,
+    summary="Veraltet – Alias auf /audit-logs/activity-export (kein Art.-30-Verzeichnis)",
+)
+def export_vvt_deprecated(
+    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
+    session: Annotated[Session, Depends(get_session)],
+) -> AuditActivityExport:
+    """Rückwärtskompatibler Alias. Liefert die Aktivitätsübersicht inkl. Disclaimer."""
+    logger.warning("deprecated_endpoint_used path=/api/v1/audit-logs/vvt-export")
+    svc = AuditTrailService(session)
+    return svc.generate_activity_export(tenant_id)
 
 
 @app.get("/api/v1/audit-alerts", response_model=list[AuditAlertItem])
