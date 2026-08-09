@@ -35,6 +35,37 @@ const dataResidencyFeatures = [
   "Datenregionen der Enterprise-Plattform werden erst vertraglich und evidenzbasiert freigegeben",
 ];
 
+/**
+ * Offene Punkte des heutigen Stands. Gepflegt gegen
+ * docs/market-readiness/00-executive-readiness-verdict.md — jede Zeile, die dort
+ * geschlossen wird, verschwindet hier.
+ */
+const currentLimitations = [
+  { topic: "ISO-27001-Zertifizierung", status: "Nicht vorhanden, in Vorbereitung" },
+  { topic: "SOC 2 Typ II", status: "Nicht vorhanden, nicht geplant (EU-Fokus)" },
+  {
+    topic: "Externer Penetrationstest",
+    status: "Noch nicht durchgeführt; vor dem ersten Enterprise-Einsatz vorgesehen",
+  },
+  { topic: "SAML 2.0", status: "Nicht verfügbar; Entra ID (OIDC) vorhanden" },
+  {
+    topic: "Kundenverwaltete Schlüssel (BYOK)",
+    status: "Nicht verfügbar; vorgesehen mit dem Modus „EU Sovereign“",
+  },
+  {
+    topic: "Betrieb ohne US-Dienstleister",
+    status: "Nicht im Standardmodus; Modus „EU Sovereign“ auf Anfrage",
+  },
+  {
+    topic: "Automatische Behördenmeldung",
+    status: "Nicht verfügbar; abhängig von Behördenschnittstellen",
+  },
+  {
+    topic: "Rechtsberatung",
+    status: "Erbringen wir nicht — wir sind keine Rechtsanwaltskanzlei",
+  },
+];
+
 export default function TrustCenterPublicPage() {
   const securityContact =
     process.env.COMPLIANCEHUB_SECURITY_CONTACT?.trim() || "/kontakt";
@@ -171,8 +202,60 @@ export default function TrustCenterPublicPage() {
           Unterauftragsverarbeiter und Datenregionen werden für Enterprise-Leistungen
           vertrags- und instanzbezogen offengelegt, bevor Kundendaten verarbeitet werden.
         </p>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+          Wir weisen zu jedem Unterauftragsverarbeiter die <strong>kontrollierende
+          Jurisdiktion</strong> getrennt vom Verarbeitungsstandort aus. Vercel Inc. ist ein
+          US-Unternehmen und unterliegt US-Recht — auch bei Auslieferung aus einer
+          EU-Region. Wir halten es für redlicher, das offen zu benennen, als es unter
+          „EU-Hosting“ zusammenzufassen.
+        </p>
         <p className="mt-3 text-xs text-slate-500">
           Letzte Aktualisierung: 15.07.2026
+        </p>
+      </section>
+
+      {/* Bewusst prominent: Grenzen des heutigen Stands. Ein Prospect findet sie in der
+          Sicherheitsprüfung ohnehin; sie vorher zu nennen kostet ein Feature, sie später
+          entdecken zu lassen kostet den Abschluss. */}
+      <section aria-labelledby="limitations">
+        <h2
+          id="limitations"
+          className="text-xl font-semibold tracking-tight text-slate-900"
+        >
+          Was wir heute nicht können
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+          Diese Punkte werden in einer Sicherheitsprüfung ohnehin auffallen. Wir nennen sie
+          lieber vorher, damit Sie früh entscheiden können, ob wir zu Ihren Anforderungen
+          passen.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th scope="col" className="py-2 pr-4 font-semibold text-slate-700">
+                  Thema
+                </th>
+                <th scope="col" className="py-2 font-semibold text-slate-700">
+                  Stand
+                </th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-600">
+              {currentLimitations.map((item) => (
+                <tr key={item.topic} className="border-b border-slate-100">
+                  <th scope="row" className="py-2 pr-4 font-medium text-slate-800">
+                    {item.topic}
+                  </th>
+                  <td className="py-2">{item.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">
+          Fehlt Ihnen etwas Entscheidendes? Sprechen Sie uns an. Wenn wir es nicht liefern
+          können, sagen wir das im ersten Gespräch.
         </p>
       </section>
 

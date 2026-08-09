@@ -7,6 +7,15 @@ Enterprise-SaaS-Prototyp für den DACH-Mittelstand: E-Rechnung, DSGVO und GoBD i
 > [Enterprise-Readiness-Bericht](docs/enterprise-readiness-20260714.md). Insbesondere ersetzen
 > Software-Kontrollen keine Rechtsberatung, Datenschutz-Folgenabschätzung, Vertragsprüfung,
 > Zertifizierung oder Betreiberfreigabe.
+>
+> **Marktreife-Review DACH (2026-08-09):** Vollständige Bewertung von Produkt-, Sicherheits-,
+> DSGVO-, AI-Act-, NIS2- und Souveränitätsreife inklusive Claim-vs-Proof-Matrix,
+> Zielarchitektur, Refactoring-Roadmap und GTM-Readiness:
+> [`docs/market-readiness/`](docs/market-readiness/README.md).
+> Einstieg: [Executive Marktreife-Bewertung](docs/market-readiness/00-executive-readiness-verdict.md).
+> **Verbindlich für alle öffentlichen Texte:**
+> [Messaging-Redlines](docs/market-readiness/10-messaging-redlines.md) und
+> [Claim-vs-Proof-Matrix](docs/market-readiness/02-claim-vs-proof-matrix.md).
 
 ### EU AI Act Risk Classification & Gap Analysis
 
