@@ -22,10 +22,31 @@ def _set_mode(monkeypatch: pytest.MonkeyPatch, mode: str) -> None:
     sovereignty.current_mode.cache_clear()
 
 
-def test_default_mode_is_standard_dach(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_default_mode_authorises_no_claims(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    An unconfigured deployment must not assert a posture nobody selected.
+
+    Defaulting to ``standard_dach`` would look safer but would have the runtime authorise
+    statements like "Betrieb in EU-Rechenzentren" that nothing guarantees — and would cut
+    off model providers a running deployment may depend on.
+    """
     monkeypatch.delenv("COMPLIANCEHUB_SOVEREIGNTY_MODE", raising=False)
     sovereignty.current_mode.cache_clear()
-    assert sovereignty.current_mode() is sovereignty.SovereigntyMode.STANDARD_DACH
+    assert sovereignty.current_mode() is sovereignty.SovereigntyMode.UNRESTRICTED
+    assert sovereignty.current_profile().permitted_claims_de == ()
+
+
+def test_default_mode_does_not_break_existing_provider_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Upgrading without choosing a mode must not silently disable LLM routing."""
+    monkeypatch.delenv("COMPLIANCEHUB_SOVEREIGNTY_MODE", raising=False)
+    monkeypatch.setenv("COMPLIANCEHUB_LLM_US_CLOUD_OK", "true")
+    sovereignty.current_mode.cache_clear()
+
+    assert sovereignty.verify_startup_configuration() == []
+    chain = ["claude", "openai", "azure_openai", "gemini", "llama"]
+    assert sovereignty.filter_llm_provider_chain(chain) == chain
 
 
 def test_unknown_mode_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:

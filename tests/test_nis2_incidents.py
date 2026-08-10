@@ -392,3 +392,25 @@ def test_manual_override_is_marked_in_deadline_basis() -> None:
     )
     assert patched.status_code == 200
     assert patched.json()["deadline_basis"] == "manual_override"
+
+
+def test_no_op_override_does_not_flip_deadline_basis() -> None:
+    """Re-submitting the stored value must not mark the record as hand-set."""
+    created = client.post(
+        "/api/v1/nis2-incidents",
+        json=_create_payload(title="No-op override"),
+        headers=_HEADERS_A,
+    )
+    body = created.json()
+    inc_id = body["id"]
+
+    patched = client.patch(
+        f"/api/v1/nis2-incidents/{inc_id}/deadlines",
+        json={
+            "bsi_notification_deadline": body["bsi_notification_deadline"],
+            "reason": "re-submitted the unchanged value during a client retry",
+        },
+        headers=_HEADERS_A,
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["deadline_basis"] == "awareness"

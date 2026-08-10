@@ -52,7 +52,12 @@ class NIS2DeadlineBasis(StrEnum):
     AWARENESS = "awareness"
     #: Legacy/backfilled rows where only the record-creation time was known.
     ENTRY_FALLBACK = "entry_fallback"
-    #: Deadlines were manually overridden and audited.
+    #: At least one deadline on this record was set by hand rather than computed.
+    #:
+    #: The marker is record-level, not per deadline: a partial override still means the
+    #: record's deadlines can no longer be read as purely derived from awareness. Which
+    #: individual deadlines were changed, by whom and why is recorded in the audit trail
+    #: under ``NIS2_INCIDENT_DEADLINE_OVERRIDE``.
     MANUAL_OVERRIDE = "manual_override"
 
 

@@ -13,8 +13,15 @@ schalten, dessen Infrastruktur nicht existiert.
 ## Technische Verankerung
 
 ```
-COMPLIANCEHUB_SOVEREIGNTY_MODE = standard_dach | eu_sovereign | strict_sovereign
+COMPLIANCEHUB_SOVEREIGNTY_MODE = unrestricted | standard_dach | eu_sovereign | strict_sovereign
 ```
+
+**Der Default ist `unrestricted`** — bewusst der Modus, der **keine** Aussage
+autorisiert. Ein restriktiver Default sähe sicherer aus, würde die Laufzeit aber eine
+Haltung behaupten lassen, die niemand gewählt hat: `standard_dach` erlaubt Aussagen wie
+„Betrieb in EU-Rechenzentren", die in einer unkonfigurierten Installation durch nichts
+gedeckt sind. Ein Modus, der Marketingaussagen freigibt, muss eine bewusste Entscheidung
+sein. `unrestricted` wird bei jedem Start als Warnung protokolliert.
 
 Die Variable steuert vier Dinge:
 

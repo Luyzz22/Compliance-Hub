@@ -17,11 +17,18 @@ type ActivityEntry = {
   event_count: number;
 };
 
-/** Beispielhafte Struktur der API-Antwort von GET /api/v1/audit-logs/activity-export. */
-const SAMPLE_ACTIVITY: ActivityEntry[] = [
-  { action: "login", entity_types: ["session"], event_count: 128 },
-  { action: "role_change", entity_types: ["user_role"], event_count: 6 },
-  { action: "update_ai_system", entity_types: ["ai_system"], event_count: 41 },
+/**
+ * Strukturbeispiel für die Antwort von GET /api/v1/audit-logs/activity-export.
+ *
+ * Bewusst ohne Ereigniszahlen: Die Vorgängerseite zeigte erfundene Zahlen und
+ * Rechtsangaben in einer Aufmachung, die sie wie Mandantendaten aussehen ließ. Solange
+ * die Ansicht nicht an die API angebunden ist, darf sie nichts zeigen, was mit echten
+ * Auswertungen verwechselt werden kann.
+ */
+const STRUCTURE_EXAMPLE: Pick<ActivityEntry, "action" | "entity_types">[] = [
+  { action: "login", entity_types: ["session"] },
+  { action: "role_change", entity_types: ["user_role"] },
+  { action: "update_ai_system", entity_types: ["ai_system"] },
 ];
 
 export function AuditActivityExportClient() {
@@ -71,46 +78,47 @@ export function AuditActivityExportClient() {
         </p>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Protokollierte Aktionsarten
-          </p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">{SAMPLE_ACTIVITY.length}</p>
+      {/* Strukturbeispiel — bewusst ohne Zahlen und klar als solches markiert. */}
+      <section
+        aria-labelledby="structure-example"
+        className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 id="structure-example" className="text-sm font-semibold text-slate-900">
+            Aufbau der Auswertung
+          </h2>
+          <span className="inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-slate-700">
+            Strukturbeispiel — keine Mandantendaten
+          </span>
         </div>
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Erfasste Ereignisse
-          </p>
-          <p className="mt-1 text-2xl font-bold text-slate-900">
-            {SAMPLE_ACTIVITY.reduce((sum, e) => sum + e.event_count, 0)}
-          </p>
-        </div>
-      </div>
-
-      {/* Entries */}
-      <div className="space-y-4">
-        {SAMPLE_ACTIVITY.map((entry) => (
-          <div
-            key={entry.action}
-            className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <h3 className="text-base font-semibold text-slate-900">{entry.action}</h3>
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold text-slate-700 ring-1 ring-inset ring-slate-200/70">
-                {entry.event_count} Ereignisse
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+          Diese Ansicht ist noch nicht an die Auswertungs-API angebunden. Sie zeigt, welche
+          Felder{" "}
+          <code className="rounded bg-white px-1 py-0.5 text-xs">
+            GET /api/v1/audit-logs/activity-export
+          </code>{" "}
+          liefert: Aktion, betroffene Objekttypen, Ereigniszahl sowie erstes und letztes
+          Auftreten. Beispielzahlen werden bewusst nicht dargestellt, damit nichts mit einer
+          echten Auswertung Ihres Mandanten verwechselt werden kann.
+        </p>
+        <ul className="mt-4 space-y-2">
+          {STRUCTURE_EXAMPLE.map((entry) => (
+            <li
+              key={entry.action}
+              className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-xl bg-white px-4 py-3"
+            >
+              <span className="font-mono text-sm text-slate-900">{entry.action}</span>
+              <span className="text-xs text-slate-500">
+                Objekttypen: {entry.entity_types.join(", ")}
               </span>
-            </div>
-            <div className="mt-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Betroffene Objekttypen
-              </p>
-              <p className="mt-0.5 text-sm text-slate-700">{entry.entity_types.join(", ")}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-sm text-slate-600">
+          Bis zur Anbindung rufen Sie die vollständige Auswertung direkt über die API ab.
+        </p>
+      </section>
+
     </div>
   );
 }

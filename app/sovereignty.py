@@ -171,7 +171,14 @@ _PROFILES: dict[SovereigntyMode, SovereigntyProfile] = {
     ),
 }
 
-DEFAULT_MODE = SovereigntyMode.STANDARD_DACH
+#: Deliberately the mode that authorises **no** claims.
+#:
+#: A restrictive default would be the safer-looking choice, but it would have the runtime
+#: assert a posture the operator never selected — ``standard_dach`` authorises statements
+#: like "Betrieb in EU-Rechenzentren", which nothing in an unconfigured deployment
+#: guarantees. It would also silently cut off model providers that a running deployment
+#: depends on. A mode that permits marketing statements has to be an explicit decision.
+DEFAULT_MODE = SovereigntyMode.UNRESTRICTED
 
 
 class SovereigntyConfigurationError(RuntimeError):
@@ -193,7 +200,7 @@ def _env_is_truthy(name: str) -> bool:
 
 @lru_cache
 def current_mode() -> SovereigntyMode:
-    """Return the configured mode, defaulting to ``standard_dach``."""
+    """Return the configured mode, defaulting to ``unrestricted`` (see ``DEFAULT_MODE``)."""
     raw = os.getenv("COMPLIANCEHUB_SOVEREIGNTY_MODE", "").strip().lower()
     if not raw:
         return DEFAULT_MODE
@@ -237,6 +244,16 @@ def verify_startup_configuration(*, raise_on_error: bool = True) -> list[str]:
     configured would silently invalidate every claim the mode authorises.
     """
     profile = current_profile()
+    if profile.mode is SovereigntyMode.UNRESTRICTED:
+        # Surfaced at every startup: an operator who never chose a mode should not be
+        # able to believe a residency posture is in force.
+        logger.warning(
+            "sovereignty_mode_unrestricted no vendor restrictions are enforced and no "
+            "residency or sovereignty statement is permitted; set "
+            "COMPLIANCEHUB_SOVEREIGNTY_MODE to standard_dach, eu_sovereign or "
+            "strict_sovereign to enforce one"
+        )
+
     violations = [
         f"{name} is set but forbidden in sovereignty mode '{profile.mode.value}'"
         for name in profile.forbidden_env_vars

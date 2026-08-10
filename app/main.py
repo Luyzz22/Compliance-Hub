@@ -5731,15 +5731,31 @@ def export_audit_activity(
     "/api/v1/audit-logs/vvt-export",
     response_model=AuditActivityExport,
     deprecated=True,
-    summary="Veraltet – Alias auf /audit-logs/activity-export (kein Art.-30-Verzeichnis)",
+    summary="Veraltet – geändertes Antwortschema, siehe /audit-logs/activity-export",
 )
 def export_vvt_deprecated(
+    response: Response,
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
     session: Annotated[Session, Depends(get_session)],
 ) -> AuditActivityExport:
-    """Rückwärtskompatibler Alias. Liefert die Aktivitätsübersicht inkl. Disclaimer."""
+    """
+    Veralteter Pfad. **Das Antwortschema hat sich geändert — dies ist kein
+    rückwärtskompatibler Alias.**
+
+    Die früheren Felder ``processing_activity``, ``purpose``, ``legal_basis``,
+    ``retention_period``, ``technical_measures`` und ``total_processing_activities``
+    entfallen ersatzlos. Sie waren mit Konstanten befüllt und ließen ein Aktivitäts-
+    protokoll wie ein Verzeichnis nach Art. 30 DSGVO aussehen; sie weiterzuliefern
+    hieße, eine irreführende Angabe zu konservieren.
+
+    Aufrufer wechseln auf ``/api/v1/audit-logs/activity-export`` und lesen ``action``
+    statt ``processing_activity`` sowie ``total_actions`` statt
+    ``total_processing_activities``.
+    """
     logger.warning("deprecated_endpoint_used path=/api/v1/audit-logs/vvt-export")
+    response.headers["Deprecation"] = "true"
+    response.headers["Link"] = '</api/v1/audit-logs/activity-export>; rel="successor-version"'
     svc = AuditTrailService(session)
     return svc.generate_activity_export(tenant_id)
 

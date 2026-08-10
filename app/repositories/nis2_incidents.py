@@ -197,14 +197,24 @@ class NIS2IncidentRepository:
         if row is None:
             raise LookupError(f"NIS2 incident {incident_id} not found")
 
-        if body.bsi_notification_deadline is not None:
-            row.bsi_notification_deadline = body.bsi_notification_deadline
-        if body.bsi_report_deadline is not None:
-            row.bsi_report_deadline = body.bsi_report_deadline
-        if body.final_report_deadline is not None:
-            row.final_report_deadline = body.final_report_deadline
-        # Mark the row so reports can distinguish a computed deadline from a manual one.
-        row.deadline_basis = NIS2DeadlineBasis.MANUAL_OVERRIDE.value
+        changed = False
+        for field_name in (
+            "bsi_notification_deadline",
+            "bsi_report_deadline",
+            "final_report_deadline",
+        ):
+            supplied = getattr(body, field_name)
+            if supplied is None or getattr(row, field_name) == supplied:
+                continue
+            setattr(row, field_name, supplied)
+            changed = True
+
+        if changed:
+            # Record-level marker: once any deadline is hand-set, the row's deadlines can
+            # no longer be read as purely derived from the awareness timestamp. Which
+            # deadline changed is captured in the audit entry for this override. A no-op
+            # override must not flip the marker.
+            row.deadline_basis = NIS2DeadlineBasis.MANUAL_OVERRIDE.value
         row.updated_at_utc = datetime.now(UTC)
 
         self._session.commit()

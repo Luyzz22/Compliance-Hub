@@ -185,33 +185,40 @@ class AuditTrailService:
         retention periods or technical measures — those are determinations the
         controller has to make and cannot be derived from audit log rows.
         """
-        entries = self._repo.list_for_tenant(tenant_id=tenant_id, limit=50_000)
+        # Aggregated in SQL rather than over a fetched page: a row-capped Python pass
+        # would report the oldest row *inside the window* as "first seen", which for a
+        # busy tenant is simply wrong.
+        totals_stmt = (
+            select(
+                AuditLogTable.action,
+                func.count().label("event_count"),
+                func.min(AuditLogTable.created_at_utc).label("first_seen"),
+                func.max(AuditLogTable.created_at_utc).label("last_seen"),
+            )
+            .where(AuditLogTable.tenant_id == tenant_id)
+            .group_by(AuditLogTable.action)
+            .order_by(AuditLogTable.action.asc())
+        )
+        totals = self._session.execute(totals_stmt).all()
 
+        entity_types_stmt = (
+            select(AuditLogTable.action, AuditLogTable.entity_type)
+            .where(AuditLogTable.tenant_id == tenant_id)
+            .distinct()
+        )
         entity_types_by_action: dict[str, set[str]] = {}
-        counts: dict[str, int] = {}
-        first_seen: dict[str, datetime] = {}
-        last_seen: dict[str, datetime] = {}
-
-        for entry in entries:
-            key = entry.action
-            entity_types_by_action.setdefault(key, set()).add(entry.entity_type)
-            counts[key] = counts.get(key, 0) + 1
-            created = entry.created_at_utc
-            if created is not None:
-                if key not in first_seen or created < first_seen[key]:
-                    first_seen[key] = created
-                if key not in last_seen or created > last_seen[key]:
-                    last_seen[key] = created
+        for action_key, entity_type in self._session.execute(entity_types_stmt).all():
+            entity_types_by_action.setdefault(action_key, set()).add(entity_type)
 
         summary_entries = [
             AuditActivitySummaryEntry(
-                action=action_key,
-                entity_types=sorted(entity_types),
-                event_count=counts.get(action_key, 0),
-                first_seen_at_utc=first_seen.get(action_key),
-                last_seen_at_utc=last_seen.get(action_key),
+                action=row.action,
+                entity_types=sorted(entity_types_by_action.get(row.action, set())),
+                event_count=row.event_count,
+                first_seen_at_utc=row.first_seen,
+                last_seen_at_utc=row.last_seen,
             )
-            for action_key, entity_types in sorted(entity_types_by_action.items())
+            for row in totals
         ]
 
         return AuditActivityExport(
