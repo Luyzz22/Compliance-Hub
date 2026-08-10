@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Treat naive datetimes as UTC so comparisons never raise."""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 class NIS2IncidentType(StrEnum):
@@ -40,7 +45,32 @@ VALID_TRANSITIONS: dict[NIS2WorkflowStatus, list[NIS2WorkflowStatus]] = {
 }
 
 
+class NIS2DeadlineBasis(StrEnum):
+    """Which timestamp the regulatory deadlines were anchored to."""
+
+    #: Anchored to the moment the entity became aware of the incident (NIS2 Art. 23).
+    AWARENESS = "awareness"
+    #: Legacy/backfilled rows where only the record-creation time was known.
+    ENTRY_FALLBACK = "entry_fallback"
+    #: At least one deadline on this record was set by hand rather than computed.
+    #:
+    #: The marker is record-level, not per deadline: a partial override still means the
+    #: record's deadlines can no longer be read as purely derived from awareness. Which
+    #: individual deadlines were changed, by whom and why is recorded in the audit trail
+    #: under ``NIS2_INCIDENT_DEADLINE_OVERRIDE``.
+    MANUAL_OVERRIDE = "manual_override"
+
+
 class NIS2IncidentCreate(BaseModel):
+    """
+    Incident intake.
+
+    ``became_aware_at`` is mandatory because NIS2 Art. 23 runs the 24h/72h/one-month
+    cascade from the moment the entity *became aware* of the significant incident — not
+    from the moment somebody typed it into a tool. Anchoring on record creation would
+    silently report "within deadline" for an incident whose deadline already expired.
+    """
+
     title: str = Field(min_length=1, max_length=500)
     incident_type: NIS2IncidentType
     severity: str = Field(pattern=r"^(low|medium|high|critical)$")
@@ -49,6 +79,29 @@ class NIS2IncidentCreate(BaseModel):
     kritis_relevant: bool = False
     personal_data_affected: bool = False
     estimated_impact: str | None = None
+    became_aware_at: datetime = Field(
+        description=(
+            "Zeitpunkt der Kenntniserlangung (UTC). Ankerpunkt für alle Meldefristen "
+            "nach NIS2 Art. 23."
+        ),
+    )
+    detected_at: datetime | None = Field(
+        default=None,
+        description=(
+            "Optionaler Zeitpunkt der technischen Detektion. Kann vor der "
+            "Kenntniserlangung der verantwortlichen Stelle liegen."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def validate_timestamps(self) -> Self:
+        aware = _as_utc(self.became_aware_at)
+        now = datetime.now(UTC)
+        if aware > now + timedelta(minutes=5):
+            raise ValueError("became_aware_at must not be in the future")
+        if self.detected_at is not None and _as_utc(self.detected_at) > aware:
+            raise ValueError("detected_at must not be after became_aware_at")
+        return self
 
 
 class NIS2IncidentResponse(BaseModel):
@@ -69,6 +122,8 @@ class NIS2IncidentResponse(BaseModel):
     notification_deadline_overdue: bool = False
     report_deadline_overdue: bool = False
     final_report_deadline_overdue: bool = False
+    became_aware_at: datetime | None = None
+    deadline_basis: NIS2DeadlineBasis = NIS2DeadlineBasis.AWARENESS
     detected_at: datetime
     contained_at: datetime | None = None
     eradicated_at: datetime | None = None

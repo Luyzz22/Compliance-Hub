@@ -67,14 +67,39 @@ def validate_api_key_only(x_api_key: str | None) -> str:
 
 def advisor_id_allowlist() -> frozenset[str] | None:
     """
-    Optional: COMPLIANCEHUB_ADVISOR_IDS=advisor-a@x.com,advisor-b@x.com
-    Wenn gesetzt, dürfen nur diese advisor_ids Portfolio-Endpunkte nutzen.
+    COMPLIANCEHUB_ADVISOR_IDS=advisor-a@x.com,advisor-b@x.com
+
+    Wenn gesetzt, dürfen nur diese advisor_ids Advisor-Endpunkte nutzen.
+    ``None`` bedeutet "nicht konfiguriert" – in Produktion wird das von
+    :func:`require_advisor_allowlist_configured` als Fehlkonfiguration behandelt.
     """
     raw = os.getenv("COMPLIANCEHUB_ADVISOR_IDS", "").strip()
     if not raw:
         return None
     ids = {part.strip() for part in raw.split(",") if part.strip()}
     return frozenset(ids) if ids else None
+
+
+def require_advisor_allowlist_configured() -> frozenset[str] | None:
+    """
+    Erzwingt eine konfigurierte Advisor-Allowlist in Produktion.
+
+    Die Advisor-Endpunkte identifizieren den Berater über den selbstdeklarierten
+    ``x-advisor-id``-Header. Ohne Allowlist könnte jeder Inhaber eines gültigen
+    API-Keys eine beliebige ``advisor_id`` behaupten. In Produktion ist die Allowlist
+    deshalb Pflicht; fehlt sie, wird der Zugriff verweigert statt stillschweigend
+    geöffnet.
+    """
+    allowed = advisor_id_allowlist()
+    if allowed is not None:
+        return allowed
+    environment = os.getenv("COMPLIANCEHUB_ENV", "dev").strip().lower()
+    if environment in {"prod", "production"}:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Advisor access is disabled (COMPLIANCEHUB_ADVISOR_IDS not configured)",
+        )
+    return None
 
 
 def require_advisor_api_access(
@@ -96,7 +121,7 @@ def require_advisor_api_access(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Advisor ID mismatch with x-advisor-id header",
         )
-    allowed = advisor_id_allowlist()
+    allowed = require_advisor_allowlist_configured()
     if allowed is not None and advisor_id not in allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -119,7 +144,7 @@ def require_advisor_rag_headers(
             detail="Missing x-advisor-id header",
         )
     aid = str(x_advisor_id).strip()
-    allowed = advisor_id_allowlist()
+    allowed = require_advisor_allowlist_configured()
     if allowed is not None and aid not in allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

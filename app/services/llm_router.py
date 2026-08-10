@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from opentelemetry import trace
 
+from app import sovereignty
 from app.llm_models import (
     CostSensitivity,
     DataResidencyPolicy,
@@ -194,11 +195,26 @@ def _allowed_by_public_api(provider: LLMProvider, policy: TenantLLMPolicy) -> bo
 
 
 def filter_candidates(policy: TenantLLMPolicy, ordered: list[LLMProvider]) -> list[LLMProvider]:
+    """
+    Reduce the ordered preference chain to providers that may actually be called.
+
+    Gates, in order of authority:
+
+    1. **Deployment sovereignty mode** — a hard ceiling no tenant setting can lift. It
+       *removes* forbidden providers from the chain rather than deprioritising them; a
+       chain that merely prefers an EU provider still falls back to a US one on error,
+       which is exactly what an EU-residency commitment must rule out.
+    2. Tenant policy (allowed providers, residency, public-API policy).
+    3. Runtime configuration of the provider.
+    """
+    sovereignty_allowed = sovereignty.allowed_llm_providers()
     allowed_set = set(policy.allowed_providers)
     out: list[LLMProvider] = []
     seen: set[LLMProvider] = set()
     for p in ordered:
         if p in seen:
+            continue
+        if str(p.value) not in sovereignty_allowed:
             continue
         if p not in allowed_set:
             continue

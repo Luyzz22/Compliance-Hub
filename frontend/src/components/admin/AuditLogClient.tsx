@@ -265,20 +265,21 @@ export function AuditLogClient() {
         </div>
       </div>
 
-      {/* VVT Export Link */}
+      {/* Aktivitätsübersicht (zuvor fälschlich als "VVT" bezeichnet) */}
       <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">DSGVO Art. 30 Verarbeitungsverzeichnis</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Aktivitätsübersicht</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Automatisch generierter Export aller Verarbeitungstätigkeiten aus den Audit-Logs.
+              Aggregation der protokollierten Systemaktivitäten nach Aktion und Objekttyp.
+              Kein Verzeichnis von Verarbeitungstätigkeiten nach Art. 30 DSGVO.
             </p>
           </div>
           <a
-            href="/admin/audit-log/vvt-export"
+            href="/admin/audit-log/activity-export"
             className="inline-flex items-center justify-center rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700"
           >
-            VVT-Export öffnen →
+            Übersicht öffnen →
           </a>
         </div>
       </div>

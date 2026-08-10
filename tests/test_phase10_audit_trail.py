@@ -171,11 +171,11 @@ def test_export_json_format(session: Session, audit_repo: AuditLogRepository) ->
     assert len(data) >= 1
 
 
-def test_vvt_export_structure(session: Session, audit_repo: AuditLogRepository) -> None:
-    """VVT export generates entries grouped by action."""
+def test_activity_export_structure(session: Session, audit_repo: AuditLogRepository) -> None:
+    """Activity export groups recorded audit actions and counts their events."""
     audit_repo.record_event(
         tenant_id=_TENANT,
-        actor="vvt-test",
+        actor="activity-test",
         action="login",
         entity_type="session",
         entity_id="s1",
@@ -184,7 +184,7 @@ def test_vvt_export_structure(session: Session, audit_repo: AuditLogRepository) 
     )
     audit_repo.record_event(
         tenant_id=_TENANT,
-        actor="vvt-test",
+        actor="activity-test",
         action="update",
         entity_type="policy",
         entity_id="p1",
@@ -192,12 +192,46 @@ def test_vvt_export_structure(session: Session, audit_repo: AuditLogRepository) 
         after="{}",
     )
     svc = AuditTrailService(session)
-    vvt = svc.generate_vvt_export(_TENANT)
-    assert vvt.tenant_id == _TENANT
-    assert vvt.total_processing_activities >= 2
-    activities = [e.processing_activity for e in vvt.entries]
-    assert "login" in activities
-    assert "update" in activities
+    export = svc.generate_activity_export(_TENANT)
+    assert export.tenant_id == _TENANT
+    assert export.total_actions >= 2
+    actions = [e.action for e in export.entries]
+    assert "login" in actions
+    assert "update" in actions
+    login_entry = next(e for e in export.entries if e.action == "login")
+    assert login_entry.event_count >= 1
+    assert "session" in login_entry.entity_types
+
+
+def test_activity_export_makes_no_article_30_claim(
+    session: Session, audit_repo: AuditLogRepository
+) -> None:
+    """
+    The export must not present itself as an Art. 30 GDPR record.
+
+    It previously emitted constant ``legal_basis``, ``purpose``, ``retention_period``
+    and ``technical_measures`` values, which made a fabricated document look like a
+    processing register. Those fields are gone and a disclaimer is mandatory.
+    """
+    audit_repo.record_event(
+        tenant_id=_TENANT,
+        actor="activity-test",
+        action="login",
+        entity_type="session",
+        entity_id="s1",
+        before=None,
+        after=None,
+    )
+    export = AuditTrailService(session).generate_activity_export(_TENANT)
+
+    assert "Art. 30" in export.disclaimer
+    assert "KEIN Verzeichnis" in export.disclaimer
+
+    entry_fields = set(export.entries[0].model_dump().keys())
+    forbidden = {"legal_basis", "purpose", "retention_period", "technical_measures"}
+    assert not (entry_fields & forbidden), (
+        f"Export darf keine erfundenen Rechtsangaben enthalten: {entry_fields & forbidden}"
+    )
 
 
 # ---- NIS2AlertService tests ----

@@ -16,12 +16,18 @@ from app.governance_taxonomy import NIS2DeadlinePolicy
 from app.models_db import NIS2IncidentTable
 from app.nis2_incident_models import (
     VALID_TRANSITIONS,
+    NIS2DeadlineBasis,
     NIS2IncidentCreate,
     NIS2IncidentDeadlinesOverride,
     NIS2IncidentResponse,
     NIS2IncidentTransition,
     NIS2WorkflowStatus,
 )
+
+
+def _to_utc(value: datetime) -> datetime:
+    """Treat naive datetimes as UTC so arithmetic never mixes aware and naive values."""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 class NIS2IncidentRepository:
@@ -62,6 +68,8 @@ class NIS2IncidentRepository:
             notification_deadline_overdue=_deadline_overdue(row.bsi_notification_deadline),
             report_deadline_overdue=_deadline_overdue(row.bsi_report_deadline),
             final_report_deadline_overdue=_deadline_overdue(row.final_report_deadline),
+            became_aware_at=row.became_aware_at,
+            deadline_basis=row.deadline_basis or NIS2DeadlineBasis.ENTRY_FALLBACK.value,
             detected_at=row.detected_at,
             contained_at=row.contained_at,
             eradicated_at=row.eradicated_at,
@@ -77,7 +85,15 @@ class NIS2IncidentRepository:
         created_by: str | None = None,
     ) -> NIS2IncidentResponse:
         now = datetime.now(UTC)
-        report_deadline = now + timedelta(hours=NIS2DeadlinePolicy.REPORT_HOURS)
+        # NIS2 Art. 23 anchors every deadline on awareness of the significant incident.
+        # Anchoring on record creation would report "within deadline" for an incident
+        # whose 24h early warning has in fact already expired.
+        became_aware_at = _to_utc(data.became_aware_at)
+        detected_at = _to_utc(data.detected_at) if data.detected_at is not None else became_aware_at
+        notification_deadline = became_aware_at + timedelta(
+            hours=NIS2DeadlinePolicy.NOTIFICATION_HOURS
+        )
+        report_deadline = became_aware_at + timedelta(hours=NIS2DeadlinePolicy.REPORT_HOURS)
         row = NIS2IncidentTable(
             id=str(uuid.uuid4()),
             tenant_id=tenant_id,
@@ -90,11 +106,13 @@ class NIS2IncidentRepository:
             kritis_relevant=data.kritis_relevant,
             personal_data_affected=data.personal_data_affected,
             estimated_impact=data.estimated_impact,
-            bsi_notification_deadline=now + timedelta(hours=NIS2DeadlinePolicy.NOTIFICATION_HOURS),
+            bsi_notification_deadline=notification_deadline,
             bsi_report_deadline=report_deadline,
             final_report_deadline=report_deadline
             + timedelta(days=NIS2DeadlinePolicy.FINAL_REPORT_DAYS_AFTER_REPORT),
-            detected_at=now,
+            became_aware_at=became_aware_at,
+            deadline_basis=NIS2DeadlineBasis.AWARENESS.value,
+            detected_at=detected_at,
             created_by=created_by,
             created_at_utc=now,
             updated_at_utc=now,
@@ -179,12 +197,24 @@ class NIS2IncidentRepository:
         if row is None:
             raise LookupError(f"NIS2 incident {incident_id} not found")
 
-        if body.bsi_notification_deadline is not None:
-            row.bsi_notification_deadline = body.bsi_notification_deadline
-        if body.bsi_report_deadline is not None:
-            row.bsi_report_deadline = body.bsi_report_deadline
-        if body.final_report_deadline is not None:
-            row.final_report_deadline = body.final_report_deadline
+        changed = False
+        for field_name in (
+            "bsi_notification_deadline",
+            "bsi_report_deadline",
+            "final_report_deadline",
+        ):
+            supplied = getattr(body, field_name)
+            if supplied is None or getattr(row, field_name) == supplied:
+                continue
+            setattr(row, field_name, supplied)
+            changed = True
+
+        if changed:
+            # Record-level marker: once any deadline is hand-set, the row's deadlines can
+            # no longer be read as purely derived from the awareness timestamp. Which
+            # deadline changed is captured in the audit entry for this override. A no-op
+            # override must not flip the marker.
+            row.deadline_basis = NIS2DeadlineBasis.MANUAL_OVERRIDE.value
         row.updated_at_utc = datetime.now(UTC)
 
         self._session.commit()

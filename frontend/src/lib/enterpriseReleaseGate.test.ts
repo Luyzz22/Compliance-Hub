@@ -17,6 +17,10 @@ function publicSiteEnvironment(): NodeJS.ProcessEnv {
   );
   return {
     ...cleanEnvironment,
+    // `Object.fromEntries` widens to a plain index signature, which drops the required
+    // `NODE_ENV` from `ProcessEnv`. The value survives the filter at runtime — it is
+    // restated here so the object still satisfies the type.
+    NODE_ENV: process.env.NODE_ENV ?? "test",
     VERCEL_ENV: "production",
     COMPLIANCEHUB_RELEASE_PROFILE: "public_site",
     COMPLIANCEHUB_APP_ORIGIN: "https://complywithai.de",

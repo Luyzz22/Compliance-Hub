@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from pathlib import Path
@@ -35,6 +36,52 @@ EXT_TO_CT: dict[str, str] = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
 }
+
+#: Leading bytes each accepted format must start with. The declared ``Content-Type`` and
+#: the file extension are both attacker-controlled, so an allowlist built on them alone
+#: accepts an executable renamed to ``report.pdf``. DOCX/XLSX are ZIP containers, hence
+#: the shared ``PK`` signatures (``PK\x03\x04`` normal, ``PK\x05\x06`` empty archive,
+#: ``PK\x07\x08`` spanned).
+_MAGIC_BYTES: dict[str, tuple[bytes, ...]] = {
+    "application/pdf": (b"%PDF-",),
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": (
+        b"PK\x03\x04",
+        b"PK\x05\x06",
+        b"PK\x07\x08",
+    ),
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": (
+        b"PK\x03\x04",
+        b"PK\x05\x06",
+        b"PK\x07\x08",
+    ),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+    "image/jpeg": (b"\xff\xd8\xff",),
+}
+
+
+def compute_content_hash(data: bytes) -> str:
+    """SHA-256 hex digest used as the evidence integrity anchor."""
+    return hashlib.sha256(data).hexdigest()
+
+
+def validate_magic_bytes(data: bytes, content_type: str) -> None:
+    """
+    Reject content whose leading bytes contradict its declared type.
+
+    Guards against a renamed executable or script being stored — and later handed to
+    another user of the same tenant — under a benign content type.
+    """
+    signatures = _MAGIC_BYTES.get(content_type.lower())
+    if not signatures:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported content type: {content_type}",
+        )
+    if not any(data.startswith(sig) for sig in signatures):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File content does not match declared type {content_type}",
+        )
 
 
 def _max_bytes() -> int:
@@ -157,6 +204,8 @@ async def upload_evidence(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Empty file",
         )
+    validate_magic_bytes(data, content_type)
+    content_hash = compute_content_hash(data)
 
     nf = (norm_framework or "").strip()[:64] or None
     nr = (norm_reference or "").strip()[:256] or None
@@ -169,6 +218,7 @@ async def upload_evidence(
             filename_original=filename_original,
             content_type=content_type,
             size_bytes=len(data),
+            sha256=content_hash,
             uploaded_by=uploaded_by,
             ai_system_id=ai_system_id,
             audit_record_id=audit_record_id,
@@ -236,6 +286,58 @@ def download_evidence(
             detail="Evidence file missing on storage",
         ) from None
     return blob, db_row.content_type, db_row.filename_original
+
+
+def verify_evidence_integrity(
+    tenant_id: str,
+    evidence_id: str,
+    *,
+    evidence_repo: EvidenceFileRepository,
+    storage: EvidenceStorageBackend,
+) -> dict[str, object]:
+    """
+    Recompute the stored file's SHA-256 and compare it with the digest taken at upload.
+
+    This is what turns "we store your evidence" into a demonstrable integrity statement:
+    an auditor can ask the platform to prove a document is byte-identical to what was
+    uploaded, instead of trusting that nothing touched it.
+
+    Rows created before the digest existed report ``status="unverifiable"`` rather than
+    a misleading pass — an unknown baseline cannot confirm anything.
+    """
+    db_row = evidence_repo.get_row_for_delete(tenant_id, evidence_id)
+    if db_row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evidence not found")
+    try:
+        blob = storage.retrieve_file(tenant_id, db_row.storage_key)
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Evidence file missing on storage",
+        ) from None
+
+    actual = compute_content_hash(blob)
+    if not db_row.sha256:
+        status_value = "unverifiable"
+    elif db_row.sha256 == actual:
+        status_value = "verified"
+    else:
+        status_value = "mismatch"
+        logger.error(
+            "evidence_integrity_mismatch tenant=%s evidence_id=%s expected=%s actual=%s",
+            tenant_id,
+            evidence_id,
+            db_row.sha256,
+            actual,
+        )
+
+    return {
+        "evidence_id": evidence_id,
+        "status": status_value,
+        "expected_sha256": db_row.sha256,
+        "actual_sha256": actual,
+        "size_bytes": len(blob),
+    }
 
 
 def delete_evidence(

@@ -14,12 +14,12 @@ from sqlalchemy.orm import Session
 from app.models_db import AuditAlertDB, AuditLogTable
 from app.repositories.audit_logs import AuditLogRepository, _compute_entry_hash
 from app.services.audit_trail_types import (
+    AuditActivityExport,
+    AuditActivitySummaryEntry,
     AuditAlertItem,
     AuditLogItem,
     AuditLogPage,
     ChainIntegrityResult,
-    VVTEntry,
-    VVTExport,
 )
 
 
@@ -176,41 +176,56 @@ class AuditTrailService:
             default=str,
         )
 
-    def generate_vvt_export(self, tenant_id: str) -> VVTExport:
-        """Generate DSGVO Art. 30 Verarbeitungsverzeichnis from audit data."""
-        entries = self._repo.list_for_tenant(tenant_id=tenant_id, limit=50_000)
+    def generate_activity_export(self, tenant_id: str) -> AuditActivityExport:
+        """
+        Aggregate recorded audit actions for the tenant.
 
-        activity_map: dict[str, set[str]] = {}
-        for entry in entries:
-            key = entry.action
-            if key not in activity_map:
-                activity_map[key] = set()
-            activity_map[key].add(entry.entity_type)
-
-        vvt_entries: list[VVTEntry] = []
-        for action_key, entity_types in sorted(activity_map.items()):
-            vvt_entries.append(
-                VVTEntry(
-                    processing_activity=action_key,
-                    data_categories=sorted(entity_types),
-                    purpose=f"Compliance-Verarbeitung: {action_key}",
-                    legal_basis="Art. 6 Abs. 1 lit. c/f DSGVO",
-                    recipients=["Compliance-Hub System", "Tenant-Administratoren"],
-                    retention_period="10 Jahre (GoBD / AO)",
-                    technical_measures=[
-                        "SHA-256 Hashketten-Integrität",
-                        "Append-only Speicherung",
-                        "Row-Level-Security",
-                        "TLS 1.3 Verschlüsselung",
-                    ],
-                )
+        Purely descriptive: it reports which actions occurred, on which entity types and
+        how often. It deliberately does **not** state processing purposes, legal bases,
+        retention periods or technical measures — those are determinations the
+        controller has to make and cannot be derived from audit log rows.
+        """
+        # Aggregated in SQL rather than over a fetched page: a row-capped Python pass
+        # would report the oldest row *inside the window* as "first seen", which for a
+        # busy tenant is simply wrong.
+        totals_stmt = (
+            select(
+                AuditLogTable.action,
+                func.count().label("event_count"),
+                func.min(AuditLogTable.created_at_utc).label("first_seen"),
+                func.max(AuditLogTable.created_at_utc).label("last_seen"),
             )
+            .where(AuditLogTable.tenant_id == tenant_id)
+            .group_by(AuditLogTable.action)
+            .order_by(AuditLogTable.action.asc())
+        )
+        totals = self._session.execute(totals_stmt).all()
 
-        return VVTExport(
+        entity_types_stmt = (
+            select(AuditLogTable.action, AuditLogTable.entity_type)
+            .where(AuditLogTable.tenant_id == tenant_id)
+            .distinct()
+        )
+        entity_types_by_action: dict[str, set[str]] = {}
+        for action_key, entity_type in self._session.execute(entity_types_stmt).all():
+            entity_types_by_action.setdefault(action_key, set()).add(entity_type)
+
+        summary_entries = [
+            AuditActivitySummaryEntry(
+                action=row.action,
+                entity_types=sorted(entity_types_by_action.get(row.action, set())),
+                event_count=row.event_count,
+                first_seen_at_utc=row.first_seen,
+                last_seen_at_utc=row.last_seen,
+            )
+            for row in totals
+        ]
+
+        return AuditActivityExport(
             tenant_id=tenant_id,
             generated_at=datetime.now(UTC),
-            entries=vvt_entries,
-            total_processing_activities=len(vvt_entries),
+            entries=summary_entries,
+            total_actions=len(summary_entries),
         )
 
 
