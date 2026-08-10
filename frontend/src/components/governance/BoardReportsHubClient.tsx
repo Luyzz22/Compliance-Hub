@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { fetchBoardReports, generateBoardReport, type BoardReportListItemDto } from "@/lib/boardReportingApi";
 import { CH_BTN_PRIMARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
@@ -19,6 +20,7 @@ function currentMonthlyBounds() {
 }
 
 export function BoardReportsHubClient({ tenantId }: Props) {
+  const router = useRouter();
   const [rows, setRows] = useState<BoardReportListItemDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -47,7 +49,7 @@ export function BoardReportsHubClient({ tenantId }: Props) {
         period_start: b.start.toISOString(),
         period_end: b.end.toISOString(),
       });
-      window.location.href = `/tenant/governance/board-reports/${report.id}`;
+      router.push(`/tenant/governance/board-reports/${report.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generierung fehlgeschlagen");
     } finally {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { GovernanceWorkspaceLayout } from "@/components/governance/GovernanceWorkspaceLayout";
 import { HealthStatusPill } from "@/components/governance/HealthStatusPill";
@@ -26,6 +27,7 @@ function metricTone(m: BoardMetricDto) {
 }
 
 export function BoardReportsWorkspaceClient({ tenantId, reportId }: Props) {
+  const router = useRouter();
   const [tab, setTab] = useState<"overview" | "actions" | "trends" | "trail">("overview");
   const [report, setReport] = useState<BoardReportDetailDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export function BoardReportsWorkspaceClient({ tenantId, reportId }: Props) {
         period_end: report.period_end,
         title: report.title,
       });
-      window.location.href = `/tenant/governance/board-reports/${next.id}`;
+      router.push(`/tenant/governance/board-reports/${next.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generierung fehlgeschlagen");
     } finally {

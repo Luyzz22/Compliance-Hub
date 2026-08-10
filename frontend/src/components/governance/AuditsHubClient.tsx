@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { createAuditCase, fetchAuditCases, type GovernanceAuditCaseRow } from "@/lib/auditReadinessApi";
 import { CH_BTN_PRIMARY, CH_BTN_SECONDARY, CH_CARD, CH_SECTION_LABEL } from "@/lib/boardLayout";
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function AuditsHubClient({ tenantId }: Props) {
+  const router = useRouter();
   const [rows, setRows] = useState<GovernanceAuditCaseRow[]>([]);
   const [title, setTitle] = useState("");
   const [fw, setFw] = useState(DEFAULT_FW);
@@ -48,7 +50,7 @@ export function AuditsHubClient({ tenantId }: Props) {
         framework_tags: tags,
         control_ids: null,
       });
-      window.location.href = `/tenant/governance/audits/${created.id}`;
+      router.push(`/tenant/governance/audits/${created.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Anlegen fehlgeschlagen");
     }
