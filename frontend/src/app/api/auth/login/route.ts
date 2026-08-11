@@ -66,6 +66,11 @@ export async function POST(request: NextRequest) {
       role: payload.role,
     },
   });
-  setSessionCookies(response, payload.session_token, payload.expires_at_utc);
+  setSessionCookies(
+    response,
+    payload.session_token,
+    payload.expires_at_utc,
+    payload.tenant_id,
+  );
   return response;
 }
