@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evidence-Led Enterprise Frontend"
+  short_description: "Design credible regulated enterprise SaaS interfaces"
+  default_prompt: "Use $design-evidence-led-enterprise-frontends to redesign this frontend as a credible, evidence-led enterprise SaaS experience."

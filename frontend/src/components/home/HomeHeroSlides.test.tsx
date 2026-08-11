@@ -40,7 +40,7 @@ describe("HomeHeroSlides", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Evidence, die Herkunft und Review sichtbar macht.",
+        name: "Herkunft und Review bleiben sichtbar.",
       }),
     ).toBeTruthy();
     expect(

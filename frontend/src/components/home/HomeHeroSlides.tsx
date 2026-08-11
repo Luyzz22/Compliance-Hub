@@ -1,85 +1,43 @@
 "use client";
 
-import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
-
-import { contactPageHref } from "@/lib/publicContact";
 
 const slides = [
   {
     id: "control-plane",
-    index: "01",
     label: "Control Plane",
-    eyebrow: "Governance architecture",
     title: "Vom AI-Inventar zum kontrollierten System.",
     description:
-      "Systeme, Pflichten, Controls und Verantwortliche werden in einer nachvollziehbaren Struktur verbunden – als Grundlage für Review, Freigabe und Betrieb.",
+      "Systeme, Pflichten, Controls und Verantwortliche werden als prüfbarer Governance-Kontext verbunden.",
     image: "/images/hero/governance-control-plane.webp",
     imageWidth: 1568,
     imageHeight: 1003,
     imageAlt:
-      "Abstrakte Governance-Architektur aus einem dunklen Glaskern, verbundenen Kontrollpunkten und transparenten Policy-Ebenen",
-    ctaLabel: "Governance-Architektur besprechen",
-    ctaHref: contactPageHref({
-      quelle: "hero-control-plane",
-      ctaId: "hero-control-plane-briefing",
-      ctaLabel: "Governance-Architektur besprechen",
-    }),
-    proof: [
-      { value: "5", label: "Regelwerke im Kontrollmodell" },
-      { value: "1", label: "Gemeinsamer Control Graph" },
-      { value: "Human", label: "Review bleibt verbindlich" },
-    ],
+      "Abstrakte Governance-Architektur mit einem dunklen Kontrollkern, verbundenen Kontrollpunkten und transparenten Policy-Ebenen",
   },
   {
     id: "evidence-chain",
-    index: "02",
     label: "Evidence Chain",
-    eyebrow: "Auditability by design",
-    title: "Evidence, die Herkunft und Review sichtbar macht.",
+    title: "Herkunft und Review bleiben sichtbar.",
     description:
-      "Anforderungen erhalten Quelle, Owner, Status und Review-Kontext. So entsteht eine belastbare Nachweiskette – ohne eine Prüfung oder Rechtsbewertung zu automatisieren.",
+      "Anforderungen behalten Quelle, Owner, Status und Review-Kontext bis zum strukturierten Nachweis.",
     image: "/images/hero/evidence-chain.webp",
     imageWidth: 1587,
     imageHeight: 991,
     imageAlt:
-      "Abstrakte Nachweiskette aus transparenten Ebenen, die durch einen grünen Faden mit einem geordneten Archiv verbunden sind",
-    ctaLabel: "Evidence-Review anfragen",
-    ctaHref: contactPageHref({
-      quelle: "hero-evidence-chain",
-      ctaId: "hero-evidence-review",
-      ctaLabel: "Evidence-Review anfragen",
-    }),
-    proof: [
-      { value: "Trace", label: "Quelle und Änderungskontext" },
-      { value: "Review", label: "Owner und Freigabestatus" },
-      { value: "Export", label: "Strukturierte Nachweispfade" },
-    ],
+      "Abstrakte Nachweiskette aus transparenten Ebenen, verbunden mit einem geordneten Evidenzarchiv",
   },
   {
     id: "executive-readiness",
-    index: "03",
     label: "Board Readiness",
-    eyebrow: "Decision intelligence",
-    title: "Vom Kontrollstatus zur verantwortbaren Entscheidung.",
+    title: "Offene Punkte werden entscheidbar.",
     description:
-      "Risiken, Abhängigkeiten und offene Maßnahmen werden für das Board verdichtet. Die Plattform liefert Kontext; Entscheidungen bleiben bei den zuständigen Personen.",
+      "Risiken, Abhängigkeiten und Maßnahmen werden verdichtet. Die verbindliche Entscheidung bleibt beim Menschen.",
     image: "/images/hero/executive-readiness.webp",
     imageWidth: 1568,
     imageHeight: 1003,
     imageAlt:
-      "Abstrakte Executive-Landschaft aus konzentrischen Ringen, Kontrollpunkten und einem nachvollziehbaren grünen Entscheidungspfad",
-    ctaLabel: "Executive Briefing planen",
-    ctaHref: contactPageHref({
-      quelle: "hero-board-readiness",
-      ctaId: "hero-executive-briefing",
-      ctaLabel: "Executive Briefing planen",
-    }),
-    proof: [
-      { value: "Risk", label: "Priorisierte Entscheidungsfelder" },
-      { value: "Owner", label: "Klare Verantwortlichkeiten" },
-      { value: "Board", label: "Verdichteter Governance-Kontext" },
-    ],
+      "Abstrakte Executive-Landschaft aus konzentrischen Ringen, Kontrollpunkten und einem nachvollziehbaren Entscheidungspfad",
   },
 ] as const;
 
@@ -101,6 +59,7 @@ export function HomeHeroSlides() {
     if (!playing || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
     }
+
     const timer = window.setInterval(() => {
       if (
         document.hidden ||
@@ -110,7 +69,8 @@ export function HomeHeroSlides() {
         return;
       }
       setActive((current) => nextIndex(current));
-    }, 8_000);
+    }, 9_000);
+
     return () => window.clearInterval(timer);
   }, [playing]);
 
@@ -146,9 +106,10 @@ export function HomeHeroSlides() {
       aria-roledescription="Karussell"
       aria-label="Drei Perspektiven auf Compliance Hub"
     >
-      <div className="relative min-h-[56rem] overflow-hidden rounded-[2.25rem] border border-slate-200/80 bg-white shadow-[0_40px_120px_rgba(7,17,31,0.13)] sm:min-h-[54rem] lg:min-h-[41rem] lg:rounded-[3rem]">
+      <div className="relative min-h-[34rem] overflow-hidden rounded-2xl border border-[var(--ch-border-strong)] bg-white shadow-[0_34px_90px_rgba(31,35,40,0.12)] sm:min-h-[39rem] lg:min-h-[38rem]">
         {slides.map((slide, index) => {
           const isActive = index === active;
+
           return (
             <article
               key={slide.id}
@@ -157,58 +118,14 @@ export function HomeHeroSlides() {
               aria-labelledby={`hero-tab-${slide.id}`}
               aria-hidden={!isActive}
               inert={!isActive}
-              className={`absolute inset-0 grid h-full grid-rows-[42%_58%] transition duration-700 ease-out lg:grid-cols-[0.92fr_1.08fr] lg:grid-rows-1 ${
+              className={`absolute inset-0 grid grid-rows-[64%_36%] transition-[opacity,transform] duration-500 ease-out sm:grid-rows-[70%_30%] ${
                 isActive
-                  ? "z-10 translate-x-0 opacity-100"
-                  : "z-0 translate-x-6 opacity-0"
+                  ? "z-10 translate-y-0 opacity-100"
+                  : "z-0 translate-y-2 opacity-0"
               }`}
             >
-              <div className="order-2 flex min-w-0 flex-col justify-center px-6 py-7 sm:px-10 lg:order-1 lg:px-12 xl:px-16">
-                <div className="flex items-center gap-3 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:text-xs">
-                  <span className="font-mono text-cyan-700">{slide.index}</span>
-                  <span className="h-px w-8 bg-slate-300" aria-hidden />
-                  {slide.eyebrow}
-                </div>
-                <h2 className="mt-5 max-w-xl text-3xl font-semibold leading-[1.02] tracking-[-0.05em] text-[#07111f] sm:text-4xl lg:text-[3.2rem]">
-                  {slide.title}
-                </h2>
-                <p className="mt-5 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
-                  {slide.description}
-                </p>
-
-                <dl className="mt-7 grid grid-cols-3 gap-2 border-y border-slate-200/80 py-5">
-                  {slide.proof.map((item) => (
-                    <div key={item.label} className="min-w-0">
-                      <dt className="text-[0.62rem] leading-4 text-slate-500 sm:text-xs">
-                        {item.label}
-                      </dt>
-                      <dd className="mt-1 truncate font-mono text-sm font-semibold text-slate-950 sm:text-base">
-                        {item.value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <Link
-                    href={slide.ctaHref}
-                    prefetch={false}
-                    className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#07111f] px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-slate-800 sm:text-sm"
-                  >
-                    {slide.ctaLabel}
-                  </Link>
-                  <Link
-                    href="/trust-center"
-                    prefetch={false}
-                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:border-slate-300 sm:text-sm"
-                  >
-                    Trust Center
-                  </Link>
-                </div>
-              </div>
-
-              <div className="relative order-1 m-3 overflow-hidden rounded-[1.6rem] border border-white/70 bg-slate-100 lg:order-2 lg:m-4 lg:ml-0 lg:rounded-[2.25rem]">
-                {/* Next/Image emits an inline presentation attribute that strict CSP blocks. */}
+              <div className="overflow-hidden bg-[var(--ch-surface-subtle)]">
+                {/* Next/Image currently emits an inline presentation attribute blocked by the strict nonce CSP. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={slide.image}
@@ -218,27 +135,27 @@ export function HomeHeroSlides() {
                   loading={index === 0 ? "eager" : "lazy"}
                   fetchPriority={index === 0 ? "high" : "auto"}
                   decoding="async"
-                  className={`h-full w-full object-cover transition duration-1000 ease-out ${
-                    isActive ? "scale-100" : "scale-[1.025]"
+                  className={`h-full w-full object-cover transition-transform duration-700 ease-out ${
+                    isActive ? "scale-100" : "scale-[1.015]"
                   }`}
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07111f]/20 via-transparent to-white/10" />
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-2xl border border-white/60 bg-white/78 px-4 py-3 text-xs shadow-lg shadow-slate-950/10 backdrop-blur-xl sm:bottom-6 sm:left-6 sm:right-6">
-                  <span className="font-semibold text-slate-900">{slide.label}</span>
-                  <span className="flex items-center gap-2 text-slate-600">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
-                    Kontrollierter Scope
-                  </span>
-                </div>
+              </div>
+              <div className="grid content-center border-t border-[var(--ch-border)] px-5 py-5 sm:px-7">
+                <h2 className="text-xl font-semibold leading-tight tracking-[-0.025em] text-[var(--ch-ink)] sm:text-2xl">
+                  {slide.title}
+                </h2>
+                <p className="mt-2 max-w-[58ch] text-sm leading-6 text-[var(--ch-muted)]">
+                  {slide.description}
+                </p>
               </div>
             </article>
           );
         })}
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 rounded-[1.5rem] border border-slate-200/80 bg-white/85 p-2.5 shadow-lg shadow-slate-200/40 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
         <div
-          className="grid flex-1 grid-cols-3 gap-1"
+          className="grid grid-cols-3 border border-[var(--ch-border)] bg-white"
           role="tablist"
           aria-label="Hero-Slides"
         >
@@ -256,37 +173,36 @@ export function HomeHeroSlides() {
               tabIndex={index === active ? 0 : -1}
               onClick={() => selectSlide(index)}
               onKeyDown={(event) => handleTabKeyDown(event, index)}
-              className={`min-w-0 rounded-2xl px-2 py-3 text-left transition sm:px-4 ${
+              className={`min-h-12 border-r border-[var(--ch-border)] px-2 text-left text-[0.68rem] font-semibold transition-colors last:border-r-0 sm:px-4 sm:text-xs ${
                 index === active
-                  ? "bg-[#07111f] text-white shadow-md"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+                  ? "bg-[var(--ch-accent)] text-white"
+                  : "bg-white text-[var(--ch-muted)] hover:bg-[var(--ch-surface-subtle)] hover:text-[var(--ch-ink)]"
               }`}
             >
-              <span className="block font-mono text-[0.6rem] opacity-65">
-                {slide.index}
-              </span>
-              <span className="mt-1 block truncate text-[0.65rem] font-semibold sm:text-xs">
-                {slide.label}
-              </span>
+              <span className="block truncate">{slide.label}</span>
             </button>
           ))}
         </div>
 
-        <div className="flex items-center justify-between gap-2 px-1 sm:justify-end">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             aria-label="Vorherige Slide"
             onClick={() => selectSlide(previousIndex(active))}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            className="home-control-button"
           >
-            <span aria-hidden>←</span>
+            Zurück
           </button>
           <button
             type="button"
-            aria-label={playing ? "Automatischen Wechsel pausieren" : "Automatischen Wechsel starten"}
+            aria-label={
+              playing
+                ? "Automatischen Wechsel pausieren"
+                : "Automatischen Wechsel starten"
+            }
             aria-pressed={!playing}
             onClick={() => setPlaying((current) => !current)}
-            className="inline-flex h-10 min-w-24 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            className="home-control-button"
           >
             {playing ? "Pausieren" : "Abspielen"}
           </button>
@@ -294,9 +210,9 @@ export function HomeHeroSlides() {
             type="button"
             aria-label="Nächste Slide"
             onClick={() => selectSlide(nextIndex(active))}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            className="home-control-button"
           >
-            <span aria-hidden>→</span>
+            Weiter
           </button>
         </div>
       </div>

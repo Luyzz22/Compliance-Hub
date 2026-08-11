@@ -12,3 +12,5 @@ data/evidence/
 *.db
 node_modules/
 .next/
+.playwright-cli/
+output/playwright/

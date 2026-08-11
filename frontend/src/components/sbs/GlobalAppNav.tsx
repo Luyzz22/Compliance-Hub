@@ -359,26 +359,35 @@ function MobileNavContent({
 function PublicSiteNav() {
   const pathname = usePathname();
 
+  function publicLinkClass(active: boolean): string {
+    return [
+      "inline-flex min-h-10 items-center border-b-2 px-2 text-xs font-semibold transition-colors",
+      active
+        ? "border-[var(--ch-accent)] text-[var(--ch-ink)]"
+        : "border-transparent text-[var(--ch-muted)] hover:text-[var(--ch-ink)]",
+    ].join(" ");
+  }
+
   return (
-    <nav className="flex items-center justify-end gap-1" aria-label="Hauptnavigation">
+    <nav className="flex items-center justify-end gap-1 sm:gap-3" aria-label="Hauptnavigation">
       <Link
         href="/"
         prefetch={false}
-        className={`${navLinkClass(pathname === "/")} hidden sm:inline-flex`}
+        className={`${publicLinkClass(pathname === "/")} hidden sm:inline-flex`}
       >
         Start
       </Link>
       <Link
         href="/trust-center"
         prefetch={false}
-        className={navLinkClass(pathname === "/trust-center")}
+        className={publicLinkClass(pathname === "/trust-center")}
       >
         Trust Center
       </Link>
       <Link
         href="/kontakt"
         prefetch={false}
-        className="inline-flex min-h-9 items-center justify-center rounded-lg bg-[#07111f] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800"
+        className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--ch-ink)] px-3 text-xs font-semibold text-white transition-colors hover:bg-[var(--ch-ink-soft)] active:translate-y-px sm:px-4"
       >
         Kontakt
       </Link>

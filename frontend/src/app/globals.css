@@ -12,6 +12,16 @@
 
 :root {
   color-scheme: light;
+  --ch-canvas: #f6f8fa;
+  --ch-surface: #ffffff;
+  --ch-surface-subtle: #eef2f6;
+  --ch-ink: #1f2328;
+  --ch-ink-soft: #32383f;
+  --ch-muted: #59636e;
+  --ch-border: #d8dee4;
+  --ch-border-strong: #afb8c1;
+  --ch-accent: #0969da;
+  --ch-accent-hover: #0550ae;
 }
 
 * {
@@ -28,33 +38,90 @@
   outline-offset: 3px;
 }
 
-.enterprise-grid {
-  background-image:
-    linear-gradient(rgba(88, 107, 132, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(88, 107, 132, 0.055) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mask-image: linear-gradient(to bottom, black, transparent 82%);
-}
-
-.enterprise-ambient {
-  background:
-    radial-gradient(circle at 5% 0%, rgba(22, 104, 232, 0.13), transparent 42%),
-    radial-gradient(circle at 88% 2%, rgba(72, 212, 180, 0.12), transparent 38%);
-}
-
-.premium-surface {
-  border: 1px solid rgba(110, 128, 151, 0.16);
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 24px 80px rgba(7, 17, 31, 0.08);
-  backdrop-filter: blur(22px) saturate(140%);
-}
-
 .sbs-premium-footer a {
   color: #cbd5e1;
 }
 
 .sbs-premium-footer a:hover {
   color: #ffffff;
+}
+
+.home-enterprise {
+  color: var(--ch-ink);
+}
+
+.home-button-primary,
+.home-button-secondary,
+.home-control-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.home-button-primary {
+  border: 1px solid var(--ch-accent);
+  background: var(--ch-accent);
+  color: #ffffff;
+  padding: 0.68rem 1.15rem;
+  font-size: 0.875rem;
+  box-shadow: 0 8px 24px rgba(9, 105, 218, 0.18);
+}
+
+.home-button-primary:hover {
+  border-color: var(--ch-accent-hover);
+  background: var(--ch-accent-hover);
+}
+
+.home-button-secondary {
+  border: 1px solid var(--ch-border-strong);
+  background: var(--ch-surface);
+  color: var(--ch-ink);
+  padding: 0.68rem 1.15rem;
+  font-size: 0.875rem;
+}
+
+.home-button-secondary:hover,
+.home-control-button:hover {
+  border-color: var(--ch-ink-soft);
+  background: var(--ch-surface-subtle);
+}
+
+.home-control-button {
+  border: 1px solid var(--ch-border);
+  background: var(--ch-surface);
+  color: var(--ch-muted);
+  padding: 0.55rem 0.72rem;
+  font-size: 0.72rem;
+}
+
+.home-button-primary:active,
+.home-button-secondary:active,
+.home-control-button:active {
+  transform: translateY(1px);
+}
+
+.home-text-link {
+  color: var(--ch-accent);
+  font-size: 0.875rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: rgba(9, 105, 218, 0.35);
+  text-underline-offset: 0.25rem;
+}
+
+.home-text-link:hover {
+  color: var(--ch-accent-hover);
+  text-decoration-color: currentColor;
 }
 
 @media (prefers-reduced-motion: reduce) {
