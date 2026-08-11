@@ -2,139 +2,116 @@
 
 import React, { useState } from "react";
 
-const tabs = [
+const views = [
   {
-    id: "ai",
-    label: "EU AI Act, ISO 42001",
-    title: "AI-Governance ohne Excel-Chaos.",
-    body: "KI-System-Register, Risikoklassifizierung und Technical File in einer gemeinsamen Oberfläche – zur Dokumentation und zum Review, abhängig von Ihrem Einsatzszenario.",
+    id: "controls",
+    label: "Control Graph",
+    title: "Pflicht und Verantwortlichkeit im selben Kontext",
+    body: "Ein Control bleibt mit System, Regelwerk, Status und Owner verbunden.",
+    fields: [
+      ["System", "Registrierter AI Use Case"],
+      ["Pflicht", "Anwendbarer Kontrollpunkt"],
+      ["Owner", "Verantwortliche Rolle"],
+      ["Status", "Offen bis zur Prüfung"],
+    ],
+    outcome: "Offene Controls bleiben sichtbar und zuweisbar.",
   },
   {
-    id: "nis2",
-    label: "NIS2 & ISO 27001",
-    title: "Resilienz und Lieferkette im Blick.",
-    body: "Incident-Readiness, Supplier-Risk und OT/IT-Segregation – anschlussfähig an Ihre GRC-Landschaft.",
+    id: "evidence",
+    label: "Evidence Review",
+    title: "Nachweis mit Herkunft und Review-Kontext",
+    body: "Evidence wird nicht nur abgelegt, sondern mit Quelle und Prüfung verbunden.",
+    fields: [
+      ["Quelle", "Referenzierter Nachweispfad"],
+      ["Owner", "Zuständige Fachrolle"],
+      ["Reviewer", "Getrennte Prüferrolle"],
+      ["Review", "Datum und nächste Fälligkeit"],
+    ],
+    outcome: "Fehlende Evidence kann nicht als verifiziert erscheinen.",
   },
   {
-    id: "berater",
-    label: "Berater-first",
-    title: "Skalierbare Mandantenprojekte.",
-    body: "Exportfähige Reports, Evidence-Pfade und Board-Ansichten für Kanzlei und Enterprise (DATEV-taugliche Strukturen projektabhängig, keine Produktzertifizierung).",
+    id: "decision",
+    label: "Board Context",
+    title: "Risiko, Maßnahme und Entscheidung zusammenführen",
+    body: "Das Board erhält verdichteten Kontext, ohne dass die Plattform die Freigabe übernimmt.",
+    fields: [
+      ["Risiko", "Nachvollziehbare Einordnung"],
+      ["Abhängigkeit", "Betroffene Controls und Systeme"],
+      ["Maßnahme", "Owner, Frist und Status"],
+      ["Entscheidung", "Menschlich freigegeben"],
+    ],
+    outcome: "Automatische Rechts- und Freigabeentscheidungen bleiben ausgeschlossen.",
   },
 ] as const;
 
 export function HomeProductPreview() {
   const [active, setActive] = useState(0);
-  const t = tabs[active];
+  const view = views[active];
 
   return (
     <div
-      className="rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-slate-50/90 to-cyan-50/50 p-4 shadow-lg shadow-slate-200/60 ring-1 ring-slate-100 sm:p-5"
+      className="overflow-hidden rounded-2xl border border-[var(--ch-border-strong)] bg-[var(--ch-ink)] text-white shadow-[0_30px_90px_rgba(31,35,40,0.16)]"
       role="region"
-      aria-label="Produktvorschau"
+      aria-label="Illustrative Produktlogik"
     >
-      <div className="flex justify-between text-xs text-slate-500">
-        <span className="font-medium text-slate-700">Musterindustrie Demo GmbH</span>
-        <span className="font-semibold text-cyan-700">Policy Engine</span>
+      <div className="flex items-center justify-between border-b border-white/[0.12] px-5 py-4 sm:px-7">
+        <p className="text-sm font-semibold tracking-[-0.01em]">Compliance Hub</p>
+        <p className="text-xs text-slate-400">Illustrative Produktlogik</p>
       </div>
 
-      <div className="mt-4 grid gap-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {[
-            { k: "EU AI Act", on: true },
-            { k: "ISO 42001", on: false },
-            { k: "ISO 27001", on: false },
-            { k: "NIS2", on: false },
-          ].map((x) => (
-            <div
-              key={x.k}
-              className={`rounded-xl border px-2 py-2 text-center text-[0.65rem] font-semibold sm:text-[0.7rem] ${
-                x.on
-                  ? "border-cyan-200 bg-gradient-to-br from-cyan-50 to-white text-slate-800 shadow-sm"
-                  : "border-slate-200/80 bg-white/80 text-slate-500"
+      <div className="grid sm:grid-cols-[0.36fr_0.64fr]">
+        <div
+          className="grid border-b border-white/[0.12] sm:border-b-0 sm:border-r"
+          role="tablist"
+          aria-label="Governance-Perspektiven"
+        >
+          {views.map((item, index) => (
+            <button
+              key={item.id}
+              id={`product-tab-${item.id}`}
+              type="button"
+              role="tab"
+              aria-selected={index === active}
+              aria-controls="product-view"
+              onClick={() => setActive(index)}
+              className={`min-h-14 border-b border-white/[0.12] px-5 text-left text-xs font-semibold transition-colors last:border-b-0 sm:min-h-20 sm:px-7 ${
+                index === active
+                  ? "bg-white text-[var(--ch-ink)]"
+                  : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
               }`}
             >
-              <div className="mb-1.5">{x.k}</div>
-              <div
-                className={`mx-auto h-1 max-w-[4rem] rounded-full ${
-                  x.on
-                    ? "bg-gradient-to-r from-cyan-500 to-emerald-500"
-                    : "bg-slate-200"
-                }`}
-              />
-            </div>
+              {item.label}
+            </button>
           ))}
         </div>
 
-        <div className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-inner sm:p-4">
-          <div
-            className="mb-3 flex flex-wrap gap-2"
-            role="tablist"
-            aria-label="Anwendungsfälle"
-          >
-            {tabs.map((tab, i) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={i === active}
-                onClick={() => setActive(i)}
-                className={`rounded-full border px-3 py-1.5 text-[0.65rem] font-semibold transition sm:text-xs ${
-                  i === active
-                    ? "border-transparent bg-gradient-to-r from-cyan-600 to-emerald-600 text-white shadow-sm"
-                    : "border-slate-200 bg-slate-50/80 text-slate-600 hover:border-slate-300 hover:bg-white"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <div role="tabpanel">
-            <h3 className="text-sm font-semibold text-slate-900 sm:text-base">{t.title}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-[0.8rem]">
-              {t.body}
-            </p>
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="flex items-center justify-between gap-2 rounded-full border border-slate-200 bg-slate-50/80 px-3 py-2 text-[0.65rem] sm:text-xs">
-                <span className="text-slate-500">Controls compliant</span>
-                <span className="font-semibold tabular-nums text-slate-900">214 / 238</span>
-              </div>
-              <div className="flex items-center justify-between gap-2 rounded-full border border-slate-200 bg-slate-50/80 px-3 py-2 text-[0.65rem] sm:text-xs">
-                <span className="text-slate-500">Offene Violations</span>
-                <span className="font-semibold tabular-nums text-amber-700">9</span>
-              </div>
-              <div className="flex items-center justify-between gap-2 rounded-full border border-slate-200 bg-slate-50/80 px-3 py-2 text-[0.65rem] sm:text-xs">
-                <span className="text-slate-500">Board-Readiness</span>
-                <span className="font-semibold text-slate-800">in 2 Tagen</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+        <div
+          id="product-view"
+          role="tabpanel"
+          aria-labelledby={`product-tab-${view.id}`}
+          className="min-w-0 px-5 py-7 sm:px-8 sm:py-9"
+        >
+          <h3 className="max-w-lg text-2xl font-semibold leading-tight tracking-[-0.03em] sm:text-3xl">
+            {view.title}
+          </h3>
+          <p className="mt-3 max-w-lg text-sm leading-6 text-slate-300">{view.body}</p>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[
-          { l: "KI-Systeme im Register", v: "27" },
-          { l: "Offene Violations", v: "9", warn: true },
-          { l: "NIS2-Risiken high+", v: "5" },
-          { l: "Evidence Coverage", v: "91 %" },
-        ].map((x) => (
-          <div
-            key={x.l}
-            className="rounded-xl border border-slate-200/80 bg-white px-2 py-2.5 text-center shadow-sm"
-          >
-            <div className="text-[0.6rem] font-medium uppercase tracking-wide text-slate-500 sm:text-[0.65rem]">
-              {x.l}
-            </div>
-            <div
-              className={`mt-1 text-sm font-semibold tabular-nums sm:text-base ${
-                x.warn ? "text-amber-700" : "text-slate-900"
-              }`}
-            >
-              {x.v}
-            </div>
-          </div>
-        ))}
+          <dl className="mt-7 border-t border-white/[0.16]">
+            {view.fields.map(([term, description]) => (
+              <div
+                key={term}
+                className="grid gap-1 border-b border-white/[0.12] py-3.5 sm:grid-cols-[6rem_1fr] sm:gap-5"
+              >
+                <dt className="font-mono text-xs font-semibold text-blue-300">{term}</dt>
+                <dd className="text-xs leading-5 text-slate-300">{description}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <p className="mt-6 border-l border-blue-400 pl-4 text-sm font-medium leading-6 text-white">
+            {view.outcome}
+          </p>
+        </div>
       </div>
     </div>
   );

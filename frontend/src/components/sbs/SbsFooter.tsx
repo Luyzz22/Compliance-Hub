@@ -11,37 +11,38 @@ export function SbsFooter({ publicSite = false }: SbsFooterProps) {
   const y = new Date().getFullYear();
   if (publicSite) {
     return (
-      <footer className="sbs-premium-footer mt-auto border-t border-white/10 bg-[#07111f] py-12 text-white">
+      <footer className="mt-auto border-t border-[var(--ch-border)] bg-white py-12 text-[var(--ch-ink)]">
         <div className="mx-auto grid min-w-0 max-w-[90rem] gap-10 px-4 md:grid-cols-[1.4fr_1fr_1fr] md:px-8">
           <div className="max-w-md">
             <p className="text-base font-semibold tracking-[-0.02em]">Compliance Hub</p>
-            <p className="mt-3 text-sm leading-6 text-slate-400">
+            <p className="mt-3 text-sm leading-6 text-[var(--ch-muted)]">
               Enterprise AI Governance für nachvollziehbare Controls, Evidence und
               verantwortliche Entscheidungen.
             </p>
           </div>
           <nav aria-label="Unternehmen">
-            <h2 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
+            <h2 className="text-xs font-semibold text-[var(--ch-ink)]">
               Unternehmen
             </h2>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li><Link href="/" prefetch={false} className="text-slate-300 hover:text-white">Start</Link></li>
-              <li><Link href="/trust-center" prefetch={false} className="text-slate-300 hover:text-white">Trust Center</Link></li>
-              <li><Link href="/kontakt" prefetch={false} className="text-slate-300 hover:text-white">Kontakt</Link></li>
+            <ul className="mt-4 space-y-3 text-sm text-[var(--ch-muted)]">
+              <li><Link href="/" prefetch={false} className="hover:text-[var(--ch-accent)]">Start</Link></li>
+              <li><Link href="/trust-center" prefetch={false} className="hover:text-[var(--ch-accent)]">Trust Center</Link></li>
+              <li><Link href="/kontakt" prefetch={false} className="hover:text-[var(--ch-accent)]">Kontakt</Link></li>
             </ul>
           </nav>
           <nav aria-label="Rechtliches">
-            <h2 className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
+            <h2 className="text-xs font-semibold text-[var(--ch-ink)]">
               Rechtliches
             </h2>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li><Link href="/impressum" prefetch={false} className="text-slate-300 hover:text-white">Impressum</Link></li>
-              <li><Link href="/datenschutz" prefetch={false} className="text-slate-300 hover:text-white">Datenschutz</Link></li>
+            <ul className="mt-4 space-y-3 text-sm text-[var(--ch-muted)]">
+              <li><Link href="/impressum" prefetch={false} className="hover:text-[var(--ch-accent)]">Impressum</Link></li>
+              <li><Link href="/datenschutz" prefetch={false} className="hover:text-[var(--ch-accent)]">Datenschutz</Link></li>
             </ul>
           </nav>
-          <p className="border-t border-white/10 pt-6 text-xs text-slate-500 md:col-span-3">
-            © {y} Compliance Hub · Öffentliche Produktinformation · Keine Rechtsberatung
-          </p>
+          <div className="flex flex-col gap-2 border-t border-[var(--ch-border)] pt-6 text-xs text-[var(--ch-muted)] sm:flex-row sm:items-center sm:justify-between md:col-span-3">
+            <p>© {y} Compliance Hub</p>
+            <p>Öffentliche Produktinformation. Keine Rechtsberatung.</p>
+          </div>
         </div>
       </footer>
     );

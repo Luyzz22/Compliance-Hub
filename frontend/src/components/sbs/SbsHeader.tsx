@@ -11,12 +11,42 @@ type SbsHeaderProps = {
 };
 
 export function SbsHeader({ publicSite = false }: SbsHeaderProps) {
+  if (publicSite) {
+    return (
+      <header className="sticky top-0 z-50 border-b border-[var(--ch-border)] bg-[rgba(246,248,250,0.92)] backdrop-blur-xl">
+        <div className="mx-auto flex min-h-16 max-w-[90rem] items-center justify-between gap-4 px-4 md:px-8">
+          <Link
+            href="/"
+            prefetch={false}
+            className="group flex min-w-0 flex-1 items-center gap-3 no-underline"
+          >
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ch-ink)] text-[0.7rem] font-bold tracking-[-0.02em] text-white transition-transform group-active:scale-[0.98]"
+              aria-hidden
+            >
+              CH
+            </span>
+            <span className="hidden min-w-0 leading-tight sm:block">
+              <span className="block truncate text-sm font-semibold tracking-[-0.02em] text-[var(--ch-ink)] md:text-base">
+                Compliance Hub
+              </span>
+              <span className="hidden text-[0.68rem] text-[var(--ch-muted)] sm:block">
+                Enterprise AI Governance
+              </span>
+            </span>
+          </Link>
+          <GlobalAppNav publicSite />
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/70 bg-white/80 shadow-[0_1px_0_rgba(7,17,31,0.06)] backdrop-blur-2xl backdrop-saturate-150">
       <div className="mx-auto flex min-h-16 max-w-[90rem] items-center justify-between gap-4 px-4 py-2 md:px-8 md:py-2.5">
         <Link
           href="/"
-          prefetch={publicSite ? false : null}
+          prefetch={null}
           className="group flex min-w-0 flex-1 items-center gap-3 no-underline"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.7rem] bg-[#07111f] text-white shadow-lg shadow-slate-950/15" aria-hidden>
@@ -34,9 +64,9 @@ export function SbsHeader({ publicSite = false }: SbsHeaderProps) {
             </span>
           </span>
         </Link>
-        <GlobalAppNav publicSite={publicSite} />
+        <GlobalAppNav />
       </div>
-      {!publicSite ? <AppSecondaryNav /> : null}
+      <AppSecondaryNav />
     </header>
   );
 }

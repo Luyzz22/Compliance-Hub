@@ -1,10 +1,8 @@
 import Link from "next/link";
-import React from "react";
 
 import { TrackedContactLink } from "@/components/contact/TrackedContactLink";
 import { HomeHeroSlides } from "@/components/home/HomeHeroSlides";
 import { HomeProductPreview } from "@/components/home/HomeProductPreview";
-import { CH_BTN_PRIMARY } from "@/lib/boardLayout";
 import { contactPageHref } from "@/lib/publicContact";
 import { isPublicSiteRelease } from "@/lib/releaseProfile";
 
@@ -15,211 +13,181 @@ function SectionTitle({
 }: {
   title: string;
   subtitle: string;
-  id?: string;
+  id: string;
 }) {
   return (
-    <div className="mb-10 max-w-3xl">
+    <div className="max-w-3xl">
       <h2
         id={id}
-        className="text-2xl font-semibold tracking-[-0.035em] text-[#07111f] sm:text-3xl"
+        className="text-3xl font-semibold leading-[1.08] tracking-[-0.035em] text-[var(--ch-ink)] sm:text-4xl lg:text-[3.25rem]"
       >
         {title}
       </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+      <p className="mt-5 max-w-[65ch] text-base leading-8 text-[var(--ch-muted)]">
         {subtitle}
       </p>
     </div>
   );
 }
 
+const briefingHref = contactPageHref({
+  quelle: "home-hero",
+  ctaId: "home-hero-demo",
+  ctaLabel: "Demo anfragen",
+});
+
 export default function HomePage() {
   const publicSite = isPublicSiteRelease();
 
   return (
-    <div className="relative min-w-0">
-      <div
-        aria-hidden
-        className="enterprise-grid pointer-events-none fixed inset-0 -z-20 opacity-70"
-      />
-      <div
-        aria-hidden
-        className="enterprise-ambient pointer-events-none fixed inset-0 -z-10 opacity-80"
-      />
+    <div className="home-enterprise relative min-w-0">
+      <section className="border-b border-[var(--ch-border)] pb-16 pt-8 sm:pb-20 sm:pt-12 lg:pb-24 lg:pt-16">
+        <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+          <header className="max-w-2xl">
+            <h1 className="text-4xl font-semibold leading-[0.98] tracking-[-0.04em] text-[var(--ch-ink)] sm:text-5xl lg:text-[3.75rem]">
+              KI-Governance, die Entscheidungen belegbar macht.
+            </h1>
+            <p className="mt-6 max-w-xl text-base leading-8 text-[var(--ch-muted)] sm:text-lg">
+              Ein kontrollierter Arbeitsraum für AI-Systeme, Pflichten, Evidence und Human Review im regulierten DACH-Betrieb.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <TrackedContactLink
+                href={briefingHref}
+                ctaId="home-hero-demo"
+                quelle="home-hero"
+                trackingEnabled={!publicSite}
+                className="home-button-primary"
+              >
+                Demo anfragen
+              </TrackedContactLink>
+              <Link href="/trust-center" prefetch={false} className="home-button-secondary">
+                Trust Center prüfen
+              </Link>
+            </div>
+          </header>
 
-      {/* Hero */}
-      <section className="relative pb-20 pt-6 md:pb-28 md:pt-12">
-        <header className="mx-auto max-w-5xl text-center">
-          <p className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/70 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-700 shadow-sm backdrop-blur sm:text-xs">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-            DACH · Enterprise AI Governance
-          </p>
-          <h1 className="mt-6 text-4xl font-semibold leading-[0.98] tracking-[-0.055em] text-[#07111f] sm:text-5xl lg:text-[4.75rem]">
-            AI Governance, die Komplexität in Klarheit verwandelt.
-          </h1>
-          <p className="mx-auto mt-6 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-            Compliance Hub verbindet Systeme, Pflichten, Controls und Evidence in einem
-            nachvollziehbaren Arbeitsraum. Die Plattform unterstützt Analyse und Review;
-            Verantwortung und Freigabe bleiben beim Menschen.
-          </p>
-        </header>
-
-        <div className="mt-12">
           <HomeHeroSlides />
         </div>
+      </section>
 
-        <dl className="mx-auto mt-8 grid max-w-5xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-200/80 shadow-sm lg:grid-cols-4">
+      <section aria-label="Verifizierte Eigenschaften des Public Release" className="border-b border-[var(--ch-border)]">
+        <dl className="grid sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Stateless", "Öffentlicher Release"],
-            ["Strict CSP", "Nonce-basiert"],
-            ["Human review", "Verbindliche Freigabe"],
-            ["0", "Drittanbieter-Analytics"],
-          ].map(([value, label]) => (
-            <div key={label} className="bg-white/90 px-4 py-5 text-center backdrop-blur">
-              <dt className="text-xs text-slate-500">{label}</dt>
-              <dd className="mt-1 font-mono text-sm font-semibold text-slate-950">{value}</dd>
+            ["Public Release", "Stateless"],
+            ["Browser-Schutz", "Strict CSP"],
+            ["Freigaben", "Human Review"],
+            ["Enterprise-Daten", "Separat gegated"],
+          ].map(([label, value], index) => (
+            <div
+              key={label}
+              className={`py-6 sm:px-6 lg:py-7 ${index > 0 ? "sm:border-l sm:border-[var(--ch-border)]" : ""}`}
+            >
+              <dt className="text-xs font-medium text-[var(--ch-muted)]">{label}</dt>
+              <dd className="mt-1 text-base font-semibold tracking-[-0.015em] text-[var(--ch-ink)]">
+                {value}
+              </dd>
             </div>
           ))}
         </dl>
       </section>
 
-      <div className="border-t border-slate-200/80" />
+      <section id="home-reasons" className="py-20 sm:py-24 lg:py-32" aria-labelledby="home-model">
+        <SectionTitle
+          id="home-model"
+          title="Von der Pflicht zur verantwortbaren Entscheidung."
+          subtitle="Compliance Hub verbindet Regelwerke nicht als Checklisten, sondern als nachvollziehbaren Arbeitsfluss mit Zuständigkeit, Evidence und Review."
+        />
 
-      {/* Drei Gründe */}
-      <section className="py-20 md:py-28" aria-labelledby="home-reasons">
-        <div className="mx-auto max-w-7xl">
-          <SectionTitle
-            id="home-reasons"
-            title="Drei Gründe, warum Teams auf Compliance Hub setzen."
-            subtitle="Gemeinsamer Policy-Layer, echte Mandantenfähigkeit und belastbare Evidence für Audits und Board."
-          />
-          <div className="grid gap-5 md:grid-cols-3">
-            {[
-              {
-                index: "01",
-                title: "Ein Policy-Layer für alle Normen",
-                tag: "Framework Graph",
-                text: "EU AI Act, ISO 42001, ISO 27001/27701, NIS2 und DSGVO in einem gemeinsamen Kontrollmodell.",
-              },
-              {
-                index: "02",
-                title: "Berater-ready Plattform",
-                tag: "Mandanten-Engine",
-                text: "Mandantenfähigkeit, Rollenmodell und exportfähige Reports für skalierbare Beratungsprojekte.",
-              },
-              {
-                index: "03",
-                title: "Evidence strukturiert bereitstellen",
-                tag: "Evidence Engine",
-                text: "Gap-Analysen, KI-Register und Board-Reports aus einem gemeinsamen Datenmodell – zur Prüfung und zum Review vorbereitet.",
-              },
-            ].map((c) => (
-              <article
-                key={c.title}
-                className="premium-surface group relative overflow-hidden rounded-[1.75rem] p-7 transition duration-300 hover:-translate-y-1"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="font-mono text-xs font-semibold text-blue-600">{c.index}</div>
-                  <div>
-                    <h3 className="text-base font-semibold tracking-[-0.02em] text-slate-950">
-                      {c.title}
-                    </h3>
-                    <p className="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
-                      {c.tag}
-                    </p>
-                  </div>
-                </div>
-                <p className="mt-5 text-sm leading-7 text-slate-600">{c.text}</p>
-              </article>
-            ))}
+        <div id="home-flow" className="mt-14 grid scroll-mt-24 gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:gap-20">
+          <div className="max-w-lg">
+            <p className="text-xl font-medium leading-8 tracking-[-0.02em] text-[var(--ch-ink)] sm:text-2xl">
+              Ein gemeinsames Kontrollmodell für EU AI Act, ISO 42001, ISO 27001/27701, NIS2 und DSGVO.
+            </p>
+            <p className="mt-5 text-sm leading-7 text-[var(--ch-muted)]">
+              Die Plattform bereitet Informationen für qualifizierte Prüfung und Freigabe vor. Sie trifft keine automatische Rechtsentscheidung.
+            </p>
           </div>
+
+          <dl className="border-t border-[var(--ch-border-strong)]">
+            {[
+              ["Scope", "KI-Systeme, Rollen, Standorte und anwendbare Regelwerke werden in einem gemeinsamen Kontext erfasst."],
+              ["Controls", "Pflichten werden mit Status, Verantwortlichkeit, Frist und konkretem Handlungsbedarf verbunden."],
+              ["Evidence", "Quellen, Änderungen und Reviews bleiben auffindbar, versionierbar und für Exporte strukturiert."],
+              ["Decision", "Risiken und offene Maßnahmen werden für Board, Compliance und Betrieb in ihrem Kontext verdichtet."],
+            ].map(([term, description]) => (
+              <div
+                key={term}
+                className="grid gap-3 border-b border-[var(--ch-border)] py-6 sm:grid-cols-[8rem_1fr] sm:gap-8"
+              >
+                <dt className="font-mono text-sm font-semibold text-[var(--ch-accent)]">{term}</dt>
+                <dd className="text-sm leading-7 text-[var(--ch-muted)]">{description}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
-      <div className="border-t border-slate-200/80" />
-
-      {/* Product workspace */}
-      <section className="py-20 md:py-28" aria-labelledby="home-workspace">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.78fr_1.22fr] lg:gap-16">
+      <section className="border-y border-[var(--ch-border)] bg-white py-20 sm:py-24 lg:py-32" aria-labelledby="home-workspace">
+        <div className="grid items-center gap-14 lg:grid-cols-[1.18fr_0.82fr] lg:gap-20">
+          <HomeProductPreview />
           <div>
             <SectionTitle
               id="home-workspace"
-              title="Ein Arbeitsraum für Governance, Evidence und Entscheidung."
-              subtitle="Erkunden Sie, wie das Produkt operative Kontrolle und Management-Kontext zusammenführt. Die Vorschau zeigt die Produktlogik, nicht einen zertifizierten Kundenbetrieb."
+              title="Produktlogik, die Prüfung nicht simuliert."
+              subtitle="Die interaktive Ansicht zeigt, wie Controls, Evidence und Entscheidungskontext zusammenfinden. Inhalte bleiben illustrativ und klar gekennzeichnet."
             />
-            <ul className="space-y-4 text-sm leading-7 text-slate-700">
+            <ul className="mt-9 space-y-5">
               {[
-                "Kontrollstatus, Evidence und Verantwortliche in einem gemeinsamen Kontext.",
-                "Priorisierte offene Punkte statt unverbundener Checklisten.",
-                "Nachvollziehbare Reviews ohne automatische Rechts- oder Freigabeentscheidung.",
+                "Kontrollstatus und Verantwortlichkeit bleiben zusammen sichtbar.",
+                "Evidence wird mit Herkunft und Review-Kontext geführt.",
+                "Ungeklärte Punkte bleiben offen, statt rechnerisch zu verschwinden.",
               ].map((item) => (
-                <li key={item} className="flex gap-3">
-                  <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                <li key={item} className="grid grid-cols-[1.25rem_1fr] gap-3 text-sm leading-7 text-[var(--ch-ink-soft)]">
+                  <span aria-hidden className="mt-3 h-px bg-[var(--ch-accent)]" />
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
           </div>
-          <HomeProductPreview />
         </div>
       </section>
 
-      <div className="border-t border-slate-200/80" />
-
-      {/* Datenfluss */}
-      <section className="py-20 md:py-28" aria-labelledby="home-flow">
-        <div className="mx-auto max-w-7xl">
+      <section id="home-integrations" className="py-20 sm:py-24 lg:py-32" aria-labelledby="home-integration">
+        <div className="grid gap-14 lg:grid-cols-[0.78fr_1.22fr] lg:gap-20">
           <SectionTitle
-            id="home-flow"
-            title="Ein klarer Datenfluss statt Projekt-Chaos."
-            subtitle="Vier Stationen, ein sauberer Flow: Scope, Inventory, Engine und Output – für AI- und Compliance-Daten."
+            id="home-integration"
+            title="Anschlussfähig, ohne Integration vorzutäuschen."
+            subtitle="Die Architektur trennt Identität, Daten, AI und operative Übergaben. Produktive Verbindungen werden instanzbezogen freigegeben und dokumentiert."
           />
-          <div className="relative grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-[8%] right-[8%] top-8 hidden h-0.5 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 lg:block"
-            />
+
+          <div className="border-t border-[var(--ch-border-strong)]">
             {[
               {
-                n: "1",
-                t: "Scope",
-                sub: "Normen, Standorte, KI-Systeme",
-                d: "Mandat, Geltungsbereich und kritische Systeme definieren.",
-                ring: "border-cyan-500",
+                title: "Identity plane",
+                detail: "Microsoft Entra ID, SSO, RBAC und tenant-gebundene Autorisierung",
+                state: "Release-Evidence erforderlich",
               },
               {
-                n: "2",
-                t: "Inventory",
-                sub: "Assets, Controls, Evidence",
-                d: "Daten einspielen – per UI, Import oder API.",
-                ring: "border-cyan-500",
+                title: "AI plane",
+                detail: "Azure OpenAI, Managed Identity, PII-Blockierung und tenant-spezifische Policy",
+                state: "Standardmäßig deaktiviert",
               },
               {
-                n: "3",
-                t: "Engine",
-                sub: "Policy & Risiko",
-                d: "Violations, Empfehlungen und Prioritäten zusammenführen (unterstützend, keine automatische Rechtsbewertung).",
-                ring: "border-cyan-500",
+                title: "Data plane",
+                detail: "PostgreSQL, Blob-Speicher, Tenant-Isolation, Retention und Exportpfade",
+                state: "Produktionsfreigabe separat",
               },
               {
-                n: "4",
-                t: "Output",
-                sub: "Reports & Nachweise",
-                d: "Board-Reports, Auditor-Dossiers und Exporte erzeugen.",
-                ring: "border-emerald-500",
+                title: "Operations plane",
+                detail: "APIs, Webhooks, DMS-, SIEM- und Ticketing-Anschluss nach Projektprüfung",
+                state: "Keine pauschale Connector-Zusage",
               },
-            ].map((step) => (
-              <div key={step.n} className="relative z-[1] text-center">
-                <div
-                  className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border bg-white font-mono text-sm font-semibold text-slate-950 shadow-sm ${step.ring}`}
-                >
-                  0{step.n}
-                </div>
-                <div className="text-xs font-semibold text-slate-900 sm:text-sm">
-                  {step.n}. {step.t}
-                </div>
-                <div className="mt-1 text-[0.8rem] text-slate-600">{step.sub}</div>
-                <p className="mt-2 text-[0.75rem] leading-relaxed text-slate-500 sm:text-xs">
-                  {step.d}
+            ].map((item) => (
+              <div key={item.title} className="grid gap-3 border-b border-[var(--ch-border)] py-6 sm:grid-cols-[10rem_1fr_auto] sm:items-start sm:gap-6">
+                <h3 className="text-sm font-semibold text-[var(--ch-ink)]">{item.title}</h3>
+                <p className="text-sm leading-7 text-[var(--ch-muted)]">{item.detail}</p>
+                <p className="text-xs font-medium text-[var(--ch-accent)] sm:max-w-36 sm:text-right sm:leading-5">
+                  {item.state}
                 </p>
               </div>
             ))}
@@ -227,165 +195,58 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="border-t border-slate-200/80" />
+      <section className="border-y border-[var(--ch-border)] bg-[var(--ch-surface-subtle)] py-20 sm:py-24" aria-labelledby="home-security">
+        <div className="grid gap-14 lg:grid-cols-[0.82fr_1.18fr] lg:gap-20">
+          <div>
+            <SectionTitle
+              id="home-security"
+              title="Enterprise beginnt am Release Gate."
+              subtitle="Identität, Datenregion, rechtliche Angaben und technische Kontrollen müssen vor der Enterprise-Freigabe mit datierter Evidence belegt sein."
+            />
+            <Link href="/trust-center" prefetch={false} className="home-text-link mt-7 inline-flex">
+              Freigegebenen Umfang im Trust Center prüfen
+            </Link>
+          </div>
 
-      {/* Integrationen */}
-      <section className="py-20 md:py-28" aria-labelledby="home-integrations">
-        <div className="mx-auto max-w-7xl">
-          <SectionTitle
-            id="home-integrations"
-            title="Eingebettet in Ihre AI- und Tool-Landschaft."
-            subtitle="Anbindung per API, Webhooks oder Workflow-Engine – kompatibel mit gängigen Providern und GRC-Tools."
-          />
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 sm:gap-4">
+          <div className="border-t border-[var(--ch-border-strong)]">
             {[
-              { mark: "OA", name: "OpenAI", sub: "Foundation Models" },
-              { mark: "AN", name: "Anthropic", sub: "LLMs" },
-              { mark: "VX", name: "Vertex AI", sub: "Cloud AI" },
-              { mark: "AZ", name: "Azure AI", sub: "EU AI Plane" },
-              { mark: "SF", name: "Snowflake", sub: "Data Platform" },
-              { mark: "DB", name: "Databricks", sub: "Lakehouse" },
-              { mark: "OT", name: "OneTrust", sub: "GRC" },
-              { mark: "JR", name: "Jira", sub: "Tickets" },
-            ].map((p) => (
-              <div
-                key={p.name}
-                className="premium-surface rounded-2xl px-3 py-5 text-center transition hover:-translate-y-0.5"
-              >
-                <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 font-mono text-[0.65rem] font-semibold text-white" aria-hidden>
-                  {p.mark}
-                </span>
-                <div className="mt-2 text-xs font-semibold text-slate-900 sm:text-sm">
-                  {p.name}
-                </div>
-                <div className="mt-0.5 text-[0.65rem] text-slate-500">{p.sub}</div>
+              ["Öffentliche Website", "Aktiv", "Keine Anmeldung, Mandantendaten oder Zustands-APIs"],
+              ["Enterprise-Datenebene", "Gegated", "Tenant-, Betriebs- und Datenschutz-Evidence erforderlich"],
+              ["Azure OpenAI", "Gegated", "EU-Region oder Data Zone, Managed Identity und Freigabe erforderlich"],
+            ].map(([area, state, detail]) => (
+              <div key={area} className="grid gap-2 border-b border-[var(--ch-border)] py-6 sm:grid-cols-[1fr_7rem_1.4fr] sm:gap-6">
+                <h3 className="text-sm font-semibold text-[var(--ch-ink)]">{area}</h3>
+                <p className="font-mono text-xs font-semibold text-[var(--ch-accent)]">{state}</p>
+                <p className="text-sm leading-6 text-[var(--ch-muted)]">{detail}</p>
               </div>
             ))}
           </div>
-          <p className="mt-6 text-center text-xs text-slate-500">
-            Ihre Plattform fehlt?{" "}
-            <TrackedContactLink
-              href={contactPageHref({
-                quelle: "home-integrations",
-                ctaId: "home-integrations-kontakt",
-                ctaLabel: "Kontakt aufnehmen",
-              })}
-              ctaId="home-integrations-kontakt"
-              quelle="home-integrations"
-              trackingEnabled={!publicSite}
-              className="font-medium text-cyan-700 underline-offset-2 hover:underline"
-            >
-              Kontakt aufnehmen
-            </TrackedContactLink>{" "}
-            oder über Ihr Compliance-Team.
-          </p>
         </div>
       </section>
 
-      <div className="border-t border-slate-200/80" />
-
-      {/* CTA */}
-      <section className="py-20 md:py-28">
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-[#07111f] px-6 py-12 text-center text-white shadow-2xl shadow-slate-950/20 sm:px-12 md:py-16">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">Enterprise briefing</p>
-          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-white sm:text-3xl">
-            Integration in Ihre Governance-Landschaft besprechen?
-          </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-            Wir zeigen, wie Compliance Hub in GRC-Tools, Ticketing, DMS und SIEM passt – und wo
-            der größte Hebel liegt. Pakete von AI Act Readiness bis Enterprise Connectors besprechen
-            wir gern im Gespräch.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <TrackedContactLink
-              href={contactPageHref({
-                quelle: "home-mid-cta",
-                ctaId: "home-mid-cta-demo",
-                ctaLabel: "Demo anfragen",
-              })}
-              ctaId="home-mid-cta-demo"
-              quelle="home-mid-cta"
-              trackingEnabled={!publicSite}
-              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 shadow-md transition hover:-translate-y-0.5"
-            >
-              Demo anfragen
-            </TrackedContactLink>
-            {!publicSite ? (
-              <>
-                <Link href="/auth/login" className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15">
-                  Anmelden
-                </Link>
-                <Link href="/board/kpis" className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-slate-300 transition hover:text-white">
-                  Board-Ansicht
-                </Link>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <div className="border-t border-slate-200/80" />
-
-      {/* Security */}
-      <section className="py-20 md:pb-12 md:pt-28" aria-labelledby="home-security">
-        <div className="mx-auto grid max-w-7xl items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="py-20 sm:py-24 lg:py-28">
+        <div className="grid gap-8 border border-[var(--ch-border-strong)] bg-white px-6 py-10 shadow-[0_24px_70px_rgba(31,35,40,0.08)] sm:px-10 sm:py-12 lg:grid-cols-[1fr_auto] lg:items-center lg:px-14">
           <div>
-            <h2
-              id="home-security"
-              className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl"
-            >
-              Security und Datenschutz als Release Gate
+            <h2 className="text-3xl font-semibold tracking-[-0.035em] text-[var(--ch-ink)] sm:text-4xl">
+              Ihre Governance-Architektur konkret prüfen.
             </h2>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-600">
-              Produktivbetrieb wird nur freigegeben, wenn Identität, Datenregion, rechtliche
-              Angaben und technische Kontrollen nachweislich konfiguriert sind.
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--ch-muted)]">
+              Wir ordnen Scope, Evidence, Rollen und Integrationsgrenzen für Ihren konkreten Einsatz ein. Keine Rechtsberatung.
             </p>
-            <ul className="mt-6 flex list-none flex-col gap-3 p-0">
-              {[
-                "Azure OpenAI ist nur nach EU-Region-/Data-Zone-Attestierung aktiv; Managed Identity ist der Produktionsstandard.",
-                "LLM-Funktionen sind standardmäßig aus. Personenbezogene Daten und Prompt-Injection-Muster werden vor Modellaufrufen blockiert.",
-                "Produktive Builds scheitern bei fehlenden Legal-, Auth-, Host-, Tenant- oder Datenschutzfreigaben bewusst.",
-              ].map((line) => (
-                <li key={line} className="flex gap-3 text-sm leading-relaxed text-slate-800">
-                  <span
-                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
-                    aria-hidden
-                  />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
           </div>
-          <div className="premium-surface rounded-[1.75rem] p-6">
-            <div className="flex justify-between text-xs text-slate-500">
-              <span>Infrastruktur-Snapshot</span>
-              <span>Architektur</span>
-            </div>
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {[
-                { t: "Identity plane", m: "SSO & RBAC", s: "Release-gated" },
-                { t: "Data plane", m: "Tenant isolation", s: "Evidence required" },
-                { t: "AI plane", m: "Azure OpenAI", s: "Managed Identity" },
-              ].map((b) => (
-                <div
-                  key={b.t}
-                  className="rounded-xl border border-slate-200/80 bg-white/90 p-3 shadow-sm"
-                >
-                  <div className="text-[0.65rem] font-semibold uppercase tracking-wide text-cyan-800">
-                    {b.t}
-                  </div>
-                  <div className="mt-1 text-sm font-medium text-slate-900">{b.m}</div>
-                  <div className="mt-0.5 text-[0.7rem] text-slate-500">{b.s}</div>
-                </div>
-              ))}
-            </div>
-            <Link
-              href={publicSite ? "/trust-center" : "/settings"}
-              className={`${CH_BTN_PRIMARY} mt-5 w-full sm:w-auto`}
-            >
-              {publicSite ? "Zum Trust Center" : "Zu Mandant & Einstellungen"}
-            </Link>
-          </div>
+          <TrackedContactLink
+            href={contactPageHref({
+              quelle: "home-mid-cta",
+              ctaId: "home-mid-cta-demo",
+              ctaLabel: "Demo anfragen",
+            })}
+            ctaId="home-mid-cta-demo"
+            quelle="home-mid-cta"
+            trackingEnabled={!publicSite}
+            className="home-button-primary"
+          >
+            Demo anfragen
+          </TrackedContactLink>
         </div>
       </section>
     </div>
