@@ -15,6 +15,7 @@ export const WORKSPACE_NAV_ITEMS = [
   { href: "/tenant/ai-systems", label: "KI-Systeme" },
   { href: "/tenant/eu-ai-act", label: "EU AI Act" },
   { href: "/tenant/transparency-assurance", label: "Transparency" },
+  { href: "/tenant/impact-assessments", label: "DSFA & FRIA" },
   { href: "/tenant/blueprints", label: "Blueprints" },
   { href: "/tenant/policies", label: "Policies" },
   { href: "/tenant/audit-log", label: "Audit-Log" },

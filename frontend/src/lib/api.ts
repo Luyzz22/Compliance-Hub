@@ -3320,3 +3320,175 @@ export async function updateAITransparencyAssessment(
     },
   ) as Promise<AITransparencyAssessmentDto>;
 }
+
+// ─── GDPR DPIA / EU AI Act FRIA Impact Assessments ─────────────────────
+
+export type ImpactAssessmentScopeDto = "undetermined" | "required" | "not_required";
+export type ImpactAssessmentLifecycleDto =
+  | "draft"
+  | "in_review"
+  | "remediation_required"
+  | "approved";
+export type ImpactDeployerContextDto =
+  | "unknown"
+  | "public_authority"
+  | "public_service_provider"
+  | "essential_private_service"
+  | "other";
+export type ImpactResidualRiskDto = "unknown" | "low" | "medium" | "high";
+export type PriorConsultationStatusDto =
+  | "not_assessed"
+  | "not_required"
+  | "required"
+  | "planned"
+  | "submitted"
+  | "closed";
+export type StakeholderViewsStatusDto =
+  | "not_assessed"
+  | "not_applicable"
+  | "planned"
+  | "obtained";
+export type ImpactSectionStatusDto =
+  | "not_started"
+  | "drafted"
+  | "evidenced"
+  | "reviewed"
+  | "not_applicable";
+export type ImpactSectionKeyDto =
+  | "processing_description_and_purpose"
+  | "necessity_and_proportionality"
+  | "deployment_period_and_frequency"
+  | "affected_persons_and_groups"
+  | "rights_and_freedoms_risks"
+  | "safeguards_security_and_mitigations"
+  | "human_oversight_and_governance"
+  | "incident_complaint_and_redress";
+
+export interface ImpactAssessmentSectionDto {
+  section_key: ImpactSectionKeyDto;
+  status: ImpactSectionStatusDto;
+  summary: string | null;
+  evidence_reference: string | null;
+  rationale: string | null;
+  title_de: string;
+  description_de: string;
+  legal_basis: string;
+  updated_at_utc: string | null;
+}
+
+export interface AIImpactAssessmentDto {
+  id: string | null;
+  tenant_id: string;
+  ai_system_id: string;
+  dpia_scope: ImpactAssessmentScopeDto;
+  fria_scope: ImpactAssessmentScopeDto;
+  deployer_context: ImpactDeployerContextDto;
+  scope_rationale: string | null;
+  lifecycle_status: ImpactAssessmentLifecycleDto;
+  residual_risk: ImpactResidualRiskDto;
+  assessment_owner: string | null;
+  independent_reviewer: string | null;
+  dpo_involved: boolean;
+  stakeholder_views_status: StakeholderViewsStatusDto;
+  prior_consultation_status: PriorConsultationStatusDto;
+  prior_consultation_reference: string | null;
+  reviewed_at_utc: string | null;
+  approved_at_utc: string | null;
+  review_due_at_utc: string | null;
+  version: number;
+  sections: ImpactAssessmentSectionDto[];
+  created_at_utc: string | null;
+  updated_at_utc: string | null;
+  updated_by: string | null;
+}
+
+export interface AIImpactAssessmentSystemRowDto {
+  ai_system_id: string;
+  ai_system_name: string;
+  business_unit: string;
+  risk_level: string;
+  ai_act_category: string;
+  registry_dpia_signal: boolean;
+  assessment: AIImpactAssessmentDto;
+  readiness_score_pct: number;
+  posture: string;
+  blockers: string[];
+  applicable_sections: number;
+  reviewed_sections: number;
+  review_overdue: boolean;
+}
+
+export interface AIImpactAssessmentPortfolioResponseDto {
+  tenant_id: string;
+  generated_at_utc: string;
+  readiness_score_pct: number;
+  posture: string;
+  framework_version: string;
+  source_urls: {
+    gdpr: string;
+    eu_ai_act: string;
+  };
+  legal_disclaimer_de: string;
+  summary: {
+    total_systems: number;
+    assessed_systems: number;
+    scope_open_count: number;
+    in_review_count: number;
+    approved_count: number;
+    high_residual_risk_count: number;
+    consultation_open_count: number;
+    overdue_review_count: number;
+  };
+  systems: AIImpactAssessmentSystemRowDto[];
+}
+
+export interface AIImpactAssessmentUpsertDto {
+  expected_version: number;
+  dpia_scope: ImpactAssessmentScopeDto;
+  fria_scope: ImpactAssessmentScopeDto;
+  deployer_context: ImpactDeployerContextDto;
+  scope_rationale: string | null;
+  lifecycle_status: ImpactAssessmentLifecycleDto;
+  residual_risk: ImpactResidualRiskDto;
+  assessment_owner: string | null;
+  independent_reviewer: string | null;
+  dpo_involved: boolean;
+  stakeholder_views_status: StakeholderViewsStatusDto;
+  prior_consultation_status: PriorConsultationStatusDto;
+  prior_consultation_reference: string | null;
+  reviewed_at_utc: string | null;
+  approved_at_utc: string | null;
+  review_due_at_utc: string | null;
+  sections: {
+    section_key: ImpactSectionKeyDto;
+    status: ImpactSectionStatusDto;
+    summary: string | null;
+    evidence_reference: string | null;
+    rationale: string | null;
+  }[];
+}
+
+export async function fetchAIImpactAssessmentPortfolio(
+  tenantId: string,
+): Promise<AIImpactAssessmentPortfolioResponseDto> {
+  return tenantApiFetch(
+    "/api/v1/impact-assessments",
+    tenantId,
+  ) as Promise<AIImpactAssessmentPortfolioResponseDto>;
+}
+
+export async function updateAIImpactAssessment(
+  tenantId: string,
+  aiSystemId: string,
+  body: AIImpactAssessmentUpsertDto,
+): Promise<AIImpactAssessmentDto> {
+  const systemId = encodeURIComponent(aiSystemId);
+  return tenantApiFetch(
+    `/api/v1/ai-systems/${systemId}/impact-assessment`,
+    tenantId,
+    {
+      method: "PUT",
+      body: JSON.stringify(body),
+    },
+  ) as Promise<AIImpactAssessmentDto>;
+}

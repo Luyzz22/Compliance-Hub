@@ -99,6 +99,7 @@ from app.ai_governance_models import (
     WhatIfScenarioInput,
     WhatIfScenarioResult,
 )
+from app.ai_impact_assessment_routes import router as ai_impact_assessment_router
 from app.ai_inventory_models import (
     AISystemInventoryProfileRead,
     AISystemInventoryProfileUpsert,
@@ -662,6 +663,7 @@ app.include_router(board_reporting_router)
 app.include_router(remediation_automation_router)
 app.include_router(remediation_actions_router)
 app.include_router(ai_transparency_assurance_router)
+app.include_router(ai_impact_assessment_router)
 
 logger = logging.getLogger(__name__)
 

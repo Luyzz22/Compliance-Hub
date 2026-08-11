@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/lib/authConstants";
 import { csrfTokensMatch, hasAllowedMutationOrigin } from "@/lib/sessionSecurity";
+import { WORKSPACE_TENANT_COOKIE } from "@/lib/workspaceTenantConstants";
 
 const DEFAULT_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
 const BACKEND_TIMEOUT_MS = 10_000;
@@ -75,6 +76,7 @@ export function setSessionCookies(
   response: NextResponse,
   token: string,
   expiresAtUtc: string | undefined,
+  tenantId?: string,
 ): void {
   const maxAge = sessionMaxAge(expiresAtUtc);
   response.cookies.set(SESSION_COOKIE_NAME, token, {
@@ -91,6 +93,14 @@ export function setSessionCookies(
     path: "/",
     maxAge,
   });
+  if (tenantId?.trim()) {
+    response.cookies.set(WORKSPACE_TENANT_COOKIE, encodeURIComponent(tenantId.trim()), {
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge,
+    });
+  }
 }
 
 export function clearSessionCookies(response: NextResponse): void {
@@ -102,6 +112,12 @@ export function clearSessionCookies(response: NextResponse): void {
   };
   response.cookies.set(SESSION_COOKIE_NAME, "", { ...shared, httpOnly: true });
   response.cookies.set(CSRF_COOKIE_NAME, "", { ...shared, httpOnly: false });
+  response.cookies.set(WORKSPACE_TENANT_COOKIE, "", {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 }
 
 export function noStoreJson(

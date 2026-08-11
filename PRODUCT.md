@@ -27,6 +27,7 @@ The product is evaluated by regulated DACH organizations and advisory firms. It 
 - Multi-tenant AI-system inventory, risk classification and cross-regulation control mapping.
 - Evidence, remediation, audit, incident and board-reporting workflows with role-based access.
 - Article 50 and GDPR transparency-assurance records with owner, reviewer, evidence and review dates.
+- Versioned DSFA/DPIA and FRIA impact-assessment records with separate scope decisions, eight evidence-proximate review fields, four-eyes approval and consultation gates.
 - Azure OpenAI support with Managed Identity as the production standard, PII and prompt-injection blocking, and feature flags disabled until regional and operational evidence is approved.
 - The platform supports governance and documentation. It does not certify legal conformity, replace qualified review or make binding legal and approval decisions.
 - Public routes, enterprise routes and release profiles must remain technically separated.
@@ -38,7 +39,7 @@ The product name is Compliance Hub. The public language is German and uses the e
 ## Evidence on Hand
 
 - Product implementation and tests in `app/`, `frontend/src/app/`, `frontend/src/components/` and `tests/`.
-- Security, architecture and release evidence in `docs/`, especially `docs/enterprise-readiness-20260714.md` and `docs/enterprise/wave60-article50-transparency-assurance.md`.
+- Security, architecture and release evidence in `docs/`, especially `docs/enterprise-readiness-20260714.md`, `docs/enterprise/wave60-article50-transparency-assurance.md` and `docs/enterprise/wave61-dpia-fria-impact-assessment.md`.
 - Public trust disclosures in `frontend/src/app/trust-center/page.tsx`.
 - Three owned high-resolution governance visuals in `frontend/public/images/hero/`.
 - No approved public customer logos, testimonials, certifications or production performance benchmarks are available and none may be fabricated.

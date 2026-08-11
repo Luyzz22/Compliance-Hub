@@ -454,6 +454,100 @@ class AITransparencyControlTable(Base):
     )
 
 
+class AIImpactAssessmentTable(Base):
+    """Versioned DPIA/FRIA assessment header scoped to one tenant and AI system."""
+
+    __tablename__ = "ai_impact_assessments"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "ai_system_id",
+            name="uq_ai_impact_assessment_tenant_system",
+        ),
+        Index(
+            "ix_ai_impact_assessments_tenant_review_due",
+            "tenant_id",
+            "review_due_at_utc",
+        ),
+        Index(
+            "ix_ai_impact_assessments_tenant_lifecycle",
+            "tenant_id",
+            "lifecycle_status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    ai_system_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("ai_systems.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    dpia_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="undetermined")
+    fria_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="undetermined")
+    deployer_context: Mapped[str] = mapped_column(String(64), nullable=False, default="unknown")
+    scope_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    residual_risk: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    assessment_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    independent_reviewer: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    dpo_involved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    stakeholder_views_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="not_assessed"
+    )
+    prior_consultation_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="not_assessed"
+    )
+    prior_consultation_reference: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    reviewed_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    approved_at_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_due_at_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+    updated_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
+class AIImpactAssessmentSectionTable(Base):
+    """Normalized evidence section for a DPIA/FRIA assessment."""
+
+    __tablename__ = "ai_impact_assessment_sections"
+    __table_args__ = (
+        UniqueConstraint(
+            "assessment_id",
+            "section_key",
+            name="uq_ai_impact_assessment_section_key",
+        ),
+        Index(
+            "ix_ai_impact_assessment_sections_tenant_status",
+            "tenant_id",
+            "status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    assessment_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ai_impact_assessments.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    section_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_started")
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evidence_reference: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
 class AIRegisterEntryDB(Base):
     __tablename__ = "ai_register_entries"
     __table_args__ = (

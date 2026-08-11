@@ -21,6 +21,7 @@ export const runtime = "nodejs";
 type BackendLogin = {
   session_token?: string;
   expires_at_utc?: string;
+  tenant_id?: string;
 };
 
 function clearTransactionCookie(response: NextResponse): void {
@@ -82,7 +83,12 @@ export async function GET(request: NextRequest) {
       303,
     );
     response.headers.set("Cache-Control", "no-store, max-age=0");
-    setSessionCookies(response, payload.session_token, payload.expires_at_utc);
+    setSessionCookies(
+      response,
+      payload.session_token,
+      payload.expires_at_utc,
+      payload.tenant_id,
+    );
     clearTransactionCookie(response);
     return response;
   } catch {

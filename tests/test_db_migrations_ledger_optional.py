@@ -117,9 +117,10 @@ def test_run_all_ledgerless_reports_unsatisfied_without_ddl(tmp_path) -> None:
     assert "20260430_governance_workflow_orchestration" in ids
     assert "20260501_enterprise_user_sessions" in ids
     assert "20260502_ai_transparency_assurance" in ids
+    assert "20260503_ai_impact_assessments" in ids
     assert "20260809_add_nis2_awareness_anchor" in ids
     assert "20260809_add_evidence_sha256" in ids
-    assert len(ids) == 33
+    assert len(ids) == 34
     cols = {c["name"] for c in inspect(engine).get_columns("tenants")}
     assert "kritis_sector" not in cols
     engine.dispose()

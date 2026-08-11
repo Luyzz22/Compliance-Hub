@@ -155,6 +155,8 @@ The public shell uses a fluid layout capped at 1440px, with 16px mobile gutters 
 
 Use borders and aligned rows to express relationships before introducing cards. Preserve the established routes, anchors and analytics identifiers. At 360px, 768px, 1280px and 1440px there must be no horizontal overflow, clipped actions or hidden legal context.
 
+Authenticated tenant workspaces use a 288px sticky navigation rail on desktop. On smaller viewports the rail becomes one native disclosure control that is closed by default, so primary work begins without an avoidable navigation scroll. Navigation remains grouped, searchable and fully keyboard operable.
+
 ## Elevation & Depth
 
 Most hierarchy comes from tonal layers, whitespace and 1px borders. Shadows are limited to the hero visual, the bounded product preview and the final conversion surface. A shadow must reinforce an interactive or product artifact, never decorate ordinary prose.
@@ -175,6 +177,8 @@ Use one radius per object. Nested containers should reduce or remove their radiu
 - Hero slides place imagery above an independent caption region. Tabs support arrow, Home and End keys, expose tab semantics and pause when focused or hovered.
 - Product previews must be labelled as illustrative unless their data comes from an authenticated product environment. They show relationships and outcomes, never invented performance metrics.
 - Governance rows pair an explicit term, plain-language explanation and, when needed, a truthful release state.
+- Tenant navigation groups routes by Steuerung, Assessments, Betrieb und Evidenz, and Einführung. Its filter has a persistent accessible name, every route target is at least 44px high and the active route uses `aria-current="page"`.
+- Impact assessment workspaces use one portfolio ledger, one selected system record and progressively disclosed review fields. Scope decisions, evidence references, four-eyes review, consultation status and release blockers stay adjacent; computed readiness never implies a legal determination or automatic deployment approval.
 
 ## Do's and Don'ts
 
