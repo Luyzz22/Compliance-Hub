@@ -222,7 +222,9 @@ def test_ci_builds_and_scans_both_production_images() -> None:
     assert "container-security:" in workflow
     assert "component: backend" in workflow
     assert "component: frontend" in workflow
-    assert "docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83" in workflow
+    assert "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a" in workflow
+    assert "docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c" in workflow
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in workflow
     assert "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25" in workflow
     assert "severity: HIGH,CRITICAL" in workflow
     assert 'exit-code: "1"' in workflow
