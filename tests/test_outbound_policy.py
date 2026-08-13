@@ -15,6 +15,7 @@ from app.outbound_policy import (
     OutboundPolicyError,
     approved_outbound_url,
     approved_private_service_base_url,
+    configured_outbound_url,
 )
 from app.services.board_report_export_jobs import _signed_payload
 from app.services.n8n_webhook_service import trigger_n8n_webhook
@@ -92,12 +93,34 @@ def test_production_n8n_dispatch_requires_a_signing_secret(
 ) -> None:
     monkeypatch.setenv("COMPLIANCEHUB_ENV", "production")
     monkeypatch.setenv("COMPLIANCEHUB_N8N_ALLOWED_HOSTS", "n8n.internal.example")
+    monkeypatch.setenv(
+        "COMPLIANCEHUB_N8N_WEBHOOK_URL",
+        "https://n8n.internal.example/hooks/compliancehub",
+    )
 
     with pytest.raises(OutboundPolicyError, match="signing secret"):
         trigger_n8n_webhook(
-            "https://n8n.internal.example/hooks/compliancehub",
             {"event_type": "test"},
         )
+
+
+def test_configured_outbound_url_ignores_request_data_and_uses_deployment_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_ENV", "production")
+    monkeypatch.setenv("COMPLIANCEHUB_N8N_ALLOWED_HOSTS", "n8n.internal.example")
+    monkeypatch.setenv(
+        "COMPLIANCEHUB_N8N_WEBHOOK_URL",
+        "https://n8n.internal.example/hooks/governed",
+    )
+
+    assert (
+        configured_outbound_url(
+            url_variable="COMPLIANCEHUB_N8N_WEBHOOK_URL",
+            allowlist_variable="COMPLIANCEHUB_N8N_ALLOWED_HOSTS",
+        )
+        == "https://n8n.internal.example/hooks/governed"
+    )
 
 
 def test_stripe_portal_and_webhook_are_unavailable_in_production(

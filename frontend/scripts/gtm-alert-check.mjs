@@ -9,7 +9,8 @@
  * Exit 0 immer, wenn HTTP OK; stderr bei Fehler.
  */
 
-import { constants, closeSync, fstatSync, lstatSync, openSync, readFileSync } from "node:fs";
+import { createHmac } from "node:crypto";
+import { constants, closeSync, fstatSync, openSync, readFileSync } from "node:fs";
 import { isAbsolute } from "node:path";
 
 function readSecretFile(variableName) {
@@ -17,21 +18,35 @@ function readSecretFile(variableName) {
   if (!path || !isAbsolute(path)) {
     throw new Error(`${variableName} must contain an absolute path`);
   }
-  const metadata = lstatSync(path);
-  const mode = metadata.mode & 0o777;
-  if (!metadata.isFile() || metadata.isSymbolicLink() || ![0o400, 0o600].includes(mode)) {
-    throw new Error(`${variableName} must reference a regular 0400/0600 file`);
+  if (typeof constants.O_NOFOLLOW !== "number") {
+    throw new Error(`${variableName} requires O_NOFOLLOW support`);
   }
-  const descriptor = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+  let descriptor;
+  try {
+    descriptor = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  } catch {
+    throw new Error(`${variableName} must reference an accessible regular file, not a symlink`);
+  }
   try {
     const opened = fstatSync(descriptor);
-    if (opened.dev !== metadata.dev || opened.ino !== metadata.ino) {
-      throw new Error(`${variableName} changed during validation`);
+    const mode = opened.mode & 0o777;
+    if (!opened.isFile() || ![0o400, 0o600].includes(mode)) {
+      throw new Error(`${variableName} must reference a regular 0400/0600 file`);
     }
-    if (opened.size > 16_384) {
+    if (opened.size < 1 || opened.size > 16_384) {
       throw new Error(`${variableName} exceeds the 16 KiB secret-file limit`);
     }
-    return readFileSync(descriptor, "utf8").trim();
+    const value = readFileSync(descriptor, "utf8").trim();
+    const finalMetadata = fstatSync(descriptor);
+    if (
+      finalMetadata.dev !== opened.dev ||
+      finalMetadata.ino !== opened.ino ||
+      finalMetadata.size !== opened.size ||
+      (finalMetadata.mode & 0o777) !== mode
+    ) {
+      throw new Error(`${variableName} changed during secure read`);
+    }
+    return value;
   } finally {
     closeSync(descriptor);
   }
@@ -67,10 +82,18 @@ if (production && url.protocol !== "https:") {
   process.exit(1);
 }
 
+const timestamp = Math.floor(Date.now() / 1000).toString();
+const canonicalRequest = `GET\n${url.pathname}\n${timestamp}`;
+const signature = createHmac("sha256", secret).update(canonicalRequest).digest("hex");
+secret = "";
+
 const res = await fetch(url, {
   method: "GET",
   redirect: "manual",
-  headers: { Authorization: `Bearer ${secret}` },
+  headers: {
+    "X-ComplianceHub-Timestamp": timestamp,
+    "X-ComplianceHub-Signature": `v1=${signature}`,
+  },
 });
 const text = await res.text();
 let json;

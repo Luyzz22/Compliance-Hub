@@ -19,7 +19,6 @@ const TARGET_LABELS: Record<BoardReportTargetSystem, string> = {
 export function BoardReportExportForm() {
   const [targetSystem, setTargetSystem] =
     useState<BoardReportTargetSystem>("generic_webhook");
-  const [callbackUrl, setCallbackUrl] = useState("");
   const [metadata, setMetadata] = useState({
     mandant_nr: "",
     mandant_name: "",
@@ -31,26 +30,10 @@ export function BoardReportExportForm() {
   const [lastJob, setLastJob] = useState<BoardReportExportJob | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const needsCallback =
-    targetSystem === "generic_webhook" ||
-    targetSystem === "sap_btp_http" ||
-    targetSystem === "datev_dms_prepared";
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLastJob(null);
-
-    if (needsCallback && !callbackUrl.trim()) {
-      const messages: Record<string, string> = {
-        generic_webhook: "Bei „Generischer Webhook“ ist eine Callback-URL erforderlich.",
-        sap_btp_http: "Bei „SAP BTP HTTP“ ist eine Callback-URL erforderlich.",
-        datev_dms_prepared:
-          "Bei „Steuerkanzlei / DATEV-DMS“ ist eine Callback-URL erforderlich.",
-      };
-      setError(messages[targetSystem] ?? "Callback-URL erforderlich.");
-      return;
-    }
 
     const meta =
       targetSystem === "datev_dms_prepared"
@@ -63,7 +46,6 @@ export function BoardReportExportForm() {
     try {
       const job = await createBoardReportExportJob({
         target_system: targetSystem,
-        callback_url: needsCallback ? callbackUrl.trim() || null : null,
         metadata: meta && Object.keys(meta).length > 0 ? meta : undefined,
       });
       setLastJob(job);
@@ -85,9 +67,8 @@ export function BoardReportExportForm() {
         Externer Export
       </h2>
       <p className="mt-1 text-xs text-slate-500">
-        Vorbereitung für PDF-/DMS-/SAP-BTP-Integration: Board-Report (JSON +
-        Markdown) an ein externes System senden (z. B. Webhook für
-        Weiterverarbeitung oder Archiv).
+        Board-Report (JSON + Markdown) über einen zentral freigegebenen
+        Connector an DMS, SAP BTP oder ein selbst betriebenes Ziel senden.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -115,6 +96,14 @@ export function BoardReportExportForm() {
               {TARGET_LABELS.datev_dms_prepared}
             </option>
           </select>
+          {(targetSystem === "generic_webhook" ||
+            targetSystem === "sap_btp_http" ||
+            targetSystem === "datev_dms_prepared") && (
+            <p className="mt-1 text-xs text-slate-500">
+              Zieladresse, Host-Freigabe und Signaturschlüssel werden zentral
+              durch den Betreiber verwaltet und können hier nicht verändert werden.
+            </p>
+          )}
           {targetSystem === "sap_btp_http" && (
             <p className="mt-1 text-xs text-slate-500">
               Für Anbindung an SAP Cloud Integration / BTP HTTP-Inbound-Flows.
@@ -132,26 +121,6 @@ export function BoardReportExportForm() {
             </p>
           )}
         </div>
-
-        {needsCallback && (
-          <div>
-            <label
-              htmlFor="board-export-callback-url"
-              className="block text-xs font-medium text-slate-700"
-            >
-              Callback-URL <span className="text-red-600">*</span>
-            </label>
-            <input
-              id="board-export-callback-url"
-              type="url"
-              value={callbackUrl}
-              onChange={(e) => setCallbackUrl(e.target.value)}
-              placeholder="https://..."
-              className="mt-1 block w-full max-w-md rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-              required={needsCallback}
-            />
-          </div>
-        )}
 
         {targetSystem === "datev_dms_prepared" && (
           <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/50 p-3">

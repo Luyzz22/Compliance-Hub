@@ -67,15 +67,18 @@ def test_create_export_job_no_webhook():
     assert data.get("callback_url") is None
 
 
-def test_create_export_job_generic_webhook_missing_callback():
-    """generic_webhook ohne callback_url → 400."""
+def test_create_export_job_rejects_client_callback_url():
+    """A request cannot select the destination used by an HTTP client."""
     response = client.post(
         "/api/v1/ai-governance/report/board/export-jobs",
-        json={"target_system": "generic_webhook"},
+        json={
+            "target_system": "generic_webhook",
+            "callback_url": "https://attacker.example/webhook",
+        },
         headers=_headers(),
     )
     assert response.status_code == 400
-    assert "callback_url" in response.json().get("detail", "").lower()
+    assert "server-side" in response.json().get("detail", "").lower()
 
 
 def test_create_export_job_generic_webhook_success():
@@ -91,7 +94,6 @@ def test_create_export_job_generic_webhook_success():
             "/api/v1/ai-governance/report/board/export-jobs",
             json={
                 "target_system": "generic_webhook",
-                "callback_url": "https://example.com/webhook",
             },
             headers=_headers(),
         )
@@ -99,18 +101,7 @@ def test_create_export_job_generic_webhook_success():
     data = response.json()
     assert data["status"] == "sent"
     assert data["target_system"] == "generic_webhook"
-    assert data.get("callback_url") == "https://example.com/webhook"
-
-
-def test_create_export_job_sap_btp_http_missing_callback():
-    """sap_btp_http ohne callback_url → 400."""
-    response = client.post(
-        "/api/v1/ai-governance/report/board/export-jobs",
-        json={"target_system": "sap_btp_http"},
-        headers=_headers(),
-    )
-    assert response.status_code == 400
-    assert "callback_url" in response.json().get("detail", "").lower()
+    assert data.get("callback_url") is None
 
 
 def test_create_export_job_sap_btp_http_success():
@@ -136,7 +127,6 @@ def test_create_export_job_sap_btp_http_success():
             "/api/v1/ai-governance/report/board/export-jobs",
             json={
                 "target_system": "sap_btp_http",
-                "callback_url": "https://btp.example.com/inbound",
             },
             headers=_headers(),
         )
@@ -169,17 +159,6 @@ def test_create_export_job_dms_generic_not_implemented():
     assert "not yet implemented" in (data.get("error_message") or "")
 
 
-def test_create_export_job_datev_dms_prepared_missing_callback():
-    """datev_dms_prepared ohne callback_url → 400."""
-    response = client.post(
-        "/api/v1/ai-governance/report/board/export-jobs",
-        json={"target_system": "datev_dms_prepared"},
-        headers=_headers(),
-    )
-    assert response.status_code == 400
-    assert "callback_url" in response.json().get("detail", "").lower()
-
-
 def test_create_export_job_datev_dms_prepared_payload_structure():
     """datev_dms_prepared: Payload hat mandant, bericht, content, technisch mit stabilen Keys."""
     _jobs.clear()
@@ -201,7 +180,6 @@ def test_create_export_job_datev_dms_prepared_payload_structure():
             "/api/v1/ai-governance/report/board/export-jobs",
             json={
                 "target_system": "datev_dms_prepared",
-                "callback_url": "https://datev-dms.example.com/inbound",
                 "metadata": {
                     "mandant_nr": "M-001",
                     "mandant_name": "Beispiel Kanzlei",
@@ -257,7 +235,6 @@ def test_create_export_job_webhook_failure():
             "/api/v1/ai-governance/report/board/export-jobs",
             json={
                 "target_system": "generic_webhook",
-                "callback_url": "https://example.com/webhook",
             },
             headers=_headers(),
         )

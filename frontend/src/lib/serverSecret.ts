@@ -4,7 +4,6 @@ import {
   closeSync,
   constants,
   fstatSync,
-  lstatSync,
   openSync,
   readSync,
 } from "node:fs";
@@ -59,40 +58,35 @@ export function readMountedServerSecretFile(
     );
   }
 
-  const linkMetadata = lstatSync(filePath);
-  if (!linkMetadata.isFile() || linkMetadata.isSymbolicLink()) {
-    throw new ServerSecretConfigurationError(
-      `${fileVariable} must reference a regular file, not a symlink`,
-    );
-  }
-  const mode = linkMetadata.mode & 0o777;
-  if (!APPROVED_SECRET_MODES.has(mode)) {
-    throw new ServerSecretConfigurationError(
-      `${fileVariable} must use mode 0400 or 0600`,
-    );
-  }
-  if (linkMetadata.size < 1 || linkMetadata.size > maximumBytes) {
-    throw new ServerSecretConfigurationError(
-      `${fileVariable} has an invalid secret-file size`,
-    );
-  }
-
   let descriptor: number | null = null;
   try {
-    descriptor = openSync(
-      filePath,
-      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0),
-    );
-    const openedMetadata = fstatSync(descriptor);
-    if (
-      !openedMetadata.isFile() ||
-      openedMetadata.dev !== linkMetadata.dev ||
-      openedMetadata.ino !== linkMetadata.ino ||
-      openedMetadata.size !== linkMetadata.size ||
-      !APPROVED_SECRET_MODES.has(openedMetadata.mode & 0o777)
-    ) {
+    if (typeof constants.O_NOFOLLOW !== "number") {
       throw new ServerSecretConfigurationError(
-        `${fileVariable} changed during validation`,
+        `${fileVariable} requires O_NOFOLLOW support`,
+      );
+    }
+    try {
+      descriptor = openSync(filePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    } catch {
+      throw new ServerSecretConfigurationError(
+        `${fileVariable} must reference an accessible regular file, not a symlink`,
+      );
+    }
+    const openedMetadata = fstatSync(descriptor);
+    const openedMode = openedMetadata.mode & 0o777;
+    if (!openedMetadata.isFile()) {
+      throw new ServerSecretConfigurationError(
+        `${fileVariable} must reference a regular file`,
+      );
+    }
+    if (!APPROVED_SECRET_MODES.has(openedMode)) {
+      throw new ServerSecretConfigurationError(
+        `${fileVariable} must use mode 0400 or 0600`,
+      );
+    }
+    if (openedMetadata.size < 1 || openedMetadata.size > maximumBytes) {
+      throw new ServerSecretConfigurationError(
+        `${fileVariable} has an invalid secret-file size`,
       );
     }
     const content = Buffer.alloc(maximumBytes + 1);

@@ -8,6 +8,7 @@ import { readServerSecret } from "@/lib/serverSecret";
 const COOKIE_NAME = "ch_lead_admin";
 const DEFAULT_SESSION_MINUTES = 480;
 const MAX_SESSION_MINUTES = 480;
+const AUTOMATION_SIGNATURE_WINDOW_SECONDS = 300;
 
 function sessionDurationMs(): number {
   const configured = Number(process.env.COMPLIANCEHUB_SESSION_TTL_MINUTES);
@@ -59,6 +60,23 @@ export function leadAdminIsConfigured(): boolean {
 
 export function leadAdminOrGtmAlertSecretIsConfigured(): boolean {
   return Boolean(adminSecret() || gtmAlertSecret());
+}
+
+function verifyGtmAutomationSignature(req: Request, secret: string): boolean {
+  const timestampRaw = req.headers.get("x-compliancehub-timestamp")?.trim() ?? "";
+  const signatureRaw = req.headers.get("x-compliancehub-signature")?.trim() ?? "";
+  if (!/^\d{10}$/.test(timestampRaw) || !signatureRaw.startsWith("v1=")) return false;
+  const timestamp = Number(timestampRaw);
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isSafeInteger(timestamp) || Math.abs(now - timestamp) > AUTOMATION_SIGNATURE_WINDOW_SECONDS) {
+    return false;
+  }
+  const url = new URL(req.url);
+  const canonicalRequest = `${req.method.toUpperCase()}\n${url.pathname}\n${timestampRaw}`;
+  const expected = createHmac("sha256", secret).update(canonicalRequest).digest("hex");
+  const candidate = signatureRaw.slice(3);
+  if (!/^[a-f0-9]{64}$/.test(candidate)) return false;
+  return credentialsMatch(candidate, expected);
 }
 
 export function leadAdminCredentialIsValid(candidate: string): boolean {
@@ -129,12 +147,11 @@ export function isLeadAdminAuthorized(req: Request): boolean {
 }
 
 /**
- * Lead-Admin **oder** separates Automation-Secret (Wave 32 – Cron/n8n ohne Session-Cookie).
+ * Lead-Admin session or a timestamped automation HMAC (Cron/n8n without a cookie).
  */
 export function isLeadAdminOrGtmAlertSecretAuthorized(req: Request): boolean {
   if (isLeadAdminAuthorized(req)) return true;
   const gtm = gtmAlertSecret();
   if (!gtm) return false;
-  const bearer = bearerCredential(req);
-  return Boolean(bearer && credentialsMatch(bearer, gtm));
+  return verifyGtmAutomationSignature(req, gtm);
 }

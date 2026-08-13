@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createLeadAdminSessionToken,
+  isLeadAdminOrGtmAlertSecretAuthorized,
   isLeadAdminAuthorized,
   leadAdminCredentialIsValid,
   leadAdminIsConfigured,
@@ -23,6 +25,16 @@ function configureMountedSecret(): void {
   writeFileSync(path, `${SECRET}\n`, { mode: 0o400 });
   chmodSync(path, 0o400);
   vi.stubEnv("LEAD_ADMIN_SECRET_FILE", path);
+  vi.stubEnv("COMPLIANCEHUB_RELEASE_CHANNEL", "production");
+}
+
+function configureGtmMountedSecret(): void {
+  const directory = mkdtempSync(join(tmpdir(), "compliancehub-gtm-secret-"));
+  directories.push(directory);
+  const path = join(directory, "gtm-secret");
+  writeFileSync(path, `${SECRET}\n`, { mode: 0o400 });
+  chmodSync(path, 0o400);
+  vi.stubEnv("GTM_ALERT_SECRET_FILE", path);
   vi.stubEnv("COMPLIANCEHUB_RELEASE_CHANNEL", "production");
 }
 
@@ -74,5 +86,43 @@ describe("lead admin credential boundary", () => {
       sameSite: "strict",
       maxAge: 480 * 60,
     });
+  });
+
+  it("accepts only a fresh HMAC signature for GTM automation", () => {
+    configureGtmMountedSecret();
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const path = "/api/admin/gtm/alert-check";
+    const signature = createHmac("sha256", SECRET)
+      .update(`GET\n${path}\n${timestamp}`)
+      .digest("hex");
+    const signed = new Request(`https://app.example.invalid${path}`, {
+      headers: {
+        "X-ComplianceHub-Timestamp": timestamp,
+        "X-ComplianceHub-Signature": `v1=${signature}`,
+      },
+    });
+    const leakedBearer = new Request(`https://app.example.invalid${path}`, {
+      headers: { Authorization: `Bearer ${SECRET}` },
+    });
+
+    expect(isLeadAdminOrGtmAlertSecretAuthorized(signed)).toBe(true);
+    expect(isLeadAdminOrGtmAlertSecretAuthorized(leakedBearer)).toBe(false);
+  });
+
+  it("rejects expired GTM automation signatures", () => {
+    configureGtmMountedSecret();
+    const timestamp = (Math.floor(Date.now() / 1000) - 301).toString();
+    const path = "/api/admin/gtm/health-snapshot";
+    const signature = createHmac("sha256", SECRET)
+      .update(`GET\n${path}\n${timestamp}`)
+      .digest("hex");
+    const request = new Request(`https://app.example.invalid${path}`, {
+      headers: {
+        "X-ComplianceHub-Timestamp": timestamp,
+        "X-ComplianceHub-Signature": `v1=${signature}`,
+      },
+    });
+
+    expect(isLeadAdminOrGtmAlertSecretAuthorized(request)).toBe(false);
   });
 });

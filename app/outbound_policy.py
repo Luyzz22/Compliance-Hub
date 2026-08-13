@@ -71,6 +71,20 @@ def approved_outbound_url(raw: str, *, allowlist_variable: str) -> str:
     return value
 
 
+def configured_outbound_url(*, url_variable: str, allowlist_variable: str) -> str:
+    """Resolve an application-owned destination from deployment configuration.
+
+    Request data must select a bounded connector type, never supply the URL used by
+    the HTTP client.  Keeping resolution at this boundary makes SSRF prevention
+    explicit and lets the Hetzner release contract fail closed on missing targets.
+    """
+
+    value = os.getenv(url_variable, "").strip()
+    if not value:
+        raise OutboundPolicyError(f"{url_variable} must configure an outbound URL")
+    return approved_outbound_url(value, allowlist_variable=allowlist_variable)
+
+
 def approved_private_service_base_url(raw: str, *, allowlist_variable: str) -> str:
     """Validate an internal service base URL such as the Docker-network OPA endpoint."""
 

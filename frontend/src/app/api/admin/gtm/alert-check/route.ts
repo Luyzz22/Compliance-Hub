@@ -14,7 +14,7 @@ function findingsSummaryDe(findings: { severity: string; message_de: string }[])
 }
 
 /**
- * GET/POST für selbst betriebenes n8n bzw. internen Scheduler: Bearer-Secret.
+ * GET/POST für selbst betriebenes n8n bzw. internen Scheduler: kurzlebige HMAC-Signatur.
  * Bei ausgelösten Alerts: Log + optional GTM_ALERT_WEBHOOK_URL.
  */
 export async function GET(req: Request) {

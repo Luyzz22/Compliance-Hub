@@ -63,10 +63,11 @@ bleiben im Enterprise-Profil verboten.
 
 HubSpot, Pipedrive, Stripe und deren produktive Adapter sind im souveränen
 Produktionsprofil technisch gesperrt. Zulässig sind nur selbst betriebene
-HTTPS-Webhooks, deren Host explizit in
-`COMPLIANCEHUB_OUTBOUND_WEBHOOK_ALLOWED_HOSTS` steht. Webhook-Geheimnisse werden wie
-die übrigen Credentials ausschließlich als OpenBao-Datei eingebunden; Query-Secrets
-sind in Produktion deaktiviert.
+HTTPS-Webhooks, deren Ziel-URL serverseitig konfiguriert ist und deren Host explizit
+in der jeweiligen `COMPLIANCEHUB_*_ALLOWED_HOSTS`-Liste steht. Request-Daten dürfen
+kein Netzwerkziel bestimmen. Webhook-Geheimnisse werden ausschließlich als
+OpenBao-Datei eingebunden; Query-Secrets sind in Produktion deaktiviert. Der GTM-
+Scheduler sendet nur eine fünf Minuten gültige HMAC-Signatur, nicht das Secret selbst.
 
 Optionale Dependency-Telemetrie ist ebenfalls kein freigegebener Egress-Pfad.
 `HAYSTACK_TELEMETRY_ENABLED=false` wird bereits vor dem ersten Haystack-Import

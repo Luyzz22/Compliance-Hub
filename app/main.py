@@ -2514,21 +2514,11 @@ def create_board_report_export_job(
     nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
     body: BoardReportExportJobCreate,
 ) -> BoardReportExportJob:
-    """Erstellt Export-Job (Report + Markdown), optional Webhook-POST an callback_url."""
-    if body.target_system == "generic_webhook" and not body.callback_url:
+    """Create an export job using deployment-controlled connector destinations."""
+    if body.callback_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="callback_url required for target_system generic_webhook",
-        )
-    if body.target_system == "sap_btp_http" and not body.callback_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="callback_url required for target_system sap_btp_http",
-        )
-    if body.target_system == "datev_dms_prepared" and not body.callback_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="callback_url required for target_system datev_dms_prepared",
+            detail="callback_url is not accepted; configure the connector destination server-side",
         )
     tenant_id = auth_context.tenant_id
     report = _build_board_report(
@@ -9484,26 +9474,13 @@ def trigger_n8n_workflow(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_N8N_WEBHOOKS))],
     workflow_type: str = Query(..., description="Workflow type to trigger"),
-    webhook_url: str = Query(..., description="n8n webhook URL"),
 ) -> dict:
-    """Trigger an n8n workflow via webhook."""
-    from app.outbound_policy import OutboundPolicyError, approved_outbound_url
+    """Trigger the deployment-configured n8n workflow endpoint."""
     from app.services.n8n_webhook_service import (
         N8nWorkflowType,
         build_webhook_payload,
         trigger_n8n_webhook,
     )
-
-    try:
-        approved_url = approved_outbound_url(
-            webhook_url,
-            allowlist_variable="COMPLIANCEHUB_N8N_ALLOWED_HOSTS",
-        )
-    except OutboundPolicyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="webhook_url denied by outbound policy",
-        ) from exc
 
     # Validate workflow type
     valid_types = [t.value for t in N8nWorkflowType]
@@ -9520,7 +9497,7 @@ def trigger_n8n_workflow(
         required=IS_PRODUCTION,
         minimum_characters=32,
     )
-    result = trigger_n8n_webhook(approved_url, payload, secret)
+    result = trigger_n8n_webhook(payload, secret)
     # Sanitize result — don't expose raw error details
     sanitized = {"status_code": result.get("status_code")}
     if "error" in result:

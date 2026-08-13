@@ -852,7 +852,6 @@ export type BoardReportExportJobStatus =
 
 export interface BoardReportExportJobCreate {
   target_system: BoardReportTargetSystem;
-  callback_url?: string | null;
   metadata?: Record<string, string> | null;
 }
 

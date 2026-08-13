@@ -15,7 +15,7 @@ from enum import StrEnum
 
 import httpx
 
-from app.outbound_policy import OutboundPolicyError, approved_outbound_url, is_production_runtime
+from app.outbound_policy import OutboundPolicyError, configured_outbound_url, is_production_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,6 @@ def build_webhook_payload(event_type: str, tenant_id: str, data: dict) -> dict:
 
 
 def trigger_n8n_webhook(
-    webhook_url: str,
     payload: dict,
     secret: str | None = None,
 ) -> dict:
@@ -70,8 +69,8 @@ def trigger_n8n_webhook(
     """
     import json
 
-    approved_url = approved_outbound_url(
-        webhook_url,
+    configured_url = configured_outbound_url(
+        url_variable="COMPLIANCEHUB_N8N_WEBHOOK_URL",
         allowlist_variable="COMPLIANCEHUB_N8N_ALLOWED_HOSTS",
     )
     if is_production_runtime() and not secret:
@@ -87,7 +86,7 @@ def trigger_n8n_webhook(
     try:
         with httpx.Client(timeout=30.0) as client:
             response = client.post(
-                approved_url,
+                configured_url,
                 content=body_bytes,
                 headers=headers,
                 follow_redirects=False,

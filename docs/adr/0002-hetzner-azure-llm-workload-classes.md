@@ -95,9 +95,11 @@ Migrationsarbeiten im Quellcode und werden durch Release-Gate, Dispatcher und Ad
 selbst produktiv gesperrt.
 
 Fachliche Webhooks dürfen nur an selbst betriebene HTTPS-Endpunkte gesendet werden.
-Der Zielhost muss explizit in `COMPLIANCEHUB_OUTBOUND_WEBHOOK_ALLOWED_HOSTS` stehen;
-Credentials, Query-Parameter und URL-Fragmente sind in Endpunkt-URLs unzulässig.
-Authentisierung erfolgt über unabhängig rotierte OpenBao-Datei-Secrets. Das
+Die vollständige Ziel-URL wird durch das Deployment vorgegeben und der Zielhost muss
+explizit in der jeweiligen `COMPLIANCEHUB_*_ALLOWED_HOSTS`-Liste stehen; Request-Daten
+dürfen kein Netzwerkziel bestimmen. Credentials, Query-Parameter und URL-Fragmente
+sind in Endpunkt-URLs unzulässig. Authentisierung erfolgt über unabhängig rotierte
+OpenBao-Datei-Secrets und HMAC-signierte Requests. Das
 Frontend-Container-Entrypoint wiederholt das Enterprise-Gate mit der tatsächlichen
 Runtime-Konfiguration und startet bei einem Policy-Verstoß nicht.
 

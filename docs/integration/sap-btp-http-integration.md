@@ -8,7 +8,7 @@
 
 ComplianceHub erzeugt einen **AI Governance Board Report** (JSON + Markdown) mit KPIs, Compliance-Übersicht, Incidents und Supplier-Risiken. Dieser Report soll in SAP-Umgebungen weiterverarbeitet werden können:
 
-- **SAP Cloud Integration (iFlow):** HTTP-Inbound-Adresse wird als `callback_url` beim Export-Job angegeben. ComplianceHub sendet den Report per POST an diese URL.
+- **SAP Cloud Integration (iFlow):** Die HTTP-Inbound-Adresse wird ausschließlich vom Betreiber über `COMPLIANCEHUB_EXPORT_SAP_BTP_URL` konfiguriert. Der Request wählt nur `target_system=sap_btp_http` und kann das Netzwerkziel nicht verändern.
 - **Weiterverarbeitung:** z.B. Ablage in DMS, S/4HANA-Dokumentenmanagement, Archiv oder Weiterleitung an Verantwortliche.
 
 Der Export wird über **Export-Jobs** mit `target_system=sap_btp_http` ausgelöst. Es wird ein stabiles Payload-Schema und ein erkennbarer Header verwendet.
@@ -50,7 +50,7 @@ In SAP Cloud Integration kann anhand von `X-ComplianceHub-Integration: sap_btp_h
 
 - **Methode:** POST  
 - **Body:** JSON (siehe Payload-Schema)  
-- **Authentifizierung:** Vom Aufrufer (ComplianceHub) abhängig. Aktuell sendet ComplianceHub keinen eigenen Auth-Header; die Inbound-Adresse kann in BTP z.B. per API Key, Basic Auth oder IP-Whitelist geschützt werden.  
+- **Authentifizierung:** ComplianceHub signiert den Payload mit dem aus einer OpenBao-Datei gelesenen Export-Secret (`X-Hub-Signature-256`). Der Zielhost muss zusätzlich exakt allowlisted und am Hetzner-Egress freigegeben sein.
 - **Antwort:** HTTP 2xx bei Erfolg; bei 4xx/5xx wertet ComplianceHub den Job als „failed“ und speichert die Fehlermeldung.
 
 ---
