@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "registry_prefix": "registry.internal.example.de/compliancehub",
+  "allowed_registry_hosts": ["registry.internal.example.de"],
+  "base_images": {
+    "backend": "registry.internal.example.de/mirror/python@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "frontend": "registry.internal.example.de/mirror/node@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "package_mirrors": {
+    "python": "https://packages.internal.example.de/pypi/simple",
+    "npm": "https://packages.internal.example.de/npm/"
+  },
+  "allowed_package_hosts": ["packages.internal.example.de"],
+  "trivy_cache_dir": "/var/lib/compliancehub/trivy-cache",
+  "trivy_db_max_age_hours": 24,
+  "evidence_root": "/var/lib/compliancehub/release-evidence",
+  "openbao_address": "https://openbao.internal.example.de:8200",
+  "openbao_transit_key": "compliancehub-release",
+  "openbao_token_file": "/run/compliancehub-release/openbao-token",
+  "cosign_public_key": "/etc/compliancehub/release-trust/cosign.pub",
+  "required_tools": {
+    "cosign": "v3.0.6",
+    "syft": "1.50.0",
+    "trivy": "0.73.0"
+  }
+}

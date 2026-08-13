@@ -29,7 +29,8 @@
   },
   "database": {
     "migration_plan_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-    "backup_restore_evidence": "replace-with-immutable-evidence-reference",
+    "restore_drill_id": "DR-YYYYMMDD-CHANGEID",
+    "restore_evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "change_class": "none",
     "migration_execution_status": "not_required",
     "schema_verification_status": "pending",

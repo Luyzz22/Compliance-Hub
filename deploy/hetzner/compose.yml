@@ -3,20 +3,34 @@ name: compliancehub
 # Docker Compose bind-mounts file-backed secrets and cannot remap uid/gid/mode.
 # The release controller validates this host-side contract before any pull or up.
 x-secret-host-contract:
-  tls_certificate: { uid: 65532, mode: "0400" }
-  tls_private_key: { uid: 65532, mode: "0400" }
-  backend_database_url: { uid: 10001, mode: "0400" }
-  postgres_password: { uid: 10001, mode: "0400" }
-  s3_access_key: { uid: 10001, mode: "0400" }
-  s3_secret_access_key: { uid: 10001, mode: "0400" }
-  azure_openai_client_certificate: { uid: 10001, mode: "0400" }
-  bff_shared_secret: { uid: 10001, mode: "0400" }
-  audit_pseudonymization_key: { uid: 10001, mode: "0400" }
-  credential_pepper: { uid: 10001, mode: "0400" }
-  internal_health_api_key: { uid: 10001, mode: "0400" }
-  entra_client_secret: { uid: 10001, mode: "0400" }
-  auth_transaction_secret: { uid: 10001, mode: "0400" }
-  lead_admin_secret: { uid: 10001, mode: "0400" }
+  tls_certificate:
+    { uid: 65532, mode: "0400", min_bytes: 256, content_kind: pem_certificate, consumers: [edge], rotation_policy: certificate_lifecycle }
+  tls_private_key:
+    { uid: 65532, mode: "0400", min_bytes: 256, content_kind: pem_private_key, consumers: [edge], rotation_policy: certificate_lifecycle }
+  backend_database_url:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: postgres_dsn, consumers: [backend], rotation_policy: standard_90d }
+  postgres_password:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [frontend], rotation_policy: standard_90d }
+  s3_access_key:
+    { uid: 10001, mode: "0400", min_bytes: 16, content_kind: opaque, consumers: [frontend], rotation_policy: standard_90d }
+  s3_secret_access_key:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [frontend], rotation_policy: standard_90d }
+  azure_openai_client_certificate:
+    { uid: 10001, mode: "0400", min_bytes: 512, content_kind: pem_certificate_private_key, consumers: [backend], rotation_policy: certificate_lifecycle }
+  bff_shared_secret:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [frontend, backend], rotation_policy: coordinated_change_window }
+  audit_pseudonymization_key:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [backend], rotation_policy: coordinated_change_window }
+  credential_pepper:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [backend], rotation_policy: coordinated_change_window }
+  internal_health_api_key:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [backend], rotation_policy: standard_90d }
+  entra_client_secret:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [frontend], rotation_policy: standard_90d }
+  auth_transaction_secret:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [frontend], rotation_policy: standard_90d }
+  lead_admin_secret:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [frontend], rotation_policy: standard_90d }
 
 services:
   edge:

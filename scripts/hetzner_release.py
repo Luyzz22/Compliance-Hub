@@ -9,7 +9,9 @@ import hashlib
 import json
 import os
 import stat
-import subprocess
+
+# Fixed argv execution is required for the approved release tools.
+import subprocess  # nosec B404
 import sys
 import tempfile
 from collections.abc import Iterator, Sequence
@@ -17,6 +19,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -45,6 +48,26 @@ SERVICE_IMAGES = {
     "backend": "COMPLIANCEHUB_BACKEND_IMAGE",
     "frontend": "COMPLIANCEHUB_FRONTEND_IMAGE",
 }
+SECRET_CONTRACT_FIELDS = {
+    "uid",
+    "mode",
+    "min_bytes",
+    "content_kind",
+    "consumers",
+    "rotation_policy",
+}
+SECRET_CONTENT_KINDS = {
+    "opaque",
+    "postgres_dsn",
+    "pem_certificate",
+    "pem_private_key",
+    "pem_certificate_private_key",
+}
+SECRET_ROTATION_POLICIES = {
+    "certificate_lifecycle",
+    "standard_90d",
+    "coordinated_change_window",
+}
 
 
 class ReleaseError(RuntimeError):
@@ -63,6 +86,7 @@ class ReleasePaths:
     approver_public_key: Path
     backend_sbom: Path
     frontend_sbom: Path
+    restore_evidence: Path
     lock_file: Path
     audit_log: Path
 
@@ -161,10 +185,29 @@ def validate_secret_host_contract(deployment: Path, compose_payload: object) -> 
         raise ReleaseError("compose.yml must contain an object")
     contracts = compose_payload.get("x-secret-host-contract")
     definitions = compose_payload.get("secrets")
-    if not isinstance(contracts, dict) or not isinstance(definitions, dict):
-        raise ReleaseError("compose.yml must define secrets and x-secret-host-contract")
+    services = compose_payload.get("services")
+    if (
+        not isinstance(contracts, dict)
+        or not isinstance(definitions, dict)
+        or not isinstance(services, dict)
+    ):
+        raise ReleaseError("compose.yml must define services, secrets and x-secret-host-contract")
     if set(contracts) != set(definitions):
         raise ReleaseError("secret host contract must cover every Compose secret exactly")
+
+    actual_consumers: dict[str, set[str]] = {name: set() for name in definitions}
+    for service_name, service in services.items():
+        if not isinstance(service_name, str) or not isinstance(service, dict):
+            raise ReleaseError("Compose service definition is malformed")
+        for mounted in service.get("secrets", []):
+            if not isinstance(mounted, dict) or not isinstance(mounted.get("source"), str):
+                raise ReleaseError(f"Compose secret mount is malformed: {service_name}")
+            source_name = mounted["source"]
+            if source_name not in actual_consumers:
+                raise ReleaseError(
+                    f"Compose service references an undefined secret: {service_name}"
+                )
+            actual_consumers[source_name].add(service_name)
 
     deployment_root = deployment.resolve(strict=True)
     for name in sorted(definitions):
@@ -175,8 +218,28 @@ def validate_secret_host_contract(deployment: Path, compose_payload: object) -> 
         source = definition.get("file")
         uid = contract.get("uid")
         raw_mode = contract.get("mode")
-        if not isinstance(source, str) or type(uid) is not int or raw_mode != "0400":
+        minimum_bytes = contract.get("min_bytes")
+        content_kind = contract.get("content_kind")
+        consumers = contract.get("consumers")
+        rotation_policy = contract.get("rotation_policy")
+        if set(contract) != SECRET_CONTRACT_FIELDS:
+            raise ReleaseError(f"secret contract has unknown or missing fields: {name}")
+        if (
+            not isinstance(source, str)
+            or type(uid) is not int
+            or raw_mode != "0400"
+            or type(minimum_bytes) is not int
+            or not 16 <= minimum_bytes <= MAX_SECRET_BYTES
+            or content_kind not in SECRET_CONTENT_KINDS
+            or not isinstance(consumers, list)
+            or not consumers
+            or any(not isinstance(consumer, str) for consumer in consumers)
+            or len(consumers) != len(set(consumers))
+            or rotation_policy not in SECRET_ROTATION_POLICIES
+        ):
             raise ReleaseError(f"secret contract is incomplete: {name}")
+        if set(consumers) != actual_consumers[name]:
+            raise ReleaseError(f"secret consumer contract does not match Compose mounts: {name}")
         source_path = deployment_root / source
         for parent in source_path.parents:
             if parent == deployment_root:
@@ -192,8 +255,40 @@ def validate_secret_host_contract(deployment: Path, compose_payload: object) -> 
             allowed_uids={uid},
             maximum_bytes=MAX_SECRET_BYTES,
         )
-        if not content.strip():
+        normalized = content.strip()
+        if not normalized:
             raise ReleaseError(f"secret source must not be empty: {name}")
+        if len(normalized) < minimum_bytes:
+            raise ReleaseError(f"secret source does not meet its minimum length: {name}")
+        if b"\x00" in normalized:
+            raise ReleaseError(f"secret source contains forbidden binary data: {name}")
+        if content_kind == "opaque" and (b"\n" in normalized or b"\r" in normalized):
+            raise ReleaseError(f"opaque secret source must contain exactly one line: {name}")
+        if content_kind == "postgres_dsn":
+            try:
+                parsed = urlsplit(normalized.decode("utf-8"))
+            except (UnicodeDecodeError, ValueError) as exc:
+                raise ReleaseError(f"PostgreSQL secret is not a valid DSN: {name}") from exc
+            if (
+                parsed.scheme not in {"postgres", "postgresql"}
+                or not parsed.hostname
+                or not parsed.username
+                or parsed.password is None
+                or not parsed.path.strip("/")
+            ):
+                raise ReleaseError(f"PostgreSQL secret is not a complete DSN: {name}")
+        pem_markers = {
+            "pem_certificate": (b"-----BEGIN CERTIFICATE-----",),
+            "pem_private_key": (b"-----BEGIN PRIVATE KEY-----",),
+            "pem_certificate_private_key": (
+                b"-----BEGIN CERTIFICATE-----",
+                b"-----BEGIN PRIVATE KEY-----",
+            ),
+        }
+        if content_kind in pem_markers and any(
+            marker not in normalized for marker in pem_markers[content_kind]
+        ):
+            raise ReleaseError(f"secret source does not match its declared PEM type: {name}")
 
 
 def _secret_source(deployment: Path, compose_payload: object, name: str) -> Path:
@@ -286,7 +381,8 @@ def _run(
     environment: dict[str, str] | None = None,
 ) -> str:
     try:
-        result = subprocess.run(
+        # No shell is used; command construction is limited to release-controller controls.
+        result = subprocess.run(  # nosec B603
             list(command),
             cwd=cwd,
             env=environment,
@@ -342,6 +438,8 @@ def _verify_release_evidence(paths: ReleasePaths) -> None:
             str(paths.backend_sbom),
             "--frontend-sbom",
             str(paths.frontend_sbom),
+            "--restore-evidence",
+            str(paths.restore_evidence),
             "--deployment-dir",
             str(paths.deployment),
             "--json",
@@ -390,6 +488,7 @@ def preflight(paths: ReleasePaths) -> tuple[dict[str, object], bytes, dict[str, 
         (paths.approver_public_key, {0o400, 0o440, 0o444}, {0}),
         (paths.backend_sbom, {0o400, 0o440, 0o444}, {0, os.geteuid()}),
         (paths.frontend_sbom, {0o400, 0o440, 0o444}, {0, os.geteuid()}),
+        (paths.restore_evidence, {0o400, 0o440, 0o600}, {0, os.geteuid()}),
     ):
         _secure_read(control_path, allowed_modes=modes, allowed_uids=owners)
     compose_bytes = _secure_read(paths.compose, allowed_modes={0o444, 0o644})
@@ -719,6 +818,7 @@ def _resolve_paths(arguments: argparse.Namespace) -> ReleasePaths:
         approver_public_key=resolve(arguments.approver_public_key),
         backend_sbom=resolve(arguments.backend_sbom),
         frontend_sbom=resolve(arguments.frontend_sbom),
+        restore_evidence=resolve(arguments.restore_evidence),
         lock_file=Path(arguments.lock_file).resolve(),
         audit_log=Path(arguments.audit_log).resolve(),
     )
@@ -741,6 +841,7 @@ def main() -> int:
     )
     parser.add_argument("--backend-sbom", default="artifacts/backend.cdx.json")
     parser.add_argument("--frontend-sbom", default="artifacts/frontend.cdx.json")
+    parser.add_argument("--restore-evidence", default="artifacts/restore-drill.json")
     parser.add_argument("--lock-file", default="/var/lock/compliancehub/release.lock")
     parser.add_argument("--audit-log", default="/var/log/compliancehub/release-events.jsonl")
     parser.add_argument("--confirm-release-id")

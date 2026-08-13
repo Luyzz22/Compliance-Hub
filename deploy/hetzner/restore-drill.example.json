@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "drill_id": "DR-20260813-CHANGE1234",
+  "evidence_root": "/var/lib/compliancehub/restore-evidence",
+  "postgres_backup_file": "/var/lib/compliancehub/backups/postgres/approved.dump",
+  "postgres_backup_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "postgres_backup_created_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "postgres_connection_file": "/etc/compliancehub/restore/postgres-connection.json",
+  "postgres_pgpass_file": "/run/compliancehub-restore/pgpass",
+  "allowed_postgres_hosts": ["postgres-restore.internal.example.de"],
+  "postgres_restore_database": "compliancehub_restore_20260813_change1234",
+  "postgres_required_tables": ["tenants", "ai_systems", "audit_logs", "evidence_files"],
+  "postgres_minimum_public_tables": 4,
+  "object_rclone_config_file": "/run/compliancehub-restore/rclone.conf",
+  "object_remote": "hetzner_restore",
+  "object_backup_bucket": "compliancehub-backups",
+  "object_restore_bucket": "compliancehub-restore-drills",
+  "object_backup_prefix": "approved/2026-08-13",
+  "object_backup_created_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "object_restore_prefix": "restore-drills/DR-20260813-CHANGE1234",
+  "allowed_object_hosts": ["fsn1.your-objectstorage.com"],
+  "rpo_target_minutes": 1440,
+  "rto_target_minutes": 240,
+  "required_tools": {
+    "psql": "17.9",
+    "pg_restore": "17.9",
+    "createdb": "17.9",
+    "dropdb": "17.9",
+    "rclone": "v1.72.1"
+  }
+}

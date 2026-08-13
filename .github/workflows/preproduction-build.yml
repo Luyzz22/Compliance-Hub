@@ -1,0 +1,40 @@
+name: Pre-production sovereign build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preproduction-sovereign-build
+  cancel-in-progress: false
+
+jobs:
+  build-sign-attest:
+    name: Build, scan, sign and attest on Hetzner
+    if: github.ref == 'refs/heads/main' && github.repository == 'Luyzz22/Compliance-Hub'
+    runs-on: [self-hosted, linux, x64, compliancehub-hetzner-release]
+    environment: preproduction
+    timeout-minutes: 60
+    steps:
+      - name: Checkout immutable main commit
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          clean: true
+
+      - name: Build, scan, sign and attest in the sovereign zone
+        env:
+          COMPLIANCEHUB_RELEASE_BUILDER_CONFIG: /etc/compliancehub/release-builder.json
+          COMPLIANCEHUB_RELEASE_COMMIT: ${{ github.sha }}
+          COMPLIANCEHUB_RELEASE_INVOCATION: github-run-${{ github.run_id }}-${{ github.run_attempt }}
+        run: python3 scripts/sovereign_release_build.py
+
+      - name: Record non-secret evidence location
+        run: |
+          printf '%s\n' \
+            'Build evidence was retained on the Hetzner release runner.' \
+            'No image, SBOM, scan report, registry credential or OpenBao token was uploaded to GitHub.' \
+            >> "$GITHUB_STEP_SUMMARY"

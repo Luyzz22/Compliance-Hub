@@ -1,0 +1,7 @@
+{
+  "host": "postgres-restore.internal.example.de",
+  "port": 5432,
+  "username": "compliancehub_restore_operator",
+  "maintenance_database": "postgres",
+  "sslmode": "verify-full"
+}

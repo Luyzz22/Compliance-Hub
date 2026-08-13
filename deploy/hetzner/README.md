@@ -40,6 +40,7 @@ secrets/s3-secret-access-key
 secrets/azure-openai-client-certificate.pem
 secrets/bff-shared-secret
 secrets/audit-pseudonymization-key
+secrets/credential-pepper
 secrets/internal-health-api-key
 secrets/entra-client-secret
 secrets/auth-transaction-secret
@@ -52,8 +53,22 @@ Dateibasierte Compose-Secrets sind Bind-Mounts; Docker Compose setzt deren dekla
 UID/GID/Moduswerte nicht um. Deshalb enthält `compose.yml` einen separaten
 `x-secret-host-contract`. Der Release-Controller prüft vor jedem mutierenden Schritt,
 dass jede Quelldatei regulär, kein Symlink, Eigentum der vorgesehenen numerischen
-Container-UID und exakt `0400` ist. Die YAML-Langsyntax selbst wird nicht als
-Berechtigungsnachweis behandelt.
+Container-UID und exakt `0400` ist. Zusätzlich bindet der Vertrag Mindestlänge,
+Inhaltstyp, die einzigen zulässigen Verbraucher und eine Rotationsklasse. Der Preflight
+gleicht die Verbraucher gegen die tatsächlichen Compose-Mounts ab, prüft einzeilige
+opaque Werte, vollständige PostgreSQL-DSNs und PEM-Marker und gibt dabei niemals
+Secret-Inhalte aus. Die YAML-Langsyntax selbst wird nicht als Berechtigungsnachweis
+behandelt.
+
+Die Rotationsklassen sind verbindliche Betriebsverfahren, keine Behauptung bereits
+erfolgter Rotation:
+
+- `standard_90d`: spätestens alle 90 Tage oder unmittelbar nach Expositionsverdacht;
+  neuer Wert, abhängige Sitzung/Verbindung, Funktionsprüfung, danach Widerruf des alten.
+- `certificate_lifecycle`: Erneuerung vor dem 30-Tage-Ablaufgate, Ketten-/Key-Pair-Prüfung
+  und anschließender Widerruf des Vorgängers.
+- `coordinated_change_window`: Vier-Augen-Change mit gemeinsamem Neustart abhängiger
+  Dienste; bei `credential-pepper` inklusive geplanter API-Key-/Session-Neuausstellung.
 
 API-Keys, Passwörter oder private Schlüssel dürfen weder in `.env.production`, Compose,
 Container-Image, CI-Variablen-Ausgabe noch Logs gelangen. BFF-Vertrauensanker,
@@ -132,6 +147,26 @@ getrennten Signer-/HSM-Grenzen und dürfen nicht auf dem Deployment-Host liegen.
 jeweilige `subject` muss zusätzlich mit `built_by` beziehungsweise `approved_by`
 übereinstimmen; damit kann eine gültige Signatur nicht unter fremder Identität erscheinen.
 
+Der vorgelagerte Build läuft ausschließlich über den manuell freizugebenden Workflow
+`preproduction-build.yml` auf einem isolierten Runner mit den Labels `self-hosted`,
+`linux`, `x64` und `compliancehub-hetzner-release`. Der Runner liest die root-owned
+Konfiguration `/etc/compliancehub/release-builder.json`, verwendet eine vorab
+authentifizierte private Registry und lädt während des Builds keine Werkzeuge nach.
+Cosign 3.0.6 signiert die Digest-Referenzen über einen OpenBao-Transit-Key; der private
+Schlüssel wird nie exportiert. Signaturen, CycloneDX-Attestierungen und SLSA-v1-
+Provenance liegen als OCI-Artefakte in derselben privaten Registry. SBOM, Trivy-JSON,
+Provenance und Build-Manifest verbleiben mit Modus `0700`/`0600` unter
+`/var/lib/compliancehub/release-evidence`. GitHub erhält davon weder Artefakte noch
+Registry-Credentials oder OpenBao-Tokens.
+
+Vor Aktivierung muss ein Administrator `release-builder.example.json` außerhalb des
+Repositories als root-owned Konfiguration provisionieren. Der OpenBao-Agent erzeugt
+für jeden Lauf ein kurzlebiges, auf `transit/keys`, `transit/hmac`, `transit/sign`
+und `transit/verify` des einen Release-Keys begrenztes Token. Der Runner darf keine
+OpenBao-Key-Erzeugungs-, Export-, Secret-Lese- oder Administrationsrechte besitzen.
+Die Cosign-Aufrufe deaktivieren sowohl den öffentlichen Transparency-Log-Upload als
+auch die TUF-basierte öffentliche Signing-Konfiguration ausdrücklich.
+
 Auf dem Deployment-Host wird der Verifier in einer dedizierten root-owned Python-3.11-
 Umgebung betrieben. `cryptography` und seine Transitivabhängigkeiten werden während der
 Host-Provisionierung aus dem geprüften `requirements.lock` mit `--require-hashes`
@@ -171,6 +206,7 @@ vor `docker compose pull` und `up` muss dann der vollständige Gate-Befehl erfol
   --approver-public-key /etc/compliancehub/release-trust/approver-ed25519.pem \
   --backend-sbom artifacts/backend.cdx.json \
   --frontend-sbom artifacts/frontend.cdx.json \
+  --restore-evidence artifacts/restore-drill.json \
   --deployment-dir .
 ```
 
@@ -180,6 +216,50 @@ Signaturen sowie die exakt von Compose gelesenen Release-ID-, Commit-, Evidence-
 Image-Werte. Fehlende Argumente,
 falsche Schlüssel, ein nachträglich geändertes JSON oder eine abweichende Env-Datei führen
 zu einem Fehlerstatus. Das Beispiel bleibt absichtlich nicht freigabefähig.
+
+### Isolierter Restore-Drill
+
+Ein frei formulierter Restore-Verweis reicht nicht als Produktionsnachweis. Der
+root-owned Vertrag `restore-drill.example.json` bindet einen konkreten PostgreSQL-
+Custom-Dump, dessen SHA-256 und Erstellzeit sowie einen versionierten S3-Backup-Präfix.
+Der Drill läuft mit `sovereign_restore_drill.py` auf einem getrennten Hetzner-
+Operationshost. Er darf weder Produktionsdatenbank noch produktives Objekt-Bucket als
+Ziel verwenden:
+
+- PostgreSQL-Zielhost muss einen expliziten `restore`-Hostnamen besitzen; der neue,
+  vorab nicht existierende Datenbankname beginnt mit `compliancehub_restore_`.
+- S3-Quelle und -Ziel verwenden getrennte Buckets; das Ziel-Bucket enthält `restore`
+  und der Zielpräfix lautet exakt `restore-drills/<Drill-ID>`.
+- `pg_restore --exit-on-error` stellt ohne Owner/ACLs wieder her. Danach werden Anzahl
+  und verpflichtende Tabellen logisch geprüft und nur die eindeutig selbst erstellte
+  Drill-Datenbank gelöscht.
+- `rclone check --download` vergleicht jedes restaurierte Objekt byteweise. Anschließend
+  wird nur der dedizierte Drill-Präfix bereinigt und dessen Leerstand erneut geprüft.
+
+Der Restore-Operator erhält nur `CREATE DATABASE`/`CONNECT` für den isolierten Cluster
+und Schreib-/Löschrechte ausschließlich im Restore-Bucket; er besitzt keine Schreib-
+oder Löschrechte auf Backup- oder Produktions-Buckets. Backup-Ersteller und unabhängiger
+Freigeber sind getrennte Rollen. PostgreSQL-Passwort und S3-Schlüssel liegen nur in
+OpenBao-materialisierten Dateien mit `0400`; sie erscheinen weder im Nachweis noch in
+Kommandozeilen oder Logs. Der Aufruf lautet:
+
+```bash
+COMPLIANCEHUB_RESTORE_DRILL_CONFIG=/etc/compliancehub/restore/restore-drill.json \
+  /opt/compliancehub-release-venv/bin/python ../../scripts/sovereign_restore_drill.py
+```
+
+Das Ergebnis unter `/var/lib/compliancehub/restore-evidence/<Drill-ID>.json` enthält nur
+Messwerte, Werkzeugversionen, Hashes und pseudonyme Host-/Backup-Kennungen. Es muss vor
+der Release-Evidence entstanden und höchstens 31 Tage alt sein. Seine Drill-ID und sein
+SHA-256 werden in `database.restore_drill_id` und `database.restore_evidence_sha256`
+übernommen und damit durch Builder und unabhängigen Approver signiert. Der Release-
+Controller verlangt zusätzlich die tatsächliche Datei mit Modus `0400`, `0440` oder
+`0600`; fehlende, manipulierte, zu alte, nicht bereinigte oder RPO/RTO-verfehlende
+Nachweise blockieren den Cutover.
+Die atomare Datei `.<Drill-ID>.lock` reserviert jeden Drill einmalig und bleibt auch
+nach Erfolg bestehen. Wiederholung oder Entfernung ist nur nach dokumentierter
+Operatorprüfung zulässig; ein fehlgeschlagener Lauf darf nicht still überschrieben
+werden.
 
 Der Anwendungscontainer führt in Produktion weder `create_all` noch Migrationen aus.
 Schemaänderungen werden zuvor mit einer separaten DDL-Rolle, eigenem Change Window und

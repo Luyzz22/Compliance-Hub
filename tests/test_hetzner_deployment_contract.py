@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -44,7 +45,8 @@ def test_application_containers_are_rootless_read_only_and_drop_capabilities() -
         dockerfile = ROOT / dockerfile_name
         source = dockerfile.read_text(encoding="utf-8")
         assert "USER 10001:10001" in source
-        assert all("@sha256:" in line for line in source.splitlines() if line.startswith("FROM "))
+        assert re.search(r"^ARG [A-Z_]+_BASE_IMAGE=.+@sha256:[0-9a-f]{64}$", source, re.MULTILINE)
+        assert all("${" in line for line in source.splitlines() if line.startswith("FROM "))
 
     assert compose["services"]["edge"]["user"] == "65532:65532"
 
@@ -63,7 +65,7 @@ def test_runtime_dependencies_and_all_public_images_are_immutable() -> None:
     lock = lockfile.read_text(encoding="utf-8")
     assert "--hash=sha256:" in lock
     dockerfile = (ROOT / "Dockerfile.hetzner").read_text(encoding="utf-8")
-    assert "pip install --require-hashes --no-deps -r requirements.lock" in dockerfile
+    assert 'pip install --index-url "${PYTHON_INDEX_URL}" --require-hashes' in dockerfile
     assert "pip install --no-deps --no-build-isolation ." in dockerfile
 
 
@@ -72,7 +74,7 @@ def test_runtime_images_use_minimal_alpine_baselines_without_language_package_ma
     frontend = (ROOT / "frontend" / "Dockerfile.hetzner").read_text(encoding="utf-8")
 
     assert all(
-        line.startswith("FROM python:3.11-alpine3.23@sha256:")
+        line.startswith("FROM ${PYTHON_BASE_IMAGE}")
         for line in backend.splitlines()
         if line.startswith("FROM ")
     )
@@ -81,7 +83,7 @@ def test_runtime_images_use_minimal_alpine_baselines_without_language_package_ma
     assert "/usr/local/bin/pip" in backend
 
     assert all(
-        line.startswith("FROM node:22-alpine3.23@sha256:")
+        line.startswith("FROM ${NODE_BASE_IMAGE}")
         for line in frontend.splitlines()
         if line.startswith("FROM ")
     )
@@ -89,6 +91,7 @@ def test_runtime_images_use_minimal_alpine_baselines_without_language_package_ma
     assert "/usr/local/bin/npm" in frontend
     assert "/usr/local/bin/npx" in frontend
     assert "/usr/local/bin/corepack" in frontend
+    assert "--replace-registry-host=always" in frontend
 
 
 def test_frontend_container_build_preserves_cross_stack_prebuild_gates() -> None:
@@ -142,9 +145,18 @@ def test_file_secret_permissions_are_an_explicit_host_preflight_contract() -> No
 
     assert set(contracts) == set(compose["secrets"])
     assert all(contract["mode"] == "0400" for contract in contracts.values())
+    assert all(contract["min_bytes"] >= 16 for contract in contracts.values())
+    assert all(contract["consumers"] for contract in contracts.values())
+    assert all(contract["rotation_policy"] for contract in contracts.values())
+    actual_consumers = {name: set() for name in compose["secrets"]}
     for service in compose["services"].values():
         for secret in service.get("secrets", []):
             assert set(secret) == {"source", "target"}
+    for service_name, service in compose["services"].items():
+        for secret in service.get("secrets", []):
+            actual_consumers[secret["source"]].add(service_name)
+    for name, contract in contracts.items():
+        assert set(contract["consumers"]) == actual_consumers[name]
 
 
 def test_audit_key_is_mounted_only_into_the_backend() -> None:
@@ -222,11 +234,15 @@ def test_ci_builds_and_scans_both_production_images() -> None:
     assert "container-security:" in workflow
     assert "component: backend" in workflow
     assert "component: frontend" in workflow
-    assert "docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83" in workflow
+    assert "docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a" in workflow
+    assert "docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c" in workflow
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in workflow
     assert "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25" in workflow
     assert "severity: HIGH,CRITICAL" in workflow
     assert 'exit-code: "1"' in workflow
     assert 'PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"' in workflow
+    assert "scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py" in workflow
+    assert "bandit -q scripts/hetzner_release.py scripts/verify_release_evidence.py" in workflow
 
 
 def test_application_containers_expose_release_evidence_labels() -> None:
