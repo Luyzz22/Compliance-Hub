@@ -48,9 +48,20 @@ for (const invariant of [
   "COMPLIANCEHUB_S3_ACCESS_KEY_FILE",
   "COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE",
   "pg_advisory_xact_lock",
+  "developmentRuntimeObjects",
 ]) {
   if (!runtimeBoundary.includes(invariant)) {
     errors.push(`runtimeFileIO.ts: missing required invariant ${invariant}`);
+  }
+}
+
+for (const forbiddenLocalWrite of [
+  "writeFile(",
+  "appendFile(",
+  "createWriteStream(",
+]) {
+  if (runtimeBoundary.includes(forbiddenLocalWrite)) {
+    errors.push(`runtimeFileIO.ts: local filesystem write ${forbiddenLocalWrite} is forbidden`);
   }
 }
 

@@ -6,16 +6,7 @@ import {
   S3Client,
   type S3ClientConfig,
 } from "@aws-sdk/client-s3";
-import { createHash, randomUUID } from "node:crypto";
-import {
-  appendFile,
-  chmod,
-  mkdir,
-  readFile,
-  rename,
-  unlink,
-  writeFile,
-} from "node:fs/promises";
+import { createHash } from "node:crypto";
 import {
   basename,
   dirname,
@@ -161,62 +152,29 @@ function assertContentSize(
   }
 }
 
-function isLocalNotFoundCause(error: unknown): boolean {
-  return Boolean(
-    error &&
-      typeof error === "object" &&
-      (error as { code?: unknown }).code === "ENOENT",
-  );
-}
-
-async function ensureParentDirectory(path: string): Promise<void> {
-  await mkdir(/* turbopackIgnore: true */ dirname(path), {
-    recursive: true,
-    mode: 0o700,
-  });
-}
+const developmentRuntimeObjects = new Map<string, Buffer>();
 
 async function readLocalTextFile(path: string): Promise<string> {
-  try {
-    const content = await readFile(/* turbopackIgnore: true */ path);
-    if (content.byteLength > RUNTIME_DOCUMENT_MAX_BYTES) {
-      throw new Error("Runtime object exceeds read limit");
-    }
-    return content.toString("utf8");
-  } catch (error) {
-    if (isLocalNotFoundCause(error)) throw new RuntimeStorageNotFoundError();
-    throw new RuntimeStorageOperationError("read", error);
+  const content = developmentRuntimeObjects.get(path);
+  if (!content) throw new RuntimeStorageNotFoundError();
+  if (content.byteLength > RUNTIME_DOCUMENT_MAX_BYTES) {
+    throw new RuntimeStorageOperationError(
+      "read",
+      new Error("Runtime object exceeds read limit"),
+    );
   }
+  return content.toString("utf8");
 }
 
 async function writeLocalTextFile(path: string, content: Buffer): Promise<void> {
-  const temporaryPath = `${path}.${randomUUID()}.tmp`;
-  try {
-    await ensureParentDirectory(path);
-    await writeFile(/* turbopackIgnore: true */ temporaryPath, content, {
-      flag: "wx",
-      mode: 0o600,
-    });
-    await rename(
-      /* turbopackIgnore: true */ temporaryPath,
-      /* turbopackIgnore: true */ path,
-    );
-  } catch (error) {
-    await unlink(/* turbopackIgnore: true */ temporaryPath).catch(() => undefined);
-    throw new RuntimeStorageOperationError("write", error);
-  }
+  developmentRuntimeObjects.set(path, Buffer.from(content));
 }
 
 async function appendLocalTextFile(path: string, content: Buffer): Promise<void> {
-  try {
-    await ensureParentDirectory(path);
-    await appendFile(/* turbopackIgnore: true */ path, content, {
-      mode: 0o600,
-    });
-    await chmod(/* turbopackIgnore: true */ path, 0o600);
-  } catch (error) {
-    throw new RuntimeStorageOperationError("append", error);
-  }
+  const previous = developmentRuntimeObjects.get(path) ?? Buffer.alloc(0);
+  const combined = Buffer.concat([previous, content]);
+  assertContentSize(combined, RUNTIME_DOCUMENT_MAX_BYTES, "append");
+  developmentRuntimeObjects.set(path, combined);
 }
 
 const DEFAULT_HETZNER_S3_HOSTS = new Set([

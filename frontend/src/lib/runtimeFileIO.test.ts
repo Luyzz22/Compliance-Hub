@@ -1,8 +1,5 @@
 import { GetObjectCommand, PutObjectCommand, type S3Client } from "@aws-sdk/client-s3";
 import type { PoolClient } from "pg";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -17,13 +14,10 @@ import {
 } from "@/lib/runtimeFileIO";
 import { __setRuntimePostgresPoolFactoryForTests } from "@/lib/runtimePostgres";
 
-const temporaryDirectories: string[] = [];
-
 afterEach(async () => {
   __setS3RuntimeClientFactoryForTests(null);
   __setRuntimePostgresPoolFactoryForTests(null);
   vi.unstubAllEnvs();
-  await Promise.all(temporaryDirectories.splice(0).map((path) => rm(path, { recursive: true })));
 });
 
 function memoryS3Client(): { client: Pick<S3Client, "send">; objects: Map<string, Buffer> } {
@@ -134,12 +128,10 @@ describe("runtime storage I/O", () => {
     ]);
   });
 
-  it("writes local files atomically with private permissions and appends records", async () => {
+  it("keeps non-production local state process-local and appends records", async () => {
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND", "local");
-    const directory = await mkdtemp(join(tmpdir(), "compliancehub-runtime-"));
-    temporaryDirectories.push(directory);
-    const path = join(directory, "state.jsonl");
+    const path = "/tmp/compliancehub-runtime-process-local-state.jsonl";
 
     await writeRuntimeTextFile(path, "first\n");
     await appendRuntimeTextFile(path, "second\n");

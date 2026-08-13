@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import os
 import secrets
 from functools import lru_cache
@@ -8,6 +9,8 @@ from typing import Annotated
 
 from fastapi import Header, HTTPException, status
 from pydantic import BaseModel, Field
+
+from app.secret_files import production_runtime, read_secret
 
 
 class AuthContext(BaseModel):
@@ -154,8 +157,21 @@ def require_advisor_rag_headers(
 
 
 def hash_api_key(raw: str) -> str:
-    """SHA-256 Hex-Digest für tenant_api_keys.key_hash (Klartext nur bei Create)."""
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    """Deterministic, peppered lookup digest for opaque API keys and sessions."""
+
+    pepper = read_secret(
+        "COMPLIANCEHUB_CREDENTIAL_PEPPER",
+        "COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE",
+        required=production_runtime(),
+        minimum_characters=32,
+    )
+    if not pepper:
+        pepper = "compliancehub-development-credential-pepper-only"
+    return hmac.new(
+        pepper.encode("utf-8"),
+        raw.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def admin_provision_api_keys() -> frozenset[str]:

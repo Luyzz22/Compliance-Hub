@@ -12,6 +12,7 @@ x-secret-host-contract:
   azure_openai_client_certificate: { uid: 10001, mode: "0400" }
   bff_shared_secret: { uid: 10001, mode: "0400" }
   audit_pseudonymization_key: { uid: 10001, mode: "0400" }
+  credential_pepper: { uid: 10001, mode: "0400" }
   internal_health_api_key: { uid: 10001, mode: "0400" }
   entra_client_secret: { uid: 10001, mode: "0400" }
   auth_transaction_secret: { uid: 10001, mode: "0400" }
@@ -126,6 +127,7 @@ services:
       COMPLIANCEHUB_DB_URL_FILE: /run/secrets/backend_database_url
       COMPLIANCEHUB_BFF_SHARED_SECRET_FILE: /run/secrets/bff_shared_secret
       COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY_FILE: /run/secrets/audit_pseudonymization_key
+      COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE: /run/secrets/credential_pepper
       INTERNAL_HEALTH_API_KEY_FILE: /run/secrets/internal_health_api_key
       INTERNAL_HEALTH_ALLOWED_IPS: 127.0.0.1
       COMPLIANCEHUB_PUBLIC_HOST: ${COMPLIANCEHUB_PUBLIC_HOST:?required}
@@ -149,6 +151,8 @@ services:
         target: bff_shared_secret
       - source: audit_pseudonymization_key
         target: audit_pseudonymization_key
+      - source: credential_pepper
+        target: credential_pepper
       - source: internal_health_api_key
         target: internal_health_api_key
     tmpfs:
@@ -237,6 +241,8 @@ secrets:
     file: ./secrets/bff-shared-secret
   audit_pseudonymization_key:
     file: ./secrets/audit-pseudonymization-key
+  credential_pepper:
+    file: ./secrets/credential-pepper
   internal_health_api_key:
     file: ./secrets/internal-health-api-key
   entra_client_secret:

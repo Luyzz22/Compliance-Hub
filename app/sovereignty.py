@@ -88,6 +88,7 @@ _PRODUCTION_DIRECT_SECRET_ENV_VARS = (
     "COMPLIANCEHUB_DB_URL",
     "COMPLIANCEHUB_BFF_SHARED_SECRET",
     "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY",
+    "COMPLIANCEHUB_CREDENTIAL_PEPPER",
     "COMPLIANCEHUB_N8N_WEBHOOK_SECRET",
     "COMPLIANCEHUB_EXPORT_WEBHOOK_SECRET",
     "INTERNAL_HEALTH_API_KEY",
@@ -350,6 +351,8 @@ def verify_startup_configuration(*, raise_on_error: bool = True) -> list[str]:
             for name in _PRODUCTION_DIRECT_SECRET_ENV_VARS
             if _env_is_truthy(name)
         )
+        if not _env_is_truthy("COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE"):
+            violations.append("COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE is required in production")
         if not _env_is_truthy("COMPLIANCEHUB_OPA_STRICT_MISSING"):
             violations.append("COMPLIANCEHUB_OPA_STRICT_MISSING must be true in production")
         opa_url = os.getenv("OPA_URL", "").strip()

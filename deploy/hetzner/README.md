@@ -61,6 +61,11 @@ Pseudonymisierungsschlüssel sowie Entra- und Transaktionsgeheimnisse werden im
 Produktionsprofil ausschließlich aus diesen Secret-Dateien gelesen. Globale API-Keys
 bleiben im Enterprise-Profil verboten.
 
+`credential-pepper` ist ein eigener, mindestens 32 Zeichen langer OpenBao-Wert. Er
+schützt die deterministischen Datenbankindizes von API-Keys und Sessions per HMAC und
+darf weder mit dem Audit-Pseudonymisierungsschlüssel geteilt noch nach dem Go-live ohne
+eine geplante API-Key-Rotation gewechselt werden.
+
 HubSpot, Pipedrive, Stripe und deren produktive Adapter sind im souveränen
 Produktionsprofil technisch gesperrt. Zulässig sind nur selbst betriebene
 HTTPS-Webhooks, deren Ziel-URL serverseitig konfiguriert ist und deren Host explizit

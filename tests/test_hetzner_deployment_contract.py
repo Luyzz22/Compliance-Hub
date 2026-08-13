@@ -128,6 +128,7 @@ def test_secret_values_are_file_mounted_and_not_embedded_in_compose() -> None:
         "azure_openai_client_certificate",
         "bff_shared_secret",
         "audit_pseudonymization_key",
+        "credential_pepper",
         "entra_client_secret",
         "auth_transaction_secret",
         "lead_admin_secret",
@@ -153,6 +154,8 @@ def test_audit_key_is_mounted_only_into_the_backend() -> None:
 
     assert "audit_pseudonymization_key" not in frontend_secrets
     assert "audit_pseudonymization_key" in backend_secrets
+    assert "credential_pepper" not in frontend_secrets
+    assert "credential_pepper" in backend_secrets
 
 
 def test_frontend_is_standalone_and_has_no_vercel_runtime_dependency() -> None:

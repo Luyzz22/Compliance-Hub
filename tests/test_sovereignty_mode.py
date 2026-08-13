@@ -211,11 +211,27 @@ def test_production_temporal_accepts_self_hosted_allowlisted_host(
     monkeypatch.setenv("COMPLIANCEHUB_OPA_STRICT_MISSING", "true")
     monkeypatch.setenv("OPA_URL", "http://opa:8181")
     monkeypatch.setenv("COMPLIANCEHUB_OPA_ALLOWED_HOSTS", "opa")
+    monkeypatch.setenv("COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE", "/run/secrets/credential-pepper")
     monkeypatch.setenv("COMPLIANCEHUB_TEMPORAL_ENABLED", "true")
     monkeypatch.setenv("TEMPORAL_ADDRESS", "temporal.internal:7233")
     monkeypatch.setenv("COMPLIANCEHUB_TEMPORAL_ALLOWED_HOSTS", "temporal.internal")
 
     assert sovereignty.verify_startup_configuration() == []
+
+
+def test_production_requires_mounted_credential_pepper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_mode(monkeypatch, "standard_dach")
+    monkeypatch.setenv("COMPLIANCEHUB_ENV", "production")
+    monkeypatch.setenv("COMPLIANCEHUB_OPA_STRICT_MISSING", "true")
+    monkeypatch.setenv("OPA_URL", "http://opa:8181")
+    monkeypatch.setenv("COMPLIANCEHUB_OPA_ALLOWED_HOSTS", "opa")
+    monkeypatch.delenv("COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE", raising=False)
+
+    violations = sovereignty.verify_startup_configuration(raise_on_error=False)
+
+    assert "COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE is required in production" in violations
 
 
 def test_unrestricted_mode_permits_no_residency_claims(
