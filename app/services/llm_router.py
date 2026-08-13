@@ -6,7 +6,9 @@ import logging
 import os
 import time
 from collections.abc import Callable
+from ipaddress import ip_address
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 from opentelemetry import trace
 
@@ -16,6 +18,7 @@ from app.llm_models import (
     DataResidencyPolicy,
     LatencySensitivity,
     LLMCallMetadataRecord,
+    LLMDataClass,
     LLMProvider,
     LLMResponse,
     LLMTaskType,
@@ -54,12 +57,63 @@ def _azure_eu_attested() -> bool:
     return _parse_env_bool("COMPLIANCEHUB_LLM_ASSUME_AZURE_EU")
 
 
+def llama_endpoint_is_private() -> bool:
+    """Validate that the provider labelled ``llama`` is not an arbitrary public URL."""
+    raw = os.getenv("LLAMA_BASE_URL", "").strip()
+    if not raw:
+        return False
+    parsed = urlparse(raw)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    if parsed.username or parsed.password:
+        return False
+    host = parsed.hostname.rstrip(".").lower()
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        address = ip_address(host)
+    except ValueError:
+        allowlist = {
+            item.strip().rstrip(".").lower()
+            for item in os.getenv("COMPLIANCEHUB_LLAMA_PRIVATE_HOSTS", "").split(",")
+            if item.strip()
+        }
+        return host in allowlist
+    return address.is_private or address.is_loopback or address.is_link_local
+
+
 def _prefer_configured_azure(chain: list[LLMProvider]) -> list[LLMProvider]:
     if not _parse_env_bool("COMPLIANCEHUB_LLM_PREFER_AZURE"):
         return chain
     if LLMProvider.AZURE_OPENAI not in chain:
         return [LLMProvider.AZURE_OPENAI, *chain]
     return [LLMProvider.AZURE_OPENAI, *[p for p in chain if p != LLMProvider.AZURE_OPENAI]]
+
+
+_DATA_CLASS_RANK: dict[LLMDataClass, int] = {
+    LLMDataClass.PUBLIC: 0,
+    LLMDataClass.INTERNAL: 1,
+    LLMDataClass.CONFIDENTIAL: 2,
+    LLMDataClass.RESTRICTED: 3,
+}
+
+
+def default_data_class_for_task(task_type: LLMTaskType) -> LLMDataClass:
+    """Return the conservative class used when a caller has not labelled a workload."""
+    if task_type == LLMTaskType.ON_PREM_SENSITIVE:
+        return LLMDataClass.RESTRICTED
+    if task_type in (
+        LLMTaskType.KPI_SUGGESTION_ASSIST,
+        LLMTaskType.EXPLAIN_KPI_ALERT,
+        LLMTaskType.CROSS_REGULATION_GAP_ASSIST,
+        LLMTaskType.AI_COMPLIANCE_BOARD_REPORT,
+        LLMTaskType.ADVISOR_GOVERNANCE_SNAPSHOT,
+        LLMTaskType.READINESS_SCORE_EXPLAIN,
+        LLMTaskType.GOVERNANCE_MATURITY_BOARD_SUMMARY,
+        LLMTaskType.ADVISOR_GOVERNANCE_MATURITY_BRIEF,
+    ):
+        return LLMDataClass.INTERNAL
+    return LLMDataClass.CONFIDENTIAL
 
 
 def _static_fallback_chain(task_type: LLMTaskType) -> list[LLMProvider]:
@@ -194,7 +248,24 @@ def _allowed_by_public_api(provider: LLMProvider, policy: TenantLLMPolicy) -> bo
     return provider == LLMProvider.LLAMA
 
 
-def filter_candidates(policy: TenantLLMPolicy, ordered: list[LLMProvider]) -> list[LLMProvider]:
+def _allowed_by_data_class(
+    provider: LLMProvider,
+    policy: TenantLLMPolicy,
+    data_class: LLMDataClass,
+) -> bool:
+    if provider == LLMProvider.LLAMA:
+        return llama_endpoint_is_private()
+    if data_class == LLMDataClass.RESTRICTED:
+        return False
+    return _DATA_CLASS_RANK[data_class] <= _DATA_CLASS_RANK[policy.max_external_data_class]
+
+
+def filter_candidates(
+    policy: TenantLLMPolicy,
+    ordered: list[LLMProvider],
+    *,
+    data_class: LLMDataClass = LLMDataClass.INTERNAL,
+) -> list[LLMProvider]:
     """
     Reduce the ordered preference chain to providers that may actually be called.
 
@@ -204,7 +275,7 @@ def filter_candidates(policy: TenantLLMPolicy, ordered: list[LLMProvider]) -> li
        *removes* forbidden providers from the chain rather than deprioritising them; a
        chain that merely prefers an EU provider still falls back to a US one on error,
        which is exactly what an EU-residency commitment must rule out.
-    2. Tenant policy (allowed providers, residency, public-API policy).
+    2. Tenant policy (allowed providers, residency, public-API and data-class policy).
     3. Runtime configuration of the provider.
     """
     sovereignty_allowed = sovereignty.allowed_llm_providers()
@@ -221,6 +292,8 @@ def filter_candidates(policy: TenantLLMPolicy, ordered: list[LLMProvider]) -> li
         if not _allowed_by_residency(p, policy):
             continue
         if not _allowed_by_public_api(p, policy):
+            continue
+        if not _allowed_by_data_class(p, policy, data_class):
             continue
         if not llm_client.is_provider_configured(p):
             continue
@@ -246,27 +319,34 @@ class LLMRouter:
         task_type: LLMTaskType,
         prompt: str,
         tenant_id: str,
+        data_class: LLMDataClass | None = None,
         **kwargs: Any,
     ) -> LLMResponse:
         if not is_llm_task_feature_enabled(task_type, tenant_id, session=self._session):
             raise PermissionError("LLM task is disabled by feature flags for this tenant")
 
         policy = get_tenant_llm_policy(tenant_id, self._session)
+        effective_data_class = data_class or default_data_class_for_task(task_type)
         ordered = preference_chain(task_type, policy)
         if task_type == LLMTaskType.ON_PREM_SENSITIVE:
             if not llm_client.is_provider_configured(LLMProvider.LLAMA):
                 raise llm_client.LLMConfigurationError(
                     "ON_PREM_SENSITIVE requires LLAMA_BASE_URL and a reachable on-prem model",
                 )
+            if not llama_endpoint_is_private():
+                raise llm_client.LLMConfigurationError(
+                    "ON_PREM_SENSITIVE requires a private LLAMA_BASE_URL; add internal DNS "
+                    "names explicitly to COMPLIANCEHUB_LLAMA_PRIVATE_HOSTS",
+                )
             ordered = [LLMProvider.LLAMA]
         elif policy.require_on_prem_for_sensitive and task_type == LLMTaskType.LEGAL_REASONING:
             ordered = [LLMProvider.LLAMA] + [p for p in ordered if p != LLMProvider.LLAMA]
 
-        candidates = filter_candidates(policy, ordered)
+        candidates = filter_candidates(policy, ordered, data_class=effective_data_class)
         if not candidates:
             raise llm_client.LLMConfigurationError(
-                "No LLM provider available for this tenant, task type, and policy "
-                f"(task={task_type.value})",
+                "No LLM provider available for this tenant, task type, data class, and policy "
+                f"(task={task_type.value}, data_class={effective_data_class.value})",
             )
 
         last_err: Exception | None = None
@@ -286,6 +366,7 @@ class LLMRouter:
                 self._log_metadata(
                     tenant_id=tenant_id,
                     task_type=task_type,
+                    data_class=effective_data_class,
                     provider=resp.provider,
                     model_id=resp.model_id,
                     prompt_length=len(prompt),
@@ -298,6 +379,7 @@ class LLMRouter:
                 if span.is_recording():
                     span.set_attribute("llm_provider", resp.provider.value)
                     span.set_attribute("llm_model_id", resp.model_id)
+                    span.set_attribute("llm_data_class", effective_data_class.value)
                     span.set_attribute(
                         "llm_tokens_used_est",
                         resp.input_tokens_est + resp.output_tokens_est,
@@ -307,9 +389,11 @@ class LLMRouter:
             except Exception as exc:
                 last_err = exc
                 logger.info(
-                    "llm_provider_fallback tenant=%s task=%s failed_provider=%s err=%s",
+                    "llm_provider_fallback tenant=%s task=%s data_class=%s "
+                    "failed_provider=%s err=%s",
                     tenant_id,
                     task_type.value,
+                    effective_data_class.value,
                     provider.value,
                     type(exc).__name__,
                 )
@@ -326,6 +410,7 @@ class LLMRouter:
         *,
         tenant_id: str,
         task_type: LLMTaskType,
+        data_class: LLMDataClass,
         provider: LLMProvider,
         model_id: str,
         prompt_length: int,
@@ -344,6 +429,7 @@ class LLMRouter:
                 LLMCallMetadataRecord(
                     tenant_id=tenant_id,
                     task_type=task_type,
+                    data_class=data_class,
                     provider=provider,
                     model_id=model_id,
                     prompt_length=prompt_length,

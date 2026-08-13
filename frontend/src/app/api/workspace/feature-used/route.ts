@@ -1,14 +1,11 @@
-import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
+import { serverSessionApiFetch } from "@/lib/serverBackendApi";
+import { mutationCsrfIsValid, noStoreJson } from "@/lib/serverSession";
 import {
   WORKSPACE_GOVERNANCE_FEATURES,
   type WorkspaceGovernanceFeatureName,
 } from "@/lib/workspaceTelemetry";
-
-const API_BASE =
-  process.env.COMPLIANCEHUB_API_BASE_URL ||
-  "http://localhost:8000";
-const API_KEY = process.env.COMPLIANCEHUB_API_KEY || "";
 
 const ALLOWED = new Set<string>(WORKSPACE_GOVERNANCE_FEATURES);
 
@@ -22,18 +19,21 @@ type Body = {
   [key: string]: unknown;
 };
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  if (!mutationCsrfIsValid(req)) {
+    return noStoreJson({ ok: false, error: "csrf_validation_failed" }, { status: 403 });
+  }
   let parsed: Body;
   try {
     parsed = (await req.json()) as Body;
   } catch {
-    return NextResponse.json({ ok: false }, { status: 400 });
+    return noStoreJson({ ok: false }, { status: 400 });
   }
 
   const tenantId = typeof parsed.tenant_id === "string" ? parsed.tenant_id.trim() : "";
   const featureName = typeof parsed.feature_name === "string" ? parsed.feature_name.trim() : "";
   if (!tenantId || !featureName || !ALLOWED.has(featureName)) {
-    return NextResponse.json({ ok: false }, { status: 400 });
+    return noStoreJson({ ok: false }, { status: 400 });
   }
 
   const params = new URLSearchParams({ feature_key: featureName as WorkspaceGovernanceFeatureName });
@@ -50,19 +50,16 @@ export async function POST(req: Request) {
     params.set("route_name", route);
   }
 
-  const url = `${API_BASE}/api/v1/workspace/feature-used?${params.toString()}`;
   try {
-    await fetch(url, {
-      method: "GET",
-      headers: {
-        "x-api-key": API_KEY,
-        "x-tenant-id": tenantId,
-      },
-      cache: "no-store",
-    });
+    const backend = await serverSessionApiFetch(
+      `/api/v1/workspace/feature-used?${params.toString()}`,
+    );
+    if (!backend.ok) {
+      return noStoreJson({ ok: false }, { status: backend.status });
+    }
   } catch {
-    /* Proxy bleibt best-effort */
+    return noStoreJson({ ok: false }, { status: 503 });
   }
 
-  return NextResponse.json({ ok: true });
+  return noStoreJson({ ok: true });
 }

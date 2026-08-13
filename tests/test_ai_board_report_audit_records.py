@@ -128,7 +128,6 @@ def test_audit_record_linked_export_jobs():
             "/api/v1/ai-governance/report/board/export-jobs",
             json={
                 "target_system": "datev_dms_prepared",
-                "callback_url": "https://x.com",
             },
             headers=_headers(),
         )

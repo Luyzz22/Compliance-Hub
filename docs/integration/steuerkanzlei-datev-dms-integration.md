@@ -10,13 +10,13 @@
 - **Prüfungsdokumentation:** Nachweis für WP-Prüfungen und Compliance-Reporting (EU AI Act, NIS2, ISO 42001).
 - **DMS/Archiv:** Ablage in Kanzlei-DMS oder DATEV-nahen Systemen mit strukturierten Metadaten (Zeitraum, Normbezug, Dokumenttyp).
 
-ComplianceHub erzeugt einen deterministischen JSON-Payload und sendet ihn per HTTP POST an eine konfigurierbare Callback-URL (z. B. Middleware oder Connector zur DATEV-/DMS-Anbindung).
+ComplianceHub erzeugt einen deterministischen JSON-Payload und sendet ihn per HTTP POST an den vom Betreiber über `COMPLIANCEHUB_EXPORT_DATEV_DMS_URL` freigegebenen Connector. API-Requests können das Netzwerkziel nicht verändern.
 
 ---
 
 ## 2. target_system: datev_dms_prepared
 
-Beim Anlegen eines Export-Jobs wird `target_system: "datev_dms_prepared"` gewählt. **callback_url** ist Pflicht. Optionale **metadata**-Felder steuern Mandant, Aktenzeichen, Zeitraum und Normbezug (siehe Abschnitt 3).
+Beim Anlegen eines Export-Jobs wird `target_system: "datev_dms_prepared"` gewählt. Ziel-URL, Host-Allowlist und Signaturschlüssel werden zentral im Deployment verwaltet. Optionale **metadata**-Felder steuern Mandant, Aktenzeichen, Zeitraum und Normbezug (siehe Abschnitt 3).
 
 ---
 
@@ -39,7 +39,7 @@ Die folgenden Keys können im Request-Body unter `metadata` (dict) übergeben we
 
 ## 4. Payload-Schema (HTTP POST)
 
-Der an die **callback_url** gesendete JSON-Body hat folgende Struktur. Keine personenbezogenen Daten, nur Aggregat- und Systemdaten.
+Der an den freigegebenen Connector gesendete JSON-Body hat folgende Struktur. Vor Produktivsetzung ist fachlich zu prüfen, ob optionale Mandantennamen oder Aktenzeichen personenbezogene beziehungsweise berufsrechtlich geschützte Daten enthalten; der technische Transportweg allein ersetzt diese Freigabe nicht.
 
 | Top-Level-Key | Inhalt |
 |---------------|--------|

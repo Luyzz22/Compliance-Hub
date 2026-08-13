@@ -24,7 +24,7 @@ from app.services.internal_health_core import InternalDeepHealthDTO, compute_int
 
 logger = logging.getLogger(__name__)
 
-_SERVICE_NAMES = ("app", "db", "external_ai_provider")
+_SERVICE_NAMES = ("app", "db", "policy_engine", "external_ai_provider")
 
 
 @dataclass
@@ -41,6 +41,8 @@ def _status_for_service(dto: InternalDeepHealthDTO, service_name: str) -> str:
         return dto.app
     if service_name == "db":
         return dto.db
+    if service_name == "policy_engine":
+        return dto.policy_engine
     if service_name == "external_ai_provider":
         return dto.external_ai_provider
     raise ValueError(f"unknown service_name {service_name!r}")
@@ -94,6 +96,7 @@ def run_operational_health_poll_for_tenant(
     raw_payload = {
         "app": dto.app,
         "db": dto.db,
+        "policy_engine": dto.policy_engine,
         "external_ai_provider": dto.external_ai_provider,
         "timestamp": dto.timestamp.isoformat(),
     }

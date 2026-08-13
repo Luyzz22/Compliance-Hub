@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { computeGtmDashboardSnapshot } from "@/lib/gtmDashboardAggregate";
 import { dispatchGtmAlertFindings } from "@/lib/gtmAlertDispatcher";
 import { evaluateGtmAlertsFromSnapshot } from "@/lib/gtmAlertEvaluator";
-import { isLeadAdminOrGtmAlertSecretAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminOrGtmAlertSecretAuthorized, leadAdminOrGtmAlertSecretIsConfigured } from "@/lib/leadAdminAuth";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,7 @@ function findingsSummaryDe(findings: { severity: string; message_de: string }[])
 }
 
 /**
- * GET/POST für Cron (n8n, GitHub Actions): Bearer LEAD_ADMIN_SECRET oder GTM_ALERT_SECRET.
+ * GET/POST für selbst betriebenes n8n bzw. internen Scheduler: kurzlebige HMAC-Signatur.
  * Bei ausgelösten Alerts: Log + optional GTM_ALERT_WEBHOOK_URL.
  */
 export async function GET(req: Request) {
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 }
 
 async function runAlertCheck(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminOrGtmAlertSecretIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminOrGtmAlertSecretAuthorized(req)) {

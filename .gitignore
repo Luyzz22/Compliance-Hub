@@ -14,3 +14,5 @@ node_modules/
 .next/
 .playwright-cli/
 output/playwright/
+*-sbom.cdx.json
+build/

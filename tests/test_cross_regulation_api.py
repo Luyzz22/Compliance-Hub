@@ -162,7 +162,7 @@ def test_llm_gap_assistant_mocked_llm_response(monkeypatch: pytest.MonkeyPatch) 
         )
 
     with patch(
-        "app.services.cross_regulation_llm_gap_assistant.LLMRouter.route_and_call",
+        "app.services.llm_router.LLMRouter.route_and_call",
         _fake_route_and_call,
     ):
         r = client.post(

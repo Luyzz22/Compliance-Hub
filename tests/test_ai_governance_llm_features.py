@@ -270,7 +270,7 @@ def test_kpi_suggestion_logs_usage_event(monkeypatch: pytest.MonkeyPatch) -> Non
         r = client.post(
             f"/api/v1/ai-systems/{sid}/nis2-kritis-kpi-suggestions",
             headers={"x-api-key": API_KEY, "x-tenant-id": TENANT},
-            json={"free_text": "12345678901 ausreichend lang."},
+            json={"free_text": "Prozess ist ausreichend dokumentiert."},
         )
         assert r.status_code == 200, r.text
         repo = UsageEventRepository(s)

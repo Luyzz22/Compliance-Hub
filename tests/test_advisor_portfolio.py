@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import uuid
 from datetime import UTC, datetime
 
 import pytest
@@ -14,6 +15,8 @@ from app.db import SessionLocal
 from app.main import app
 from app.models_db import TenantDB
 from app.repositories.advisor_tenants import AdvisorTenantRepository
+from app.repositories.users import UserRepository
+from app.services.identity_service import IdentityService
 
 client = TestClient(app)
 
@@ -23,6 +26,7 @@ API_KEY = "board-kpi-key"
 T1 = "adv-portfolio-tenant-1"
 T2 = "adv-portfolio-tenant-2"
 T3 = "adv-portfolio-tenant-3"
+BFF_SECRET = "advisor-test-bff-secret-at-least-32-bytes"
 
 
 @pytest.fixture
@@ -38,6 +42,26 @@ def _adv_headers(advisor_id: str) -> dict[str, str]:
         "x-api-key": API_KEY,
         "x-advisor-id": advisor_id,
     }
+
+
+def _advisor_session(email: str, *, role: str = "advisor") -> str:
+    tenant_id = f"advisor-firm-{uuid.uuid4().hex}"
+    with SessionLocal() as session:
+        identity = IdentityService(UserRepository(session))
+        registered = identity.register(email=email, password="EnterprisePass123")
+        verified = identity.verify_email(registered["verification_token"])
+        identity.assign_role(verified["user_id"], tenant_id, role, assigned_by="test")
+    response = client.post(
+        "/api/v1/auth/session/login",
+        headers={"x-bff-secret": BFF_SECRET},
+        json={
+            "email": email,
+            "password": "EnterprisePass123",
+            "tenant_id": tenant_id,
+        },
+    )
+    assert response.status_code == 200, response.text
+    return str(response.json()["session_token"])
 
 
 def _ensure_tenant_registry_row(
@@ -176,6 +200,43 @@ def test_advisor_not_in_allowlist_forbidden(monkeypatch: pytest.MonkeyPatch) -> 
         headers=_adv_headers(ADV_A),
     )
     assert r.status_code == 403
+
+
+def test_advisor_user_session_is_bound_to_verified_email_and_role(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    advisor_id = f"advisor-session-{uuid.uuid4().hex}@example.com"
+    monkeypatch.setenv("COMPLIANCEHUB_ADVISOR_IDS", advisor_id)
+    monkeypatch.setenv("COMPLIANCEHUB_BFF_SHARED_SECRET", BFF_SECRET)
+    token = _advisor_session(advisor_id)
+
+    allowed = client.get(
+        f"/api/v1/advisors/{advisor_id}/tenants/portfolio",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    mismatch = client.get(
+        f"/api/v1/advisors/{ADV_B}/tenants/portfolio",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert allowed.status_code == 200, allowed.text
+    assert mismatch.status_code == 403
+
+
+def test_non_advisor_user_session_cannot_open_advisor_portfolio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    advisor_id = f"viewer-session-{uuid.uuid4().hex}@example.com"
+    monkeypatch.setenv("COMPLIANCEHUB_ADVISOR_IDS", advisor_id)
+    monkeypatch.setenv("COMPLIANCEHUB_BFF_SHARED_SECRET", BFF_SECRET)
+    token = _advisor_session(advisor_id, role="viewer")
+
+    response = client.get(
+        f"/api/v1/advisors/{advisor_id}/tenants/portfolio",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
 
 
 def test_advisor_portfolio_includes_nis2_kritis_incident_fields(advisor_allowlist: None) -> None:

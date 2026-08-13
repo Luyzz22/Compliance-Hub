@@ -15,6 +15,8 @@ from enum import StrEnum
 
 import httpx
 
+from app.outbound_policy import OutboundPolicyError, configured_outbound_url, is_production_runtime
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,7 +56,6 @@ def build_webhook_payload(event_type: str, tenant_id: str, data: dict) -> dict:
 
 
 def trigger_n8n_webhook(
-    webhook_url: str,
     payload: dict,
     secret: str | None = None,
 ) -> dict:
@@ -68,6 +69,13 @@ def trigger_n8n_webhook(
     """
     import json
 
+    configured_url = configured_outbound_url(
+        url_variable="COMPLIANCEHUB_N8N_WEBHOOK_URL",
+        allowlist_variable="COMPLIANCEHUB_N8N_ALLOWED_HOSTS",
+    )
+    if is_production_runtime() and not secret:
+        raise OutboundPolicyError("a signing secret is required for production n8n webhooks")
+
     body_bytes = json.dumps(payload, default=str).encode("utf-8")
 
     headers: dict[str, str] = {"Content-Type": "application/json"}
@@ -77,14 +85,18 @@ def trigger_n8n_webhook(
 
     try:
         with httpx.Client(timeout=30.0) as client:
-            response = client.post(webhook_url, content=body_bytes, headers=headers)
+            response = client.post(
+                configured_url,
+                content=body_bytes,
+                headers=headers,
+                follow_redirects=False,
+            )
         logger.info(
-            "n8n_webhook_sent url=%s status=%d event=%s",
-            webhook_url,
+            "n8n_webhook_sent status=%d event=%s",
             response.status_code,
             payload.get("event_type", "unknown"),
         )
         return {"status_code": response.status_code, "body": response.text}
     except httpx.HTTPError as exc:
-        logger.exception("n8n_webhook_failed url=%s error=%s", webhook_url, exc)
-        return {"error": str(exc)}
+        logger.warning("n8n_webhook_failed error_type=%s", type(exc).__name__)
+        return {"error": "webhook_delivery_failed"}

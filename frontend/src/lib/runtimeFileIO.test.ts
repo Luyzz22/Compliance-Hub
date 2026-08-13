@@ -1,102 +1,94 @@
-import type { ContainerClient } from "@azure/storage-blob";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { GetObjectCommand, PutObjectCommand, type S3Client } from "@aws-sdk/client-s3";
+import type { PoolClient } from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  __setAzureContainerClientFactoryForTests,
+  __setS3RuntimeClientFactoryForTests,
   appendRuntimeTextFile,
   isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
-  resolveAzureAuthMode,
   resolveRuntimeStorageBackend,
   runtimeBlobNameFromPath,
   withRuntimeStorageLock,
   writeRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
-
-const temporaryDirectories: string[] = [];
+import { __setRuntimePostgresPoolFactoryForTests } from "@/lib/runtimePostgres";
 
 afterEach(async () => {
-  __setAzureContainerClientFactoryForTests(null);
+  __setS3RuntimeClientFactoryForTests(null);
+  __setRuntimePostgresPoolFactoryForTests(null);
   vi.unstubAllEnvs();
-  await Promise.all(temporaryDirectories.splice(0).map((path) => rm(path, { recursive: true })));
 });
 
-function memoryContainer(): { client: ContainerClient; blobs: Map<string, Buffer> } {
-  const blobs = new Map<string, Buffer>();
-  const leases = new Set<string>();
+function memoryS3Client(): { client: Pick<S3Client, "send">; objects: Map<string, Buffer> } {
+  const objects = new Map<string, Buffer>();
   const client = {
-    getBlockBlobClient(name: string) {
-      return {
-        async downloadToBuffer(_offset: number, count: number) {
-          const value = blobs.get(name);
-          if (!value) throw { statusCode: 404, code: "BlobNotFound" };
-          return value.subarray(0, count);
-        },
-        async uploadData(content: Buffer, options?: { conditions?: { ifNoneMatch?: string } }) {
-          if (options?.conditions?.ifNoneMatch === "*" && blobs.has(name)) {
-            throw { statusCode: 412, code: "ConditionNotMet" };
-          }
-          blobs.set(name, Buffer.from(content));
-          return {};
-        },
-        getBlobLeaseClient() {
-          return {
-            async acquireLease() {
-              if (leases.has(name)) throw { statusCode: 409, code: "LeaseAlreadyPresent" };
-              leases.add(name);
-              return {};
+    async send(command: GetObjectCommand | PutObjectCommand) {
+      if (command instanceof GetObjectCommand) {
+        const value = objects.get(String(command.input.Key));
+        if (!value) throw { name: "NoSuchKey" };
+        return {
+          Body: {
+            async transformToByteArray() {
+              return value;
             },
-            async releaseLease() {
-              leases.delete(name);
-              return {};
-            },
-          };
-        },
-      };
+          },
+        };
+      }
+      if (command instanceof PutObjectCommand) {
+        objects.set(String(command.input.Key), Buffer.from(command.input.Body as Uint8Array));
+        return {};
+      }
+      throw new Error("Unexpected S3 command");
     },
-    getAppendBlobClient(name: string) {
-      return {
-        async createIfNotExists() {
-          if (!blobs.has(name)) blobs.set(name, Buffer.alloc(0));
-          return { succeeded: true };
-        },
-        async appendBlock(content: Buffer) {
-          blobs.set(name, Buffer.concat([blobs.get(name) ?? Buffer.alloc(0), content]));
-          return {};
-        },
-      };
-    },
-  } as unknown as ContainerClient;
-  return { client, blobs };
+  } as unknown as Pick<S3Client, "send">;
+  return { client, objects };
+}
+
+function configureS3Runtime(): void {
+  vi.stubEnv("NODE_ENV", "test");
+  vi.stubEnv("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND", "s3");
+  vi.stubEnv("COMPLIANCEHUB_RUNTIME_STORAGE_PREFIX", "compliancehub/runtime/v1");
+  vi.stubEnv("COMPLIANCEHUB_S3_ENDPOINT", "http://minio.internal");
+  vi.stubEnv("COMPLIANCEHUB_S3_REGION", "fsn1");
+  vi.stubEnv("COMPLIANCEHUB_S3_BUCKET", "compliancehub-runtime");
+  vi.stubEnv("COMPLIANCEHUB_S3_ACCESS_KEY_FILE", "/run/secrets/s3-access-key");
+  vi.stubEnv("COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE", "/run/secrets/s3-secret-key");
+  vi.stubEnv("POSTGRES_HOST", "postgres.internal");
+  vi.stubEnv("POSTGRES_DATABASE", "compliancehub");
+  vi.stubEnv("POSTGRES_USER", "compliancehub-runtime");
+  vi.stubEnv("POSTGRES_PASSWORD_FILE", "/run/secrets/postgres-password");
+  const client = {
+    query: vi.fn(async () => ({ rows: [] })),
+    release: vi.fn(),
+  } as unknown as PoolClient;
+  __setRuntimePostgresPoolFactoryForTests(() => ({
+    connect: vi.fn(async () => client),
+  }));
 }
 
 describe("runtime storage policy", () => {
   it("defaults to local only outside production and fails closed in production", () => {
     expect(resolveRuntimeStorageBackend({ NODE_ENV: "development" })).toBe("local");
     expect(() => resolveRuntimeStorageBackend({ NODE_ENV: "production" })).toThrow(
-      "must be azure_blob",
+      "must be s3",
     );
+    expect(
+      resolveRuntimeStorageBackend({
+        NODE_ENV: "production",
+        COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND: "s3",
+      }),
+    ).toBe("s3");
+    expect(() =>
+      resolveRuntimeStorageBackend({
+        NODE_ENV: "production",
+        COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND: "azure_blob",
+      }),
+    ).toThrow("Unsupported runtime storage backend");
     expect(() =>
       resolveRuntimeStorageBackend({
         NODE_ENV: "production",
         COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND: "local",
-      }),
-    ).toThrow("forbidden");
-  });
-
-  it("selects passwordless Azure authentication modes", () => {
-    expect(resolveAzureAuthMode({ NODE_ENV: "development" })).toBe("default");
-    expect(resolveAzureAuthMode({ NODE_ENV: "production" })).toBe("managed_identity");
-    expect(resolveAzureAuthMode({ NODE_ENV: "production", VERCEL: "1" })).toBe(
-      "vercel_oidc",
-    );
-    expect(() =>
-      resolveAzureAuthMode({
-        NODE_ENV: "production",
-        COMPLIANCEHUB_RUNTIME_STORAGE_AUTH: "default",
       }),
     ).toThrow("forbidden");
   });
@@ -118,12 +110,28 @@ describe("runtime storage policy", () => {
 });
 
 describe("runtime storage I/O", () => {
-  it("writes local files atomically with private permissions and appends records", async () => {
+  it("uses S3-compatible object storage with PostgreSQL advisory locking", async () => {
+    configureS3Runtime();
+    const memory = memoryS3Client();
+    __setS3RuntimeClientFactoryForTests(() => memory.client);
+    const statePath = "/tmp/compliancehub-s3-state.jsonl";
+
+    await expect(readRuntimeTextFile(statePath)).rejects.toSatisfy(
+      isRuntimeStorageNotFoundError,
+    );
+    await writeRuntimeTextFile(statePath, "first\n");
+    await appendRuntimeTextFile(statePath, "second\n");
+
+    expect(await readRuntimeTextFile(statePath)).toBe("first\nsecond\n");
+    expect([...memory.objects.keys()]).toEqual([
+      "compliancehub/runtime/v1/compliancehub-s3-state.jsonl",
+    ]);
+  });
+
+  it("keeps non-production local state process-local and appends records", async () => {
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND", "local");
-    const directory = await mkdtemp(join(tmpdir(), "compliancehub-runtime-"));
-    temporaryDirectories.push(directory);
-    const path = join(directory, "state.jsonl");
+    const path = "/tmp/compliancehub-runtime-process-local-state.jsonl";
 
     await writeRuntimeTextFile(path, "first\n");
     await appendRuntimeTextFile(path, "second\n");
@@ -152,70 +160,4 @@ describe("runtime storage I/O", () => {
     expect(order).toEqual(["first:start", "first:end", "second:start", "second:end"]);
   });
 
-  it("uses Azure block and append blobs and distinguishes absent objects", async () => {
-    vi.stubEnv("NODE_ENV", "test");
-    vi.stubEnv("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND", "azure_blob");
-    const memory = memoryContainer();
-    __setAzureContainerClientFactoryForTests(() => memory.client);
-    const statePath = "/tmp/compliancehub-state.json";
-    const logPath = "/tmp/compliancehub-events.jsonl";
-
-    await expect(readRuntimeTextFile(statePath)).rejects.toSatisfy(
-      isRuntimeStorageNotFoundError,
-    );
-    await writeRuntimeTextFile(statePath, '{"ok":true}\n');
-    await appendRuntimeTextFile(logPath, '{"event":1}\n');
-    await appendRuntimeTextFile(logPath, '{"event":2}\n');
-
-    expect(await readRuntimeTextFile(statePath)).toBe('{"ok":true}\n');
-    expect(await readRuntimeTextFile(logPath)).toBe('{"event":1}\n{"event":2}\n');
-    expect([...memory.blobs.keys()]).toEqual([
-      "compliancehub/runtime/v1/compliancehub-state.json",
-      "compliancehub/runtime/v1/compliancehub-events.jsonl",
-    ]);
-  });
-
-  it("does not misclassify a missing Azure container as an empty object", async () => {
-    vi.stubEnv("NODE_ENV", "test");
-    vi.stubEnv("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND", "azure_blob");
-    const client = {
-      getBlockBlobClient() {
-        return {
-          async downloadToBuffer() {
-            throw { statusCode: 404, code: "ContainerNotFound" };
-          },
-        };
-      },
-    } as unknown as ContainerClient;
-    __setAzureContainerClientFactoryForTests(() => client);
-
-    await expect(readRuntimeTextFile("/tmp/state.json")).rejects.toMatchObject({
-      name: "RuntimeStorageOperationError",
-      message: "Runtime storage read failed",
-    });
-  });
-
-  it("serializes Azure read-modify-write sections with blob leases", async () => {
-    vi.stubEnv("NODE_ENV", "test");
-    vi.stubEnv("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND", "azure_blob");
-    const memory = memoryContainer();
-    __setAzureContainerClientFactoryForTests(() => memory.client);
-    const order: string[] = [];
-    const path = "/tmp/compliancehub-lease-test.json";
-
-    await Promise.all([
-      withRuntimeStorageLock(path, async () => {
-        order.push("first:start");
-        await new Promise((resolve) => setTimeout(resolve, 15));
-        order.push("first:end");
-      }),
-      withRuntimeStorageLock(path, async () => {
-        order.push("second:start");
-        order.push("second:end");
-      }),
-    ]);
-
-    expect(order).toEqual(["first:start", "first:end", "second:start", "second:end"]);
-    expect([...memory.blobs.keys()].some((name) => name.includes("/locks/"))).toBe(true);
-  });
 });

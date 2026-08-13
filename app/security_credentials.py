@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import os
+
+from app.secret_files import read_secret
 
 _OPAQUE_DIGEST_PREFIX = "sha256$"
 
@@ -36,7 +37,12 @@ def pseudonymous_subject(namespace: str, value: str) -> str:
     """Return a stable pseudonym; production requires an operator-controlled HMAC key."""
     normalized_namespace = str(namespace).strip().lower() or "subject"
     normalized_value = str(value).strip().lower()
-    key = os.getenv("COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY", "").encode("utf-8")
+    key = read_secret(
+        "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY",
+        "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY_FILE",
+        required=False,
+        minimum_characters=32,
+    ).encode("utf-8")
     if key:
         digest = hmac.new(key, normalized_value.encode("utf-8"), hashlib.sha256).hexdigest()
         return f"{normalized_namespace}:hmac-sha256:{digest[:16]}"

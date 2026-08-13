@@ -22,10 +22,16 @@ Bei `cost_sensitivity=high` oder `latency_sensitivity=high` werden für `classif
 - `azure_openai` – Azure OpenAI v1 Chat Completions / Embeddings
   (`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, optional
   `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`). Produktion verwendet
-  `AZURE_OPENAI_AUTH=managed_identity`; `azure-identity` bezieht ein Token für
+  In Azure verwendet Produktion `AZURE_OPENAI_AUTH=managed_identity`. Auf Hetzner wird
+  `AZURE_OPENAI_AUTH=client_certificate` mit einer als Secret gemounteten privaten
+  PEM-Datei (`AZURE_CLIENT_CERTIFICATE_PATH`, Modus 0400/0600) verwendet;
+  `azure-identity` bezieht in beiden Fällen ein Token für
   `https://cognitiveservices.azure.com/.default`.
 - `gemini` – Google Generative Language API (`GEMINI_API_KEY` oder `GOOGLE_API_KEY`)
-- `llama` – OpenAI-kompatibler Endpunkt (`LLAMA_BASE_URL`, optional `LLAMA_API_KEY`)
+- `llama` – OpenAI-kompatibler privater Endpunkt (`LLAMA_BASE_URL`, optional
+  `LLAMA_API_KEY`). Loopback und private IPs werden akzeptiert; interne DNS-Namen
+  müssen in `COMPLIANCEHUB_LLAMA_PRIVATE_HOSTS` explizit erlaubt sein. Öffentliche
+  URLs gelten nicht als lokaler Provider.
 
 Modelle (überschreibbar): `COMPLIANCEHUB_CLAUDE_MODEL`, `COMPLIANCEHUB_OPENAI_MODEL`,
 `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`,
@@ -42,6 +48,25 @@ Felder (Auszug):
 - `cost_sensitivity` / `latency_sensitivity` – `low` | `medium` | `high`
 - `data_residency` – `us_cloud_allowed` | `eu_only`
 - `public_api_policy` – `public_api_allowed` | `on_prem_only`
+- `max_external_data_class` – höchste für externe APIs erlaubte Datenklasse;
+  sicherer Standard: `internal`
+
+## Datenklassen
+
+Jeder Aufruf wird als `public`, `internal`, `confidential` oder `restricted`
+klassifiziert. Die Klasse beschreibt den sensibelsten Inhalt im gesamten Prompt und
+ist unabhängig von der heuristischen PII-Prüfung.
+
+- `public` / `internal`: externe Provider nur innerhalb aller übrigen Sovereignty-,
+  Residency- und Tenant-Gates.
+- `confidential`: extern nur, wenn die Mandanten-Policy
+  `max_external_data_class=confidential` ausdrücklich setzt.
+- `restricted`: ausschließlich `llama`/lokale Inferenz; eine Policy kann diese harte
+  Grenze nicht aufheben.
+
+Fehlt die Klasse im generischen `POST /api/v1/llm/invoke`, gilt `restricted`. Interne
+Fachaufrufer verwenden konservative Task-Defaults. Siehe
+`docs/adr/0002-hetzner-azure-llm-workload-classes.md`.
 
 ### Konfiguration
 
@@ -91,7 +116,10 @@ Frontend-Hinweis: `NEXT_PUBLIC_FEATURE_LLM_ENABLED` (Standard aus), `NEXT_PUBLIC
 
 ## API
 
-- `POST /api/v1/llm/invoke` – Body `{ "task_type": "<LLMTaskType>", "prompt": "..." }`, Mandanten-Auth wie üblich. Erfordert `llm_enabled` und das jeweilige Task-Flag.
+- `POST /api/v1/llm/invoke` – Body
+  `{ "task_type": "<LLMTaskType>", "prompt": "...", "data_class": "internal" }`,
+  Mandanten-Auth wie üblich. Erfordert `llm_enabled` und das jeweilige Task-Flag; ohne
+  `data_class` wird ausschließlich lokal geroutet.
 
 ## Observability
 

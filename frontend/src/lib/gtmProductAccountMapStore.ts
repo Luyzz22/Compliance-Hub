@@ -28,9 +28,6 @@ export type GtmProductAccountMapState = {
 function resolvePath(): string {
   const fromEnv = process.env.GTM_PRODUCT_ACCOUNT_MAP_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-gtm-product-account-map.json");
-  }
   return join(process.cwd(), "data", "gtm-product-account-map.json");
 }
 

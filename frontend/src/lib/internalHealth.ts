@@ -8,6 +8,7 @@ export type HealthStatus = "up" | "degraded" | "down";
 export interface ServiceHealth {
   app: HealthStatus;
   db: HealthStatus;
+  policyEngine: HealthStatus;
   externalAiProvider: HealthStatus;
 }
 
@@ -19,12 +20,14 @@ export interface InternalHealthPayload extends ServiceHealth {
 export function mapInternalHealthJson(body: {
   app: HealthStatus;
   db: HealthStatus;
+  policy_engine: HealthStatus;
   external_ai_provider: HealthStatus;
   timestamp: string;
 }): InternalHealthPayload {
   return {
     app: body.app,
     db: body.db,
+    policyEngine: body.policy_engine,
     externalAiProvider: body.external_ai_provider,
     timestamp: body.timestamp,
   };
@@ -39,17 +42,27 @@ export async function fetchHealthStatus(): Promise<InternalHealthPayload> {
   return {
     app: "up",
     db: "up",
+    policyEngine: "up",
     externalAiProvider: "degraded",
     timestamp: new Date().toISOString(),
   };
 }
 
 export function governanceServiceHealthHint(health: ServiceHealth): string | null {
-  if (health.app === "down" || health.db === "down" || health.externalAiProvider === "down") {
-    return "Bitte Incident-Playbook und NIS2-Meldewege prüfen. Monitoring, Eskalation und Nachweise zur Erreichbarkeit absichern.";
+  if (
+    health.app === "down" ||
+    health.db === "down" ||
+    health.policyEngine === "down" ||
+    health.externalAiProvider === "down"
+  ) {
+    return "Bitte Incident-Playbook und NIS2-Meldewege prüfen. Policy-Entscheidungen, Eskalation und Nachweise zur Erreichbarkeit durch die verantwortliche Betriebsrolle bewerten.";
   }
-  if (health.db !== "up" || health.externalAiProvider !== "up") {
-    return "Monitoring und Incident Readiness prüfen — KI-Provider oder Datenbank zeigen Einschränkungen (Continuous Monitoring / NIS2-Betrieb).";
+  if (
+    health.db !== "up" ||
+    health.policyEngine !== "up" ||
+    health.externalAiProvider !== "up"
+  ) {
+    return "Monitoring und Incident Readiness prüfen. Policy Engine, KI-Provider oder Datenbank zeigen Einschränkungen. Keine automatische Rechts- oder Freigabeentscheidung.";
   }
   return null;
 }

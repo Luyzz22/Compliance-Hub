@@ -85,6 +85,18 @@ class MigrationRunSummary:
     """In ledgerless mode: migrations whose ``satisfied()`` is false (DBA action needed)."""
 
 
+def list_unsatisfied_db_migrations(engine: Engine) -> list[str]:
+    """Inspect migration postconditions without creating a ledger or executing DDL."""
+
+    unsatisfied: list[str] = []
+    for mod in iter_migration_modules():
+        migration_id = str(mod.MIGRATION_ID)
+        satisfied_fn = getattr(mod, "satisfied", None)
+        if not callable(satisfied_fn) or not satisfied_fn(engine):
+            unsatisfied.append(migration_id)
+    return unsatisfied
+
+
 def run_all_db_migrations(engine: Engine) -> MigrationRunSummary:
     """Run all discoverable migrations in stable order.
 

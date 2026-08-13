@@ -29,10 +29,12 @@ This wave introduces **one linear pilot workflow** to establish patterns before 
 
 | Variable | Purpose |
 |----------|---------|
-| `TEMPORAL_ADDRESS` | Host:port (default `localhost:7233`) |
+| `COMPLIANCEHUB_TEMPORAL_ENABLED` | Explizites Opt-in; Standard `false` |
+| `COMPLIANCEHUB_TEMPORAL_ALLOWED_HOSTS` | Exakte Host-Allowlist im Produktionsbetrieb |
+| `TEMPORAL_ADDRESS` | Privater, selbst gehosteter Host:port (default `localhost:7233`) |
 | `TEMPORAL_NAMESPACE` | Namespace (default `default`) |
 | `TEMPORAL_TASK_QUEUE` | Task queue (default `compliancehub-main`) |
-| `TEMPORAL_API_KEY` | Temporal Cloud API key (enables TLS when set) |
+| `TEMPORAL_API_KEY` | Nur unbeschränkte Entwicklung; in restriktiven Souveränitätsprofilen verboten |
 | `TEMPORAL_TLS` | Force TLS for local/dev (`1` / `true`) |
 
 ### OPA and guardrails
@@ -50,7 +52,8 @@ Persisted reports set `raw_payload.version` **2** and include `source`, `tempora
 ## Local dev
 
 1. Run Temporal (e.g. [Temporal CLI](https://docs.temporal.io/cli) `temporal server start-dev` or Docker compose).
-2. Export `TEMPORAL_ADDRESS` / queue if non-default.
+2. Für Entwicklung `COMPLIANCEHUB_TEMPORAL_ENABLED=true` setzen und `TEMPORAL_ADDRESS` /
+   Queue exportieren. Produktion verlangt zusätzlich eine exakte private Host-Allowlist.
 3. Start API (`uvicorn`) and worker: `python -m app.workflows.worker`.
 
 Without a worker, `POST .../workflows/start` will accept the run but executions remain queued until a worker polls the task queue.

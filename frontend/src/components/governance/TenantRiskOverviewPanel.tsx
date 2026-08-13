@@ -57,6 +57,7 @@ export function TenantRiskOverviewPanel({ overview }: Props) {
   const serviceHealth = liveHealth ?? {
     app: overview.serviceHealth.app,
     db: overview.serviceHealth.db,
+    policyEngine: overview.serviceHealth.policyEngine,
     externalAiProvider: overview.serviceHealth.externalAiProvider,
     timestamp: overview.serviceHealthCheckedAt,
   };
@@ -106,14 +107,16 @@ export function TenantRiskOverviewPanel({ overview }: Props) {
         <p className={CH_SECTION_LABEL}>Betriebs- &amp; Monitoring-Status</p>
         <h2 className="mt-1 text-lg font-semibold text-slate-900">Continuous Monitoring (Baustein)</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          Aggregierte Signale für Mandanten-Governance (NIS2/KRITIS-Betrieb, Incident Readiness).
-          Detaildaten stammen aus internem Health-Check (Stub:{" "}
+          Aggregierte Signale für Mandanten-Governance und Incident Readiness. Diese Ansicht nutzt
+          derzeit eine illustrative lokale Vorschau; der produktive, zugriffsgeschützte Health-Pfad
+          ist instanzbezogen zu verbinden ({" "}
           <code className="rounded bg-slate-100 px-1">fetchHealthStatus</code>
-          ), später an geschützten Health-Endpunkt angebunden.
+          ). Keine automatische Rechts- oder Freigabeentscheidung.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <HealthStatusPill status={serviceHealth.app} label="App" />
           <HealthStatusPill status={serviceHealth.db} label="Datenbank" />
+          <HealthStatusPill status={serviceHealth.policyEngine} label="Policy Engine" />
           <HealthStatusPill status={serviceHealth.externalAiProvider} label="KI-Provider (extern)" />
         </div>
         <p className="mt-3 text-xs text-slate-500">
@@ -142,7 +145,7 @@ export function TenantRiskOverviewPanel({ overview }: Props) {
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             Übersicht nach Risikostufe (HIGH / LIMITED / MINIMAL) und Self-Assessment-Status.
             HIGH-Systeme erfordern u. a. stärkere Dokumentation, Logging und Post-Market
-            Surveillance — Details im jeweiligen System- und Assessment-Run.
+            Surveillance. Details stehen im jeweiligen System- und Assessment-Run.
           </p>
           <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200/80">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -179,8 +182,8 @@ export function TenantRiskOverviewPanel({ overview }: Props) {
           <h2 className="mt-1 text-lg font-semibold text-slate-900">Exposure & Haftung</h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             InScope-Score und Kategorie sind indikativ (BSIG / KRITIS-Dachgesetz). Es gilt keine
-            Übergangsfrist; persönliche Geschäftsleiterhaftung kann relevant sein — fachlich mit
-            Legal/Kanzlei klären.
+            Übergangsfrist; persönliche Geschäftsleiterhaftung kann relevant sein. Fachlich mit
+            Legal oder Kanzlei klären.
           </p>
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between gap-4 border-b border-slate-100 py-2">

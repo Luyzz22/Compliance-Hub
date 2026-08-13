@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING
 from app.ai_compliance_board_report_models import AiComplianceBoardReportInput
 from app.llm.client_wrapped import guardrailed_route_and_call_sync
 from app.llm.context import LlmCallContext
-from app.llm_models import LLMTaskType
-from app.services.llm_router import LLMRouter
+from app.llm_models import LLMDataClass, LLMTaskType
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -37,7 +36,9 @@ def _audience_label(audience: str) -> str:
 
 
 def build_board_report_user_prompt(inp: AiComplianceBoardReportInput) -> str:
-    payload = inp.model_dump()
+    # Tenant identity remains available for authorization, audit and persistence but is
+    # not a model input. The report content only requires the tenant-scoped aggregates.
+    payload = inp.model_dump(exclude={"tenant_id"})
     gov_block = ""
     para_de = (inp.governance_maturity_executive_paragraph_de or "").strip()
     if para_de:
@@ -123,7 +124,8 @@ def build_board_report_user_prompt(inp: AiComplianceBoardReportInput) -> str:
         "Rechtsberatung.\n\n"
         f"Zielgruppe: {_audience_label(inp.audience_type)}.\n"
         "Antwort nur als Markdown, ohne einleitenden Fließtext vor der ersten ##-Überschrift.\n\n"
-        f"Eingabe-JSON (nur Metadaten):\n{json.dumps(payload, ensure_ascii=False)}"
+        "Eingabe-JSON (minimierte, tenant-scoped Metadaten ohne technische "
+        f"Mandantenkennung):\n{json.dumps(payload, ensure_ascii=False)}"
     )
     return structure
 
@@ -136,8 +138,18 @@ def render_ai_compliance_board_report_markdown(
 ) -> str:
     user = build_board_report_user_prompt(inp)
     full_prompt = f"{AI_COMPLIANCE_BOARD_REPORT_SYSTEM_DE}\n\n{user}"
-    router = LLMRouter(session=session)
-    resp = router.route_and_call(LLMTaskType.AI_COMPLIANCE_BOARD_REPORT, full_prompt, tenant_id)
+    resp = guardrailed_route_and_call_sync(
+        session,
+        LLMTaskType.AI_COMPLIANCE_BOARD_REPORT,
+        full_prompt,
+        tenant_id,
+        context=LlmCallContext(
+            tenant_id=tenant_id,
+            action_name="generate_board_report",
+            data_class=LLMDataClass.CONFIDENTIAL,
+        ),
+        response_format=None,
+    )
     text = (resp.text or "").strip()
     if not text:
         logger.warning("empty_board_report_llm_output tenant=%s", tenant_id)
@@ -158,6 +170,7 @@ def render_ai_compliance_board_report_markdown_guardrailed(
         tenant_id=tenant_id,
         user_role=(user_role or "").strip(),
         action_name="generate_board_report",
+        data_class=LLMDataClass.CONFIDENTIAL,
     )
     resp = guardrailed_route_and_call_sync(
         session,

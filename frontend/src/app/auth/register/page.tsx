@@ -5,13 +5,15 @@ import React, { useState } from "react";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
+  IdentityCapabilityPending,
+  LocalIdentityUnavailable,
+} from "@/components/auth/LocalIdentityUnavailable";
+import { useIdentityCapabilities } from "@/hooks/useIdentityCapabilities";
+import {
   CH_BTN_PRIMARY,
   CH_CARD,
   CH_SHELL,
 } from "@/lib/boardLayout";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 type RegisterResult = {
   user_id: string;
@@ -19,6 +21,7 @@ type RegisterResult = {
 };
 
 export default function RegisterPage() {
+  const identityCapabilities = useIdentityCapabilities();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -28,6 +31,11 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RegisterResult | null>(null);
 
+  if (!identityCapabilities) return <IdentityCapabilityPending />;
+  if (!identityCapabilities.selfRegistrationEnabled) {
+    return <LocalIdentityUnavailable title="Registrierung deaktiviert" />;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -35,9 +43,10 @@ export default function RegisterPage() {
     setResult(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
           email,
           password,

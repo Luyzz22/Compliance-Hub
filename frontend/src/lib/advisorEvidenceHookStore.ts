@@ -12,7 +12,6 @@ import {
 function hooksPath(): string {
   const fromEnv = process.env.ADVISOR_EVIDENCE_HOOKS_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) return join("/tmp", "compliancehub-advisor-evidence-hooks.json");
   return join(process.cwd(), "data", "advisor-evidence-hooks.json");
 }
 

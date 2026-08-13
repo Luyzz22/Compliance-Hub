@@ -4,7 +4,7 @@ import { computeAdvisorKpiPortfolioSnapshot } from "@/lib/advisorKpiPortfolioAgg
 import { readAdvisorKpiHistoryState } from "@/lib/advisorKpiHistoryStore";
 import type { AdvisorKpiTrendPeriod } from "@/lib/advisorKpiTrendsBuild";
 import { buildAdvisorKpiTrendsDto } from "@/lib/advisorKpiTrendsBuild";
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 
 export const runtime = "nodejs";
 
@@ -16,7 +16,7 @@ function parsePeriod(raw: string | null): AdvisorKpiTrendPeriod {
 }
 
 export async function GET(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

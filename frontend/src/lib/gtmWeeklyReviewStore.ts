@@ -22,9 +22,6 @@ type FileShape = {
 function resolvePath(): string {
   const fromEnv = process.env.GTM_WEEKLY_REVIEW_STORE_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-gtm-weekly-review.json");
-  }
   return join(process.cwd(), "data", "gtm-weekly-review.json");
 }
 

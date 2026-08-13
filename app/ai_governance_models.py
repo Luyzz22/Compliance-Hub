@@ -255,7 +255,10 @@ class BoardReportExportJobCreate(BaseModel):
     """Request-Body für Anlage eines Board-Report-Export-Jobs."""
 
     target_system: TargetSystem
-    callback_url: str | None = None
+    callback_url: str | None = Field(
+        default=None,
+        description="Deprecated and rejected; connector destinations are deployment-controlled.",
+    )
     metadata: dict[str, str] | None = None
 
 

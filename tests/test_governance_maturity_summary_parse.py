@@ -16,6 +16,9 @@ from app.services.governance_maturity_summary_parse import (
     parse_governance_maturity_board_summary,
     parse_governance_maturity_summary,
 )
+from app.services.governance_maturity_summary_prompt import (
+    build_governance_maturity_summary_prompt,
+)
 
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "governance_maturity_summary_golden"
 
@@ -127,6 +130,21 @@ def test_parse_fallback_on_invalid_json() -> None:
     assert out.parse_ok is False
     assert out.summary.readiness.level == "basic"
     assert out.used_llm_paragraph is False
+
+
+def test_board_summary_prompt_excludes_technical_tenant_and_timestamps() -> None:
+    snapshot = _snap_basic_low().model_copy(update={"tenant_id": "BC85C3AB15"})
+
+    prompt = build_governance_maturity_summary_prompt(snapshot)
+
+    assert "BC85C3AB15" not in prompt
+    assert snapshot.computed_at.isoformat() not in prompt
+    assert snapshot.governance_activity.last_computed_at.isoformat() not in prompt
+    assert '"score": 38' in prompt
+    assert '"index": 35' in prompt
+    assert (
+        "Technische Mandantenkennungen und Zeitstempel wurden bewusst nicht übermittelt" in prompt
+    )
 
 
 def test_oami_not_configured_null_index_level() -> None:

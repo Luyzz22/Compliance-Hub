@@ -57,6 +57,9 @@ def test_board_report_forbidden_when_feature_off(monkeypatch: pytest.MonkeyPatch
 
 
 def test_board_report_create_and_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPA_URL", raising=False)
+    monkeypatch.delenv("COMPLIANCEHUB_OPA_STRICT_MISSING", raising=False)
+    monkeypatch.setenv("COMPLIANCEHUB_LLM_PII_MODE", "redact")
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_AI_COMPLIANCE_BOARD_REPORT", "true")
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_GOVERNANCE_MATURITY", "false")
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_ENABLED", "true")
@@ -72,7 +75,7 @@ def test_board_report_create_and_list(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     with patch(
-        "app.services.ai_compliance_board_report_llm.LLMRouter.route_and_call",
+        "app.services.llm_router.LLMRouter.route_and_call",
         _fake_route_and_call,
     ):
         r = client.post(
@@ -84,7 +87,7 @@ def test_board_report_create_and_list(monkeypatch: pytest.MonkeyPatch) -> None:
                 "include_ai_act_only": False,
             },
         )
-    assert r.status_code == 201
+    assert r.status_code == 201, r.text
     body = r.json()
     assert body["rendered_markdown"].startswith("## Executive")
     rid = body["report_id"]

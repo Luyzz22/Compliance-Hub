@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import hashlib
 import os
 import secrets
 from functools import lru_cache
 from typing import Annotated
 
+from cryptography.hazmat.primitives import hashes, hmac
 from fastapi import Header, HTTPException, status
 from pydantic import BaseModel, Field
+
+from app.secret_files import production_runtime, read_secret
 
 
 class AuthContext(BaseModel):
@@ -24,8 +26,8 @@ class AuthContext(BaseModel):
         """Stable audit subject that never persists the bearer credential."""
         if self.user_id:
             return f"user:{self.user_id}"
-        digest = hashlib.sha256(self.api_key.encode("utf-8")).hexdigest()
-        return f"api_key:sha256:{digest[:16]}"
+        digest = hash_api_key(self.api_key)
+        return f"api_key:hmac-sha256:{digest[:16]}"
 
 
 class SecuritySettings(BaseModel):
@@ -154,8 +156,19 @@ def require_advisor_rag_headers(
 
 
 def hash_api_key(raw: str) -> str:
-    """SHA-256 Hex-Digest für tenant_api_keys.key_hash (Klartext nur bei Create)."""
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    """Deterministic, peppered lookup digest for opaque API keys and sessions."""
+
+    pepper = read_secret(
+        "COMPLIANCEHUB_CREDENTIAL_PEPPER",
+        "COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE",
+        required=production_runtime(),
+        minimum_characters=32,
+    )
+    if not pepper:
+        pepper = "compliancehub-development-credential-pepper-only"
+    lookup_mac = hmac.HMAC(pepper.encode("utf-8"), hashes.SHA256())
+    lookup_mac.update(raw.encode("utf-8"))
+    return lookup_mac.finalize().hex()
 
 
 def admin_provision_api_keys() -> frozenset[str]:

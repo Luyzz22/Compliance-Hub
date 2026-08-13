@@ -1,40 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Compliance Hub Frontend
 
-## Governance-Maturity-Copy (Readiness, GAI, OAMI)
+Next.js-Frontend und serverseitiges BFF für Compliance Hub.
 
-Board- und Berater-Texte zu **AI & Compliance Readiness**, **Governance-Aktivitätsindex (GAI)** und **Operativem KI-Monitoring (OAMI)** liegen zentral in [`src/lib/governanceMaturityDeCopy.ts`](src/lib/governanceMaturityDeCopy.ts) (Level-Typen: [`src/lib/governanceMaturityTypes.ts`](src/lib/governanceMaturityTypes.ts)). Neue oder geänderte UI-Strings dort pflegen, nicht in Komponenten duplizieren. Abgleich mit dem gesprochenen Demo-Flow: [`../docs/demo-board-ready-walkthrough.md`](../docs/demo-board-ready-walkthrough.md). Backend-Enums und KI-Erklärungen: [`../docs/governance-maturity-copy-contract.md`](../docs/governance-maturity-copy-contract.md).
-
-## Getting Started
-
-First, run the development server:
+## Lokale Entwicklung
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Vor Änderungen und Releases:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run lint
+npx tsc --noEmit
+npm run test:unit
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Produktionsbetrieb
 
-## Learn More
+Der freigegebene Zielpfad ist ein Next.js-Standalone-Container auf Hetzner Deutschland.
+Vercel ist kein zulässiger Zielprovider. Das Image wird vom Repository-Root aus gebaut,
+damit die Prebuild-Gates auch die versionierten PostgreSQL-Verträge prüfen können:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+docker build -f frontend/Dockerfile.hetzner -t compliancehub-frontend:verify .
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Netzwerk-, Secret- und Reverse-Proxy-Grenzen stehen unter `../deploy/hetzner/`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Produktive Laufzeitdaten verwenden:
 
-## Deploy on Vercel
+- privates PostgreSQL mit Tenant-Kontext und `FORCE RLS`;
+- privaten S3-kompatiblen Storage in Falkenstein oder Nürnberg;
+- als Dateien gemountete, rotierte Secrets aus OpenBao;
+- Azure ausschließlich für explizit freigegebene Entra-/LLM-Funktionen.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Die Release-Attestierungen bleiben `false`, bis ihre jeweiligen Runbook-Nachweise
+vorliegen. Das Vorhandensein der Containerdateien ist kein Produktionsnachweis.

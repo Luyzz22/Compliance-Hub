@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.llm_models import LLMTaskType
-from app.services.llm_router import LLMRouter
+from app.llm.client_wrapped import guardrailed_route_and_call_sync
+from app.llm.context import LlmCallContext
+from app.llm_models import LLMDataClass, LLMTaskType
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -23,13 +24,23 @@ def draft_legal_norm_analysis(
     session: Session | None = None,
 ) -> str:
     """Kurzanalyse / Norm-Bezug aus Freitext (LEGAL_REASONING, Claude-first)."""
-    router = LLMRouter(session=session)
     prompt = (
         "Analysiere den folgenden Text im Kontext EU AI Act und NIS2-relevanter "
         "Governance-Pflichten. Antwort strukturiert mit kurzen Absätzen, auf Deutsch.\n\n"
         f"{source_text}"
     )
-    return router.route_and_call(LLMTaskType.LEGAL_REASONING, prompt, tenant_id).text
+    return guardrailed_route_and_call_sync(
+        session,
+        LLMTaskType.LEGAL_REASONING,
+        prompt,
+        tenant_id,
+        context=LlmCallContext(
+            tenant_id=tenant_id,
+            action_name="draft_legal_norm_analysis",
+            data_class=LLMDataClass.CONFIDENTIAL,
+        ),
+        response_format=None,
+    ).text
 
 
 def draft_structured_report_snippet(
@@ -40,15 +51,17 @@ def draft_structured_report_snippet(
     response_json: bool = False,
 ) -> str:
     """JSON/Markdown- oder Berichtsfragmente (STRUCTURED_OUTPUT, GPT-4o-first)."""
-    router = LLMRouter(session=session)
-    kwargs: dict = {}
-    if response_json:
-        kwargs["response_format"] = "json_object"
-    return router.route_and_call(
+    return guardrailed_route_and_call_sync(
+        session,
         LLMTaskType.STRUCTURED_OUTPUT,
         instruction_and_facts,
         tenant_id,
-        **kwargs,
+        context=LlmCallContext(
+            tenant_id=tenant_id,
+            action_name="draft_structured_report_snippet",
+            data_class=LLMDataClass.CONFIDENTIAL,
+        ),
+        response_format="json_object" if response_json else None,
     ).text
 
 
@@ -59,14 +72,20 @@ def draft_classification_assist(
     session: Session | None = None,
 ) -> str:
     """Heuristische Tags/Vorschläge – ersetzt nicht die deterministische Klassifikation."""
-    router = LLMRouter(session=session)
     prompt = (
         "Schlage kompakte Stichworte und Risiko-Hinweise vor (keine finale Rechtsbewertung). "
         "Antwort als kurze Bullet-Liste, Deutsch.\n\n"
         f"{system_description}"
     )
-    return router.route_and_call(
+    return guardrailed_route_and_call_sync(
+        session,
         LLMTaskType.CLASSIFICATION_TAGGING,
         prompt,
         tenant_id,
+        context=LlmCallContext(
+            tenant_id=tenant_id,
+            action_name="draft_classification_assist",
+            data_class=LLMDataClass.CONFIDENTIAL,
+        ),
+        response_format=None,
     ).text

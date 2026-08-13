@@ -4,6 +4,7 @@
  */
 import "server-only";
 
+import { crmProviderIsForbiddenInProduction } from "@/lib/outboundEndpointPolicy";
 import { attachContactRollups, mergeLeadsWithOps } from "@/lib/leadInboxMerge";
 import { readLeadOpsState } from "@/lib/leadOpsState";
 import {
@@ -349,6 +350,9 @@ function toConnectorError(err: unknown): LeadSyncConnectorResult {
 }
 
 export async function runPipedriveLeadSyncConnector(snapshot: LeadSyncPayloadV1): Promise<LeadSyncConnectorResult> {
+  if (crmProviderIsForbiddenInProduction("pipedrive")) {
+    return { ok: false, error: "pipedrive_forbidden_by_provider_policy", retryable: false };
+  }
   const token = process.env.PIPEDRIVE_API_TOKEN?.trim();
   if (!token) {
     return { ok: false, error: "pipedrive_token_not_configured", retryable: false };

@@ -4,6 +4,10 @@ import { attachContactRollups, mergeLeadsWithOps } from "@/lib/leadInboxMerge";
 import { appendLeadOpsActivity, readLeadOpsState } from "@/lib/leadOpsState";
 import { isLeadPipedriveDealEligible } from "@/lib/pipedriveDealEligibility";
 import {
+  crmProviderIsForbiddenInProduction,
+  isEnterpriseProductionRuntime,
+} from "@/lib/outboundEndpointPolicy";
+import {
   buildLeadSyncPayloadV1,
   computeLeadSyncIdempotencyKey,
   defaultMaterialRevisionForIngest,
@@ -24,6 +28,15 @@ import { getMergedLeadAdminRow, readAllLeadRecordsMerged } from "@/lib/leadPersi
 export const LEAD_SYNC_MAX_ATTEMPTS = 6;
 
 export function getEnabledLeadSyncTargets(): LeadSyncTarget[] {
+  if (
+    isEnterpriseProductionRuntime() &&
+    (process.env.HUBSPOT_ACCESS_TOKEN?.trim() ||
+      process.env.PIPEDRIVE_API_TOKEN?.trim() ||
+      process.env.LEAD_SYNC_HUBSPOT_STUB === "1" ||
+      process.env.LEAD_SYNC_PIPEDRIVE_STUB === "1")
+  ) {
+    throw new Error("US CRM connectors are forbidden in the sovereign production profile");
+  }
   const t: LeadSyncTarget[] = [];
   if (process.env.LEAD_SYNC_N8N_URL?.trim()) t.push("n8n_webhook");
   if (process.env.HUBSPOT_ACCESS_TOKEN?.trim()) t.push("hubspot");
@@ -103,6 +116,7 @@ export async function enqueueLeadSyncAfterIngest(input: {
  * Idempotency stabil pro lead_id über `pipedriveDealMaterialRevision`.
  */
 export async function enqueuePipedriveDealSyncIfEligible(leadId: string): Promise<string[]> {
+  if (crmProviderIsForbiddenInProduction("pipedrive")) return [];
   if (!process.env.PIPEDRIVE_API_TOKEN?.trim()) return [];
 
   const row = await getMergedLeadAdminRow(leadId);

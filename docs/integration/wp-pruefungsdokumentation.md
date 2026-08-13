@@ -36,7 +36,7 @@ Audit-Record + verknüpfte Export-Job-IDs = nachvollziehbarer Pfad „dieser Rep
 
 3. **Export in DMS/DATEV**  
    `POST /api/v1/ai-governance/report/board/export-jobs`  
-   - z. B. `target_system: datev_dms_prepared`, `callback_url`, optional `metadata` (Mandant, Aktenzeichen).  
+   - z. B. `target_system: datev_dms_prepared`, optional `metadata` (Mandant, Aktenzeichen); das Ziel ist zentral durch den Betreiber freigegeben.
    - Response: Export-Job mit `id`, `status` (sent/failed).
 
 4. **Verknüpfung nachziehen (optional)**  

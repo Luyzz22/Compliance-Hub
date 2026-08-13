@@ -82,7 +82,12 @@ def test_internal_poll_run_writes_snapshots(
         repo = ServiceHealthRepository(session)
         rows = repo.list_snapshots(ops_tenant_id, limit=10)
         assert len(rows) >= 3
-        assert {r.service_name for r in rows} >= {"app", "db", "external_ai_provider"}
+        assert {r.service_name for r in rows} >= {
+            "app",
+            "db",
+            "policy_engine",
+            "external_ai_provider",
+        }
 
 
 def test_operations_snapshots_api(ops_tenant_polled: str) -> None:

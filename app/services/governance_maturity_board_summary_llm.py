@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING
 
 from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.governance_maturity_models import GovernanceMaturityResponse
-from app.llm_models import LLMTaskType
+from app.llm.client_wrapped import guardrailed_route_and_call_sync
+from app.llm.context import LlmCallContext
+from app.llm_models import LLMDataClass, LLMTaskType
 from app.services.governance_maturity_service import build_governance_maturity_response
 from app.services.governance_maturity_summary_parse import (
     GovernanceMaturityBoardSummaryParseResult,
@@ -15,7 +17,6 @@ from app.services.governance_maturity_summary_parse import (
     parse_governance_maturity_board_summary,
 )
 from app.services.governance_maturity_summary_prompt import build_governance_maturity_summary_prompt
-from app.services.llm_router import LLMRouter
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -32,12 +33,17 @@ def render_governance_maturity_board_summary(
     Invoke LLM with JSON mode; parse and align to snapshot; fallback on errors.
     """
     prompt = build_governance_maturity_summary_prompt(snapshot)
-    router = LLMRouter(session=session)
     try:
-        resp = router.route_and_call(
+        resp = guardrailed_route_and_call_sync(
+            session,
             LLMTaskType.GOVERNANCE_MATURITY_BOARD_SUMMARY,
             prompt,
             tenant_id,
+            context=LlmCallContext(
+                tenant_id=tenant_id,
+                action_name="governance_maturity_board_summary",
+                data_class=LLMDataClass.INTERNAL,
+            ),
             response_format="json_object",
         )
     except Exception:

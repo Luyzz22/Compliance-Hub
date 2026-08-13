@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "release_id": "replace-with-change-ticket-or-release-id",
+  "commit_sha": "0000000000000000000000000000000000000000",
+  "created_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "expires_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "built_by": "replace-with-builder-identity",
+  "approved_by": "replace-with-independent-approver-identity",
+  "change_ticket": "replace-with-change-ticket-reference",
+  "images": {
+    "backend": "registry.example.invalid/compliancehub/backend@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "frontend": "registry.example.invalid/compliancehub/frontend@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "sboms": {
+    "backend_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "frontend_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "security": {
+    "container_scan_status": "pending",
+    "maximum_allowed_severity": "medium",
+    "critical_findings": 0,
+    "high_findings": 0,
+    "signature_verification_status": "pending",
+    "provenance_verification_status": "pending"
+  },
+  "deployment": {
+    "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "blueprint_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "database": {
+    "migration_plan_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "backup_restore_evidence": "replace-with-immutable-evidence-reference",
+    "change_class": "none",
+    "migration_execution_status": "not_required",
+    "schema_verification_status": "pending",
+    "rollback_compatibility_status": "pending"
+  },
+  "rollback": {
+    "release_id": "replace-with-current-release-id",
+    "commit_sha": "0000000000000000000000000000000000000000",
+    "evidence_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "configuration_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "blueprint_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "backend_image": "registry.example.invalid/compliancehub/backend@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "frontend_image": "registry.example.invalid/compliancehub/frontend@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "tested_at": "YYYY-MM-DDTHH:MM:SSZ",
+    "evidence_reference": "replace-with-immutable-evidence-reference"
+  },
+  "approvals": {
+    "security": "pending",
+    "privacy": "pending",
+    "operations": "pending",
+    "product_owner": "pending"
+  },
+  "signatures": [
+    {
+      "role": "builder",
+      "subject": "replace-with-builder-identity",
+      "algorithm": "Ed25519",
+      "key_id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "signature": "replace-with-base64-ed25519-signature"
+    },
+    {
+      "role": "approver",
+      "subject": "replace-with-independent-approver-identity",
+      "algorithm": "Ed25519",
+      "key_id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "signature": "replace-with-base64-ed25519-signature"
+    }
+  ]
+}

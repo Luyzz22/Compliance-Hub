@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { recordDatevBundleExport } from "@/lib/advisorMandantHistoryStore";
 import { zipDatevKanzleiBundle, buildDatevKanzleiBundleFiles } from "@/lib/datevKanzleiBundleGenerate";
 import { fetchTenantBoardReadinessRaw } from "@/lib/fetchTenantBoardReadinessRaw";
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 import { readGtmProductAccountMap } from "@/lib/gtmProductAccountMapStore";
 import { generateMandantReadinessAdvisorExport } from "@/lib/mandantReadinessAdvisorExport";
 import { computeMandantOffenePunkte } from "@/lib/tenantBoardReadinessGaps";
@@ -17,7 +17,7 @@ function safeZipBaseName(clientId: string): string {
 }
 
 export async function GET(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

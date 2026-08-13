@@ -1,19 +1,12 @@
 import "server-only";
 
 import {
-  BlobServiceClient,
-  type ContainerClient,
-} from "@azure/storage-blob";
-import { createHash, randomUUID } from "node:crypto";
-import {
-  appendFile,
-  chmod,
-  mkdir,
-  readFile,
-  rename,
-  unlink,
-  writeFile,
-} from "node:fs/promises";
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+  type S3ClientConfig,
+} from "@aws-sdk/client-s3";
+import { createHash } from "node:crypto";
 import {
   basename,
   dirname,
@@ -21,24 +14,18 @@ import {
   relative,
   sep,
 } from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
-
-import {
-  AzureIdentityConfigurationError,
-  createAzureTokenCredential,
-  resolveAzureAuthMode as resolveSharedAzureAuthMode,
-} from "@/lib/azureIdentity";
-import type { AzureAuthMode } from "@/lib/azureIdentity";
+import { withPlatformRuntimePostgres } from "@/lib/runtimePostgres";
+import { readMountedServerSecretFile } from "@/lib/serverSecret";
 
 const RUNTIME_DOCUMENT_MAX_BYTES = 32 * 1024 * 1024;
 const RUNTIME_APPEND_MAX_BYTES = 256 * 1024;
 const DEFAULT_BLOB_PREFIX = "compliancehub/runtime/v1";
-const ACCOUNT_NAME_PATTERN = /^[a-z0-9]{3,24}$/;
-const CONTAINER_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/;
+const S3_BUCKET_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9.-]{1,61}[a-z0-9])?$/;
 const PREFIX_PATTERN = /^[a-z0-9](?:[a-z0-9/_-]{0,126}[a-z0-9])?$/;
 
-type RuntimeStorageBackend = "local" | "azure_blob";
+type RuntimeStorageBackend = "local" | "s3";
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
+type S3RuntimeClient = Pick<S3Client, "send">;
 
 export class RuntimeStorageNotFoundError extends Error {
   constructor() {
@@ -75,14 +62,17 @@ export function absoluteRuntimeFilePath(path: string): string {
 }
 
 function isProductionRuntime(env: RuntimeEnvironment): boolean {
-  return env.NODE_ENV === "production" || Boolean(env.VERCEL);
+  return (
+    env.NODE_ENV === "production" ||
+    env.COMPLIANCEHUB_RELEASE_CHANNEL === "production"
+  );
 }
 
 export function resolveRuntimeStorageBackend(
   env: RuntimeEnvironment = process.env,
 ): RuntimeStorageBackend {
   const configured = env.COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND?.trim().toLowerCase();
-  if (configured === "azure_blob") return "azure_blob";
+  if (configured === "s3") return "s3";
   if (configured === "local") {
     if (isProductionRuntime(env)) {
       throw new RuntimeStorageConfigurationError(
@@ -96,23 +86,10 @@ export function resolveRuntimeStorageBackend(
   }
   if (isProductionRuntime(env)) {
     throw new RuntimeStorageConfigurationError(
-      "COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND must be azure_blob in production",
+      "COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND must be s3 in production",
     );
   }
   return "local";
-}
-
-export function resolveAzureAuthMode(
-  env: RuntimeEnvironment = process.env,
-): AzureAuthMode {
-  try {
-    return resolveSharedAzureAuthMode(env);
-  } catch (error) {
-    if (error instanceof AzureIdentityConfigurationError) {
-      throw new RuntimeStorageConfigurationError(error.message);
-    }
-    throw error;
-  }
 }
 
 function requiredEnv(name: string, env: RuntimeEnvironment): string {
@@ -162,34 +139,6 @@ export function runtimeBlobNameFromPath(
   return `${blobPrefix(env)}/${logicalName}`;
 }
 
-function isNotFoundCause(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { code?: unknown; statusCode?: unknown };
-  return (
-    candidate.code === "ENOENT" ||
-    (candidate.statusCode === 404 && candidate.code === "BlobNotFound")
-  );
-}
-
-function isExistingLockBlob(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { code?: unknown; statusCode?: unknown };
-  return (
-    (candidate.statusCode === 409 && candidate.code === "BlobAlreadyExists") ||
-    (candidate.statusCode === 412 && candidate.code === "ConditionNotMet")
-  );
-}
-
-function isLeaseBusy(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { code?: unknown; statusCode?: unknown };
-  return (
-    candidate.statusCode === 409 &&
-    (candidate.code === "LeaseAlreadyPresent" ||
-      candidate.code === "LeaseIsBreakingAndCannotBeAcquired")
-  );
-}
-
 function assertContentSize(
   content: Buffer,
   limit: number,
@@ -203,145 +152,200 @@ function assertContentSize(
   }
 }
 
-async function ensureParentDirectory(path: string): Promise<void> {
-  await mkdir(/* turbopackIgnore: true */ dirname(path), {
-    recursive: true,
-    mode: 0o700,
-  });
-}
+const developmentRuntimeObjects = new Map<string, Buffer>();
 
 async function readLocalTextFile(path: string): Promise<string> {
-  try {
-    const content = await readFile(/* turbopackIgnore: true */ path);
-    if (content.byteLength > RUNTIME_DOCUMENT_MAX_BYTES) {
-      throw new Error("Runtime object exceeds read limit");
-    }
-    return content.toString("utf8");
-  } catch (error) {
-    if (isNotFoundCause(error)) throw new RuntimeStorageNotFoundError();
-    throw new RuntimeStorageOperationError("read", error);
+  const content = developmentRuntimeObjects.get(path);
+  if (!content) throw new RuntimeStorageNotFoundError();
+  if (content.byteLength > RUNTIME_DOCUMENT_MAX_BYTES) {
+    throw new RuntimeStorageOperationError(
+      "read",
+      new Error("Runtime object exceeds read limit"),
+    );
   }
+  return content.toString("utf8");
 }
 
 async function writeLocalTextFile(path: string, content: Buffer): Promise<void> {
-  const temporaryPath = `${path}.${randomUUID()}.tmp`;
-  try {
-    await ensureParentDirectory(path);
-    await writeFile(/* turbopackIgnore: true */ temporaryPath, content, {
-      flag: "wx",
-      mode: 0o600,
-    });
-    await rename(
-      /* turbopackIgnore: true */ temporaryPath,
-      /* turbopackIgnore: true */ path,
-    );
-  } catch (error) {
-    await unlink(/* turbopackIgnore: true */ temporaryPath).catch(() => undefined);
-    throw new RuntimeStorageOperationError("write", error);
-  }
+  developmentRuntimeObjects.set(path, Buffer.from(content));
 }
 
 async function appendLocalTextFile(path: string, content: Buffer): Promise<void> {
+  const previous = developmentRuntimeObjects.get(path) ?? Buffer.alloc(0);
+  const combined = Buffer.concat([previous, content]);
+  assertContentSize(combined, RUNTIME_DOCUMENT_MAX_BYTES, "append");
+  developmentRuntimeObjects.set(path, combined);
+}
+
+const DEFAULT_HETZNER_S3_HOSTS = new Set([
+  "fsn1.your-objectstorage.com",
+  "nbg1.your-objectstorage.com",
+]);
+
+function resolveS3Endpoint(env: RuntimeEnvironment): URL {
+  let endpoint: URL;
   try {
-    await ensureParentDirectory(path);
-    await appendFile(/* turbopackIgnore: true */ path, content, {
-      mode: 0o600,
+    endpoint = new URL(requiredEnv("COMPLIANCEHUB_S3_ENDPOINT", env));
+  } catch {
+    throw new RuntimeStorageConfigurationError("COMPLIANCEHUB_S3_ENDPOINT must be a valid URL");
+  }
+  if (
+    endpoint.username ||
+    endpoint.password ||
+    endpoint.pathname !== "/" ||
+    endpoint.search ||
+    endpoint.hash
+  ) {
+    throw new RuntimeStorageConfigurationError(
+      "COMPLIANCEHUB_S3_ENDPOINT must be a bare origin without credentials",
+    );
+  }
+  if (isProductionRuntime(env) && endpoint.protocol !== "https:") {
+    throw new RuntimeStorageConfigurationError(
+      "COMPLIANCEHUB_S3_ENDPOINT must use HTTPS in production",
+    );
+  }
+  const allowedHosts = new Set([
+    ...DEFAULT_HETZNER_S3_HOSTS,
+    ...(env.COMPLIANCEHUB_S3_ALLOWED_HOSTS || "")
+      .split(",")
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean),
+  ]);
+  if (isProductionRuntime(env) && !allowedHosts.has(endpoint.hostname.toLowerCase())) {
+    throw new RuntimeStorageConfigurationError(
+      "S3 endpoint host is not in COMPLIANCEHUB_S3_ALLOWED_HOSTS",
+    );
+  }
+  return endpoint;
+}
+
+async function readSecretFile(name: string, env: RuntimeEnvironment): Promise<string> {
+  const path = requiredEnv(name, env);
+  try {
+    return readMountedServerSecretFile({
+      fileVariable: name,
+      filePath: path,
+      maximumBytes: 4096,
     });
-    await chmod(/* turbopackIgnore: true */ path, 0o600);
   } catch (error) {
-    throw new RuntimeStorageOperationError("append", error);
+    throw new RuntimeStorageConfigurationError(
+      `${name} cannot be read (${error instanceof Error ? error.name : "Error"})`,
+    );
   }
 }
 
-let azureContainerClient: ContainerClient | null = null;
-let azureContainerClientFactoryForTests: (() => ContainerClient) | null = null;
+function s3Bucket(env: RuntimeEnvironment): string {
+  const bucket = requiredEnv("COMPLIANCEHUB_S3_BUCKET", env).toLowerCase();
+  if (!S3_BUCKET_NAME_PATTERN.test(bucket) || bucket.includes("..")) {
+    throw new RuntimeStorageConfigurationError("Invalid S3 bucket name");
+  }
+  return bucket;
+}
 
-export function __setAzureContainerClientFactoryForTests(
-  factory: (() => ContainerClient) | null,
+let s3RuntimeClient: S3RuntimeClient | null = null;
+let s3RuntimeClientFactoryForTests: ((config: S3ClientConfig) => S3RuntimeClient) | null = null;
+
+export function __setS3RuntimeClientFactoryForTests(
+  factory: ((config: S3ClientConfig) => S3RuntimeClient) | null,
 ): void {
   if (process.env.NODE_ENV !== "test") {
-    throw new Error("Azure runtime storage test factory is test-only");
+    throw new Error("S3 runtime storage test factory is test-only");
   }
-  azureContainerClientFactoryForTests = factory;
-  azureContainerClient = null;
+  s3RuntimeClientFactoryForTests = factory;
+  s3RuntimeClient = null;
 }
 
-function getAzureContainerClient(): ContainerClient {
-  if (azureContainerClient) return azureContainerClient;
-  if (azureContainerClientFactoryForTests) {
-    azureContainerClient = azureContainerClientFactoryForTests();
-    return azureContainerClient;
-  }
-
-  const accountName = requiredEnv("AZURE_STORAGE_ACCOUNT_NAME", process.env);
-  const containerName = requiredEnv("AZURE_STORAGE_CONTAINER_NAME", process.env);
-  if (!ACCOUNT_NAME_PATTERN.test(accountName)) {
-    throw new RuntimeStorageConfigurationError("Invalid Azure Storage account name");
-  }
-  if (!CONTAINER_NAME_PATTERN.test(containerName)) {
-    throw new RuntimeStorageConfigurationError("Invalid Azure Blob container name");
-  }
-
-  const credential = createAzureTokenCredential(
-    process.env,
-    RuntimeStorageConfigurationError,
-  );
-
-  const serviceClient = new BlobServiceClient(
-    `https://${accountName}.blob.core.windows.net`,
-    credential,
-  );
-  azureContainerClient = serviceClient.getContainerClient(containerName);
-  return azureContainerClient;
+function getS3RuntimeClient(): S3RuntimeClient {
+  if (s3RuntimeClient) return s3RuntimeClient;
+  const endpoint = resolveS3Endpoint(process.env);
+  const config: S3ClientConfig = {
+    endpoint: endpoint.origin,
+    region: requiredEnv("COMPLIANCEHUB_S3_REGION", process.env),
+    forcePathStyle: process.env.COMPLIANCEHUB_S3_FORCE_PATH_STYLE === "true",
+    credentials: async () => ({
+      accessKeyId: await readSecretFile("COMPLIANCEHUB_S3_ACCESS_KEY_FILE", process.env),
+      secretAccessKey: await readSecretFile(
+        "COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE",
+        process.env,
+      ),
+    }),
+  };
+  s3RuntimeClient = s3RuntimeClientFactoryForTests
+    ? s3RuntimeClientFactoryForTests(config)
+    : new S3Client(config);
+  return s3RuntimeClient;
 }
 
-async function readAzureTextFile(path: string): Promise<string> {
+function isS3NotFoundCause(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { name?: unknown; Code?: unknown; $metadata?: { httpStatusCode?: number } };
+  return (
+    candidate.name === "NoSuchKey" ||
+    candidate.Code === "NoSuchKey" ||
+    (candidate.name === "NotFound" && candidate.$metadata?.httpStatusCode === 404)
+  );
+}
+
+async function readS3TextFile(path: string): Promise<string> {
   try {
-    const blob = getAzureContainerClient().getBlockBlobClient(
-      runtimeBlobNameFromPath(path),
+    const response = await getS3RuntimeClient().send(
+      new GetObjectCommand({
+        Bucket: s3Bucket(process.env),
+        Key: runtimeBlobNameFromPath(path),
+      }),
     );
-    const content = await blob.downloadToBuffer(0, RUNTIME_DOCUMENT_MAX_BYTES + 1);
+    if (!response.Body) throw new Error("S3 object response has no body");
+    const content = Buffer.from(await response.Body.transformToByteArray());
     if (content.byteLength > RUNTIME_DOCUMENT_MAX_BYTES) {
       throw new Error("Runtime object exceeds read limit");
     }
     return content.toString("utf8");
   } catch (error) {
-    if (isNotFoundCause(error)) throw new RuntimeStorageNotFoundError();
+    if (isS3NotFoundCause(error)) throw new RuntimeStorageNotFoundError();
     throw new RuntimeStorageOperationError("read", error);
   }
 }
 
-async function writeAzureTextFile(path: string, content: Buffer): Promise<void> {
+async function writeS3TextFile(path: string, content: Buffer): Promise<void> {
   try {
-    const blob = getAzureContainerClient().getBlockBlobClient(
-      runtimeBlobNameFromPath(path),
+    await getS3RuntimeClient().send(
+      new PutObjectCommand({
+        Bucket: s3Bucket(process.env),
+        Key: runtimeBlobNameFromPath(path),
+        Body: content,
+        CacheControl: "private, no-store",
+        ContentType: "application/json; charset=utf-8",
+      }),
     );
-    await blob.uploadData(content, {
-      blobHTTPHeaders: {
-        blobCacheControl: "private, no-store",
-        blobContentType: "application/json; charset=utf-8",
-      },
-    });
   } catch (error) {
     throw new RuntimeStorageOperationError("write", error);
   }
 }
 
-async function appendAzureTextFile(path: string, content: Buffer): Promise<void> {
-  try {
-    const blob = getAzureContainerClient().getAppendBlobClient(
-      runtimeBlobNameFromPath(path),
-    );
-    await blob.createIfNotExists({
-      blobHTTPHeaders: {
-        blobCacheControl: "private, no-store",
-        blobContentType: "application/x-ndjson; charset=utf-8",
-      },
-    });
-    await blob.appendBlock(content, content.byteLength);
-  } catch (error) {
-    throw new RuntimeStorageOperationError("append", error);
-  }
+async function withS3RuntimeStorageLock<T>(
+  path: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const objectName = runtimeBlobNameFromPath(path);
+  return withPlatformRuntimePostgres("system:runtime-storage-lock", async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [objectName]);
+    return operation();
+  });
+}
+
+async function appendS3TextFile(path: string, content: Buffer): Promise<void> {
+  await withS3RuntimeStorageLock(path, async () => {
+    let previous = Buffer.alloc(0);
+    try {
+      previous = Buffer.from(await readS3TextFile(path), "utf8");
+    } catch (error) {
+      if (!isRuntimeStorageNotFoundError(error)) throw error;
+    }
+    const combined = Buffer.concat([previous, content]);
+    assertContentSize(combined, RUNTIME_DOCUMENT_MAX_BYTES, "append");
+    await writeS3TextFile(path, combined);
+  });
 }
 
 const localLockTails = new Map<string, Promise<void>>();
@@ -366,91 +370,37 @@ async function withLocalRuntimeStorageLock<T>(
   }
 }
 
-async function withAzureRuntimeStorageLock<T>(
-  path: string,
-  operation: () => Promise<T>,
-): Promise<T> {
-  const objectName = runtimeBlobNameFromPath(path);
-  const lockName = `${blobPrefix(process.env)}/locks/${createHash("sha256").update(objectName).digest("hex")}.lock`;
-  const lockBlob = getAzureContainerClient().getBlockBlobClient(lockName);
-  try {
-    await lockBlob.uploadData(Buffer.alloc(0), {
-      conditions: { ifNoneMatch: "*" },
-      blobHTTPHeaders: {
-        blobCacheControl: "private, no-store",
-        blobContentType: "application/octet-stream",
-      },
-    });
-  } catch (error) {
-    if (!isExistingLockBlob(error)) {
-      throw new RuntimeStorageOperationError("lock", error);
-    }
-  }
-
-  const lease = lockBlob.getBlobLeaseClient(randomUUID());
-  let acquired = false;
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    try {
-      await lease.acquireLease(60);
-      acquired = true;
-      break;
-    } catch (error) {
-      if (!isLeaseBusy(error)) {
-        throw new RuntimeStorageOperationError("lock", error);
-      }
-      await sleep(50 + attempt * 25);
-    }
-  }
-  if (!acquired) {
-    throw new RuntimeStorageOperationError("lock", new Error("Azure Blob lease timeout"));
-  }
-
-  let operationError: unknown;
-  try {
-    return await operation();
-  } catch (error) {
-    operationError = error;
-    throw error;
-  } finally {
-    try {
-      await lease.releaseLease();
-    } catch (error) {
-      if (!operationError) throw new RuntimeStorageOperationError("lock", error);
-    }
-  }
-}
-
 export function withRuntimeStorageLock<T>(
   path: string,
   operation: () => Promise<T>,
 ): Promise<T> {
   const absolutePath = absoluteRuntimeFilePath(path);
-  return resolveRuntimeStorageBackend() === "azure_blob"
-    ? withAzureRuntimeStorageLock(absolutePath, operation)
-    : withLocalRuntimeStorageLock(absolutePath, operation);
+  const backend = resolveRuntimeStorageBackend();
+  if (backend === "s3") return withS3RuntimeStorageLock(absolutePath, operation);
+  return withLocalRuntimeStorageLock(absolutePath, operation);
 }
 
 export function readRuntimeTextFile(path: string): Promise<string> {
   const absolutePath = absoluteRuntimeFilePath(path);
-  return resolveRuntimeStorageBackend() === "azure_blob"
-    ? readAzureTextFile(absolutePath)
-    : readLocalTextFile(absolutePath);
+  const backend = resolveRuntimeStorageBackend();
+  if (backend === "s3") return readS3TextFile(absolutePath);
+  return readLocalTextFile(absolutePath);
 }
 
 export function writeRuntimeTextFile(path: string, content: string): Promise<void> {
   const absolutePath = absoluteRuntimeFilePath(path);
   const buffer = Buffer.from(content, "utf8");
   assertContentSize(buffer, RUNTIME_DOCUMENT_MAX_BYTES, "write");
-  return resolveRuntimeStorageBackend() === "azure_blob"
-    ? writeAzureTextFile(absolutePath, buffer)
-    : writeLocalTextFile(absolutePath, buffer);
+  const backend = resolveRuntimeStorageBackend();
+  if (backend === "s3") return writeS3TextFile(absolutePath, buffer);
+  return writeLocalTextFile(absolutePath, buffer);
 }
 
 export function appendRuntimeTextFile(path: string, content: string): Promise<void> {
   const absolutePath = absoluteRuntimeFilePath(path);
   const buffer = Buffer.from(content, "utf8");
   assertContentSize(buffer, RUNTIME_APPEND_MAX_BYTES, "append");
-  return resolveRuntimeStorageBackend() === "azure_blob"
-    ? appendAzureTextFile(absolutePath, buffer)
-    : appendLocalTextFile(absolutePath, buffer);
+  const backend = resolveRuntimeStorageBackend();
+  if (backend === "s3") return appendS3TextFile(absolutePath, buffer);
+  return appendLocalTextFile(absolutePath, buffer);
 }

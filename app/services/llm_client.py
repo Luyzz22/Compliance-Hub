@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -18,6 +21,10 @@ class LLMConfigurationError(RuntimeError):
 
 class LLMProviderHTTPError(RuntimeError):
     """Upstream LLM API returned an error response."""
+
+
+_AZURE_CERTIFICATE_ALLOWED_MODES = {0o400, 0o600}
+_AZURE_CERTIFICATE_MAX_BYTES = 1024 * 1024
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -70,13 +77,95 @@ def is_provider_configured(provider: LLMProvider) -> bool:
     if provider == LLMProvider.AZURE_OPENAI:
         if not _env("AZURE_OPENAI_ENDPOINT") or not _env("AZURE_OPENAI_DEPLOYMENT"):
             return False
+        try:
+            _azure_openai_base()
+        except LLMConfigurationError:
+            return False
         auth_mode = (_env("AZURE_OPENAI_AUTH", "managed_identity") or "").lower()
-        return auth_mode == "managed_identity" or bool(_env("AZURE_OPENAI_API_KEY"))
+        if auth_mode == "managed_identity":
+            return True
+        if auth_mode == "client_certificate":
+            if not _env("AZURE_TENANT_ID") or not _env("AZURE_CLIENT_ID"):
+                return False
+            try:
+                _read_validated_azure_certificate()
+            except LLMConfigurationError:
+                return False
+            return True
+        return auth_mode == "api_key" and bool(_env("AZURE_OPENAI_API_KEY"))
     if provider == LLMProvider.GEMINI:
         return bool(_env("GEMINI_API_KEY") or _env("GOOGLE_API_KEY"))
     if provider == LLMProvider.LLAMA:
         return bool(_env("LLAMA_BASE_URL"))
     return False
+
+
+def _read_validated_azure_certificate() -> bytes:
+    """Read the file-backed Azure credential without following a symlink."""
+    raw_path = _env("AZURE_CLIENT_CERTIFICATE_PATH")
+    if not raw_path:
+        raise LLMConfigurationError("AZURE_CLIENT_CERTIFICATE_PATH is required")
+    certificate_path = Path(raw_path)
+    if not certificate_path.is_absolute():
+        raise LLMConfigurationError("AZURE_CLIENT_CERTIFICATE_PATH must be absolute")
+
+    try:
+        path_metadata = certificate_path.lstat()
+    except OSError as exc:
+        raise LLMConfigurationError(
+            f"AZURE_CLIENT_CERTIFICATE_PATH cannot be read ({type(exc).__name__})"
+        ) from exc
+    mode = stat.S_IMODE(path_metadata.st_mode)
+    if (
+        not stat.S_ISREG(path_metadata.st_mode)
+        or mode not in _AZURE_CERTIFICATE_ALLOWED_MODES
+        or not 0 < path_metadata.st_size <= _AZURE_CERTIFICATE_MAX_BYTES
+    ):
+        raise LLMConfigurationError(
+            "AZURE_CLIENT_CERTIFICATE_PATH must be a non-empty regular file, "
+            "not a symlink, with mode 0600/0400 and at most 1 MiB"
+        )
+
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(certificate_path, flags)
+    except OSError as exc:
+        raise LLMConfigurationError(
+            f"AZURE_CLIENT_CERTIFICATE_PATH cannot be opened safely ({type(exc).__name__})"
+        ) from exc
+    try:
+        opened_metadata = os.fstat(descriptor)
+        if (
+            opened_metadata.st_dev != path_metadata.st_dev
+            or opened_metadata.st_ino != path_metadata.st_ino
+            or not stat.S_ISREG(opened_metadata.st_mode)
+            or stat.S_IMODE(opened_metadata.st_mode) not in _AZURE_CERTIFICATE_ALLOWED_MODES
+            or not 0 < opened_metadata.st_size <= _AZURE_CERTIFICATE_MAX_BYTES
+        ):
+            raise LLMConfigurationError(
+                "AZURE_CLIENT_CERTIFICATE_PATH changed during secure validation"
+            )
+        remaining = opened_metadata.st_size
+        chunks: list[bytes] = []
+        while remaining:
+            chunk = os.read(descriptor, min(remaining, 64 * 1024))
+            if not chunk:
+                raise LLMConfigurationError(
+                    "AZURE_CLIENT_CERTIFICATE_PATH changed during secure read"
+                )
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        final_metadata = os.fstat(descriptor)
+        if (
+            final_metadata.st_dev != opened_metadata.st_dev
+            or final_metadata.st_ino != opened_metadata.st_ino
+            or final_metadata.st_size != opened_metadata.st_size
+            or stat.S_IMODE(final_metadata.st_mode) not in _AZURE_CERTIFICATE_ALLOWED_MODES
+        ):
+            raise LLMConfigurationError("AZURE_CLIENT_CERTIFICATE_PATH changed during secure read")
+    finally:
+        os.close(descriptor)
+    return b"".join(chunks)
 
 
 def _anthropic_key() -> str:
@@ -187,21 +276,77 @@ def _azure_openai_base() -> str:
     endpoint = _env("AZURE_OPENAI_ENDPOINT")
     if not endpoint:
         raise LLMConfigurationError("AZURE_OPENAI_ENDPOINT is not set")
-    base = endpoint.rstrip("/")
-    if not base.endswith("/openai/v1"):
-        base = f"{base}/openai/v1"
-    if not base.startswith("https://") and not _env("COMPLIANCEHUB_ALLOW_INSECURE_LLM_ENDPOINTS"):
+    parsed = urlsplit(endpoint)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/", "/openai/v1", "/openai/v1/"}
+    ):
+        raise LLMConfigurationError("AZURE_OPENAI_ENDPOINT must be a bare HTTP(S) Azure origin")
+    production = (_env("COMPLIANCEHUB_ENV", "dev") or "dev").lower() in {
+        "prod",
+        "production",
+    }
+    if parsed.scheme != "https" and (
+        production or not _env("COMPLIANCEHUB_ALLOW_INSECURE_LLM_ENDPOINTS")
+    ):
         raise LLMConfigurationError("AZURE_OPENAI_ENDPOINT must use HTTPS")
-    return base
+    hostname = parsed.hostname.rstrip(".").lower()
+    if production:
+        try:
+            port = parsed.port
+        except ValueError as exc:
+            raise LLMConfigurationError("AZURE_OPENAI_ENDPOINT has an invalid port") from exc
+        if port not in {None, 443} or not any(
+            hostname.endswith(f".{suffix}") and hostname != suffix
+            for suffix in ("openai.azure.com", "services.ai.azure.com")
+        ):
+            raise LLMConfigurationError(
+                "AZURE_OPENAI_ENDPOINT must use an approved Azure OpenAI hostname in production"
+            )
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    return f"{origin}/openai/v1"
 
 
 @lru_cache(maxsize=1)
 def _azure_credential() -> Any:
+    auth_mode = (_env("AZURE_OPENAI_AUTH", "managed_identity") or "").lower()
+    if auth_mode == "managed_identity":
+        try:
+            from azure.identity import ManagedIdentityCredential
+        except ImportError as exc:  # pragma: no cover - production dependency
+            raise LLMConfigurationError("azure-identity is required for Azure OpenAI") from exc
+        client_id = _env("AZURE_CLIENT_ID")
+        return (
+            ManagedIdentityCredential(client_id=client_id)
+            if client_id
+            else ManagedIdentityCredential()
+        )
+    if auth_mode != "client_certificate":
+        raise LLMConfigurationError(
+            "Azure token credential requires managed_identity or client_certificate"
+        )
+    tenant_id = _env("AZURE_TENANT_ID")
+    client_id = _env("AZURE_CLIENT_ID")
+    if not tenant_id or not client_id:
+        raise LLMConfigurationError(
+            "AZURE_TENANT_ID, AZURE_CLIENT_ID and AZURE_CLIENT_CERTIFICATE_PATH are required"
+        )
+    certificate_data = _read_validated_azure_certificate()
     try:
-        from azure.identity import DefaultAzureCredential
-    except ImportError as exc:  # pragma: no cover - dependency is part of production install
-        raise LLMConfigurationError("azure-identity is required for managed identity") from exc
-    return DefaultAzureCredential()
+        from azure.identity import CertificateCredential
+    except ImportError as exc:  # pragma: no cover - production dependency
+        raise LLMConfigurationError("azure-identity is required for Azure OpenAI") from exc
+    return CertificateCredential(
+        tenant_id=tenant_id,
+        client_id=client_id,
+        certificate_data=certificate_data,
+        send_certificate_chain=True,
+    )
 
 
 def _azure_openai_headers() -> dict[str, str]:
@@ -213,8 +358,10 @@ def _azure_openai_headers() -> dict[str, str]:
             raise LLMConfigurationError("AZURE_OPENAI_API_KEY is not set")
         headers["api-key"] = key
         return headers
-    if auth_mode != "managed_identity":
-        raise LLMConfigurationError("AZURE_OPENAI_AUTH must be managed_identity or api_key")
+    if auth_mode not in {"managed_identity", "client_certificate"}:
+        raise LLMConfigurationError(
+            "AZURE_OPENAI_AUTH must be managed_identity, client_certificate or api_key"
+        )
     token = _azure_credential().get_token("https://cognitiveservices.azure.com/.default")
     headers["authorization"] = f"Bearer {token.token}"
     return headers

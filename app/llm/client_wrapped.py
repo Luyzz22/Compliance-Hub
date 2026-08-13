@@ -23,7 +23,7 @@ from app.llm.guardrails import (
     scan_input_for_pii_and_injection,
     validate_llm_json_output,
 )
-from app.llm_models import LLMResponse, LLMTaskType
+from app.llm_models import LLMDataClass, LLMResponse, LLMTaskType
 from app.services import llm_client
 from app.services.llm_router import LLMRouter
 from app.services.readiness_explain_structured import extract_json_object
@@ -64,12 +64,19 @@ def _structured_llm_sync(
     task_type: LLMTaskType,
     *,
     response_format: str | None = "json_object",
+    data_class: LLMDataClass | None = None,
 ) -> T:
     router = LLMRouter(session=session)
     kwargs: dict[str, str] = {}
     if response_format is not None:
         kwargs["response_format"] = response_format
-    resp = router.route_and_call(task_type, prompt, tenant_id, **kwargs)
+    resp = router.route_and_call(
+        task_type,
+        prompt,
+        tenant_id,
+        data_class=data_class,
+        **kwargs,
+    )
     raw = resp.text or ""
     data = extract_json_object(raw)
     if data is None:
@@ -100,6 +107,7 @@ async def safe_llm_call(
         llm_contract_schema=schema.__name__,
         llm_prompt_length_chars=len(prompt),
         llm_prompt_sha256_prefix=_prompt_sha256_prefix(prompt),
+        llm_data_class=(context.data_class.value if context.data_class else "task_default"),
     ) as span:
         try:
             scan = scan_input_for_pii_and_injection(prompt)
@@ -113,6 +121,7 @@ async def safe_llm_call(
                 context.tenant_id,
                 task_type,
                 response_format=response_format,
+                data_class=context.data_class,
             )
             if span.is_recording():
                 span.set_attribute("llm_result", "ok")
@@ -183,6 +192,7 @@ def safe_llm_call_sync(
         llm_contract_schema=schema.__name__,
         llm_prompt_length_chars=len(prompt),
         llm_prompt_sha256_prefix=_prompt_sha256_prefix(prompt),
+        llm_data_class=(context.data_class.value if context.data_class else "task_default"),
     ) as span:
         try:
             scan = scan_input_for_pii_and_injection(prompt)
@@ -195,6 +205,7 @@ def safe_llm_call_sync(
                 context.tenant_id,
                 task_type,
                 response_format=response_format,
+                data_class=context.data_class,
             )
             if span.is_recording():
                 span.set_attribute("llm_result", "ok")
@@ -269,6 +280,7 @@ def guardrailed_route_and_call_sync(
         llm_contract_schema="freeform_markdown",
         llm_prompt_length_chars=len(prompt),
         llm_prompt_sha256_prefix=_prompt_sha256_prefix(prompt),
+        llm_data_class=(context.data_class.value if context.data_class else "task_default"),
     ) as span:
         try:
             scan = scan_input_for_pii_and_injection(prompt)
@@ -278,7 +290,13 @@ def guardrailed_route_and_call_sync(
             kwargs: dict[str, str] = {}
             if response_format is not None:
                 kwargs["response_format"] = response_format
-            resp = router.route_and_call(task_type, effective, tenant_id, **kwargs)
+            resp = router.route_and_call(
+                task_type,
+                effective,
+                tenant_id,
+                data_class=context.data_class,
+                **kwargs,
+            )
             if span.is_recording():
                 span.set_attribute("llm_result", "ok")
             return resp

@@ -31,6 +31,36 @@ const FORWARDED_RESPONSE_HEADERS = [
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 
+async function boundedRequestBody(request: NextRequest): Promise<ArrayBuffer> {
+  if (!request.body) return new ArrayBuffer(0);
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_REQUEST_BYTES) {
+        await reader.cancel("request_too_large");
+        throw new RangeError("request_too_large");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body.buffer;
+}
+
 async function forward(request: NextRequest, context: RouteContext) {
   const token = sessionToken(request);
   if (!token) return noStoreJson({ error: "authentication_required" }, { status: 401 });
@@ -57,7 +87,12 @@ async function forward(request: NextRequest, context: RouteContext) {
   const principal = (await principalResponse.json()) as PublicSession;
 
   const { path } = await context.params;
-  if (!path.length || path[0] !== "api" || path[1] !== "v1") {
+  if (
+    !path.length ||
+    path[0] !== "api" ||
+    path[1] !== "v1" ||
+    path.some((segment) => !segment || segment === "." || segment === "..")
+  ) {
     return noStoreJson({ error: "route_not_allowed" }, { status: 404 });
   }
   const safePath = path.map((segment) => encodeURIComponent(segment)).join("/");
@@ -75,8 +110,12 @@ async function forward(request: NextRequest, context: RouteContext) {
 
   let body: ArrayBuffer | undefined;
   if (request.method !== "GET" && request.method !== "HEAD") {
-    body = await request.arrayBuffer();
-    if (body.byteLength > MAX_REQUEST_BYTES) {
+    try {
+      body = await boundedRequestBody(request);
+    } catch (error) {
+      if (!(error instanceof RangeError && error.message === "request_too_large")) {
+        return noStoreJson({ error: "invalid_request_body" }, { status: 400 });
+      }
       return noStoreJson({ error: "request_too_large" }, { status: 413 });
     }
   }

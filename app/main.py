@@ -132,6 +132,7 @@ from app.auth_dependencies import (
     get_api_key_and_tenant,
     get_auth_context,
     get_optional_opa_user_role_header,
+    require_advisor_access,
     require_path_tenant_matches_auth,
 )
 from app.authority_audit_preparation_pack_models import (
@@ -171,8 +172,8 @@ from app.cross_regulation_models import (
     RegulatoryRequirementOut,
     RequirementControlsDetailResponse,
 )
-from app.db import engine, get_session
-from app.db_migrations import run_all_db_migrations
+from app.db import engine, get_database_url, get_session
+from app.db_schema_startup import ensure_runtime_schema
 from app.demo_models import (
     DemoGovernanceMaturityLayerRequest,
     DemoGovernanceMaturityLayerResponse,
@@ -237,15 +238,16 @@ from app.ki_register_models import (
     KIRegisterListResponse,
     KIRegisterUpdateRequest,
 )
+from app.llm.client_wrapped import guardrailed_route_and_call_sync
 from app.llm.context import LlmCallContext
-from app.llm_models import LLMTaskType
+from app.llm_models import LLMDataClass, LLMTaskType
 from app.models import (
     ComplianceAction,
     DocumentIngestRequest,
     DocumentType,
     EInvoiceFormat,
 )
-from app.models_db import Base, TenantApiKeyDB
+from app.models_db import TenantApiKeyDB
 from app.nis2_incident_models import (
     NIS2IncidentCreate,
     NIS2IncidentDeadlinesOverride,
@@ -325,12 +327,12 @@ from app.repositories.tenant_api_keys import TenantApiKeyRepository
 from app.repositories.tenant_registry import TenantRegistryRepository
 from app.repositories.user_sessions import UserSessionRepository
 from app.repositories.violations import ViolationRepository
+from app.secret_files import read_secret
 from app.security import (
     AuthContext,
     delete_evidence_allowed_for_api_key,
     ensure_demo_tenant_seed_allowed,
     require_admin_provision_api_key,
-    require_advisor_api_access,
     require_advisor_rag_headers,
     require_demo_seed_api_key,
     secret_matches_any,
@@ -480,7 +482,6 @@ from app.services.governance_maturity_service import build_governance_maturity_r
 from app.services.health_monitor import run_operational_health_poll_all_tenants
 from app.services.high_risk_scenarios import list_high_risk_scenarios
 from app.services.internal_health_core import compute_internal_deep_health
-from app.services.llm_router import LLMRouter
 from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
@@ -556,7 +557,7 @@ from app.workflows.board_report import (
     BoardReportWorkflowInput,
     BoardReportWorkflowResult,
 )
-from app.workflows.config import temporal_task_queue
+from app.workflows.config import temporal_enabled, temporal_task_queue
 
 APP_VERSION = os.getenv("COMPLIANCEHUB_VERSION", "0.1.0")
 APP_ENVIRONMENT = os.getenv("COMPLIANCEHUB_ENV", "dev")
@@ -566,6 +567,12 @@ IS_PRODUCTION = APP_ENVIRONMENT.strip().lower() in {"prod", "production"}
 class LLMInvokeRequest(BaseModel):
     task_type: LLMTaskType
     prompt: str = Field(..., min_length=1, max_length=48000)
+    data_class: LLMDataClass = Field(
+        default=LLMDataClass.RESTRICTED,
+        description=(
+            "Highest sensitivity in the prompt. Omission fails closed to restricted/local."
+        ),
+    )
 
 
 class LLMInvokeResponse(BaseModel):
@@ -586,13 +593,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup phase
     if IS_PRODUCTION:
         trusted_hosts = os.getenv("COMPLIANCEHUB_TRUSTED_HOSTS", "").strip()
-        audit_key = os.getenv("COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY", "")
+        read_secret(
+            "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY",
+            "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY_FILE",
+            required=True,
+            minimum_characters=32,
+        )
+        read_secret(
+            "INTERNAL_HEALTH_API_KEY",
+            "INTERNAL_HEALTH_API_KEY_FILE",
+            required=True,
+            minimum_characters=32,
+        )
         if not trusted_hosts:
             raise RuntimeError("COMPLIANCEHUB_TRUSTED_HOSTS is required in production")
-        if len(audit_key) < 32:
-            raise RuntimeError(
-                "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY must contain at least 32 characters"
-            )
         if os.getenv("COMPLIANCEHUB_ALLOW_GLOBAL_API_KEYS", "false").lower() in {
             "1",
             "true",
@@ -602,19 +616,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             raise RuntimeError("Global API keys are forbidden in production")
         # A database file default would put a multi-tenant GRC workload on SQLite:
         # no row-level security, no PITR, no role-based database permissions.
-        db_url = os.getenv("COMPLIANCEHUB_DB_URL", "").strip()
-        if not db_url:
-            raise RuntimeError("COMPLIANCEHUB_DB_URL is required in production")
+        if os.getenv("COMPLIANCEHUB_DB_URL", "").strip():
+            raise RuntimeError(
+                "COMPLIANCEHUB_DB_URL is forbidden in production; mount "
+                "COMPLIANCEHUB_DB_URL_FILE from OpenBao"
+            )
+        if not os.getenv("COMPLIANCEHUB_DB_URL_FILE", "").strip():
+            raise RuntimeError("COMPLIANCEHUB_DB_URL_FILE is required in production")
+        db_url = get_database_url()
         if db_url.startswith("sqlite"):
             raise RuntimeError(
                 "SQLite is not permitted in production; configure PostgreSQL via "
-                "COMPLIANCEHUB_DB_URL"
+                "COMPLIANCEHUB_DB_URL_FILE"
             )
     # Fail closed when the configured vendors contradict the sovereignty mode: booting
     # anyway would silently invalidate every claim that mode authorises.
     verify_sovereignty_configuration()
-    Base.metadata.create_all(bind=engine)
-    run_all_db_migrations(engine)
+    ensure_runtime_schema(engine, production=IS_PRODUCTION)
     configure_telemetry()
     with Session(engine) as seed_session:
         ensure_cross_regulation_catalog_seeded(seed_session)
@@ -973,6 +991,7 @@ class InternalDeepHealthResponse(BaseModel):
 
     app: InternalHealthSignal
     db: InternalHealthSignal
+    policy_engine: InternalHealthSignal
     external_ai_provider: InternalHealthSignal
     timestamp: datetime
 
@@ -992,7 +1011,11 @@ def require_internal_health_gate(
     x_health_key: Annotated[str | None, Header(alias="X-HEALTH-KEY")] = None,
 ) -> None:
     """API key + optional IP allowlist for internal monitoring (env-driven)."""
-    expected = os.getenv("INTERNAL_HEALTH_API_KEY", "").strip()
+    expected = read_secret(
+        "INTERNAL_HEALTH_API_KEY",
+        "INTERNAL_HEALTH_API_KEY_FILE",
+        minimum_characters=32 if IS_PRODUCTION else 1,
+    )
     if not expected:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1029,6 +1052,38 @@ def internal_deep_health(
     return InternalDeepHealthResponse(
         app=dto.app,
         db=dto.db,
+        policy_engine=dto.policy_engine,
+        external_ai_provider=dto.external_ai_provider,
+        timestamp=dto.timestamp,
+    )
+
+
+@app.get(
+    "/api/internal/readiness",
+    response_model=InternalDeepHealthResponse,
+    tags=["internal", "health"],
+)
+def internal_readiness(
+    _: Annotated[None, Depends(require_internal_health_gate)],
+    session: Annotated[Session, Depends(get_session)],
+) -> InternalDeepHealthResponse:
+    """Fail closed unless application, database and configured AI path are operational."""
+
+    dto = compute_internal_deep_health(session)
+    if (
+        dto.app != "up"
+        or dto.db != "up"
+        or dto.policy_engine != "up"
+        or dto.external_ai_provider == "down"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Deployment is not ready",
+        )
+    return InternalDeepHealthResponse(
+        app=dto.app,
+        db=dto.db,
+        policy_engine=dto.policy_engine,
         external_ai_provider=dto.external_ai_provider,
         timestamp=dto.timestamp,
     )
@@ -2459,21 +2514,11 @@ def create_board_report_export_job(
     nis2_repo: Annotated[Nis2KritisKpiRepository, Depends(get_nis2_kritis_kpi_repository)],
     body: BoardReportExportJobCreate,
 ) -> BoardReportExportJob:
-    """Erstellt Export-Job (Report + Markdown), optional Webhook-POST an callback_url."""
-    if body.target_system == "generic_webhook" and not body.callback_url:
+    """Create an export job using deployment-controlled connector destinations."""
+    if body.callback_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="callback_url required for target_system generic_webhook",
-        )
-    if body.target_system == "sap_btp_http" and not body.callback_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="callback_url required for target_system sap_btp_http",
-        )
-    if body.target_system == "datev_dms_prepared" and not body.callback_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="callback_url required for target_system datev_dms_prepared",
+            detail="callback_url is not accepted; configure the connector destination server-side",
         )
     tenant_id = auth_context.tenant_id
     report = _build_board_report(
@@ -3199,9 +3244,20 @@ def post_llm_invoke(
     body: LLMInvokeRequest,
 ) -> LLMInvokeResponse:
     """Mandanten-gebundener LLM-Aufruf über den Router (Task-Flags + Policy)."""
-    router = LLMRouter(session=session)
     try:
-        resp = router.route_and_call(body.task_type, body.prompt, auth_context.tenant_id)
+        resp = guardrailed_route_and_call_sync(
+            session,
+            body.task_type,
+            body.prompt,
+            auth_context.tenant_id,
+            context=LlmCallContext(
+                tenant_id=auth_context.tenant_id,
+                user_role=auth_context.role or "",
+                action_name="api.llm.invoke",
+                data_class=body.data_class,
+            ),
+            response_format=None,
+        )
     except PermissionError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -3413,7 +3469,7 @@ def revoke_tenant_api_key(
 )
 def get_advisor_portfolio(
     _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
@@ -3460,7 +3516,7 @@ def get_advisor_portfolio(
 )
 def export_advisor_portfolio(
     _ff_adve: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
     ai_repo: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
@@ -3525,7 +3581,7 @@ def export_advisor_portfolio(
 def get_advisor_client_governance_snapshot(
     _ff_snap: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_client_snapshot))],
     _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     tenant_id: str,
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
@@ -3549,7 +3605,7 @@ def post_advisor_client_governance_snapshot_report(
     _ff_snap: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_client_snapshot))],
     _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
     request: Request,
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     tenant_id: str,
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
@@ -3584,7 +3640,7 @@ def post_advisor_client_governance_snapshot_report(
 def get_advisor_tenant_readiness_score(
     _ff_rs: Annotated[None, Depends(create_feature_guard(FeatureFlag.readiness_score))],
     _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     tenant_id: str,
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
@@ -3606,7 +3662,7 @@ def get_advisor_tenant_readiness_score(
 def get_advisor_tenant_governance_maturity(
     _ff_gm: Annotated[None, Depends(create_feature_guard(FeatureFlag.governance_maturity))],
     _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     tenant_id: str,
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
@@ -3628,7 +3684,7 @@ def get_advisor_tenant_governance_maturity(
 def get_advisor_tenant_incident_drilldown(
     _ff_gm: Annotated[None, Depends(create_feature_guard(FeatureFlag.governance_maturity))],
     _ff_adv: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     tenant_id: str,
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
@@ -3663,7 +3719,7 @@ def get_advisor_tenant_incident_drilldown(
 )
 def get_advisor_tenant_report(
     _ff_adv_rep: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     tenant_id: str,
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
@@ -3822,7 +3878,7 @@ def post_advisor_eu_ai_act_nis2_rag_query(
 )
 def get_advisor_tenant_usage_metrics(
     _ff_um: Annotated[None, Depends(create_feature_guard(FeatureFlag.advisor_workspace))],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     tenant_id: str,
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
@@ -3846,7 +3902,7 @@ def get_advisor_portfolio_board_reports_endpoint(
         None,
         Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report)),
     ],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     session: Annotated[Session, Depends(get_session)],
     advisor_repo: Annotated[AdvisorTenantRepository, Depends(get_advisor_tenant_repository)],
     limit_per_tenant: Annotated[int, Query(ge=1, le=100)] = 30,
@@ -3872,7 +3928,7 @@ def get_advisor_accessible_board_report_detail(
         None,
         Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report)),
     ],
-    advisor_id: Annotated[str, Depends(require_advisor_api_access)],
+    advisor_id: Annotated[str, Depends(require_advisor_access)],
     tenant_id: str,
     report_id: str,
     session: Annotated[Session, Depends(get_session)],
@@ -4601,6 +4657,14 @@ def _sanitize_tenant_id_for_temporal_workflow_id(tenant_id: str) -> str:
     return s[:64] if s else "tenant"
 
 
+def _require_temporal_workflow_plane() -> None:
+    if not temporal_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Workflow orchestration is not enabled for this deployment",
+        )
+
+
 @app.post(
     "/api/v1/tenants/{tenant_id}/board-report/workflows/start",
     response_model=BoardReportWorkflowStartResponse,
@@ -4615,6 +4679,7 @@ async def post_start_board_report_workflow(
     opa_role_header: Annotated[str | None, Depends(get_optional_opa_user_role_header)],
 ) -> BoardReportWorkflowStartResponse:
     require_path_tenant_matches_auth(tenant_id, auth_context)
+    _require_temporal_workflow_plane()
     wf_role = resolve_opa_role_for_policy(
         header_value=opa_role_header,
         env_var_name=ENV_ROLE_BOARD_REPORT,
@@ -4678,6 +4743,7 @@ async def get_board_report_workflow_status(
     _ff: Annotated[None, Depends(create_feature_guard(FeatureFlag.ai_compliance_board_report))],
 ) -> BoardReportWorkflowStatusResponse:
     require_path_tenant_matches_auth(tenant_id, auth_context)
+    _require_temporal_workflow_plane()
     safe = _sanitize_tenant_id_for_temporal_workflow_id(tenant_id)
     prefix = f"board-report-{safe}-"
     if not workflow_id.startswith(prefix):
@@ -7691,12 +7757,18 @@ def _required_bearer_token(authorization: str | None) -> str:
 def _require_bff_caller(
     x_bff_secret: Annotated[str | None, Header(alias="x-bff-secret")] = None,
 ) -> None:
-    configured = os.getenv("COMPLIANCEHUB_BFF_SHARED_SECRET", "").strip()
-    if IS_PRODUCTION and len(configured) < 32:
+    try:
+        configured = read_secret(
+            "COMPLIANCEHUB_BFF_SHARED_SECRET",
+            "COMPLIANCEHUB_BFF_SHARED_SECRET_FILE",
+            required=IS_PRODUCTION,
+            minimum_characters=32,
+        )
+    except RuntimeError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Enterprise BFF trust boundary is not configured",
-        )
+        ) from None
     if configured and (not x_bff_secret or not secret_matches_any(x_bff_secret, [configured])):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -7771,12 +7843,18 @@ def create_entra_user_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Enterprise identity provider is not enabled",
         )
-    configured_bff_secret = os.getenv("COMPLIANCEHUB_BFF_SHARED_SECRET", "").strip()
-    if len(configured_bff_secret) < 32:
+    try:
+        read_secret(
+            "COMPLIANCEHUB_BFF_SHARED_SECRET",
+            "COMPLIANCEHUB_BFF_SHARED_SECRET_FILE",
+            required=True,
+            minimum_characters=32,
+        )
+    except RuntimeError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Enterprise BFF trust boundary is not configured",
-        )
+        ) from None
     result = EntraOIDCSessionService(session).login(
         provider_id=body.provider_id,
         id_token=body.id_token,
@@ -9351,7 +9429,12 @@ def receive_n8n_webhook(
         verify_hmac_signature,
     )
 
-    secret = os.environ.get("COMPLIANCEHUB_N8N_WEBHOOK_SECRET", "").strip()
+    secret = read_secret(
+        "COMPLIANCEHUB_N8N_WEBHOOK_SECRET",
+        "COMPLIANCEHUB_N8N_WEBHOOK_SECRET_FILE",
+        required=False,
+        minimum_characters=32,
+    )
     if not secret:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
@@ -9391,34 +9474,13 @@ def trigger_n8n_workflow(
     tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_N8N_WEBHOOKS))],
     workflow_type: str = Query(..., description="Workflow type to trigger"),
-    webhook_url: str = Query(..., description="n8n webhook URL"),
 ) -> dict:
-    """Trigger an n8n workflow via webhook."""
-    from urllib.parse import urlparse
-
+    """Trigger the deployment-configured n8n workflow endpoint."""
     from app.services.n8n_webhook_service import (
         N8nWorkflowType,
         build_webhook_payload,
         trigger_n8n_webhook,
     )
-
-    # Validate webhook URL — must use https (or http for localhost dev)
-    parsed = urlparse(webhook_url)
-    if parsed.scheme not in ("https", "http"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="webhook_url must use https:// or http://",
-        )
-
-    # Restrict to configured allowed hosts if env var is set
-    allowed_hosts_raw = os.environ.get("COMPLIANCEHUB_N8N_ALLOWED_HOSTS", "")
-    if allowed_hosts_raw:
-        allowed = {h.strip().lower() for h in allowed_hosts_raw.split(",") if h.strip()}
-        if parsed.hostname and parsed.hostname.lower() not in allowed:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="webhook_url host not in allowed list",
-            )
 
     # Validate workflow type
     valid_types = [t.value for t in N8nWorkflowType]
@@ -9429,8 +9491,13 @@ def trigger_n8n_workflow(
         )
 
     payload = build_webhook_payload(workflow_type, tenant_id, {"triggered_by": "api"})
-    secret = os.environ.get("COMPLIANCEHUB_N8N_WEBHOOK_SECRET")
-    result = trigger_n8n_webhook(webhook_url, payload, secret)
+    secret = read_secret(
+        "COMPLIANCEHUB_N8N_WEBHOOK_SECRET",
+        "COMPLIANCEHUB_N8N_WEBHOOK_SECRET_FILE",
+        required=IS_PRODUCTION,
+        minimum_characters=32,
+    )
+    result = trigger_n8n_webhook(payload, secret)
     # Sanitize result — don't expose raw error details
     sanitized = {"status_code": result.get("status_code")}
     if "error" in result:
@@ -9596,9 +9663,19 @@ def start_trial_subscription(
 async def stripe_webhook(request: Request) -> dict:
     """Receive and validate Stripe webhook calls (HMAC-authenticated)."""
     from app.services.stripe_billing_service import (
+        ExternalBillingProviderForbidden,
+        ensure_external_billing_provider_allowed,
         handle_stripe_webhook_event,
         verify_stripe_signature,
     )
+
+    try:
+        ensure_external_billing_provider_allowed()
+    except ExternalBillingProviderForbidden as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="External billing provider is not approved in this deployment",
+        ) from exc
 
     secret = os.environ.get("COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET", "").strip()
     if not secret:
@@ -9668,9 +9745,19 @@ def create_billing_portal_session(
 ) -> dict:
     """Create a Stripe Customer Portal session for self-service management."""
     from app.services.stripe_billing_service import (
+        ExternalBillingProviderForbidden,
         create_customer_portal_session,
+        ensure_external_billing_provider_allowed,
         get_tenant_subscription,
     )
+
+    try:
+        ensure_external_billing_provider_allowed()
+    except ExternalBillingProviderForbidden as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="External billing provider is not approved in this deployment",
+        ) from exc
 
     session = next(get_session())
     try:

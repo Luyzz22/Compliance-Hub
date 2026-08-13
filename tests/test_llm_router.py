@@ -14,12 +14,13 @@ from app.feature_flags import FeatureFlag, is_feature_enabled
 from app.llm_models import (
     CostSensitivity,
     DataResidencyPolicy,
+    LLMDataClass,
     LLMProvider,
     LLMResponse,
     LLMTaskType,
     PublicApiPolicy,
 )
-from app.main import app
+from app.main import LLMInvokeRequest, app
 from app.repositories.llm_call_metadata import LLMCallMetadataRepository
 from app.services import llm_client, tenant_llm_policy
 from app.services.llm_router import LLMRouter, filter_candidates, preference_chain
@@ -33,10 +34,9 @@ def unrestricted_sovereignty(monkeypatch: pytest.MonkeyPatch):
     """
     Permit every LLM provider for this test.
 
-    The deployment default is ``standard_dach``, which removes direct US model APIs from
-    the fallback chain entirely. Tests that exercise cross-provider fallback therefore
-    have to state explicitly that they run in the unrestricted mode — otherwise they
-    would be asserting behaviour the shipped default deliberately prevents.
+    The Hetzner production profile selects ``standard_dach``, which removes direct US
+    model APIs from the fallback chain entirely. Tests that exercise cross-provider
+    fallback therefore have to state explicitly that they run in the unrestricted mode.
     """
     monkeypatch.setenv("COMPLIANCEHUB_SOVEREIGNTY_MODE", "unrestricted")
     sovereignty.current_mode.cache_clear()
@@ -116,6 +116,86 @@ def test_filter_on_prem_only_public_api(monkeypatch: pytest.MonkeyPatch) -> None
     assert c == [LLMProvider.LLAMA]
 
 
+def test_confidential_external_processing_requires_tenant_opt_in(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com")
+    monkeypatch.setenv("AZURE_OPENAI_DEPLOYMENT", "gpt-enterprise")
+    monkeypatch.setenv("AZURE_OPENAI_AUTH", "managed_identity")
+    monkeypatch.setenv("LLAMA_BASE_URL", "http://127.0.0.1:11434")
+    p = default_tenant_llm_policy("t-data-class").model_copy(
+        update={"allowed_providers": [LLMProvider.AZURE_OPENAI, LLMProvider.LLAMA]},
+    )
+
+    assert filter_candidates(
+        p,
+        [LLMProvider.AZURE_OPENAI, LLMProvider.LLAMA],
+        data_class=LLMDataClass.CONFIDENTIAL,
+    ) == [LLMProvider.LLAMA]
+
+    opted_in = p.model_copy(update={"max_external_data_class": LLMDataClass.CONFIDENTIAL})
+    assert filter_candidates(
+        opted_in,
+        [LLMProvider.AZURE_OPENAI, LLMProvider.LLAMA],
+        data_class=LLMDataClass.CONFIDENTIAL,
+    ) == [LLMProvider.AZURE_OPENAI, LLMProvider.LLAMA]
+
+
+def test_restricted_data_never_routes_to_external_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com")
+    monkeypatch.setenv("AZURE_OPENAI_DEPLOYMENT", "gpt-enterprise")
+    monkeypatch.setenv("AZURE_OPENAI_AUTH", "managed_identity")
+    monkeypatch.setenv("LLAMA_BASE_URL", "http://127.0.0.1:11434")
+    p = default_tenant_llm_policy("t-restricted").model_copy(
+        update={
+            "allowed_providers": [LLMProvider.AZURE_OPENAI, LLMProvider.LLAMA],
+            "max_external_data_class": LLMDataClass.RESTRICTED,
+        },
+    )
+
+    assert filter_candidates(
+        p,
+        [LLMProvider.AZURE_OPENAI, LLMProvider.LLAMA],
+        data_class=LLMDataClass.RESTRICTED,
+    ) == [LLMProvider.LLAMA]
+
+
+def test_public_llama_endpoint_is_not_treated_as_local(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLAMA_BASE_URL", "https://models.example.com/v1")
+    p = default_tenant_llm_policy("t-public-llama").model_copy(
+        update={"allowed_providers": [LLMProvider.LLAMA]},
+    )
+
+    assert (
+        filter_candidates(
+            p,
+            [LLMProvider.LLAMA],
+            data_class=LLMDataClass.RESTRICTED,
+        )
+        == []
+    )
+
+
+def test_allowlisted_internal_dns_name_is_treated_as_local(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLAMA_BASE_URL", "http://vllm.service.consul:8000/v1")
+    monkeypatch.setenv("COMPLIANCEHUB_LLAMA_PRIVATE_HOSTS", "vllm.service.consul")
+    p = default_tenant_llm_policy("t-private-llama").model_copy(
+        update={"allowed_providers": [LLMProvider.LLAMA]},
+    )
+
+    assert filter_candidates(
+        p,
+        [LLMProvider.LLAMA],
+        data_class=LLMDataClass.RESTRICTED,
+    ) == [LLMProvider.LLAMA]
+
+
 def test_router_skips_unconfigured_provider(
     monkeypatch: pytest.MonkeyPatch, unrestricted_sovereignty: None
 ) -> None:
@@ -134,7 +214,12 @@ def test_router_skips_unconfigured_provider(
         return LLMResponse(text="ok", provider=provider, model_id=model_id)
 
     router = LLMRouter(session=None, call_model_fn=fake_call)
-    resp = router.route_and_call(LLMTaskType.LEGAL_REASONING, "ping", "tenant-routing-1")
+    resp = router.route_and_call(
+        LLMTaskType.LEGAL_REASONING,
+        "ping",
+        "tenant-routing-1",
+        data_class=LLMDataClass.INTERNAL,
+    )
     assert resp.text == "ok"
     assert resp.provider == LLMProvider.OPENAI
 
@@ -158,7 +243,12 @@ def test_router_fallback_on_provider_failure(
         return LLMResponse(text="fallback", provider=provider, model_id=model_id)
 
     router = LLMRouter(session=None, call_model_fn=fake_call)
-    resp = router.route_and_call(LLMTaskType.LEGAL_REASONING, "ping", "tenant-routing-2")
+    resp = router.route_and_call(
+        LLMTaskType.LEGAL_REASONING,
+        "ping",
+        "tenant-routing-2",
+        data_class=LLMDataClass.INTERNAL,
+    )
     assert resp.provider == LLMProvider.OPENAI
     assert resp.text == "fallback"
 
@@ -190,7 +280,12 @@ def test_metadata_inserted_when_session_provided(
     s = SessionLocal()
     try:
         router = LLMRouter(session=s, call_model_fn=fake_call)
-        router.route_and_call(LLMTaskType.CLASSIFICATION_TAGGING, "hello-world", tid)
+        router.route_and_call(
+            LLMTaskType.CLASSIFICATION_TAGGING,
+            "hello-world",
+            tid,
+            data_class=LLMDataClass.INTERNAL,
+        )
         repo = LLMCallMetadataRepository(s)
         since = datetime.now(UTC) - timedelta(minutes=5)
         assert repo.count_since(tid, since=since) >= 1
@@ -223,3 +318,25 @@ def test_llm_invoke_forbidden_when_master_flag_off(monkeypatch: pytest.MonkeyPat
         json={"task_type": "chat_assistant", "prompt": "hi"},
     )
     assert r.status_code == 403
+
+
+def test_llm_invoke_omitted_data_class_fails_closed_to_restricted() -> None:
+    body = LLMInvokeRequest(task_type=LLMTaskType.CHAT_ASSISTANT, prompt="hello")
+    assert body.data_class == LLMDataClass.RESTRICTED
+
+
+def test_llm_invoke_applies_personal_data_guardrail(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_ENABLED", "true")
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_LLM_CHAT_ASSISTANT", "true")
+    monkeypatch.setenv("COMPLIANCEHUB_LLM_PII_MODE", "block")
+    r = client.post(
+        "/api/v1/llm/invoke",
+        headers={"x-api-key": "board-kpi-key", "x-tenant-id": "llm-api-tenant"},
+        json={
+            "task_type": "chat_assistant",
+            "prompt": "Kontakt: person@example.com",
+            "data_class": "internal",
+        },
+    )
+    assert r.status_code == 403
+    assert r.json()["detail"] == "LLM request blocked by personal-data guardrail"

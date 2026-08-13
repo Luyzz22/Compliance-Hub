@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 import {
   attachContactRollups,
   buildContactHistoryItems,
@@ -32,7 +32,7 @@ function isDuplicateReview(v: string): v is LeadDuplicateReviewStatus {
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ leadId: string }> }) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {
@@ -66,7 +66,7 @@ type PatchBody = {
 };
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ leadId: string }> }) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

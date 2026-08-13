@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
         expected_nonce: transaction.nonce,
       }),
       cache: "no-store",
+      redirect: "manual",
       signal: AbortSignal.timeout(10_000),
     });
     const payload = (await backend.json().catch(() => null)) as BackendLogin | null;

@@ -6,7 +6,7 @@ def test_auth_context_exposes_only_fingerprinted_audit_subject() -> None:
     raw = "a-secret-bearer-credential"
     context = AuthContext(tenant_id="tenant-a", api_key=raw)
 
-    assert context.actor_id.startswith("api_key:sha256:")
+    assert context.actor_id.startswith("api_key:hmac-sha256:")
     assert raw not in context.actor_id
     assert context.actor_id == AuthContext(tenant_id="tenant-b", api_key=raw).actor_id
 

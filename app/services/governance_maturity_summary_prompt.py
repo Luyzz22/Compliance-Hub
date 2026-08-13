@@ -27,10 +27,15 @@ def build_governance_maturity_summary_prompt(
 
     `contract_version` should match ``GOVERNANCE_MATURITY_CONTRACT_VERSION`` (tests may override).
     """
-    facts = json.dumps(
-        tenant_maturity_snapshot.model_dump(mode="json"),
-        ensure_ascii=False,
+    facts_payload = tenant_maturity_snapshot.model_dump(
+        mode="json",
+        exclude={
+            "tenant_id": True,
+            "computed_at": True,
+            "governance_activity": {"last_computed_at"},
+        },
     )
+    facts = json.dumps(facts_payload, ensure_ascii=False)
     return (
         _AUDIENCE_PREFIX
         + f"Governance-Maturity-Board-Summary-Contract-Version: {contract_version}\n\n"
@@ -40,8 +45,9 @@ def build_governance_maturity_summary_prompt(
         + "\n"
         + regulatory_context_standard()
         + "\n\n"
-        "Nutze ausschließlich die nachfolgenden JSON-Fakten; erfinde keine Zahlen, Mandanten "
-        "oder KI-Systeme. Die Felder score/index/level in den Fakten sind maßgeblich — "
+        "Nutze ausschließlich die nachfolgenden minimierten JSON-Fakten; erfinde keine Zahlen, "
+        "Mandanten oder KI-Systeme. Technische Mandantenkennungen und Zeitstempel wurden bewusst "
+        "nicht übermittelt. Die Felder score/index/level in den Fakten sind maßgeblich — "
         "deine Kurzbegründungen müssen dazu passen.\n\n"
         "JSON-Fakten (Mandanten-Snapshot):\n" + facts
     )

@@ -3,15 +3,14 @@ import "server-only";
 import { cookies } from "next/headers";
 
 import { SESSION_COOKIE_NAME } from "@/lib/authConstants";
+import { approvedVersionedApiPath } from "@/lib/outboundEndpointPolicy";
 import { complianceApiBaseUrl } from "@/lib/serverSession";
 
 export async function serverSessionApiFetch(
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
-  if (!path.startsWith("/api/v1/")) {
-    throw new Error("Only versioned Compliance Hub API routes are allowed");
-  }
+  const approvedPath = approvedVersionedApiPath(path);
   const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value?.trim();
   if (!token) throw new Error("Authenticated server session is required");
 
@@ -23,7 +22,7 @@ export async function serverSessionApiFetch(
   headers.delete("x-tenant-id");
   headers.set("Authorization", `Bearer ${token}`);
 
-  return fetch(`${complianceApiBaseUrl()}${path}`, {
+  return fetch(`${complianceApiBaseUrl()}${approvedPath}`, {
     ...init,
     headers,
     cache: "no-store",

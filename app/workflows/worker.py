@@ -16,6 +16,7 @@ from app.workflows.board_report_activities import (
     persist_board_report_activity,
 )
 from app.workflows.config import (
+    require_temporal_enabled,
     temporal_address,
     temporal_api_key,
     temporal_namespace,
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 async def _run() -> None:
     logging.basicConfig(level=logging.INFO)
+    require_temporal_enabled()
     connect_kwargs: dict = {"namespace": temporal_namespace()}
     key = temporal_api_key()
     if key:

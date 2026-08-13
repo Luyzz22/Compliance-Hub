@@ -806,7 +806,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       <div className="mx-auto max-w-lg rounded-xl border border-amber-200/90 bg-amber-50/80 p-6 text-sm text-amber-950 shadow-sm ring-1 ring-amber-950/[0.06]">
         <p className="font-medium">Kanzlei-Cockpit nicht konfiguriert</p>
         <p className="mt-1 text-amber-900/90">
-          Setze <code className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-xs">LEAD_ADMIN_SECRET</code> in
+          Setze <code className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-xs">LEAD_ADMIN_SECRET_FILE</code> in
           der Umgebung.
         </p>
       </div>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 import {
   attachContactRollups,
   mergeLeadsWithOps,
@@ -18,11 +18,10 @@ function isForwardingFilter(v: string): v is LeadForwardingStatus {
 
 /**
  * Interne Lead-Übersicht (JSON) + Inbox-Daten für `/admin/leads`.
- * Auth: `Authorization: Bearer <LEAD_ADMIN_SECRET>`, `?secret=`, oder Session-Cookie (POST /api/admin/session).
+ * Auth: Bearer-Credential oder Session-Cookie. Query-Secrets sind in Produktion gesperrt.
  */
 export async function GET(req: Request) {
-  const secret = process.env.LEAD_ADMIN_SECRET?.trim();
-  if (!secret) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
 

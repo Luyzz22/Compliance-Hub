@@ -8,6 +8,7 @@ import logging
 from temporalio.client import Client
 
 from app.workflows.config import (
+    require_temporal_enabled,
     temporal_address,
     temporal_api_key,
     temporal_namespace,
@@ -21,6 +22,7 @@ _lock = asyncio.Lock()
 
 
 async def get_temporal_client() -> Client:
+    require_temporal_enabled()
     global _client
     async with _lock:
         if _client is None:

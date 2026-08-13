@@ -477,7 +477,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
   if (!adminConfigured) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-        Nicht konfiguriert (<code className="font-mono">LEAD_ADMIN_SECRET</code>).
+        Nicht konfiguriert (<code className="font-mono">LEAD_ADMIN_SECRET_FILE</code>).
       </div>
     );
   }

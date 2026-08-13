@@ -13,7 +13,7 @@ from app.policy.user_context import UserPolicyContext
 
 
 class _FakeHttpClient:
-    def __init__(self, result_body: dict) -> None:
+    def __init__(self, result_body: object) -> None:
         self._body = result_body
 
     def __enter__(self) -> _FakeHttpClient:
@@ -75,6 +75,20 @@ def test_evaluate_action_policy_opa_false(monkeypatch: pytest.MonkeyPatch) -> No
             {"tenant_id": "t1", "user_role": "viewer", "action": "x", "risk_score": 0.1},
         )
     assert d.allowed is False
+
+
+def test_evaluate_action_policy_rejects_non_object_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPA_URL", "http://localhost:8181")
+    with patch(
+        "app.policy.opa_client.httpx.Client",
+        return_value=_FakeHttpClient([True]),
+    ):
+        decision = evaluate_action_policy({"action": "test"})
+
+    assert decision.allowed is False
+    assert decision.reason == "opa_invalid_response"
 
 
 def test_enforce_action_policy_raises_403() -> None:

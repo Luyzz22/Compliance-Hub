@@ -33,9 +33,6 @@ import { resolveRelationalRuntimeBackend } from "@/lib/runtimePostgres";
 function remindersPath(): string {
   const fromEnv = process.env.ADVISOR_MANDANT_REMINDERS_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-advisor-mandant-reminders.json");
-  }
   return join(process.cwd(), "data", "advisor-mandant-reminders.json");
 }
 
@@ -44,7 +41,7 @@ function emptyState(): AdvisorMandantRemindersState {
 }
 
 export async function readAdvisorMandantRemindersState(): Promise<AdvisorMandantRemindersState> {
-  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+  if (resolveRelationalRuntimeBackend() === "postgres") {
     return readAllAdvisorMandantRemindersPostgres();
   }
   const path = remindersPath();
@@ -88,7 +85,7 @@ async function writeAdvisorMandantRemindersState(state: AdvisorMandantRemindersS
 async function mutateAdvisorMandantReminders<T>(
   operation: (state: AdvisorMandantRemindersState) => Promise<T> | T,
 ): Promise<T> {
-  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+  if (resolveRelationalRuntimeBackend() === "postgres") {
     return mutateAdvisorMandantRemindersPostgres(operation);
   }
   return withRuntimeStorageLock(remindersPath(), async () => {
@@ -256,7 +253,7 @@ export async function listAdvisorMandantReminders(filters?: {
   tenant_id?: string;
   status?: MandantReminderStatus;
 }): Promise<MandantReminderRecord[]> {
-  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+  if (resolveRelationalRuntimeBackend() === "postgres") {
     return listAdvisorMandantRemindersPostgres(filters);
   }
   const state = await readAdvisorMandantRemindersState();

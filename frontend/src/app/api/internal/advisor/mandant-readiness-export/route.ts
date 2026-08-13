@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { recordMandantReadinessExport } from "@/lib/advisorMandantHistoryStore";
 import { fetchTenantBoardReadinessRaw } from "@/lib/fetchTenantBoardReadinessRaw";
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 import { readGtmProductAccountMap } from "@/lib/gtmProductAccountMapStore";
 import { generateMandantReadinessAdvisorExport } from "@/lib/mandantReadinessAdvisorExport";
 
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 const CLIENT_ID_RE = /^[a-zA-Z0-9._-]{1,255}$/;
 
 export async function GET(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

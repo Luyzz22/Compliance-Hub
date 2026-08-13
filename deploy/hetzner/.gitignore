@@ -1,0 +1,6 @@
+.env.production
+.env.candidate
+release-evidence.json
+secrets/
+artifacts/
+*.local

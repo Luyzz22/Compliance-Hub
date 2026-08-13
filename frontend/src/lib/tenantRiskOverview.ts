@@ -42,11 +42,11 @@ export interface TenantRiskOverview {
   nis2ExposureLevel: Nis2ExposureLevel;
   nis2ExposureCategory: Nis2ExposureCategory;
 
-  /** Block 2 — Platzhalter bis ISO-/Control-Register angebunden ist. */
+  /** Block 2: Platzhalter bis ISO-/Control-Register angebunden ist. */
   isoControlsImplemented: number;
   isoControlsPlanned: number;
 
-  /** Betrieb / Monitoring (Continuous Monitoring, NIS2-Betriebslage) — siehe fetchHealthStatus. */
+  /** Betrieb / Monitoring (Continuous Monitoring, NIS2-Betriebslage), siehe fetchHealthStatus. */
   serviceHealth: ServiceHealth;
   serviceHealthCheckedAt: string;
 
@@ -67,13 +67,13 @@ function exposureCategoryFromScore(score: number, level: Nis2ExposureLevel): Nis
 function buildDummyTodos(o: TenantRiskOverview): string[] {
   const items: string[] = [];
   if (o.nis2ExposureLevel === "high") {
-    items.push("NIS2-Exposure hoch → NIS2-Basiskontrollen und Lieferketten-Dokumentation priorisieren.");
+    items.push("NIS2-Exposure hoch: NIS2-Basiskontrollen und Lieferketten-Dokumentation priorisieren.");
   } else if (o.nis2ExposureLevel === "medium") {
-    items.push("NIS2-Exposure mittel → Rechts- und Prozesscheck mit Fachbereich; Wizard erneut fahren.");
+    items.push("NIS2-Exposure mittel: Rechts- und Prozesscheck mit Fachbereich; Wizard erneut fahren.");
   }
   if (o.aiHighRiskCount >= 1) {
     items.push(
-      `${o.aiHighRiskCount} KI-System(e) mit HIGH Risk → Technical File, Logging und PMS (Post-Market Surveillance) planen.`,
+      `${o.aiHighRiskCount} KI-System(e) mit HIGH Risk: Technical File, Logging und PMS (Post-Market Surveillance) planen.`,
     );
   }
   if (o.aiActOpenActionsCount > 0) {
@@ -83,16 +83,20 @@ function buildDummyTodos(o: TenantRiskOverview): string[] {
   }
   if (o.isoControlsPlanned > 0) {
     items.push(
-      `${o.isoControlsPlanned} geplante ISO-/Controls (Block 2) — Umsetzung mit Security & Compliance abstimmen.`,
+      `${o.isoControlsPlanned} geplante ISO-/Controls (Block 2). Umsetzung mit Security und Compliance abstimmen.`,
     );
   }
-  if (o.serviceHealth.db !== "up" || o.serviceHealth.externalAiProvider !== "up") {
+  if (
+    o.serviceHealth.db !== "up" ||
+    o.serviceHealth.policyEngine !== "up" ||
+    o.serviceHealth.externalAiProvider !== "up"
+  ) {
     items.push(
-      "Betriebs- oder KI-Provider-Health eingeschränkt — Incident-Playbook, Meldewege und Monitoring prüfen.",
+      "Betriebs- oder KI-Provider-Health eingeschränkt. Incident-Playbook, Meldewege und Monitoring prüfen.",
     );
   }
   if (items.length === 0) {
-    items.push("Keine kritischen Heuristiken — regelmäßiges Monitoring und Dokumentation beibehalten.");
+    items.push("Keine kritischen Heuristiken. Regelmäßiges Monitoring und Dokumentation beibehalten.");
   }
   return items;
 }
@@ -130,6 +134,7 @@ export async function fetchTenantRiskOverview(tenantId: string): Promise<TenantR
     serviceHealth: {
       app: healthPayload.app,
       db: healthPayload.db,
+      policyEngine: healthPayload.policyEngine,
       externalAiProvider: healthPayload.externalAiProvider,
     },
     serviceHealthCheckedAt: healthPayload.timestamp,
@@ -167,7 +172,7 @@ export function nis2ExposureCategoryLabel(de: Nis2ExposureCategory): string {
     case "very_likely":
       return "Sehr wahrscheinlich betroffen (Indikation)";
     case "maybe":
-      return "Vielleicht betroffen — vertiefen";
+      return "Vielleicht betroffen. Vertiefung erforderlich";
     default:
       return "Geringere Indikation (nicht abschließend)";
   }

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import os
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -13,6 +14,18 @@ from sqlalchemy.orm import Session
 from app.models_db import BillingEventDB, SubscriptionDB
 
 logger = logging.getLogger(__name__)
+
+
+class ExternalBillingProviderForbidden(RuntimeError):
+    """Raised when a legacy US billing path is reached in production."""
+
+
+def ensure_external_billing_provider_allowed() -> None:
+    if os.getenv("COMPLIANCEHUB_ENV", "dev").strip().lower() in {"prod", "production"}:
+        raise ExternalBillingProviderForbidden(
+            "External Stripe billing is not approved in the Hetzner production profile"
+        )
+
 
 PLAN_CATALOG: dict[str, dict] = {
     "starter": {
@@ -121,6 +134,7 @@ def create_trial_subscription(session: Session, tenant_id: str, plan_name: str) 
 
 def handle_stripe_webhook_event(session: Session, event_type: str, event_data: dict) -> dict:
     """Process a Stripe webhook event and log it."""
+    ensure_external_billing_provider_allowed()
     tenant_id = event_data.get("tenant_id", "unknown")
     event = BillingEventDB(
         id=str(uuid.uuid4()),
@@ -196,6 +210,7 @@ def create_customer_portal_session(
     In production, this calls ``stripe.billing_portal.Session.create()``.
     For now returns a portal URL structure that the frontend can redirect to.
     """
+    ensure_external_billing_provider_allowed()
     portal_url = f"https://billing.stripe.com/p/session/{stripe_customer_id}"
     logger.info(
         "customer_portal_session_created tenant=%s customer=%s",

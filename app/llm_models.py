@@ -37,6 +37,19 @@ class LLMProvider(StrEnum):
     LLAMA = "llama"
 
 
+class LLMDataClass(StrEnum):
+    """Highest sensitivity of information included in an LLM request.
+
+    This is an explicit workload label, not the result of heuristic PII detection.
+    Callers remain responsible for selecting the highest applicable class.
+    """
+
+    PUBLIC = "public"
+    INTERNAL = "internal"
+    CONFIDENTIAL = "confidential"
+    RESTRICTED = "restricted"
+
+
 class DataResidencyPolicy(StrEnum):
     """
     Where tenant data may be processed by model APIs.
@@ -91,6 +104,13 @@ class TenantLLMPolicy(BaseModel):
     latency_sensitivity: LatencySensitivity = LatencySensitivity.MEDIUM
     data_residency: DataResidencyPolicy = DataResidencyPolicy.US_CLOUD_ALLOWED
     public_api_policy: PublicApiPolicy = PublicApiPolicy.PUBLIC_API_ALLOWED
+    max_external_data_class: LLMDataClass = Field(
+        default=LLMDataClass.INTERNAL,
+        description=(
+            "Highest request data class that may be processed by an external model API. "
+            "Restricted workloads remain local even if this field is misconfigured."
+        ),
+    )
 
     @field_validator("default_provider_by_task", mode="before")
     @classmethod
@@ -132,6 +152,7 @@ class LLMCallMetadataRecord(BaseModel):
 
     tenant_id: str
     task_type: LLMTaskType
+    data_class: LLMDataClass
     provider: LLMProvider
     model_id: str
     prompt_length: int = Field(ge=0)

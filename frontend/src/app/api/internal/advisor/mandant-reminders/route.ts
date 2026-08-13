@@ -7,7 +7,7 @@ import {
 } from "@/lib/advisorMandantReminderStore";
 import type { MandantReminderCategory, MandantReminderStatus } from "@/lib/advisorMandantReminderTypes";
 import { MANDANT_REMINDER_MANUAL_CATEGORIES } from "@/lib/advisorMandantReminderTypes";
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 
 export const runtime = "nodejs";
 
@@ -24,7 +24,7 @@ function normalizeDueAtIso(input: string): string {
 }
 
 export async function GET(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {
@@ -52,7 +52,7 @@ type PostBody = {
 };
 
 export async function POST(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {
@@ -127,7 +127,7 @@ type PatchBody = {
 };
 
 export async function PATCH(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

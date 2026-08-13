@@ -22,6 +22,9 @@ import os
 from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import lru_cache
+from urllib.parse import urlsplit
+
+from app.outbound_policy import OutboundPolicyError, approved_private_service_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +37,7 @@ class SovereigntyMode(StrEnum):
     #: wants direct US model APIs has an honest setting instead of quietly weakening a
     #: mode that promises otherwise.
     UNRESTRICTED = "unrestricted"
-    #: Pragmatic DACH default: EU regions, US-controlled providers disclosed under SCC.
+    #: Hetzner-first DACH mode: Azure is the only documented US-provider exception.
     STANDARD_DACH = "standard_dach"
     #: EU-established providers only; no US-controlled provider in the data path.
     EU_SOVEREIGN = "eu_sovereign"
@@ -50,6 +53,47 @@ _OPENAI = "openai"
 _CLAUDE = "claude"
 _GEMINI = "gemini"
 _LLAMA = "llama"
+
+_DIRECT_US_LLM_ENV_VARS = (
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "CLAUDE_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_API_URL",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "COMPLIANCEHUB_LLM_US_CLOUD_OK",
+    "COMPLIANCEHUB_LLM_ASSUME_CLAUDE_EU",
+)
+_EXTERNAL_TELEMETRY_ENV_VARS = (
+    "LANGSMITH_API_KEY",
+    "LANGSMITH_ENDPOINT",
+    "LANGSMITH_TRACING",
+    "LANGCHAIN_API_KEY",
+    "LANGCHAIN_ENDPOINT",
+    "LANGCHAIN_TRACING_V2",
+    "HAYSTACK_TELEMETRY_ENABLED",
+    "POSTHOG_API_KEY",
+    "POSTHOG_HOST",
+)
+_FORBIDDEN_EXTERNAL_SERVICE_ENV_VARS = (
+    "COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET",
+    "COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET_FILE",
+    "STRIPE_API_KEY",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "TEMPORAL_API_KEY",
+)
+_PRODUCTION_DIRECT_SECRET_ENV_VARS = (
+    "COMPLIANCEHUB_DB_URL",
+    "COMPLIANCEHUB_BFF_SHARED_SECRET",
+    "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY",
+    "COMPLIANCEHUB_CREDENTIAL_PEPPER",
+    "COMPLIANCEHUB_N8N_WEBHOOK_SECRET",
+    "COMPLIANCEHUB_EXPORT_WEBHOOK_SECRET",
+    "INTERNAL_HEALTH_API_KEY",
+    "AZURE_OPENAI_API_KEY",
+)
 
 
 @dataclass(frozen=True)
@@ -94,13 +138,17 @@ _PROFILES: dict[SovereigntyMode, SovereigntyProfile] = {
         # Self-hosted inference stays permitted; the point of this mode is to keep
         # direct US LLM APIs out, not to forbid running a model yourself.
         allowed_llm_providers=frozenset({_AZURE, _LLAMA}),
-        forbidden_env_vars=("COMPLIANCEHUB_LLM_US_CLOUD_OK",),
+        forbidden_env_vars=(
+            _DIRECT_US_LLM_ENV_VARS
+            + _EXTERNAL_TELEMETRY_ENV_VARS
+            + _FORBIDDEN_EXTERNAL_SERVICE_ENV_VARS
+        ),
         permitted_claims_de=(
             "Betrieb in EU-Rechenzentren (Deutschland/EU).",
             "Auftragsverarbeitung nach DSGVO mit dokumentierten Drittlandtransfers "
             "und offengelegten Subprozessoren.",
-            "KI-Funktionen standardmäßig deaktiviert; bei Aktivierung ausschließlich "
-            "über Azure OpenAI in EU-Regionen.",
+            "Externe KI-Funktionen standardmäßig deaktiviert; bei Aktivierung "
+            "ausschließlich über Azure OpenAI in EU-Regionen.",
         ),
         forbidden_claims_de=(
             "souverän",
@@ -110,8 +158,9 @@ _PROFILES: dict[SovereigntyMode, SovereigntyProfile] = {
             "DSGVO-konform",
         ),
         residual_risks_de=(
-            "Vercel Inc. und Microsoft Corporation sind US-Unternehmen und unterliegen "
-            "US-Recht, auch bei Verarbeitung in EU-Regionen.",
+            "Microsoft Corporation ist als dokumentierte Azure-Inferenz- und optionale "
+            "Entra-Ausnahme ein US-Unternehmen und unterliegt auch bei Verarbeitung in "
+            "EU-Regionen US-Recht.",
         ),
         subprocessor_jurisdictions=("EU", "US"),
     ),
@@ -120,10 +169,9 @@ _PROFILES: dict[SovereigntyMode, SovereigntyProfile] = {
         title_de="EU Sovereign",
         allowed_llm_providers=frozenset({_LLAMA}),
         forbidden_env_vars=(
-            "COMPLIANCEHUB_LLM_US_CLOUD_OK",
-            "COMPLIANCEHUB_LLM_ASSUME_CLAUDE_EU",
-            "LANGSMITH_API_KEY",
-            "LANGCHAIN_API_KEY",
+            _DIRECT_US_LLM_ENV_VARS
+            + _EXTERNAL_TELEMETRY_ENV_VARS
+            + _FORBIDDEN_EXTERNAL_SERVICE_ENV_VARS
         ),
         permitted_claims_de=(
             "Vollständiger Betrieb bei EU-ansässigen Anbietern.",
@@ -146,14 +194,13 @@ _PROFILES: dict[SovereigntyMode, SovereigntyProfile] = {
         mode=SovereigntyMode.STRICT_SOVEREIGN,
         title_de="Strict Sovereign / Anti-CLOUD-Act",
         allowed_llm_providers=frozenset({_LLAMA}),
-        forbidden_env_vars=(
-            "COMPLIANCEHUB_LLM_US_CLOUD_OK",
-            "COMPLIANCEHUB_LLM_ASSUME_CLAUDE_EU",
+        forbidden_env_vars=_DIRECT_US_LLM_ENV_VARS
+        + _EXTERNAL_TELEMETRY_ENV_VARS
+        + _FORBIDDEN_EXTERNAL_SERVICE_ENV_VARS
+        + (
             "COMPLIANCEHUB_LLM_ASSUME_AZURE_EU",
             "AZURE_OPENAI_ENDPOINT",
             "AZURE_OPENAI_API_KEY",
-            "LANGSMITH_API_KEY",
-            "LANGCHAIN_API_KEY",
         ),
         permitted_claims_de=(
             "Betrieb ausschließlich in Ihrer Infrastruktur oder in einem dedizierten "
@@ -196,6 +243,43 @@ def _env_is_truthy(name: str) -> bool:
     if value.lower() in {"0", "false", "no", "off"}:
         return False
     return True
+
+
+def _verify_private_temporal_address() -> list[str]:
+    """Validate the optional self-hosted Temporal endpoint without resolving DNS."""
+
+    if not _env_is_truthy("COMPLIANCEHUB_TEMPORAL_ENABLED"):
+        return []
+    address = os.getenv("TEMPORAL_ADDRESS", "").strip()
+    if not address:
+        return ["TEMPORAL_ADDRESS is required when Temporal is enabled in production"]
+    parsed = urlsplit(f"//{address}")
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    if (
+        not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+        or port is None
+    ):
+        return ["TEMPORAL_ADDRESS must be a bare host:port without credentials or parameters"]
+
+    hostname = parsed.hostname.rstrip(".").lower()
+    if hostname == "temporal.io" or hostname.endswith((".temporal.io", ".tmprl.cloud")):
+        return ["TEMPORAL_ADDRESS must not target Temporal Cloud in a restrictive profile"]
+    allowed = {
+        value.strip().rstrip(".").lower()
+        for value in os.getenv("COMPLIANCEHUB_TEMPORAL_ALLOWED_HOSTS", "").split(",")
+        if value.strip()
+    }
+    if hostname not in allowed:
+        return ["TEMPORAL_ADDRESS host must be listed in COMPLIANCEHUB_TEMPORAL_ALLOWED_HOSTS"]
+    return []
 
 
 @lru_cache
@@ -254,11 +338,41 @@ def verify_startup_configuration(*, raise_on_error: bool = True) -> list[str]:
             "strict_sovereign to enforce one"
         )
 
-    violations = [
+    violations: list[str] = []
+    environment = os.getenv("COMPLIANCEHUB_ENV", "dev").strip().lower()
+    if profile.mode is SovereigntyMode.UNRESTRICTED and environment in {"prod", "production"}:
+        violations.append(
+            "COMPLIANCEHUB_SOVEREIGNTY_MODE must be explicitly restrictive in production; "
+            "unrestricted is forbidden"
+        )
+    if environment in {"prod", "production"}:
+        violations.extend(
+            f"{name} is a direct secret and is forbidden in production; use a mounted secret file"
+            for name in _PRODUCTION_DIRECT_SECRET_ENV_VARS
+            if _env_is_truthy(name)
+        )
+        if not _env_is_truthy("COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE"):
+            violations.append("COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE is required in production")
+        if not _env_is_truthy("COMPLIANCEHUB_OPA_STRICT_MISSING"):
+            violations.append("COMPLIANCEHUB_OPA_STRICT_MISSING must be true in production")
+        opa_url = os.getenv("OPA_URL", "").strip()
+        if not opa_url:
+            violations.append("OPA_URL is required in production")
+        else:
+            try:
+                approved_private_service_base_url(
+                    opa_url,
+                    allowlist_variable="COMPLIANCEHUB_OPA_ALLOWED_HOSTS",
+                )
+            except OutboundPolicyError as exc:
+                violations.append(f"OPA_URL violates the private-service policy: {exc}")
+        violations.extend(_verify_private_temporal_address())
+
+    violations.extend(
         f"{name} is set but forbidden in sovereignty mode '{profile.mode.value}'"
         for name in profile.forbidden_env_vars
         if _env_is_truthy(name)
-    ]
+    )
 
     if violations and raise_on_error:
         raise SovereigntyConfigurationError(

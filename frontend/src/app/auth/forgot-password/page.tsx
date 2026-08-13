@@ -5,28 +5,37 @@ import React, { useState } from "react";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
+  IdentityCapabilityPending,
+  LocalIdentityUnavailable,
+} from "@/components/auth/LocalIdentityUnavailable";
+import { useIdentityCapabilities } from "@/hooks/useIdentityCapabilities";
+import {
   CH_BTN_PRIMARY,
   CH_CARD,
   CH_SHELL,
 } from "@/lib/boardLayout";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-
 export default function ForgotPasswordPage() {
+  const identityCapabilities = useIdentityCapabilities();
   const [email, setEmail] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  if (!identityCapabilities) return <IdentityCapabilityPending />;
+  if (!identityCapabilities.passwordLoginEnabled) {
+    return <LocalIdentityUnavailable title="Lokale Wiederherstellung deaktiviert" />;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await fetch(`${API_BASE_URL}/api/v1/auth/password-reset/request`, {
+      await fetch("/api/auth/password-reset/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ email }),
       });
     } catch {

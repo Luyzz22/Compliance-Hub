@@ -517,7 +517,7 @@ class TestN8nWebhookEndpoint:
     def test_webhook_receive_as_admin_with_valid_hmac(self):
         from app.services.n8n_webhook_service import compute_hmac_signature
 
-        secret = "test-webhook-secret"
+        secret = "test-webhook-secret-with-32-bytes-minimum"
         payload = {"event_type": "test_event", "data": {"key": "value"}}
         raw = json.dumps(payload, default=str).encode("utf-8")
         sig = compute_hmac_signature(raw, secret)
@@ -547,7 +547,10 @@ class TestN8nWebhookEndpoint:
 
     def test_webhook_rejected_without_signature(self):
         """When secret is set but no X-Hub-Signature-256 header → 401."""
-        with patch.dict(os.environ, {"COMPLIANCEHUB_N8N_WEBHOOK_SECRET": "my-secret"}):
+        with patch.dict(
+            os.environ,
+            {"COMPLIANCEHUB_N8N_WEBHOOK_SECRET": "my-secret-with-32-bytes-minimum-value"},
+        ):
             resp = client.post(
                 "/api/v1/enterprise/n8n/webhook",
                 json={"event_type": "test_event", "data": {}},
@@ -558,7 +561,10 @@ class TestN8nWebhookEndpoint:
 
     def test_webhook_rejected_with_invalid_signature(self):
         """When secret is set but signature is wrong → 401."""
-        with patch.dict(os.environ, {"COMPLIANCEHUB_N8N_WEBHOOK_SECRET": "my-secret"}):
+        with patch.dict(
+            os.environ,
+            {"COMPLIANCEHUB_N8N_WEBHOOK_SECRET": "my-secret-with-32-bytes-minimum-value"},
+        ):
             resp = client.post(
                 "/api/v1/enterprise/n8n/webhook",
                 json={"event_type": "test_event", "data": {}},

@@ -21,6 +21,24 @@ def _h(tid: str) -> dict[str, str]:
 @pytest.fixture
 def _feature_on(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COMPLIANCEHUB_FEATURE_AI_COMPLIANCE_BOARD_REPORT", "true")
+    monkeypatch.setenv("COMPLIANCEHUB_TEMPORAL_ENABLED", "true")
+
+
+def test_start_board_report_workflow_is_unavailable_when_temporal_is_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("COMPLIANCEHUB_FEATURE_AI_COMPLIANCE_BOARD_REPORT", "true")
+    monkeypatch.setenv("COMPLIANCEHUB_TEMPORAL_ENABLED", "false")
+    tid = f"wf-disabled-{uuid.uuid4().hex[:10]}"
+
+    response = client.post(
+        f"/api/v1/tenants/{tid}/board-report/workflows/start",
+        headers=_h(tid),
+        json={},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Workflow orchestration is not enabled for this deployment"
 
 
 def test_start_board_report_workflow_path_mismatch(

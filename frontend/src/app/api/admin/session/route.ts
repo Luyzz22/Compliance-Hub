@@ -4,6 +4,8 @@ import {
   createLeadAdminSessionToken,
   isLeadAdminAuthorized,
   LEAD_ADMIN_COOKIE_NAME,
+  leadAdminCredentialIsValid,
+  leadAdminIsConfigured,
   leadAdminCookieOptions,
 } from "@/lib/leadAdminAuth";
 
@@ -11,8 +13,7 @@ export const runtime = "nodejs";
 
 /** Setzt Session-Cookie nach erfolgreicher Secret-Prüfung (internes Lead-Inbox-UI). */
 export async function POST(req: Request) {
-  const secret = process.env.LEAD_ADMIN_SECRET?.trim();
-  if (!secret) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ ok: false, error: "not_configured" }, { status: 404 });
   }
 
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   const provided = typeof body.secret === "string" ? body.secret.trim() : "";
-  if (!provided || provided !== secret) {
+  if (!leadAdminCredentialIsValid(provided)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ ok: false, error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

@@ -1,0 +1,268 @@
+name: compliancehub
+
+# Docker Compose bind-mounts file-backed secrets and cannot remap uid/gid/mode.
+# The release controller validates this host-side contract before any pull or up.
+x-secret-host-contract:
+  tls_certificate: { uid: 65532, mode: "0400" }
+  tls_private_key: { uid: 65532, mode: "0400" }
+  backend_database_url: { uid: 10001, mode: "0400" }
+  postgres_password: { uid: 10001, mode: "0400" }
+  s3_access_key: { uid: 10001, mode: "0400" }
+  s3_secret_access_key: { uid: 10001, mode: "0400" }
+  azure_openai_client_certificate: { uid: 10001, mode: "0400" }
+  bff_shared_secret: { uid: 10001, mode: "0400" }
+  audit_pseudonymization_key: { uid: 10001, mode: "0400" }
+  credential_pepper: { uid: 10001, mode: "0400" }
+  internal_health_api_key: { uid: 10001, mode: "0400" }
+  entra_client_secret: { uid: 10001, mode: "0400" }
+  auth_transaction_secret: { uid: 10001, mode: "0400" }
+  lead_admin_secret: { uid: 10001, mode: "0400" }
+
+services:
+  edge:
+    image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    user: "65532:65532"
+    read_only: true
+    cap_drop: ["ALL"]
+    cap_add: ["NET_BIND_SERVICE"]
+    security_opt: ["no-new-privileges:true"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      COMPLIANCEHUB_PUBLIC_HOST: ${COMPLIANCEHUB_PUBLIC_HOST:?required}
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+        mode: 0444
+    secrets:
+      - source: tls_certificate
+        target: tls_certificate
+      - source: tls_private_key
+        target: tls_private_key
+    tmpfs:
+      - /config:uid=65532,gid=65532,mode=0700
+      - /data:uid=65532,gid=65532,mode=0700
+    networks: [edge_net]
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+  frontend:
+    image: ${COMPLIANCEHUB_FRONTEND_IMAGE:?immutable frontend image digest required}
+    labels:
+      com.complywithai.release.id: ${COMPLIANCEHUB_RELEASE_ID:?approved release id required}
+      com.complywithai.release.commit: ${COMPLIANCEHUB_RELEASE_COMMIT:?approved release commit required}
+      com.complywithai.release.evidence-sha256: ${COMPLIANCEHUB_RELEASE_EVIDENCE_SHA256:?release evidence digest required}
+      com.complywithai.release.blueprint-sha256: ${COMPLIANCEHUB_RELEASE_BLUEPRINT_SHA256:?deployment blueprint digest required}
+    restart: unless-stopped
+    read_only: true
+    init: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    env_file: ${COMPLIANCEHUB_ENV_FILE:-.env.production}
+    environment:
+      COMPLIANCEHUB_API_BASE_URL: http://backend:8000
+      COMPLIANCEHUB_API_ALLOWED_HOSTS: backend
+      COMPLIANCEHUB_RELEASE_CHANNEL: production
+      COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND: s3
+      COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      COMPLIANCEHUB_S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+      COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE: /run/secrets/s3_secret_access_key
+      COMPLIANCEHUB_BFF_SHARED_SECRET_FILE: /run/secrets/bff_shared_secret
+      COMPLIANCEHUB_ENTRA_CLIENT_SECRET_FILE: /run/secrets/entra_client_secret
+      COMPLIANCEHUB_AUTH_TRANSACTION_SECRET_FILE: /run/secrets/auth_transaction_secret
+      LEAD_ADMIN_SECRET_FILE: /run/secrets/lead_admin_secret
+    secrets:
+      - source: postgres_password
+        target: postgres_password
+      - source: s3_access_key
+        target: s3_access_key
+      - source: s3_secret_access_key
+        target: s3_secret_access_key
+      - source: bff_shared_secret
+        target: bff_shared_secret
+      - source: entra_client_secret
+        target: entra_client_secret
+      - source: auth_transaction_secret
+        target: auth_transaction_secret
+      - source: lead_admin_secret
+        target: lead_admin_secret
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700
+    networks: [edge_net, app_net, egress_net]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    image: ${COMPLIANCEHUB_BACKEND_IMAGE:?immutable backend image digest required}
+    labels:
+      com.complywithai.release.id: ${COMPLIANCEHUB_RELEASE_ID:?approved release id required}
+      com.complywithai.release.commit: ${COMPLIANCEHUB_RELEASE_COMMIT:?approved release commit required}
+      com.complywithai.release.evidence-sha256: ${COMPLIANCEHUB_RELEASE_EVIDENCE_SHA256:?release evidence digest required}
+      com.complywithai.release.blueprint-sha256: ${COMPLIANCEHUB_RELEASE_BLUEPRINT_SHA256:?deployment blueprint digest required}
+    restart: unless-stopped
+    read_only: true
+    init: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    env_file: ${COMPLIANCEHUB_ENV_FILE:-.env.production}
+    environment:
+      COMPLIANCEHUB_ENV: production
+      COMPLIANCEHUB_DB_URL_FILE: /run/secrets/backend_database_url
+      COMPLIANCEHUB_BFF_SHARED_SECRET_FILE: /run/secrets/bff_shared_secret
+      COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY_FILE: /run/secrets/audit_pseudonymization_key
+      COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE: /run/secrets/credential_pepper
+      INTERNAL_HEALTH_API_KEY_FILE: /run/secrets/internal_health_api_key
+      INTERNAL_HEALTH_ALLOWED_IPS: 127.0.0.1
+      COMPLIANCEHUB_PUBLIC_HOST: ${COMPLIANCEHUB_PUBLIC_HOST:?required}
+      COMPLIANCEHUB_SOVEREIGNTY_MODE: standard_dach
+      HAYSTACK_TELEMETRY_ENABLED: "false"
+      LANGCHAIN_TRACING_V2: "false"
+      LANGSMITH_TRACING: "false"
+      COMPLIANCEHUB_TEMPORAL_ENABLED: "false"
+      COMPLIANCEHUB_OPA_STRICT_MISSING: "true"
+      COMPLIANCEHUB_OPA_ALLOWED_HOSTS: opa
+      OPA_URL: http://opa:8181
+      OPA_POLICY_PATH: /v1/data/compliancehub/allow_action
+      AZURE_OPENAI_AUTH: client_certificate
+      AZURE_CLIENT_CERTIFICATE_PATH: /run/secrets/azure_openai_client_certificate
+    secrets:
+      - source: backend_database_url
+        target: backend_database_url
+      - source: azure_openai_client_certificate
+        target: azure_openai_client_certificate
+      - source: bff_shared_secret
+        target: bff_shared_secret
+      - source: audit_pseudonymization_key
+        target: audit_pseudonymization_key
+      - source: credential_pepper
+        target: credential_pepper
+      - source: internal_health_api_key
+        target: internal_health_api_key
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700
+    networks: [app_net, egress_net]
+    depends_on:
+      opa:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "/app/scripts/container_readiness.py",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  opa:
+    image: openpolicyagent/opa:1.18.2-static@sha256:57f7d06808fff6de3ea1d698e6430990973ca1370be0e54975f0083d615521da
+    command:
+      [
+        "run",
+        "--v0-compatible",
+        "--server",
+        "--addr=0.0.0.0:8181",
+        "--log-format=json",
+        "/policies/action_policy.rego",
+      ]
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    init: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    configs:
+      - source: opa_action_policy
+        target: /policies/action_policy.rego
+        uid: "10001"
+        gid: "10001"
+        mode: 0444
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700
+    networks: [app_net]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/opa",
+          "eval",
+          "--v0-compatible",
+          "--fail",
+          "--data",
+          "/policies/action_policy.rego",
+          "data.compliancehub.allow_action == false",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+configs:
+  caddyfile:
+    file: ./Caddyfile
+  opa_action_policy:
+    file: ../../infra/opa/policies/compliancehub/regos/action_policy.rego
+
+secrets:
+  tls_certificate:
+    file: ./secrets/tls-certificate.pem
+  tls_private_key:
+    file: ./secrets/tls-private-key.pem
+  backend_database_url:
+    file: ./secrets/backend-database-url
+  postgres_password:
+    file: ./secrets/postgres-password
+  s3_access_key:
+    file: ./secrets/s3-access-key
+  s3_secret_access_key:
+    file: ./secrets/s3-secret-access-key
+  azure_openai_client_certificate:
+    file: ./secrets/azure-openai-client-certificate.pem
+  bff_shared_secret:
+    file: ./secrets/bff-shared-secret
+  audit_pseudonymization_key:
+    file: ./secrets/audit-pseudonymization-key
+  credential_pepper:
+    file: ./secrets/credential-pepper
+  internal_health_api_key:
+    file: ./secrets/internal-health-api-key
+  entra_client_secret:
+    file: ./secrets/entra-client-secret
+  auth_transaction_secret:
+    file: ./secrets/auth-transaction-secret
+  lead_admin_secret:
+    file: ./secrets/lead-admin-secret
+
+networks:
+  edge_net:
+    driver: bridge
+    ipam:
+      config: [{ subnet: 10.88.0.0/24 }]
+  app_net:
+    driver: bridge
+    internal: true
+    ipam:
+      config: [{ subnet: 10.89.0.0/24 }]
+  egress_net:
+    driver: bridge
+    ipam:
+      config: [{ subnet: 10.90.0.0/24 }]

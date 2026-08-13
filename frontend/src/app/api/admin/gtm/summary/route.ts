@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 
 import { boardReadinessBannerFromPayload, computeBoardReadinessPayload } from "@/lib/boardReadinessAggregate";
 import { computeGtmDashboardSnapshot } from "@/lib/gtmDashboardAggregate";
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 import { computeProductBridgePayload } from "@/lib/gtmProductBridgeAggregate";
 import { readGtmWeeklyReviewState, sliceRecentNotes } from "@/lib/gtmWeeklyReviewStore";
 
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

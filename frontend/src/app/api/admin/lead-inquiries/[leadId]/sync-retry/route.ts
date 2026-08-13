@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 import { manualRetryLeadSyncJob, redactLeadSyncJobForApi } from "@/lib/leadSyncDispatcher";
 import { getLeadSyncJobById } from "@/lib/leadSyncStore";
 
@@ -10,7 +10,7 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(req: Request, ctx: { params: Promise<{ leadId: string }> }) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

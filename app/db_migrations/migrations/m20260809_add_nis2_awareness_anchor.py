@@ -52,7 +52,7 @@ def apply(engine: Engine) -> bool:
             )
         conn.execute(
             text(
-                f"UPDATE {_TABLE} SET became_aware_at = detected_at, "
+                "UPDATE nis2_incidents SET became_aware_at = detected_at, "
                 "deadline_basis = 'entry_fallback' WHERE became_aware_at IS NULL"
             )
         )

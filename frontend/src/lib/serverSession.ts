@@ -6,7 +6,12 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/lib/authConstants";
+import {
+  approvedPrivateServiceBaseUrl,
+  isEnterpriseProductionRuntime,
+} from "@/lib/outboundEndpointPolicy";
 import { csrfTokensMatch, hasAllowedMutationOrigin } from "@/lib/sessionSecurity";
+import { readServerSecret } from "@/lib/serverSecret";
 import { WORKSPACE_TENANT_COOKIE } from "@/lib/workspaceTenantConstants";
 
 const DEFAULT_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
@@ -24,17 +29,25 @@ export type PublicSession = {
 
 export function complianceApiBaseUrl(): string {
   const configured = process.env.COMPLIANCEHUB_API_BASE_URL?.trim();
-  if (configured) return configured.replace(/\/$/, "");
-  if (process.env.NODE_ENV !== "production") return "http://localhost:8000";
+  if (configured) {
+    return approvedPrivateServiceBaseUrl(
+      configured,
+      "COMPLIANCEHUB_API_BASE_URL",
+      "COMPLIANCEHUB_API_ALLOWED_HOSTS",
+    );
+  }
+  if (!isEnterpriseProductionRuntime()) return "http://localhost:8000";
   throw new Error("COMPLIANCEHUB_API_BASE_URL is required");
 }
 
 export function bffBackendHeaders(): Record<string, string> {
-  const secret = process.env.COMPLIANCEHUB_BFF_SHARED_SECRET?.trim();
+  const secret = readServerSecret({
+    environmentVariable: "COMPLIANCEHUB_BFF_SHARED_SECRET",
+    fileEnvironmentVariable: "COMPLIANCEHUB_BFF_SHARED_SECRET_FILE",
+    minimumBytes: 32,
+    required: isEnterpriseProductionRuntime(),
+  });
   if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("COMPLIANCEHUB_BFF_SHARED_SECRET is required");
-    }
     return {};
   }
   return { "x-bff-secret": secret };
@@ -45,7 +58,7 @@ export function mutationRequestIsTrusted(request: NextRequest): boolean {
     request.url,
     request.headers.get("origin"),
     process.env.COMPLIANCEHUB_APP_ORIGIN,
-    process.env.NODE_ENV === "production",
+    isEnterpriseProductionRuntime(),
   );
 }
 
@@ -66,6 +79,7 @@ export function sessionToken(request: NextRequest): string | null {
 export async function fetchBackendSession(token: string): Promise<Response> {
   return fetch(`${complianceApiBaseUrl()}/api/v1/auth/session`, {
     method: "GET",
+    redirect: "manual",
     headers: { Authorization: `Bearer ${token}`, ...bffBackendHeaders() },
     cache: "no-store",
     signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
