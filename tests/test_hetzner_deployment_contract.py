@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -44,7 +45,8 @@ def test_application_containers_are_rootless_read_only_and_drop_capabilities() -
         dockerfile = ROOT / dockerfile_name
         source = dockerfile.read_text(encoding="utf-8")
         assert "USER 10001:10001" in source
-        assert all("@sha256:" in line for line in source.splitlines() if line.startswith("FROM "))
+        assert re.search(r"^ARG [A-Z_]+_BASE_IMAGE=.+@sha256:[0-9a-f]{64}$", source, re.MULTILINE)
+        assert all("${" in line for line in source.splitlines() if line.startswith("FROM "))
 
     assert compose["services"]["edge"]["user"] == "65532:65532"
 
@@ -63,7 +65,7 @@ def test_runtime_dependencies_and_all_public_images_are_immutable() -> None:
     lock = lockfile.read_text(encoding="utf-8")
     assert "--hash=sha256:" in lock
     dockerfile = (ROOT / "Dockerfile.hetzner").read_text(encoding="utf-8")
-    assert "pip install --require-hashes --no-deps -r requirements.lock" in dockerfile
+    assert 'pip install --index-url "${PYTHON_INDEX_URL}" --require-hashes' in dockerfile
     assert "pip install --no-deps --no-build-isolation ." in dockerfile
 
 
@@ -72,7 +74,7 @@ def test_runtime_images_use_minimal_alpine_baselines_without_language_package_ma
     frontend = (ROOT / "frontend" / "Dockerfile.hetzner").read_text(encoding="utf-8")
 
     assert all(
-        line.startswith("FROM python:3.11-alpine3.23@sha256:")
+        line.startswith("FROM ${PYTHON_BASE_IMAGE}")
         for line in backend.splitlines()
         if line.startswith("FROM ")
     )
@@ -81,7 +83,7 @@ def test_runtime_images_use_minimal_alpine_baselines_without_language_package_ma
     assert "/usr/local/bin/pip" in backend
 
     assert all(
-        line.startswith("FROM node:22-alpine3.23@sha256:")
+        line.startswith("FROM ${NODE_BASE_IMAGE}")
         for line in frontend.splitlines()
         if line.startswith("FROM ")
     )
@@ -89,6 +91,7 @@ def test_runtime_images_use_minimal_alpine_baselines_without_language_package_ma
     assert "/usr/local/bin/npm" in frontend
     assert "/usr/local/bin/npx" in frontend
     assert "/usr/local/bin/corepack" in frontend
+    assert "--replace-registry-host=always" in frontend
 
 
 def test_frontend_container_build_preserves_cross_stack_prebuild_gates() -> None:

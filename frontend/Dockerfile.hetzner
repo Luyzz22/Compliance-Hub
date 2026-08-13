@@ -1,9 +1,13 @@
-FROM node:22-alpine3.23@sha256:46825fbbd4e996a78b7a2cdc08d75e38a5a505bdab95dcda55605359bf124bc6 AS dependencies
+ARG NODE_BASE_IMAGE=node:22-alpine3.23@sha256:46825fbbd4e996a78b7a2cdc08d75e38a5a505bdab95dcda55605359bf124bc6
+ARG NPM_REGISTRY_URL=https://registry.npmjs.org/
+FROM ${NODE_BASE_IMAGE} AS dependencies
+ARG NPM_REGISTRY_URL
 WORKDIR /workspace/frontend
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --ignore-scripts
+RUN npm ci --ignore-scripts --registry="${NPM_REGISTRY_URL}" --replace-registry-host=always \
+    --audit=false --fund=false --update-notifier=false
 
-FROM node:22-alpine3.23@sha256:46825fbbd4e996a78b7a2cdc08d75e38a5a505bdab95dcda55605359bf124bc6 AS builder
+FROM ${NODE_BASE_IMAGE} AS builder
 WORKDIR /workspace/frontend
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=dependencies /workspace/frontend/node_modules ./node_modules
@@ -14,7 +18,7 @@ COPY db/postgres/migrations/20260715_advisor_runtime_state_rls.sql /workspace/db
 COPY tests/postgres/advisor_runtime_state_rls_test.sql /workspace/tests/postgres/advisor_runtime_state_rls_test.sql
 RUN npm run build
 
-FROM node:22-alpine3.23@sha256:46825fbbd4e996a78b7a2cdc08d75e38a5a505bdab95dcda55605359bf124bc6 AS runtime
+FROM ${NODE_BASE_IMAGE} AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

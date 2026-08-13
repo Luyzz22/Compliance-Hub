@@ -1,4 +1,7 @@
-FROM python:3.11-alpine3.23@sha256:f73754c398b259dfbbe482361dca8b464dea57da74efe5214966ca2ee767ee12 AS builder
+ARG PYTHON_BASE_IMAGE=python:3.11-alpine3.23@sha256:f73754c398b259dfbbe482361dca8b464dea57da74efe5214966ca2ee767ee12
+ARG PYTHON_INDEX_URL=https://pypi.org/simple
+FROM ${PYTHON_BASE_IMAGE} AS builder
+ARG PYTHON_INDEX_URL
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1
@@ -7,11 +10,11 @@ RUN python -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 COPY pyproject.toml requirements.lock README.md ./
 COPY app ./app
-RUN pip install --require-hashes --no-deps -r requirements.lock \
+RUN pip install --index-url "${PYTHON_INDEX_URL}" --require-hashes --no-deps -r requirements.lock \
     && pip install --no-deps --no-build-isolation . \
     && pip uninstall --yes pip setuptools wheel
 
-FROM python:3.11-alpine3.23@sha256:f73754c398b259dfbbe482361dca8b464dea57da74efe5214966ca2ee767ee12 AS runtime
+FROM ${PYTHON_BASE_IMAGE} AS runtime
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

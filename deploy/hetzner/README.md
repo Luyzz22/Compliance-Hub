@@ -147,6 +147,26 @@ getrennten Signer-/HSM-Grenzen und dürfen nicht auf dem Deployment-Host liegen.
 jeweilige `subject` muss zusätzlich mit `built_by` beziehungsweise `approved_by`
 übereinstimmen; damit kann eine gültige Signatur nicht unter fremder Identität erscheinen.
 
+Der vorgelagerte Build läuft ausschließlich über den manuell freizugebenden Workflow
+`preproduction-build.yml` auf einem isolierten Runner mit den Labels `self-hosted`,
+`linux`, `x64` und `compliancehub-hetzner-release`. Der Runner liest die root-owned
+Konfiguration `/etc/compliancehub/release-builder.json`, verwendet eine vorab
+authentifizierte private Registry und lädt während des Builds keine Werkzeuge nach.
+Cosign 3.0.6 signiert die Digest-Referenzen über einen OpenBao-Transit-Key; der private
+Schlüssel wird nie exportiert. Signaturen, CycloneDX-Attestierungen und SLSA-v1-
+Provenance liegen als OCI-Artefakte in derselben privaten Registry. SBOM, Trivy-JSON,
+Provenance und Build-Manifest verbleiben mit Modus `0700`/`0600` unter
+`/var/lib/compliancehub/release-evidence`. GitHub erhält davon weder Artefakte noch
+Registry-Credentials oder OpenBao-Tokens.
+
+Vor Aktivierung muss ein Administrator `release-builder.example.json` außerhalb des
+Repositories als root-owned Konfiguration provisionieren. Der OpenBao-Agent erzeugt
+für jeden Lauf ein kurzlebiges, auf `transit/keys`, `transit/hmac`, `transit/sign`
+und `transit/verify` des einen Release-Keys begrenztes Token. Der Runner darf keine
+OpenBao-Key-Erzeugungs-, Export-, Secret-Lese- oder Administrationsrechte besitzen.
+Die Cosign-Aufrufe deaktivieren sowohl den öffentlichen Transparency-Log-Upload als
+auch die TUF-basierte öffentliche Signing-Konfiguration ausdrücklich.
+
 Auf dem Deployment-Host wird der Verifier in einer dedizierten root-owned Python-3.11-
 Umgebung betrieben. `cryptography` und seine Transitivabhängigkeiten werden während der
 Host-Provisionierung aus dem geprüften `requirements.lock` mit `--require-hashes`
