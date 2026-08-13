@@ -142,9 +142,18 @@ def test_file_secret_permissions_are_an_explicit_host_preflight_contract() -> No
 
     assert set(contracts) == set(compose["secrets"])
     assert all(contract["mode"] == "0400" for contract in contracts.values())
+    assert all(contract["min_bytes"] >= 16 for contract in contracts.values())
+    assert all(contract["consumers"] for contract in contracts.values())
+    assert all(contract["rotation_policy"] for contract in contracts.values())
+    actual_consumers = {name: set() for name in compose["secrets"]}
     for service in compose["services"].values():
         for secret in service.get("secrets", []):
             assert set(secret) == {"source", "target"}
+    for service_name, service in compose["services"].items():
+        for secret in service.get("secrets", []):
+            actual_consumers[secret["source"]].add(service_name)
+    for name, contract in contracts.items():
+        assert set(contract["consumers"]) == actual_consumers[name]
 
 
 def test_audit_key_is_mounted_only_into_the_backend() -> None:

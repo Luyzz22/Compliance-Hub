@@ -62,10 +62,20 @@ def test_secret_contract_rejects_symlinks_wrong_modes_and_empty_files(
     secrets = deployment / "secrets"
     secrets.mkdir(parents=True)
     secret = secrets / "api-key"
-    _write(secret, b"secret", 0o400)
+    _write(secret, b"a" * 32, 0o400)
     payload = {
-        "x-secret-host-contract": {"api_key": {"uid": os.geteuid(), "mode": "0400"}},
+        "x-secret-host-contract": {
+            "api_key": {
+                "uid": os.geteuid(),
+                "mode": "0400",
+                "min_bytes": 32,
+                "content_kind": "opaque",
+                "consumers": ["api"],
+                "rotation_policy": "standard_90d",
+            }
+        },
         "secrets": {"api_key": {"file": "./secrets/api-key"}},
+        "services": {"api": {"secrets": [{"source": "api_key", "target": "api_key"}]}},
     }
 
     hetzner_release.validate_secret_host_contract(deployment, payload)
@@ -79,9 +89,46 @@ def test_secret_contract_rejects_symlinks_wrong_modes_and_empty_files(
         hetzner_release.validate_secret_host_contract(deployment, payload)
     secret.unlink()
     target = secrets / "real-key"
-    _write(target, b"secret", 0o400)
+    _write(target, b"a" * 32, 0o400)
     secret.symlink_to(target)
     with pytest.raises(hetzner_release.ReleaseError, match="non-symlink"):
+        hetzner_release.validate_secret_host_contract(deployment, payload)
+
+
+def test_secret_contract_rejects_weak_content_and_undeclared_consumers(
+    tmp_path: Path,
+) -> None:
+    deployment = tmp_path / "deploy"
+    secret = deployment / "secrets" / "database-url"
+    _write(secret, b"too-short", 0o400)
+    payload = {
+        "x-secret-host-contract": {
+            "database_url": {
+                "uid": os.geteuid(),
+                "mode": "0400",
+                "min_bytes": 32,
+                "content_kind": "postgres_dsn",
+                "consumers": ["backend"],
+                "rotation_policy": "standard_90d",
+            }
+        },
+        "secrets": {"database_url": {"file": "./secrets/database-url"}},
+        "services": {
+            "backend": {"secrets": [{"source": "database_url", "target": "database_url"}]}
+        },
+    }
+
+    with pytest.raises(hetzner_release.ReleaseError, match="minimum length"):
+        hetzner_release.validate_secret_host_contract(deployment, payload)
+
+    secret.chmod(0o600)
+    _write(secret, b"postgresql://runtime:long-secret-value@db.internal/app", 0o400)
+    hetzner_release.validate_secret_host_contract(deployment, payload)
+
+    payload["services"]["worker"] = {
+        "secrets": [{"source": "database_url", "target": "database_url"}]
+    }
+    with pytest.raises(hetzner_release.ReleaseError, match="consumer contract"):
         hetzner_release.validate_secret_host_contract(deployment, payload)
 
 

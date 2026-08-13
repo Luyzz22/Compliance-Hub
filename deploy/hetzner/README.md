@@ -40,6 +40,7 @@ secrets/s3-secret-access-key
 secrets/azure-openai-client-certificate.pem
 secrets/bff-shared-secret
 secrets/audit-pseudonymization-key
+secrets/credential-pepper
 secrets/internal-health-api-key
 secrets/entra-client-secret
 secrets/auth-transaction-secret
@@ -52,8 +53,22 @@ Dateibasierte Compose-Secrets sind Bind-Mounts; Docker Compose setzt deren dekla
 UID/GID/Moduswerte nicht um. Deshalb enthält `compose.yml` einen separaten
 `x-secret-host-contract`. Der Release-Controller prüft vor jedem mutierenden Schritt,
 dass jede Quelldatei regulär, kein Symlink, Eigentum der vorgesehenen numerischen
-Container-UID und exakt `0400` ist. Die YAML-Langsyntax selbst wird nicht als
-Berechtigungsnachweis behandelt.
+Container-UID und exakt `0400` ist. Zusätzlich bindet der Vertrag Mindestlänge,
+Inhaltstyp, die einzigen zulässigen Verbraucher und eine Rotationsklasse. Der Preflight
+gleicht die Verbraucher gegen die tatsächlichen Compose-Mounts ab, prüft einzeilige
+opaque Werte, vollständige PostgreSQL-DSNs und PEM-Marker und gibt dabei niemals
+Secret-Inhalte aus. Die YAML-Langsyntax selbst wird nicht als Berechtigungsnachweis
+behandelt.
+
+Die Rotationsklassen sind verbindliche Betriebsverfahren, keine Behauptung bereits
+erfolgter Rotation:
+
+- `standard_90d`: spätestens alle 90 Tage oder unmittelbar nach Expositionsverdacht;
+  neuer Wert, abhängige Sitzung/Verbindung, Funktionsprüfung, danach Widerruf des alten.
+- `certificate_lifecycle`: Erneuerung vor dem 30-Tage-Ablaufgate, Ketten-/Key-Pair-Prüfung
+  und anschließender Widerruf des Vorgängers.
+- `coordinated_change_window`: Vier-Augen-Change mit gemeinsamem Neustart abhängiger
+  Dienste; bei `credential-pepper` inklusive geplanter API-Key-/Session-Neuausstellung.
 
 API-Keys, Passwörter oder private Schlüssel dürfen weder in `.env.production`, Compose,
 Container-Image, CI-Variablen-Ausgabe noch Logs gelangen. BFF-Vertrauensanker,
