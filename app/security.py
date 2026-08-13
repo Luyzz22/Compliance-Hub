@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
 import os
 import secrets
 from functools import lru_cache
 from typing import Annotated
 
+from cryptography.hazmat.primitives import hashes, hmac
 from fastapi import Header, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -27,8 +26,8 @@ class AuthContext(BaseModel):
         """Stable audit subject that never persists the bearer credential."""
         if self.user_id:
             return f"user:{self.user_id}"
-        digest = hashlib.sha256(self.api_key.encode("utf-8")).hexdigest()
-        return f"api_key:sha256:{digest[:16]}"
+        digest = hash_api_key(self.api_key)
+        return f"api_key:hmac-sha256:{digest[:16]}"
 
 
 class SecuritySettings(BaseModel):
@@ -167,11 +166,9 @@ def hash_api_key(raw: str) -> str:
     )
     if not pepper:
         pepper = "compliancehub-development-credential-pepper-only"
-    return hmac.new(
-        pepper.encode("utf-8"),
-        raw.encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
+    lookup_mac = hmac.HMAC(pepper.encode("utf-8"), hashes.SHA256())
+    lookup_mac.update(raw.encode("utf-8"))
+    return lookup_mac.finalize().hex()
 
 
 def admin_provision_api_keys() -> frozenset[str]:
