@@ -241,6 +241,8 @@ def test_ci_builds_and_scans_both_production_images() -> None:
     assert "severity: HIGH,CRITICAL" in workflow
     assert 'exit-code: "1"' in workflow
     assert 'PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"' in workflow
+    assert "scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py" in workflow
+    assert "bandit -q scripts/hetzner_release.py scripts/verify_release_evidence.py" in workflow
 
 
 def test_application_containers_expose_release_evidence_labels() -> None:

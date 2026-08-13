@@ -21,6 +21,7 @@ from scripts.verify_release_evidence import (
     validate_cyclonedx_sbom,
     validate_deployment_binding,
     validate_release_evidence,
+    validate_restore_drill_evidence,
     validate_rollback_binding,
     validate_sbom_binding,
     verify_release_signatures,
@@ -65,7 +66,8 @@ def _valid_evidence() -> dict:
         },
         "database": {
             "migration_plan_sha256": DIGEST_A,
-            "backup_restore_evidence": "evidence://restore/2026-08-11/approved",
+            "restore_drill_id": "DR-20260811-CHANGE4815",
+            "restore_evidence_sha256": DIGEST_B,
             "change_class": "none",
             "migration_execution_status": "not_required",
             "schema_verification_status": "passed",
@@ -104,6 +106,50 @@ def _valid_evidence() -> dict:
                 "signature": base64.b64encode(b"b" * 64).decode("ascii"),
             },
         ],
+    }
+
+
+def _valid_restore_evidence() -> dict:
+    return {
+        "schema_version": 1,
+        "drill_id": "DR-20260811-CHANGE4815",
+        "started_at": "2026-08-11T08:00:00Z",
+        "completed_at": "2026-08-11T09:00:00Z",
+        "tools": {
+            "psql": "17.9",
+            "pg_restore": "17.9",
+            "createdb": "17.9",
+            "dropdb": "17.9",
+            "rclone": "v1.72.1",
+        },
+        "postgres": {
+            "status": "passed",
+            "public_table_count": 64,
+            "required_tables": ["tenants", "ai_systems", "audit_logs", "evidence_files"],
+            "restore_seconds": 120.5,
+            "cleanup_status": "passed",
+            "backup_sha256": DIGEST_A,
+            "backup_created_at": "2026-08-11T07:45:00Z",
+            "restore_host_sha256": DIGEST_B,
+        },
+        "object_storage": {
+            "status": "passed",
+            "object_count": 18,
+            "total_bytes": 4096,
+            "verified_object_count": 18,
+            "restore_seconds": 90.25,
+            "cleanup_status": "passed",
+            "backup_reference_sha256": DIGEST_C,
+            "backup_created_at": "2026-08-11T07:45:00Z",
+            "endpoint_host_sha256": DIGEST_D,
+        },
+        "recovery": {
+            "status": "passed",
+            "rpo_minutes": 15.0,
+            "rpo_target_minutes": 1440,
+            "rto_seconds": 3600.0,
+            "rto_target_seconds": 14400,
+        },
     }
 
 
@@ -316,6 +362,31 @@ def test_sbom_files_are_bound_to_recorded_digests() -> None:
     ) == ["backend SBOM file does not match sboms.backend_sha256"]
 
 
+def test_restore_drill_evidence_requires_measured_restore_and_cleanup(tmp_path) -> None:
+    path = tmp_path / "restore-drill.json"
+    path.write_text(json.dumps(_valid_restore_evidence()), encoding="utf-8")
+    assert validate_restore_drill_evidence(path, release_created_at=NOW) == []
+
+    payload = _valid_restore_evidence()
+    payload["object_storage"]["verified_object_count"] = 17
+    payload["postgres"]["cleanup_status"] = "failed"
+    payload["recovery"]["rto_seconds"] = 20_000
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    errors = validate_restore_drill_evidence(path, release_created_at=NOW)
+    assert "restore drill postgres.cleanup_status must be passed" in errors
+    assert "restore drill object_storage.verified_object_count must match object_count" in errors
+    assert "restore drill recovery.rto_seconds exceeds rto_target_seconds" in errors
+    assert "restore drill recovery.rto_seconds does not match drill timestamps" in errors
+
+
+def test_restore_drill_validation_handles_invalid_release_timestamp_without_crashing(
+    tmp_path,
+) -> None:
+    path = tmp_path / "restore-drill.json"
+    path.write_text(json.dumps(_valid_restore_evidence()), encoding="utf-8")
+    assert validate_restore_drill_evidence(path, release_created_at=None) == []
+
+
 def test_cyclonedx_sbom_requires_a_supported_non_empty_document(tmp_path) -> None:
     valid = tmp_path / "valid.cdx.json"
     valid.write_text(
@@ -371,6 +442,11 @@ def test_production_cli_verifies_keys_sboms_environment_and_evidence_hash(tmp_pa
         "backend_sha256": hashlib.sha256(backend_sbom.read_bytes()).hexdigest(),
         "frontend_sha256": hashlib.sha256(frontend_sbom.read_bytes()).hexdigest(),
     }
+    restore_evidence = tmp_path / "restore-drill.json"
+    restore_evidence.write_text(json.dumps(_valid_restore_evidence()), encoding="utf-8")
+    evidence["database"]["restore_evidence_sha256"] = hashlib.sha256(
+        restore_evidence.read_bytes()
+    ).hexdigest()
     deployment_dir = tmp_path / "deploy" / "hetzner"
     deployment_dir.mkdir(parents=True)
     (deployment_dir / "compose.yml").write_text("services: {}\n", encoding="utf-8")
@@ -438,6 +514,8 @@ def test_production_cli_verifies_keys_sboms_environment_and_evidence_hash(tmp_pa
             str(backend_sbom),
             "--frontend-sbom",
             str(frontend_sbom),
+            "--restore-evidence",
+            str(restore_evidence),
             "--deployment-dir",
             str(deployment_dir),
             "--json",

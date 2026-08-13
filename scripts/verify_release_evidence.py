@@ -9,7 +9,9 @@ import binascii
 import hashlib
 import json
 import re
-import subprocess
+
+# Fixed argv execution is required only to resolve the checked-out Git commit.
+import subprocess  # nosec B404
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -288,6 +290,219 @@ def validate_cyclonedx_sbom(path: Path, label: str) -> list[str]:
     return errors
 
 
+def validate_restore_drill_evidence(
+    path: Path,
+    *,
+    release_created_at: datetime | None = None,
+) -> list[str]:
+    """Validate the measured, cleaned-up PostgreSQL and object restore drill."""
+
+    try:
+        payload = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_json_object,
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
+        return ["restore drill evidence must be readable JSON without duplicate keys"]
+    errors: list[str] = []
+    root = _mapping(payload, "restore drill evidence", errors)
+    _reject_unknown_fields(
+        root,
+        {
+            "schema_version",
+            "drill_id",
+            "started_at",
+            "completed_at",
+            "tools",
+            "postgres",
+            "object_storage",
+            "recovery",
+        },
+        "restore drill evidence",
+        errors,
+    )
+    if type(root.get("schema_version")) is not int or root.get("schema_version") != 1:
+        errors.append("restore drill evidence.schema_version must be 1")
+    drill_id = root.get("drill_id")
+    if not isinstance(drill_id, str) or not re.fullmatch(r"DR-[0-9]{8}-[A-Z0-9]{4,16}", drill_id):
+        errors.append("restore drill evidence.drill_id is invalid")
+    started = _parse_timestamp(root.get("started_at"), "restore drill started_at", errors)
+    completed = _parse_timestamp(root.get("completed_at"), "restore drill completed_at", errors)
+    if started and completed and completed <= started:
+        errors.append("restore drill completed_at must be later than started_at")
+    if completed and release_created_at:
+        if completed > release_created_at:
+            errors.append("restore drill must complete before release evidence is created")
+        if release_created_at - completed > timedelta(days=31):
+            errors.append("restore drill evidence must be no older than 31 days")
+
+    tools = _mapping(root.get("tools"), "restore drill tools", errors)
+    _reject_unknown_fields(
+        tools,
+        {"psql", "pg_restore", "createdb", "dropdb", "rclone"},
+        "restore drill tools",
+        errors,
+    )
+    for tool in ("psql", "pg_restore", "createdb", "dropdb", "rclone"):
+        _require_reviewed_text(tools, tool, errors)
+
+    postgres = _mapping(root.get("postgres"), "restore drill postgres", errors)
+    _reject_unknown_fields(
+        postgres,
+        {
+            "status",
+            "public_table_count",
+            "required_tables",
+            "restore_seconds",
+            "cleanup_status",
+            "backup_sha256",
+            "backup_created_at",
+            "restore_host_sha256",
+        },
+        "restore drill postgres",
+        errors,
+    )
+    for field in ("status", "cleanup_status"):
+        if postgres.get(field) != "passed":
+            errors.append(f"restore drill postgres.{field} must be passed")
+    if (
+        type(postgres.get("public_table_count")) is not int
+        or postgres.get("public_table_count", 0) < 1
+    ):
+        errors.append("restore drill postgres.public_table_count must be positive")
+    required_tables = postgres.get("required_tables")
+    if (
+        not isinstance(required_tables, list)
+        or not required_tables
+        or any(not isinstance(value, str) or not value for value in required_tables)
+    ):
+        errors.append("restore drill postgres.required_tables must be non-empty")
+    for field in ("restore_seconds",):
+        value = postgres.get(field)
+        if type(value) not in {int, float} or value < 0:
+            errors.append(f"restore drill postgres.{field} must be non-negative")
+    for field in ("backup_sha256", "restore_host_sha256"):
+        _require_digest(postgres, field, errors, label=f"restore drill postgres.{field}")
+    postgres_backup_created = _parse_timestamp(
+        postgres.get("backup_created_at"),
+        "restore drill postgres.backup_created_at",
+        errors,
+    )
+
+    storage = _mapping(root.get("object_storage"), "restore drill object_storage", errors)
+    _reject_unknown_fields(
+        storage,
+        {
+            "status",
+            "object_count",
+            "total_bytes",
+            "verified_object_count",
+            "restore_seconds",
+            "cleanup_status",
+            "backup_reference_sha256",
+            "backup_created_at",
+            "endpoint_host_sha256",
+        },
+        "restore drill object_storage",
+        errors,
+    )
+    for field in ("status", "cleanup_status"):
+        if storage.get(field) != "passed":
+            errors.append(f"restore drill object_storage.{field} must be passed")
+    object_count = storage.get("object_count")
+    verified_count = storage.get("verified_object_count")
+    if type(object_count) is not int or object_count < 1:
+        errors.append("restore drill object_storage.object_count must be positive")
+    if type(verified_count) is not int or verified_count != object_count:
+        errors.append("restore drill object_storage.verified_object_count must match object_count")
+    if type(storage.get("total_bytes")) is not int or storage.get("total_bytes", 0) < 1:
+        errors.append("restore drill object_storage.total_bytes must be positive")
+    if (
+        type(storage.get("restore_seconds")) not in {int, float}
+        or storage.get("restore_seconds", -1) < 0
+    ):
+        errors.append("restore drill object_storage.restore_seconds must be non-negative")
+    for field in ("backup_reference_sha256", "endpoint_host_sha256"):
+        _require_digest(storage, field, errors, label=f"restore drill object_storage.{field}")
+    object_backup_created = _parse_timestamp(
+        storage.get("backup_created_at"),
+        "restore drill object_storage.backup_created_at",
+        errors,
+    )
+
+    recovery = _mapping(root.get("recovery"), "restore drill recovery", errors)
+    _reject_unknown_fields(
+        recovery,
+        {
+            "status",
+            "rpo_minutes",
+            "rpo_target_minutes",
+            "rto_seconds",
+            "rto_target_seconds",
+        },
+        "restore drill recovery",
+        errors,
+    )
+    if recovery.get("status") != "passed":
+        errors.append("restore drill recovery.status must be passed")
+    for actual, target in (
+        ("rpo_minutes", "rpo_target_minutes"),
+        ("rto_seconds", "rto_target_seconds"),
+    ):
+        actual_value = recovery.get(actual)
+        target_value = recovery.get(target)
+        if type(actual_value) not in {int, float} or actual_value < 0:
+            errors.append(f"restore drill recovery.{actual} must be non-negative")
+        if type(target_value) not in {int, float} or target_value <= 0:
+            errors.append(f"restore drill recovery.{target} must be positive")
+        if (
+            type(actual_value) in {int, float}
+            and type(target_value) in {int, float}
+            and actual_value > target_value
+        ):
+            errors.append(f"restore drill recovery.{actual} exceeds {target}")
+    if started and postgres_backup_created and postgres_backup_created > started:
+        errors.append("restore drill postgres.backup_created_at cannot be later than started_at")
+    if started and object_backup_created and object_backup_created > started:
+        errors.append(
+            "restore drill object_storage.backup_created_at cannot be later than started_at"
+        )
+    recorded_rpo = recovery.get("rpo_minutes")
+    if (
+        started
+        and postgres_backup_created
+        and object_backup_created
+        and type(recorded_rpo)
+        in {
+            int,
+            float,
+        }
+    ):
+        calculated_rpo = (
+            max(
+                (started - postgres_backup_created).total_seconds(),
+                (started - object_backup_created).total_seconds(),
+            )
+            / 60
+        )
+        if abs(float(recorded_rpo) - calculated_rpo) > 0.01:
+            errors.append("restore drill recovery.rpo_minutes does not match backup timestamps")
+    recorded_rto = recovery.get("rto_seconds")
+    if started and completed and type(recorded_rto) in {int, float}:
+        calculated_rto = (completed - started).total_seconds()
+        if abs(float(recorded_rto) - calculated_rto) > 0.01:
+            errors.append("restore drill recovery.rto_seconds does not match drill timestamps")
+    if (
+        isinstance(required_tables, list)
+        and type(postgres.get("public_table_count")) is int
+        and postgres["public_table_count"] < len(set(required_tables))
+    ):
+        errors.append(
+            "restore drill postgres.public_table_count cannot be smaller than required_tables"
+        )
+    return errors
+
+
 def read_environment(path: Path, errors: list[str]) -> dict[str, str]:
     environment: dict[str, str] = {}
     try:
@@ -525,7 +740,8 @@ def validate_release_evidence(
         database,
         {
             "migration_plan_sha256",
-            "backup_restore_evidence",
+            "restore_drill_id",
+            "restore_evidence_sha256",
             "change_class",
             "migration_execution_status",
             "schema_verification_status",
@@ -540,7 +756,15 @@ def validate_release_evidence(
         errors,
         label="database.migration_plan_sha256",
     )
-    _require_reviewed_text(database, "backup_restore_evidence", errors)
+    restore_drill_id = _require_reviewed_text(database, "restore_drill_id", errors)
+    if restore_drill_id and not re.fullmatch(r"DR-[0-9]{8}-[A-Z0-9]{4,16}", restore_drill_id):
+        errors.append("database.restore_drill_id is invalid")
+    _require_digest(
+        database,
+        "restore_evidence_sha256",
+        errors,
+        label="database.restore_evidence_sha256",
+    )
     change_class = database.get("change_class")
     if change_class not in {"none", "backward_compatible_expand"}:
         errors.append("database.change_class must be none or backward_compatible_expand")
@@ -624,7 +848,7 @@ def validate_release_evidence(
 
 
 def _current_commit() -> str:
-    result = subprocess.run(
+    result = subprocess.run(  # nosec B603, B607
         ["git", "rev-parse", "HEAD"],
         check=True,
         capture_output=True,
@@ -651,6 +875,7 @@ def main() -> int:
     parser.add_argument("--approver-public-key", type=Path)
     parser.add_argument("--backend-sbom", type=Path)
     parser.add_argument("--frontend-sbom", type=Path)
+    parser.add_argument("--restore-evidence", type=Path)
     parser.add_argument("--deployment-dir", type=Path)
     parser.add_argument("--print-signing-payload", action="store_true")
     parser.add_argument("--json", action="store_true")
@@ -722,6 +947,56 @@ def main() -> int:
                     frontend_sha256=frontend_sbom_sha256,
                 )
             )
+
+        release_created_at = None
+        if isinstance(payload, dict):
+            created_value = payload.get("created_at")
+            if isinstance(created_value, str):
+                try:
+                    parsed_created_at = datetime.fromisoformat(created_value.replace("Z", "+00:00"))
+                except ValueError:
+                    release_created_at = None
+                else:
+                    if (
+                        parsed_created_at.tzinfo is not None
+                        and parsed_created_at.utcoffset() == UTC.utcoffset(parsed_created_at)
+                    ):
+                        release_created_at = parsed_created_at
+        if arguments.restore_evidence is None:
+            errors.append("--restore-evidence is required for production verification")
+        else:
+            restore_sha256 = _sha256_file(
+                arguments.restore_evidence,
+                "restore drill evidence",
+                errors,
+            )
+            errors.extend(
+                validate_restore_drill_evidence(
+                    arguments.restore_evidence,
+                    release_created_at=release_created_at,
+                )
+            )
+            database = payload.get("database") if isinstance(payload, dict) else {}
+            if (
+                not isinstance(database, dict)
+                or database.get("restore_evidence_sha256") != restore_sha256
+            ):
+                errors.append(
+                    "restore drill evidence file does not match database.restore_evidence_sha256"
+                )
+            try:
+                restore_payload = json.loads(
+                    arguments.restore_evidence.read_text(encoding="utf-8"),
+                    object_pairs_hook=_reject_duplicate_json_object,
+                )
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
+                restore_payload = {}
+            if (
+                not isinstance(database, dict)
+                or not isinstance(restore_payload, dict)
+                or database.get("restore_drill_id") != restore_payload.get("drill_id")
+            ):
+                errors.append("restore drill evidence does not match database.restore_drill_id")
 
         if arguments.builder_public_key is None:
             errors.append("--builder-public-key is required for production verification")

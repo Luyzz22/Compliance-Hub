@@ -26,6 +26,7 @@ def _paths(tmp_path: Path) -> hetzner_release.ReleasePaths:
         approver_public_key=deployment / "approver.pem",
         backend_sbom=deployment / "backend.cdx.json",
         frontend_sbom=deployment / "frontend.cdx.json",
+        restore_evidence=deployment / "restore-drill.json",
         lock_file=tmp_path / "lock" / "release.lock",
         audit_log=tmp_path / "log" / "release.jsonl",
     )

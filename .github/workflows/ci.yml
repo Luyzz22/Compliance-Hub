@@ -36,8 +36,8 @@ jobs:
 
       - name: Lint and format check
         run: |
-          ruff check app/ tests/
-          ruff format --check app/ tests/
+          ruff check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py tests/
+          ruff format --check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py tests/
 
       - name: Dependency vulnerability audit
         run: pip-audit --skip-editable --desc
@@ -49,7 +49,9 @@ jobs:
         run: pip-audit -r requirements.lock --format cyclonedx-json --output backend-sbom.cdx.json
 
       - name: Static security analysis
-        run: bandit -q -r app -x app/db_migrations -lll
+        run: |
+          bandit -q -r app -x app/db_migrations -lll
+          bandit -q scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py
 
       - name: Test
         run: python -m pytest tests/ -q

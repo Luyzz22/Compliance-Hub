@@ -9,7 +9,9 @@ import hashlib
 import json
 import os
 import stat
-import subprocess
+
+# Fixed argv execution is required for the approved release tools.
+import subprocess  # nosec B404
 import sys
 import tempfile
 from collections.abc import Iterator, Sequence
@@ -84,6 +86,7 @@ class ReleasePaths:
     approver_public_key: Path
     backend_sbom: Path
     frontend_sbom: Path
+    restore_evidence: Path
     lock_file: Path
     audit_log: Path
 
@@ -378,7 +381,8 @@ def _run(
     environment: dict[str, str] | None = None,
 ) -> str:
     try:
-        result = subprocess.run(
+        # No shell is used; command construction is limited to release-controller controls.
+        result = subprocess.run(  # nosec B603
             list(command),
             cwd=cwd,
             env=environment,
@@ -434,6 +438,8 @@ def _verify_release_evidence(paths: ReleasePaths) -> None:
             str(paths.backend_sbom),
             "--frontend-sbom",
             str(paths.frontend_sbom),
+            "--restore-evidence",
+            str(paths.restore_evidence),
             "--deployment-dir",
             str(paths.deployment),
             "--json",
@@ -482,6 +488,7 @@ def preflight(paths: ReleasePaths) -> tuple[dict[str, object], bytes, dict[str, 
         (paths.approver_public_key, {0o400, 0o440, 0o444}, {0}),
         (paths.backend_sbom, {0o400, 0o440, 0o444}, {0, os.geteuid()}),
         (paths.frontend_sbom, {0o400, 0o440, 0o444}, {0, os.geteuid()}),
+        (paths.restore_evidence, {0o400, 0o440, 0o600}, {0, os.geteuid()}),
     ):
         _secure_read(control_path, allowed_modes=modes, allowed_uids=owners)
     compose_bytes = _secure_read(paths.compose, allowed_modes={0o444, 0o644})
@@ -811,6 +818,7 @@ def _resolve_paths(arguments: argparse.Namespace) -> ReleasePaths:
         approver_public_key=resolve(arguments.approver_public_key),
         backend_sbom=resolve(arguments.backend_sbom),
         frontend_sbom=resolve(arguments.frontend_sbom),
+        restore_evidence=resolve(arguments.restore_evidence),
         lock_file=Path(arguments.lock_file).resolve(),
         audit_log=Path(arguments.audit_log).resolve(),
     )
@@ -833,6 +841,7 @@ def main() -> int:
     )
     parser.add_argument("--backend-sbom", default="artifacts/backend.cdx.json")
     parser.add_argument("--frontend-sbom", default="artifacts/frontend.cdx.json")
+    parser.add_argument("--restore-evidence", default="artifacts/restore-drill.json")
     parser.add_argument("--lock-file", default="/var/lock/compliancehub/release.lock")
     parser.add_argument("--audit-log", default="/var/log/compliancehub/release-events.jsonl")
     parser.add_argument("--confirm-release-id")
