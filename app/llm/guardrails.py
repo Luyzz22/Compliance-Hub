@@ -51,6 +51,11 @@ _INJECTION_MARKERS = (
 )
 
 
+def _looks_like_phone(candidate: str) -> bool:
+    digit_count = len(re.sub(r"\D", "", candidate))
+    return 10 <= digit_count <= 15
+
+
 def scan_input_for_pii_and_injection(text: str) -> GuardrailScanResult:
     """
     Regex heuristics for obvious PII and prompt-injection markers.
@@ -74,7 +79,7 @@ def scan_input_for_pii_and_injection(text: str) -> GuardrailScanResult:
     if _IBAN_LIKE_RE.search(t):
         flags.append("possible_iban")
         has_pii = True
-    if _PHONE_RE.search(t) and len(re.sub(r"\D", "", t)) >= 10:
+    if any(_looks_like_phone(match.group(0)) for match in _PHONE_RE.finditer(t)):
         flags.append("possible_phone")
         has_pii = True
 
@@ -104,7 +109,10 @@ def redact_obvious_pii_patterns(text: str) -> str:
     """Best-effort redaction for high-risk prompts; extend with DLP/HITL in production."""
     out = _EMAIL_RE.sub("[REDACTED_EMAIL]", text)
     out = _IBAN_LIKE_RE.sub("[REDACTED_IBAN]", out)
-    out = _PHONE_RE.sub("[REDACTED_PHONE]", out)
+    out = _PHONE_RE.sub(
+        lambda match: "[REDACTED_PHONE]" if _looks_like_phone(match.group(0)) else match.group(0),
+        out,
+    )
     return out
 
 

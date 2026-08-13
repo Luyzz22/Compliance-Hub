@@ -19,6 +19,7 @@ class LLMCallMetadataRepository:
             id=str(uuid4()),
             tenant_id=row.tenant_id,
             task_type=row.task_type.value,
+            data_class=row.data_class.value,
             provider=row.provider.value,
             model_id=row.model_id,
             prompt_length=row.prompt_length,

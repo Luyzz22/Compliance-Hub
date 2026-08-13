@@ -13,7 +13,12 @@ import {
   secureValuesEqual,
   type EntraTransaction,
 } from "@/lib/entraTransaction";
+import { isEnterpriseProductionRuntime } from "@/lib/outboundEndpointPolicy";
 import { safeReturnTo } from "@/lib/safeReturnTo";
+import {
+  readServerSecret,
+  ServerSecretConfigurationError,
+} from "@/lib/serverSecret";
 
 const GUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -50,6 +55,27 @@ function requiredGuid(name: string): string {
   return value;
 }
 
+function requiredSecret(
+  environmentVariable: string,
+  fileEnvironmentVariable: string,
+): string {
+  try {
+    return (
+      readServerSecret({
+        environmentVariable,
+        fileEnvironmentVariable,
+        minimumBytes: 32,
+        required: true,
+      }) || ""
+    );
+  } catch (error) {
+    if (error instanceof ServerSecretConfigurationError) {
+      throw new EntraConfigurationError(error.message);
+    }
+    throw error;
+  }
+}
+
 export function entraConfig(): EntraConfig {
   if (!entraIsEnabled())
     throw new EntraConfigurationError("Entra authentication is disabled");
@@ -57,31 +83,24 @@ export function entraConfig(): EntraConfig {
   const parsedOrigin = new URL(appOrigin);
   if (
     parsedOrigin.origin !== appOrigin ||
-    (process.env.NODE_ENV === "production" &&
-      parsedOrigin.protocol !== "https:")
+    (isEnterpriseProductionRuntime() && parsedOrigin.protocol !== "https:")
   ) {
     throw new EntraConfigurationError(
       "COMPLIANCEHUB_APP_ORIGIN must be an allowed origin",
     );
   }
-  const clientSecret = required("COMPLIANCEHUB_ENTRA_CLIENT_SECRET");
-  const transactionSecret = required("COMPLIANCEHUB_AUTH_TRANSACTION_SECRET");
-  const bffSecret = required("COMPLIANCEHUB_BFF_SHARED_SECRET");
-  if (process.env.NODE_ENV === "production" && clientSecret.length < 32) {
-    throw new EntraConfigurationError(
-      "COMPLIANCEHUB_ENTRA_CLIENT_SECRET is too short",
-    );
-  }
-  if (Buffer.byteLength(transactionSecret, "utf8") < 32) {
-    throw new EntraConfigurationError(
-      "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET is too short",
-    );
-  }
-  if (bffSecret.length < 32) {
-    throw new EntraConfigurationError(
-      "COMPLIANCEHUB_BFF_SHARED_SECRET is too short",
-    );
-  }
+  const clientSecret = requiredSecret(
+    "COMPLIANCEHUB_ENTRA_CLIENT_SECRET",
+    "COMPLIANCEHUB_ENTRA_CLIENT_SECRET_FILE",
+  );
+  const transactionSecret = requiredSecret(
+    "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET",
+    "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET_FILE",
+  );
+  requiredSecret(
+    "COMPLIANCEHUB_BFF_SHARED_SECRET",
+    "COMPLIANCEHUB_BFF_SHARED_SECRET_FILE",
+  );
   return {
     tenantId: requiredGuid("COMPLIANCEHUB_ENTRA_TENANT_ID"),
     clientId: requiredGuid("COMPLIANCEHUB_ENTRA_CLIENT_ID"),

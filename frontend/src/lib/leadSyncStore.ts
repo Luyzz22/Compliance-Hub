@@ -24,9 +24,6 @@ type JobsStoreFile = {
 function resolveSyncStorePath(): string {
   const fromEnv = process.env.LEAD_SYNC_JOBS_STORE_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-lead-sync-jobs.json");
-  }
   return join(process.cwd(), "data", "lead-inquiries", "sync-jobs.json");
 }
 

@@ -3,21 +3,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   __setRuntimePostgresPoolFactoryForTests,
-  resolveAzurePostgresConfig,
   resolveRelationalRuntimeBackend,
+  resolveRuntimePostgresConfig,
   withPlatformRuntimePostgres,
   withTenantRuntimePostgres,
 } from "@/lib/runtimePostgres";
 
 type QueryCall = { text: string; values?: unknown[] };
 
-function configureAzurePostgres(): void {
+function configurePostgres(): void {
   vi.stubEnv("NODE_ENV", "test");
-  vi.stubEnv("COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND", "azure_postgres");
-  vi.stubEnv("AZURE_POSTGRES_HOST", "compliancehub.postgres.database.azure.com");
-  vi.stubEnv("AZURE_POSTGRES_DATABASE", "compliancehub");
-  vi.stubEnv("AZURE_POSTGRES_USER", "compliancehub-runtime");
-  vi.stubEnv("COMPLIANCEHUB_RUNTIME_STORAGE_AUTH", "default");
+  vi.stubEnv("COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND", "postgres");
+  vi.stubEnv("POSTGRES_HOST", "postgres.internal");
+  vi.stubEnv("POSTGRES_DATABASE", "compliancehub");
+  vi.stubEnv("POSTGRES_USER", "compliancehub-runtime");
+  vi.stubEnv("POSTGRES_PASSWORD_FILE", "/run/secrets/postgres-password");
 }
 
 function installFakePool(
@@ -58,7 +58,7 @@ describe("relational runtime policy", () => {
   it("defaults to local only outside production and fails closed in production", () => {
     expect(resolveRelationalRuntimeBackend({ NODE_ENV: "development" })).toBe("local");
     expect(() => resolveRelationalRuntimeBackend({ NODE_ENV: "production" })).toThrow(
-      "must be azure_postgres",
+      "must be postgres",
     );
     expect(() =>
       resolveRelationalRuntimeBackend({
@@ -68,39 +68,47 @@ describe("relational runtime policy", () => {
     ).toThrow("forbidden");
   });
 
-  it("accepts only an Azure PostgreSQL endpoint on the TLS port", () => {
+  it("requires an allowlisted PostgreSQL endpoint in production", () => {
     expect(
-      resolveAzurePostgresConfig({
-        AZURE_POSTGRES_HOST: "governance.postgres.database.azure.com",
-        AZURE_POSTGRES_DATABASE: "compliancehub",
-        AZURE_POSTGRES_USER: "runtime-principal",
+      resolveRuntimePostgresConfig({
+        NODE_ENV: "production",
+        POSTGRES_HOST: "postgres.internal",
+        COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS: "postgres.internal",
+        POSTGRES_DATABASE: "compliancehub",
+        POSTGRES_USER: "runtime-principal",
+        POSTGRES_PASSWORD_FILE: "/run/secrets/postgres-password",
       }),
     ).toMatchObject({
-      host: "governance.postgres.database.azure.com",
+      host: "postgres.internal",
       port: 5432,
       database: "compliancehub",
       user: "runtime-principal",
     });
     expect(() =>
-      resolveAzurePostgresConfig({
-        AZURE_POSTGRES_HOST: "attacker.example",
-        AZURE_POSTGRES_DATABASE: "compliancehub",
-        AZURE_POSTGRES_USER: "runtime-principal",
+      resolveRuntimePostgresConfig({
+        NODE_ENV: "production",
+        POSTGRES_HOST: "attacker.example",
+        COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS: "postgres.internal",
+        POSTGRES_DATABASE: "compliancehub",
+        POSTGRES_USER: "runtime-principal",
+        POSTGRES_PASSWORD_FILE: "/run/secrets/postgres-password",
       }),
-    ).toThrow("Azure PostgreSQL hostname");
+    ).toThrow("explicitly listed");
     expect(() =>
-      resolveAzurePostgresConfig({
-        AZURE_POSTGRES_HOST: "governance.postgres.database.azure.com",
-        AZURE_POSTGRES_PORT: "5433",
-        AZURE_POSTGRES_DATABASE: "compliancehub",
-        AZURE_POSTGRES_USER: "runtime-principal",
+      resolveRuntimePostgresConfig({
+        POSTGRES_HOST: "postgres.internal",
+        POSTGRES_PORT: "invalid",
+        POSTGRES_DATABASE: "compliancehub",
+        POSTGRES_USER: "runtime-principal",
+        POSTGRES_PASSWORD_FILE: "/run/secrets/postgres-password",
       }),
-    ).toThrow("must be 5432");
+    ).toThrow("Invalid PostgreSQL port");
     expect(() =>
-      resolveAzurePostgresConfig({
-        AZURE_POSTGRES_HOST: "governance.postgres.database.azure.com",
-        AZURE_POSTGRES_DATABASE: "compliancehub",
-        AZURE_POSTGRES_USER: "azure_pg_admin",
+      resolveRuntimePostgresConfig({
+        POSTGRES_HOST: "postgres.internal",
+        POSTGRES_DATABASE: "compliancehub",
+        POSTGRES_USER: "postgres",
+        POSTGRES_PASSWORD_FILE: "/run/secrets/postgres-password",
       }),
     ).toThrow("administrator identities are forbidden");
   });
@@ -108,7 +116,7 @@ describe("relational runtime policy", () => {
 
 describe("relational runtime transactions", () => {
   it("sets tenant and actor context locally and enforces TLS verification", async () => {
-    configureAzurePostgres();
+    configurePostgres();
     const fake = installFakePool();
 
     const result = await withTenantRuntimePostgres(
@@ -143,7 +151,7 @@ describe("relational runtime transactions", () => {
   });
 
   it("marks platform transactions explicitly and rolls back failures", async () => {
-    configureAzurePostgres();
+    configurePostgres();
     const fake = installFakePool();
 
     await expect(
@@ -162,7 +170,7 @@ describe("relational runtime transactions", () => {
   });
 
   it("does not expose connection failure details through the public error message", async () => {
-    configureAzurePostgres();
+    configurePostgres();
     __setRuntimePostgresPoolFactoryForTests(() => ({
       connect: vi.fn(async () => {
         throw new Error("host and principal detail");
@@ -178,7 +186,7 @@ describe("relational runtime transactions", () => {
   });
 
   it("rejects invalid tenant and actor identifiers before opening a connection", async () => {
-    configureAzurePostgres();
+    configurePostgres();
     const factory = vi.fn();
     __setRuntimePostgresPoolFactoryForTests(factory);
 

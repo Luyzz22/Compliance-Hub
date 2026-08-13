@@ -50,9 +50,9 @@ export default async function SettingsPage() {
               API-Key-UI ist in dieser Umgebung deaktiviert (NEXT_PUBLIC_FEATURE_API_KEYS_UI).
             </p>
             <p className="mt-3 text-xs text-slate-500">
-              Setzen Sie <code className="rounded bg-slate-100 px-1">COMPLIANCEHUB_API_KEY</code>{" "}
-              serverseitig; im Browser nur{" "}
-              <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_*</code> für Demo-Umgebungen.
+              Personen greifen über die Entra-Sitzung zu. Tenantgebundene API-Keys
+              werden nur für freigegebene Maschinenintegrationen ausgegeben; ein
+              globaler Frontend-Schlüssel ist im Enterprise-Profil gesperrt.
             </p>
           </article>
         )}
@@ -60,8 +60,8 @@ export default async function SettingsPage() {
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Benutzer & Rollen</p>
           <p className="mt-2 text-sm text-slate-600">
-            SSO (Azure AD, SAP IAS) und rollenbasierte Workspace-Zugriffe – Platzhalter für
-            Enterprise-Onboarding.
+            Microsoft Entra ID und rollenbasierte Workspace-Zugriffe werden über
+            das freigegebene Enterprise-Onboarding verwaltet.
           </p>
           <Link
             href="/auth/profile"

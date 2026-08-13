@@ -5,21 +5,29 @@ import React, { useState } from "react";
 
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
+  IdentityCapabilityPending,
+  LocalIdentityUnavailable,
+} from "@/components/auth/LocalIdentityUnavailable";
+import { useIdentityCapabilities } from "@/hooks/useIdentityCapabilities";
+import {
   CH_BTN_PRIMARY,
   CH_CARD,
   CH_SHELL,
 } from "@/lib/boardLayout";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-
 export default function ResetPasswordPage() {
+  const identityCapabilities = useIdentityCapabilities();
   const [token, setToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  if (!identityCapabilities) return <IdentityCapabilityPending />;
+  if (!identityCapabilities.passwordLoginEnabled) {
+    return <LocalIdentityUnavailable title="Lokales Passwort deaktiviert" />;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,14 +36,12 @@ export default function ResetPasswordPage() {
     setSuccess(false);
 
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/v1/auth/password-reset/confirm`,
-        {
+      const res = await fetch("/api/auth/password-reset/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
           body: JSON.stringify({ token, new_password: newPassword }),
-        },
-      );
+        });
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);

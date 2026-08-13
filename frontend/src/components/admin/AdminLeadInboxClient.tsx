@@ -446,7 +446,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
       <div className="mx-auto max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
         <p className="font-medium">Lead-Inbox nicht verfügbar</p>
         <p className="mt-2 text-amber-800">
-          <code className="rounded bg-amber-100 px-1 font-mono text-xs">LEAD_ADMIN_SECRET</code> ist auf
+          <code className="rounded bg-amber-100 px-1 font-mono text-xs">LEAD_ADMIN_SECRET_FILE</code> ist auf
           dieser Umgebung nicht gesetzt. Die interne Ansicht bleibt absichtlich deaktiviert.
         </p>
       </div>

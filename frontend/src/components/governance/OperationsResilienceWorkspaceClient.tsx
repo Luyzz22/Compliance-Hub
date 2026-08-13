@@ -217,7 +217,9 @@ export function OperationsResilienceWorkspaceClient({ tenantId }: Props) {
         <>
           <span className="text-slate-700">
             Operational Resilience Layer — KPIs, Service-Health-Verlauf und offene
-            Monitoring-Incidents (NIS2 / ISO 27001 / später ISO 42001).           Daten über GET /api/v1/governance/operations/* (NEXT_PUBLIC_API_BASE_URL / API-Key).
+            Monitoring-Incidents (NIS2 / ISO 27001 / später ISO 42001). Datenzugriff
+            erfolgt über den authentifizierten Same-Origin-BFF und den gebundenen
+            Mandantenkontext.
           </span>
         </>
       }

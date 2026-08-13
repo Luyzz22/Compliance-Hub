@@ -63,6 +63,7 @@ pythonpath = [
   "app",
   "tests",
 ]
+testpaths = ["tests"]
 addopts = "-q"
 filterwarnings = [
   "error::starlette.exceptions.StarletteDeprecationWarning",

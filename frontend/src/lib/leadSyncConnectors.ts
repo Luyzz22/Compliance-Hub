@@ -1,7 +1,13 @@
 import "server-only";
 
 import { runHubspotLeadSyncConnector } from "@/lib/hubspotLeadSyncConnector";
+import {
+  approvedOutboundWebhookUrl,
+  crmProviderIsForbiddenInProduction,
+  isEnterpriseProductionRuntime,
+} from "@/lib/outboundEndpointPolicy";
 import { runPipedriveLeadSyncConnector } from "@/lib/pipedriveLeadSyncConnector";
+import { readServerSecret } from "@/lib/serverSecret";
 import type { LeadSyncConnectorResult, LeadSyncPayloadV1, LeadSyncTarget } from "@/lib/leadSyncTypes";
 
 export type ConnectorResult = LeadSyncConnectorResult;
@@ -12,6 +18,18 @@ export async function runLeadSyncConnector(
   target: LeadSyncTarget,
   payload: LeadSyncPayloadV1,
 ): Promise<ConnectorResult> {
+  if (
+    (target === "hubspot" || target === "hubspot_stub") &&
+    crmProviderIsForbiddenInProduction("hubspot")
+  ) {
+    return { ok: false, error: "hubspot_forbidden_by_provider_policy", retryable: false };
+  }
+  if (
+    (target === "pipedrive" || target === "pipedrive_stub") &&
+    crmProviderIsForbiddenInProduction("pipedrive")
+  ) {
+    return { ok: false, error: "pipedrive_forbidden_by_provider_policy", retryable: false };
+  }
   switch (target) {
     case "n8n_webhook":
       return runN8nWebhookConnector(payload);
@@ -29,16 +47,24 @@ export async function runLeadSyncConnector(
 }
 
 async function runN8nWebhookConnector(payload: LeadSyncPayloadV1): Promise<ConnectorResult> {
-  const url = process.env.LEAD_SYNC_N8N_URL?.trim();
-  if (!url) {
+  const configuredUrl = process.env.LEAD_SYNC_N8N_URL?.trim();
+  if (!configuredUrl) {
     return { ok: false, error: "n8n_url_not_configured" };
   }
+  const url = approvedOutboundWebhookUrl(configuredUrl, "LEAD_SYNC_N8N_URL");
+  const secret = readServerSecret({
+    environmentVariable: "LEAD_SYNC_N8N_SECRET",
+    fileEnvironmentVariable: "LEAD_SYNC_N8N_SECRET_FILE",
+    minimumBytes: 32,
+    required: isEnterpriseProductionRuntime(),
+  });
+  let timer: ReturnType<typeof setTimeout> | null = null;
   try {
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), N8N_TIMEOUT_MS);
-    const secret = process.env.LEAD_SYNC_N8N_SECRET?.trim();
+    timer = setTimeout(() => controller.abort(), N8N_TIMEOUT_MS);
     const r = await fetch(url, {
       method: "POST",
+      redirect: "manual",
       headers: {
         "Content-Type": "application/json",
         ...(secret ? { Authorization: `Bearer ${secret}` } : {}),
@@ -46,7 +72,6 @@ async function runN8nWebhookConnector(payload: LeadSyncPayloadV1): Promise<Conne
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-    clearTimeout(t);
     if (r.ok) {
       return { ok: true, http_status: r.status, mock_result: { target: "n8n_webhook", status: r.status } };
     }
@@ -61,6 +86,8 @@ async function runN8nWebhookConnector(payload: LeadSyncPayloadV1): Promise<Conne
       ok: false,
       error: e instanceof Error ? e.message : String(e),
     };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

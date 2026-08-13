@@ -1,17 +1,24 @@
 from __future__ import annotations
 
-import os
 from collections.abc import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.secret_files import read_secret
+
 DEFAULT_DB_URL = "sqlite+pysqlite:///./test_compliancehub.db"
 
 
 def get_database_url() -> str:
-    return os.getenv("COMPLIANCEHUB_DB_URL", DEFAULT_DB_URL)
+    value = read_secret(
+        "COMPLIANCEHUB_DB_URL",
+        "COMPLIANCEHUB_DB_URL_FILE",
+    )
+    if len(value) > 8192:
+        raise RuntimeError("COMPLIANCEHUB_DB_URL_FILE contains an invalid database URL")
+    return value or DEFAULT_DB_URL
 
 
 def create_db_engine(database_url: str | None = None) -> Engine:

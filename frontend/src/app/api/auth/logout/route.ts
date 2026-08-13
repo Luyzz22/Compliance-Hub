@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}`, ...bffBackendHeaders() },
         cache: "no-store",
+        redirect: "manual",
         signal: AbortSignal.timeout(10_000),
       });
     } catch {

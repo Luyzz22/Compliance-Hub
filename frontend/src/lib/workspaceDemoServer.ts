@@ -1,12 +1,8 @@
 import { cookies } from "next/headers";
 
 import { featureDemoMode } from "@/lib/config";
+import { serverSessionApiFetch } from "@/lib/serverBackendApi";
 import { DEMO_MODE_SESSION_COOKIE } from "@/lib/workspaceTenantConstants";
-
-const API_BASE_URL =
-  process.env.COMPLIANCEHUB_API_BASE_URL ||
-  "http://localhost:8000";
-const API_KEY = process.env.COMPLIANCEHUB_API_KEY || "";
 
 export type TenantWorkspaceMeta = {
   tenant_id: string;
@@ -23,18 +19,14 @@ export type TenantWorkspaceMeta = {
 export async function fetchTenantWorkspaceMetaServer(
   tenantId: string,
 ): Promise<TenantWorkspaceMeta | null> {
-  const url = `${API_BASE_URL}/api/v1/workspace/tenant-meta`;
-  const res = await fetch(url, {
-    headers: {
-      "x-api-key": API_KEY,
-      "x-tenant-id": tenantId.trim(),
-    },
-    cache: "no-store",
-  });
+  const expectedTenant = tenantId.trim();
+  if (!expectedTenant) return null;
+  const res = await serverSessionApiFetch("/api/v1/workspace/tenant-meta");
   if (!res.ok) {
     return null;
   }
-  return (await res.json()) as TenantWorkspaceMeta;
+  const meta = (await res.json()) as TenantWorkspaceMeta;
+  return meta.tenant_id === expectedTenant ? meta : null;
 }
 
 export async function isDemoUiDesiredForTenant(tenantId: string): Promise<boolean> {

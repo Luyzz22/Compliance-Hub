@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
 
-const API_BASE =
-  process.env.COMPLIANCEHUB_API_BASE_URL || "http://localhost:8000";
-const DEMO_KEY = process.env.COMPLIANCEHUB_DEMO_SEED_API_KEY?.trim() || "";
+import { readServerSecret } from "@/lib/serverSecret";
+import { complianceApiBaseUrl } from "@/lib/serverSession";
 
 export async function GET() {
-  if (!DEMO_KEY) {
+  const demoKey = readServerSecret({
+    environmentVariable: "COMPLIANCEHUB_DEMO_SEED_API_KEY",
+    fileEnvironmentVariable: "COMPLIANCEHUB_DEMO_SEED_API_KEY_FILE",
+    minimumBytes: 32,
+  });
+  if (!demoKey) {
     return NextResponse.json(
-      { error: "COMPLIANCEHUB_DEMO_SEED_API_KEY nicht gesetzt" },
+      { error: "Demo-Seeding ist nicht freigeschaltet" },
       { status: 503 },
     );
   }
-  const res = await fetch(`${API_BASE}/api/v1/demo/tenant-templates`, {
-    headers: { "x-api-key": DEMO_KEY },
+  const res = await fetch(`${complianceApiBaseUrl()}/api/v1/demo/tenant-templates`, {
+    headers: { "x-api-key": demoKey },
     cache: "no-store",
+    redirect: "manual",
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) {
     return NextResponse.json(

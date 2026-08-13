@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 import { attachContactRollups, mergeLeadsWithOps } from "@/lib/leadInboxMerge";
 import { appendLeadOpsActivity, readLeadOpsState } from "@/lib/leadOpsState";
 import {
@@ -14,7 +14,7 @@ import {
 export const runtime = "nodejs";
 
 export async function POST(req: Request, ctx: { params: Promise<{ leadId: string }> }) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

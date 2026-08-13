@@ -42,6 +42,19 @@ def test_scan_injection_only_is_medium() -> None:
     assert r.has_injection_markers is True
 
 
+def test_scan_does_not_combine_unrelated_governance_numbers_into_phone_pii() -> None:
+    text = "EU AI Act 2024/1689; ISO 42001; Scores 42, 57 und 63; Stand 2026-08-11."
+    r = scan_input_for_pii_and_injection(text)
+    assert r.has_pii is False
+    assert "possible_phone" not in r.flags
+
+
+def test_scan_detects_phone_candidate_by_candidate() -> None:
+    r = scan_input_for_pii_and_injection("Rückruf unter +49 30 12345678 erbeten.")
+    assert r.has_pii is True
+    assert "possible_phone" in r.flags
+
+
 def test_validate_oami_explanation_ok() -> None:
     payload = {
         "summary_de": "Kurz",

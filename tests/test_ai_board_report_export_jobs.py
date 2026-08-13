@@ -48,7 +48,7 @@ def setup_ai_system(
 
 
 def test_create_export_job_no_webhook():
-    """Happy Path: Job ohne externen Call (z.B. target_system=sap_btp)."""
+    """Legacy target without a connector must not claim successful delivery."""
     _jobs.clear()
     setup_ai_system(system_id="export-job-no-webhook")
 
@@ -60,7 +60,7 @@ def test_create_export_job_no_webhook():
     assert response.status_code == 201
     data = response.json()
     assert data["tenant_id"] == "board-kpi-tenant"
-    assert data["status"] == "sent"
+    assert data["status"] == "not_implemented"
     assert data["target_system"] == "sap_btp"
     assert "id" in data
     assert "created_at" in data
@@ -287,7 +287,7 @@ def test_get_export_job_status():
     data = get_resp.json()
     assert data["id"] == job_id
     assert data["tenant_id"] == "board-kpi-tenant"
-    assert data["status"] == "sent"
+    assert data["status"] == "not_implemented"
 
 
 def test_get_export_job_404_unknown():

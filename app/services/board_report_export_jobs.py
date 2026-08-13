@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import logging
 import uuid
 from datetime import datetime
@@ -14,6 +17,9 @@ from app.ai_governance_models import (
     BoardReportExportJobCreate,
     ExportJobStatus,
 )
+from app.outbound_policy import OutboundPolicyError, approved_outbound_url
+from app.outbound_policy import is_production_runtime as outbound_production_runtime
+from app.secret_files import read_secret
 from app.services.board_report_markdown import render_board_report_markdown
 
 logger = logging.getLogger(__name__)
@@ -39,6 +45,24 @@ DEFAULT_NORMBEZUG = ["EU AI Act", "NIS2", "ISO 42001"]
 DEFAULT_DOKUMENT_TYP = "AI Governance Board Report"
 
 
+def _signed_payload(
+    payload: dict,
+    headers: dict[str, str] | None = None,
+) -> tuple[bytes, dict[str, str]]:
+    body = json.dumps(payload, default=str, separators=(",", ":")).encode("utf-8")
+    secret = read_secret(
+        "COMPLIANCEHUB_EXPORT_WEBHOOK_SECRET",
+        "COMPLIANCEHUB_EXPORT_WEBHOOK_SECRET_FILE",
+        required=outbound_production_runtime(),
+        minimum_characters=32,
+    )
+    signed_headers = {"Content-Type": "application/json", **(headers or {})}
+    if secret:
+        signature = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+        signed_headers["X-Hub-Signature-256"] = f"sha256={signature}"
+    return body, signed_headers
+
+
 def store_job(job: BoardReportExportJob) -> None:
     _jobs[job.id] = job
 
@@ -53,29 +77,53 @@ def get_job(job_id: str, tenant_id: str) -> BoardReportExportJob | None:
 def _post_webhook(url: str, payload: dict) -> tuple[bool, str]:
     """Sendet Payload per POST an url. Returns (success, error_message)."""
     try:
+        approved_url = approved_outbound_url(
+            url,
+            allowlist_variable="COMPLIANCEHUB_EXPORT_WEBHOOK_ALLOWED_HOSTS",
+        )
+        body, headers = _signed_payload(payload)
         with httpx.Client(timeout=WEBHOOK_TIMEOUT_SEC) as client:
-            r = client.post(url, json=payload)
+            r = client.post(
+                approved_url,
+                content=body,
+                headers=headers,
+                follow_redirects=False,
+            )
             if r.is_success:
                 return True, ""
             return False, f"HTTP {r.status_code}"
     except httpx.TimeoutException:
         return False, "Timeout"
-    except Exception as e:  # noqa: BLE001
-        return False, str(e)[:200]
+    except OutboundPolicyError:
+        return False, "outbound_policy_denied"
+    except Exception as exc:  # noqa: BLE001
+        return False, f"delivery_failed:{type(exc).__name__}"
 
 
 def _post_with_headers(url: str, payload: dict, headers: dict[str, str]) -> tuple[bool, str]:
     """POST mit zusätzlichen Headern. Returns (success, error_message)."""
     try:
+        approved_url = approved_outbound_url(
+            url,
+            allowlist_variable="COMPLIANCEHUB_EXPORT_WEBHOOK_ALLOWED_HOSTS",
+        )
+        body, signed_headers = _signed_payload(payload, headers)
         with httpx.Client(timeout=WEBHOOK_TIMEOUT_SEC) as client:
-            r = client.post(url, json=payload, headers=headers)
+            r = client.post(
+                approved_url,
+                content=body,
+                headers=signed_headers,
+                follow_redirects=False,
+            )
             if r.is_success:
                 return True, ""
             return False, f"HTTP {r.status_code}"
     except httpx.TimeoutException:
         return False, "Timeout"
-    except Exception as e:  # noqa: BLE001
-        return False, str(e)[:200]
+    except OutboundPolicyError:
+        return False, "outbound_policy_denied"
+    except Exception as exc:  # noqa: BLE001
+        return False, f"delivery_failed:{type(exc).__name__}"
 
 
 def _build_sap_btp_http_payload(
@@ -194,7 +242,7 @@ def dispatch_board_report_export_job(
     - sap_btp_http: HTTP POST mit Header, Payload tenant_id, report_period, markdown.
     - datev_dms_prepared: HTTP POST mit Header, Payload mandant/bericht/content/technisch.
     - dms_generic: Platzhalter → not_implemented.
-    - sap_btp / sharepoint: Kein Aufruf → sent (Backward-Kompatibilität).
+    - sap_btp / sharepoint: Legacy-Platzhalter ohne Aufruf → not_implemented.
     """
     if body.target_system == "generic_webhook":
         if not body.callback_url:
@@ -236,8 +284,8 @@ def dispatch_board_report_export_job(
     if body.target_system == "dms_generic":
         return "not_implemented", "DMS integration not yet implemented"
 
-    # sap_btp, sharepoint: kein HTTP-Call, Job als „gesendet“ markiert (Backward-Kompatibilität)
-    return "sent", None
+    # A placeholder must never create false delivery evidence.
+    return "not_implemented", f"{body.target_system} connector not implemented"
 
 
 def run_export_job(

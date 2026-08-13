@@ -1,3 +1,5 @@
+import "server-only";
+
 import { join } from "path";
 
 import {
@@ -7,11 +9,16 @@ import {
 import type { LeadDuplicateHint } from "@/lib/leadIdentity";
 import type { LeadOutboundPayloadV1 } from "@/lib/leadOutbound";
 import {
+  approvedOutboundWebhookUrl,
+  isEnterpriseProductionRuntime,
+} from "@/lib/outboundEndpointPolicy";
+import {
   absoluteRuntimeFilePath,
   appendRuntimeTextFile,
   isRuntimeStorageNotFoundError,
   readRuntimeTextFile,
 } from "@/lib/runtimeFileIO";
+import { readServerSecret } from "@/lib/serverSecret";
 
 export type LeadStoreStatus = "received" | "forwarded" | "failed" | "reviewed";
 
@@ -45,9 +52,6 @@ export type LeadWebhookResultLine = {
 function resolveStorePath(): string {
   const fromEnv = process.env.LEAD_INQUIRY_STORE_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-lead-inquiries.jsonl");
-  }
   return join(process.cwd(), "data", "lead-inquiries", "store.jsonl");
 }
 
@@ -199,31 +203,49 @@ export async function dispatchLeadWebhook(
   body: LeadOutboundPayloadV1,
   attempts = 3,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  let approvedUrl: string;
+  try {
+    approvedUrl = approvedOutboundWebhookUrl(url, "LEAD_INBOUND_WEBHOOK_URL");
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "webhook_policy_error",
+    };
+  }
+  const secret = readServerSecret({
+    environmentVariable: "LEAD_INBOUND_WEBHOOK_SECRET",
+    fileEnvironmentVariable: "LEAD_INBOUND_WEBHOOK_SECRET_FILE",
+    minimumBytes: 32,
+    required: isEnterpriseProductionRuntime(),
+  });
   let lastErr = "unknown";
   for (let i = 0; i < attempts; i++) {
+    let timer: ReturnType<typeof setTimeout> | null = null;
     try {
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 20_000);
-      const r = await fetch(url, {
+      timer = setTimeout(() => controller.abort(), 20_000);
+      const r = await fetch(approvedUrl, {
         method: "POST",
+        redirect: "manual",
         headers: {
           "Content-Type": "application/json",
-          ...(process.env.LEAD_INBOUND_WEBHOOK_SECRET?.trim()
+          ...(secret
             ? {
-                Authorization: `Bearer ${process.env.LEAD_INBOUND_WEBHOOK_SECRET.trim()}`,
+                Authorization: `Bearer ${secret}`,
               }
             : {}),
         },
         body: JSON.stringify(body),
         signal: controller.signal,
       });
-      clearTimeout(t);
       if (r.ok) {
         return { ok: true };
       }
       lastErr = `http_${r.status}`;
     } catch (e) {
       lastErr = e instanceof Error ? e.message : String(e);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
     if (i < attempts - 1) {
       await new Promise((res) => setTimeout(res, 1000 * (i + 1)));

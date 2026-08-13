@@ -13,9 +13,6 @@ import {
 function resolvePath(): string {
   const fromEnv = process.env.BOARD_READINESS_BRIEFING_BASELINE_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-board-readiness-briefing-baseline.json");
-  }
   return join(process.cwd(), "data", "board-readiness-briefing-baseline.json");
 }
 

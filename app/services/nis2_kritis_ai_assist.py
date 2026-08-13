@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING
 from pydantic import TypeAdapter
 
 from app.ai_system_models import AISystem
-from app.llm_models import LLMTaskType
+from app.llm.client_wrapped import guardrailed_route_and_call_sync
+from app.llm.context import LlmCallContext
+from app.llm_models import LLMDataClass, LLMTaskType
 from app.nis2_kritis_models import (
     Nis2KritisKpiSuggestion,
     Nis2KritisKpiSuggestionRequest,
@@ -16,7 +18,6 @@ from app.nis2_kritis_models import (
     Nis2KritisKpiType,
 )
 from app.services.llm_json_utils import LLMJsonParseError, extract_json_object
-from app.services.llm_router import LLMRouter
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -79,8 +80,17 @@ def generate_nis2_kpi_suggestions(
         f"Nutzer-Freitext:\n{request.free_text.strip()}\n"
     )
 
-    router = LLMRouter(session=session)
-    resp = router.route_and_call(LLMTaskType.KPI_SUGGESTION_ASSIST, prompt, tenant_id)
+    resp = guardrailed_route_and_call_sync(
+        session,
+        LLMTaskType.KPI_SUGGESTION_ASSIST,
+        prompt,
+        tenant_id,
+        context=LlmCallContext(
+            tenant_id=tenant_id,
+            action_name="generate_nis2_kpi_suggestions",
+            data_class=LLMDataClass.CONFIDENTIAL,
+        ),
+    )
 
     try:
         data = extract_json_object(resp.text)

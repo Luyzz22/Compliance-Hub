@@ -54,9 +54,11 @@ https://login.microsoftonline.com/<entra-tenant-id>/v2.0
 
 ## 2. Configure credentials and secrets
 
-The current BFF supports an Entra client secret. Store it only in the approved deployment secret
-store; never commit it, expose it as `NEXT_PUBLIC_*`, place it in support tickets, or paste it into
-chat. Use separate credentials per environment, minimum privilege and documented rotation.
+The current BFF supports an Entra client secret read from a mounted file. OpenBao or the container
+runtime must materialize the file with mode `0400`/`0600`; direct production environment values,
+symlinks and relative paths are rejected. Never commit the value, expose it as `NEXT_PUBLIC_*`,
+place it in support tickets, or paste it into chat. Use separate credentials per environment,
+minimum privilege and documented rotation.
 
 For production, the architecture review board must decide whether to replace the client secret with
 a certificate credential or workload identity. Until that decision, implementation and rotation
@@ -69,10 +71,10 @@ Do not reuse the Entra credential.
 COMPLIANCEHUB_ENTRA_ENABLED=true
 COMPLIANCEHUB_ENTRA_TENANT_ID=<non-placeholder-guid>
 COMPLIANCEHUB_ENTRA_CLIENT_ID=<non-placeholder-guid>
-COMPLIANCEHUB_ENTRA_CLIENT_SECRET=<secret-store-reference/value>
+COMPLIANCEHUB_ENTRA_CLIENT_SECRET_FILE=/run/secrets/entra-client-secret
 COMPLIANCEHUB_ENTRA_PROVIDER_ID=<local-provider-guid>
-COMPLIANCEHUB_AUTH_TRANSACTION_SECRET=<independent-random-secret-min-32-bytes>
-COMPLIANCEHUB_BFF_SHARED_SECRET=<independent-random-secret-min-32-characters>
+COMPLIANCEHUB_AUTH_TRANSACTION_SECRET_FILE=/run/secrets/auth-transaction-secret
+COMPLIANCEHUB_BFF_SHARED_SECRET_FILE=/run/secrets/bff-shared-secret
 COMPLIANCEHUB_APP_ORIGIN=https://<approved-app-origin>
 COMPLIANCEHUB_ENTRA_CONDITIONAL_ACCESS_READY=false
 COMPLIANCEHUB_ENTRA_PROVISIONING_READY=false

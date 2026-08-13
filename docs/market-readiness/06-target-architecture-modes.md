@@ -1,5 +1,13 @@
 # 06 – Zielarchitektur: Drei Betriebsmodi
 
+> **Architekturhinweis (2026-08-11):** Die Vendor-Topologie dieses ursprünglichen
+> Market-Readiness-Baselines bleibt als Übergangs- und Nachweisdokument erhalten. Für
+> neue produktive Compliance-Hub-Deployments gilt die Hetzner-first-Entscheidung in
+> [ADR 0002](../adr/0002-hetzner-azure-llm-workload-classes.md). Insbesondere sind
+> Vercel und Azure-Compute dort kein Ziel-Datenpfad; Azure OpenAI ist nur eine
+> klassifizierte, dokumentierte Inferenz-Ausnahme. Bestehende Vercel-Verarbeitung darf
+> bis zur tatsächlich belegten Migration nicht aus den Restrisiken entfernt werden.
+
 **Grundidee:** Souveränität ist keine Eigenschaft, die man behauptet, sondern ein
 **Betriebsmodus, den man erzwingt und nachweist**. Statt einer weichgezeichneten
 Aussage für alle Kunden gibt es drei klar getrennte Modi mit je eigener

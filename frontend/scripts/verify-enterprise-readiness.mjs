@@ -1,9 +1,14 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 
-const production =
-  process.env.VERCEL_ENV === "production" ||
-  process.env.COMPLIANCEHUB_RELEASE_CHANNEL === "production";
+const production = process.env.COMPLIANCEHUB_RELEASE_CHANNEL === "production";
+
+if (process.env.VERCEL || process.env.VERCEL_ENV) {
+  process.stderr.write(
+    "Enterprise release gate failed: Vercel runtime variables are forbidden in the Hetzner-first profile\n",
+  );
+  process.exit(1);
+}
 
 if (!production) {
   process.stdout.write("Enterprise release gate: local/non-production build\n");
@@ -44,6 +49,22 @@ function requireKeys(keys) {
   }
 }
 
+function rejectPlaceholders(keys) {
+  const placeholderPattern = /(?:replace-after|replace-with|change-?me|todo|tbd|your-)/i;
+  for (const key of keys) {
+    const value = process.env[key]?.trim() || "";
+    if (value && (placeholderPattern.test(value) || /[\r\n]/.test(value))) {
+      errors.push(`${key} must contain a reviewed production value, not a placeholder`);
+    }
+  }
+}
+
+function environmentFlagIsTrue(key) {
+  return ["1", "true", "yes", "on"].includes(
+    process.env[key]?.trim().toLowerCase() || "",
+  );
+}
+
 function validateRetentionDays(key, minimum, maximum) {
   const value = Number(process.env[key]);
   if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
@@ -58,6 +79,39 @@ if (!supportedReleaseProfiles.has(releaseProfile)) {
 }
 
 requireKeys(legalRequired);
+rejectPlaceholders(legalRequired);
+
+for (const emailKey of ["COMPLIANCEHUB_LEGAL_EMAIL", "COMPLIANCEHUB_PRIVACY_EMAIL"]) {
+  const value = process.env[emailKey]?.trim() || "";
+  if (value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
+    errors.push(`${emailKey} must be a valid email address`);
+  }
+}
+if (
+  process.env.COMPLIANCEHUB_LEGAL_COUNTRY === "Deutschland" &&
+  process.env.COMPLIANCEHUB_LEGAL_POSTAL_CODE &&
+  !/^\d{5}$/.test(process.env.COMPLIANCEHUB_LEGAL_POSTAL_CODE)
+) {
+  errors.push("COMPLIANCEHUB_LEGAL_POSTAL_CODE must be a five-digit German postal code");
+}
+if (
+  process.env.COMPLIANCEHUB_LEGAL_COUNTRY === "Deutschland" &&
+  process.env.COMPLIANCEHUB_LEGAL_VAT_ID &&
+  !/^DE\d{9}$/.test(process.env.COMPLIANCEHUB_LEGAL_VAT_ID)
+) {
+  errors.push("COMPLIANCEHUB_LEGAL_VAT_ID must use the German DE plus nine-digit format");
+}
+const securityContact = process.env.COMPLIANCEHUB_SECURITY_CONTACT?.trim() || "";
+if (securityContact) {
+  try {
+    const contactUrl = new URL(securityContact);
+    if (!(["https:", "mailto:"].includes(contactUrl.protocol)) || contactUrl.username || contactUrl.password) {
+      errors.push("COMPLIANCEHUB_SECURITY_CONTACT must be an HTTPS or mailto contact");
+    }
+  } catch {
+    errors.push("COMPLIANCEHUB_SECURITY_CONTACT must be an HTTPS or mailto contact");
+  }
+}
 
 if (process.env.COMPLIANCEHUB_LEGAL_PUBLISH_READY !== "true") {
   errors.push(
@@ -165,8 +219,7 @@ if (releaseProfile === "public_site") {
     if (!rawValue?.trim()) continue;
     const unapprovedComplianceHubKey =
       key.startsWith("COMPLIANCEHUB_") && !allowedComplianceHubKeys.has(key);
-    const unapprovedBrowserKey =
-      key.startsWith("NEXT_PUBLIC_") && !key.startsWith("NEXT_PUBLIC_VERCEL_");
+    const unapprovedBrowserKey = key.startsWith("NEXT_PUBLIC_");
     const forbiddenInfrastructureKey =
       forbiddenPublicExact.has(key) ||
       forbiddenPublicPrefixes.some((prefix) => key.startsWith(prefix));
@@ -183,25 +236,41 @@ if (releaseProfile === "public_site") {
 if (releaseProfile === "enterprise") {
   const enterpriseRequired = [
     "COMPLIANCEHUB_API_BASE_URL",
-    "COMPLIANCEHUB_API_KEY",
-    "COMPLIANCEHUB_BFF_SHARED_SECRET",
-    "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY",
+    "COMPLIANCEHUB_API_ALLOWED_HOSTS",
+    "COMPLIANCEHUB_SOVEREIGNTY_MODE",
+    "COMPLIANCEHUB_BFF_SHARED_SECRET_FILE",
     "COMPLIANCEHUB_ENTRA_TENANT_ID",
     "COMPLIANCEHUB_ENTRA_CLIENT_ID",
-    "COMPLIANCEHUB_ENTRA_CLIENT_SECRET",
+    "COMPLIANCEHUB_ENTRA_CLIENT_SECRET_FILE",
     "COMPLIANCEHUB_ENTRA_PROVIDER_ID",
-    "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET",
+    "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET_FILE",
+    "LEAD_ADMIN_SECRET_FILE",
     "COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND",
-    "COMPLIANCEHUB_RUNTIME_STORAGE_AUTH",
-    "AZURE_STORAGE_ACCOUNT_NAME",
-    "AZURE_STORAGE_CONTAINER_NAME",
+    "COMPLIANCEHUB_S3_ENDPOINT",
+    "COMPLIANCEHUB_S3_REGION",
+    "COMPLIANCEHUB_S3_BUCKET",
+    "COMPLIANCEHUB_S3_ACCESS_KEY_FILE",
+    "COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE",
     "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND",
-    "AZURE_POSTGRES_HOST",
-    "AZURE_POSTGRES_DATABASE",
-    "AZURE_POSTGRES_USER",
+    "COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS",
+    "POSTGRES_HOST",
+    "POSTGRES_DATABASE",
+    "POSTGRES_USER",
+    "POSTGRES_PASSWORD_FILE",
     "COMPLIANCEHUB_ADVISOR_RUNTIME_RETENTION_DAYS",
+    "COMPLIANCEHUB_SESSION_TTL_MINUTES",
   ];
   requireKeys(enterpriseRequired);
+  rejectPlaceholders([
+    ...enterpriseRequired,
+    "AZURE_OPENAI_ENDPOINT",
+    "AZURE_OPENAI_DEPLOYMENT",
+  ]);
+  if (process.env.NEXT_PUBLIC_API_BASE_URL?.trim()) {
+    errors.push(
+      "NEXT_PUBLIC_API_BASE_URL is forbidden; authenticated browser traffic must use the same-origin BFF",
+    );
+  }
 
   for (const key of [
     "COMPLIANCEHUB_ENTRA_TENANT_ID",
@@ -222,17 +291,17 @@ if (releaseProfile === "enterprise") {
     COMPLIANCEHUB_ENTRA_PROVISIONING_READY:
       "Entra provisioning and access recertification evidence",
     COMPLIANCEHUB_RUNTIME_STORAGE_READY:
-      "Azure storage region, RBAC, network, diagnostics and restore evidence",
+      "S3 location, private bucket, credential rotation, diagnostics and restore evidence",
     COMPLIANCEHUB_CSP_REPORTING_READY:
       "CSP reporting privacy, SIEM retention, alerting and abuse controls",
     COMPLIANCEHUB_RELATIONAL_RUNTIME_READY:
-      "Azure PostgreSQL region, Entra role, TLS, schema and connection evidence",
+      "Hetzner PostgreSQL location, runtime role, TLS, schema and connection evidence",
     COMPLIANCEHUB_POSTGRES_RLS_READY:
       "PostgreSQL FORCE RLS and cross-tenant denial evidence",
     COMPLIANCEHUB_POSTGRES_NETWORK_READY:
-      "Azure PostgreSQL private network and firewall evidence",
+      "PostgreSQL private network and firewall evidence",
     COMPLIANCEHUB_POSTGRES_BACKUP_RESTORE_READY:
-      "Azure PostgreSQL PITR and restore-test evidence",
+      "Hetzner PostgreSQL PITR and restore-test evidence",
     COMPLIANCEHUB_POSTGRES_RETENTION_READY:
       "PostgreSQL retention, legal-hold and deletion-audit evidence",
     COMPLIANCEHUB_POSTGRES_DATA_MIGRATION_READY:
@@ -249,32 +318,50 @@ if (releaseProfile === "enterprise") {
   if (process.env.COMPLIANCEHUB_ENTRA_ENABLED !== "true") {
     errors.push("COMPLIANCEHUB_ENTRA_ENABLED must be true for production identity");
   }
-  if (process.env.COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND !== "azure_blob") {
-    errors.push("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND must be azure_blob in production");
+  for (const localIdentityFlag of [
+    "COMPLIANCEHUB_PASSWORD_LOGIN_ENABLED",
+    "COMPLIANCEHUB_SELF_REGISTRATION_ENABLED",
+  ]) {
+    if (environmentFlagIsTrue(localIdentityFlag)) {
+      errors.push(`${localIdentityFlag} must remain disabled in enterprise production`);
+    }
   }
-  if (process.env.COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND !== "azure_postgres") {
+  if (
+    !["standard_dach", "eu_sovereign", "strict_sovereign"].includes(
+      process.env.COMPLIANCEHUB_SOVEREIGNTY_MODE || "",
+    )
+  ) {
+    errors.push("COMPLIANCEHUB_SOVEREIGNTY_MODE must select a restrictive production mode");
+  }
+  if (process.env.COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND !== "s3") {
+    errors.push("COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND must be s3 in production");
+  }
+  if (process.env.COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND !== "postgres") {
     errors.push(
-      "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND must be azure_postgres in production",
+      "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND must be postgres in production",
     );
   }
 
   validateRetentionDays("COMPLIANCEHUB_ADVISOR_RUNTIME_RETENTION_DAYS", 30, 3_650);
+  validateRetentionDays("COMPLIANCEHUB_SESSION_TTL_MINUTES", 5, 480);
 
-  const postgresHost = process.env.AZURE_POSTGRES_HOST?.trim().toLowerCase() || "";
-  if (
-    !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.postgres\.database\.azure\.com$/.test(
-      postgresHost,
-    )
-  ) {
-    errors.push("AZURE_POSTGRES_HOST must be an Azure PostgreSQL hostname");
+  const postgresHost = process.env.POSTGRES_HOST?.trim().toLowerCase() || "";
+  const allowedPostgresHosts = new Set(
+    (process.env.COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS || "")
+      .split(",")
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  if (!allowedPostgresHosts.has(postgresHost)) {
+    errors.push("POSTGRES_HOST must be listed in COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS");
   }
   if (
-    ["postgres", "azure_pg_admin", "azuresu"].includes(
-      process.env.AZURE_POSTGRES_USER?.trim().toLowerCase() || "",
+    ["postgres", "azure_pg_admin", "azuresu", "root"].includes(
+      process.env.POSTGRES_USER?.trim().toLowerCase() || "",
     )
   ) {
     errors.push(
-      "Azure PostgreSQL administrator identities are forbidden for application runtime",
+      "PostgreSQL administrator identities are forbidden for application runtime",
     );
   }
 
@@ -283,48 +370,245 @@ if (releaseProfile === "enterprise") {
     "PGPASSWORD",
     "POSTGRES_URL",
     "DATABASE_URL",
+    "POSTGRES_PASSWORD",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AZURE_OPENAI_API_KEY",
+    "COMPLIANCEHUB_API_KEY",
+    "COMPLIANCEHUB_BFF_SHARED_SECRET",
+    "COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY",
+    "COMPLIANCEHUB_ENTRA_CLIENT_SECRET",
+    "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET",
+    "LEAD_ADMIN_SECRET",
+    "GTM_ALERT_SECRET",
+    "LEAD_SYNC_N8N_SECRET",
+    "LEAD_INBOUND_WEBHOOK_SECRET",
+    "GTM_ALERT_WEBHOOK_SECRET",
+    "COMPLIANCEHUB_N8N_WEBHOOK_SECRET",
+    "COMPLIANCEHUB_EXPORT_WEBHOOK_SECRET",
+    "INTERNAL_HEALTH_API_KEY",
   ]) {
     if (process.env[forbiddenCredential]?.trim()) {
       errors.push(
-        `${forbiddenCredential} is forbidden; use short-lived Microsoft Entra tokens`,
+        `${forbiddenCredential} is forbidden; mount a rotated OpenBao-managed secret file`,
       );
     }
   }
 
-  const runtimeStorageAuth = process.env.COMPLIANCEHUB_RUNTIME_STORAGE_AUTH;
-  if (runtimeStorageAuth !== "managed_identity" && runtimeStorageAuth !== "vercel_oidc") {
-    errors.push("Runtime storage must use managed_identity or vercel_oidc authentication");
+  for (const forbiddenProviderVariable of [
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "CLAUDE_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_API_URL",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "LANGSMITH_API_KEY",
+    "LANGSMITH_ENDPOINT",
+    "LANGCHAIN_API_KEY",
+    "LANGCHAIN_ENDPOINT",
+    "POSTHOG_API_KEY",
+    "POSTHOG_HOST",
+    "TEMPORAL_API_KEY",
+  ]) {
+    if (process.env[forbiddenProviderVariable]?.trim()) {
+      errors.push(
+        `${forbiddenProviderVariable} is forbidden; Azure is the only approved external AI/provider exception`,
+      );
+    }
   }
-  if (process.env.VERCEL && runtimeStorageAuth !== "vercel_oidc") {
-    errors.push("Vercel production runtime storage must use OIDC federation");
+  if (environmentFlagIsTrue("COMPLIANCEHUB_TEMPORAL_ENABLED")) {
+    const address = process.env.TEMPORAL_ADDRESS?.trim() || "";
+    const allowedHosts = new Set(
+      (process.env.COMPLIANCEHUB_TEMPORAL_ALLOWED_HOSTS || "")
+        .split(",")
+        .map((host) => host.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const match = address.match(/^\[?([^\]]+)\]?:([1-9]\d{0,4})$/);
+    const hostname = match?.[1]?.toLowerCase() || "";
+    const managedTemporalHost =
+      hostname === "temporal.io" ||
+      hostname.endsWith(".temporal.io") ||
+      hostname.endsWith(".tmprl.cloud");
+    if (!match || managedTemporalHost || !allowedHosts.has(hostname)) {
+      errors.push(
+        "Enabled Temporal must use an exact allowlisted self-hosted host:port endpoint",
+      );
+    }
   }
-  if (runtimeStorageAuth === "vercel_oidc") {
-    requireKeys(["AZURE_TENANT_ID", "AZURE_CLIENT_ID"]);
+  for (const forbiddenProviderFlag of [
+    "COMPLIANCEHUB_LLM_US_CLOUD_OK",
+    "COMPLIANCEHUB_LLM_ASSUME_CLAUDE_EU",
+    "LANGCHAIN_TRACING_V2",
+    "LANGSMITH_TRACING",
+  ]) {
+    if (environmentFlagIsTrue(forbiddenProviderFlag)) {
+      errors.push(
+        `${forbiddenProviderFlag} is forbidden; Azure is the only approved external AI/provider exception`,
+      );
+    }
+  }
+  if (
+    process.env.HAYSTACK_TELEMETRY_ENABLED &&
+    !["0", "false", "no", "off"].includes(
+      process.env.HAYSTACK_TELEMETRY_ENABLED.trim().toLowerCase(),
+    )
+  ) {
+    errors.push("HAYSTACK_TELEMETRY_ENABLED must be false in production");
   }
 
-  for (const [key, minimumLength] of [
-    ["COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY", 32],
-    ["COMPLIANCEHUB_BFF_SHARED_SECRET", 32],
-    ["COMPLIANCEHUB_ENTRA_CLIENT_SECRET", 32],
-    ["COMPLIANCEHUB_AUTH_TRANSACTION_SECRET", 32],
+  for (const key of [
+    "COMPLIANCEHUB_S3_ACCESS_KEY_FILE",
+    "COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE",
+    "POSTGRES_PASSWORD_FILE",
+    "COMPLIANCEHUB_BFF_SHARED_SECRET_FILE",
+    "COMPLIANCEHUB_ENTRA_CLIENT_SECRET_FILE",
+    "COMPLIANCEHUB_AUTH_TRANSACTION_SECRET_FILE",
+    "LEAD_ADMIN_SECRET_FILE",
+    "GTM_ALERT_SECRET_FILE",
+    "LEAD_SYNC_N8N_SECRET_FILE",
+    "LEAD_INBOUND_WEBHOOK_SECRET_FILE",
+    "GTM_ALERT_WEBHOOK_SECRET_FILE",
+    "COMPLIANCEHUB_N8N_WEBHOOK_SECRET_FILE",
+    "COMPLIANCEHUB_EXPORT_WEBHOOK_SECRET_FILE",
+    "INTERNAL_HEALTH_API_KEY_FILE",
   ]) {
-    if ((process.env[key] || "").length < minimumLength) {
-      errors.push(`${key} must contain at least ${minimumLength} characters`);
+    if (process.env[key] && !process.env[key].startsWith("/")) {
+      errors.push(`${key} must be an absolute mounted secret-file path`);
     }
+  }
+
+  for (const [key, rawValue] of Object.entries(process.env)) {
+    if (
+      rawValue?.trim() &&
+      (key.startsWith("HUBSPOT_") ||
+        key.startsWith("PIPEDRIVE_") ||
+        key.startsWith("STRIPE_") ||
+        key.startsWith("COMPLIANCEHUB_STRIPE_"))
+    ) {
+      errors.push(`${key} is forbidden by the sovereign production provider policy`);
+    }
+  }
+  for (const key of ["LEAD_SYNC_HUBSPOT_STUB", "LEAD_SYNC_PIPEDRIVE_STUB"]) {
+    if (process.env[key] === "1") {
+      errors.push(`${key} is forbidden in production`);
+    }
+  }
+
+  const allowedWebhookHosts = new Set(
+    (process.env.COMPLIANCEHUB_OUTBOUND_WEBHOOK_ALLOWED_HOSTS || "")
+      .split(",")
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const forbiddenWebhookSuffixes = [
+    "hubapi.com",
+    "hubspot.com",
+    "pipedrive.com",
+    "vercel.app",
+    "vercel.com",
+    "neon.tech",
+    "stripe.com",
+    "posthog.com",
+    "sentry.io",
+  ];
+  for (const [urlKey, secretFileKey] of [
+    ["LEAD_SYNC_N8N_URL", "LEAD_SYNC_N8N_SECRET_FILE"],
+    ["LEAD_INBOUND_WEBHOOK_URL", "LEAD_INBOUND_WEBHOOK_SECRET_FILE"],
+    ["GTM_ALERT_WEBHOOK_URL", "GTM_ALERT_WEBHOOK_SECRET_FILE"],
+  ]) {
+    const rawUrl = process.env[urlKey]?.trim();
+    if (!rawUrl) continue;
+    requireKeys([secretFileKey, "COMPLIANCEHUB_OUTBOUND_WEBHOOK_ALLOWED_HOSTS"]);
+    try {
+      const endpoint = new URL(rawUrl);
+      const hostname = endpoint.hostname.toLowerCase();
+      const forbiddenHost = forbiddenWebhookSuffixes.some(
+        (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`),
+      );
+      if (
+        endpoint.protocol !== "https:" ||
+        endpoint.username ||
+        endpoint.password ||
+        endpoint.search ||
+        endpoint.hash ||
+        forbiddenHost ||
+        !allowedWebhookHosts.has(hostname)
+      ) {
+        errors.push(`${urlKey} must be an approved allowlisted HTTPS endpoint`);
+      }
+    } catch {
+      errors.push(`${urlKey} must be a valid absolute URL`);
+    }
+  }
+  try {
+    const endpoint = new URL(process.env.COMPLIANCEHUB_S3_ENDPOINT || "");
+    if (
+      endpoint.protocol !== "https:" ||
+      !["fsn1.your-objectstorage.com", "nbg1.your-objectstorage.com"]
+        .concat(
+          (process.env.COMPLIANCEHUB_S3_ALLOWED_HOSTS || "")
+            .split(",")
+            .map((host) => host.trim().toLowerCase())
+            .filter(Boolean),
+        )
+        .includes(endpoint.hostname.toLowerCase())
+    ) {
+      errors.push("COMPLIANCEHUB_S3_ENDPOINT must be an approved HTTPS endpoint");
+    }
+  } catch {
+    errors.push("COMPLIANCEHUB_S3_ENDPOINT must be a valid HTTPS endpoint");
   }
 
   if (process.env.COMPLIANCEHUB_LLM_PREFER_AZURE === "true") {
     requireKeys(["AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_DEPLOYMENT"]);
-    if (process.env.AZURE_OPENAI_AUTH !== "managed_identity") {
-      errors.push("AZURE_OPENAI_AUTH must be managed_identity in production");
+    if (process.env.AZURE_OPENAI_AUTH !== "client_certificate") {
+      errors.push("Hetzner production requires certificate-backed Azure OpenAI identity");
+    } else {
+      requireKeys([
+        "AZURE_TENANT_ID",
+        "AZURE_CLIENT_ID",
+        "AZURE_CLIENT_CERTIFICATE_PATH",
+      ]);
+      if (
+        process.env.AZURE_CLIENT_CERTIFICATE_PATH &&
+        !process.env.AZURE_CLIENT_CERTIFICATE_PATH.startsWith("/")
+      ) {
+        errors.push("AZURE_CLIENT_CERTIFICATE_PATH must be an absolute mounted secret path");
+      }
     }
     if (process.env.COMPLIANCEHUB_LLM_ASSUME_AZURE_EU !== "true") {
       errors.push("Azure EU regional/Data Zone processing must be reviewed and attested");
+    }
+    if (process.env.COMPLIANCEHUB_SOVEREIGNTY_MODE !== "standard_dach") {
+      errors.push("Azure OpenAI is permitted only in standard_dach mode");
+    }
+    try {
+      const endpoint = new URL(process.env.AZURE_OPENAI_ENDPOINT || "");
+      const approvedAzureHost = ["openai.azure.com", "services.ai.azure.com"].some(
+        (suffix) =>
+          endpoint.hostname.endsWith(`.${suffix}`) && endpoint.hostname !== suffix,
+      );
+      if (
+        endpoint.protocol !== "https:" ||
+        endpoint.username ||
+        endpoint.password ||
+        endpoint.search ||
+        endpoint.hash ||
+        !approvedAzureHost ||
+        !["/", "/openai/v1"].includes(endpoint.pathname)
+      ) {
+        errors.push("AZURE_OPENAI_ENDPOINT must be an approved bare Azure HTTPS endpoint");
+      }
+    } catch {
+      errors.push("AZURE_OPENAI_ENDPOINT must be a valid Azure HTTPS endpoint");
     }
   }
 }
 
 const publicCredentialPattern = /NEXT_PUBLIC_(?:API_KEY|SECRET|TOKEN)/;
+const hardcodedLegacyCredentialPattern = /tenant-overview-key/;
 const sourceRoot = resolve("src");
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 
@@ -339,11 +623,18 @@ function scanPublicCredentials(directory) {
       if (publicCredentialPattern.test(content)) {
         errors.push(`${path}: public credential environment variables are forbidden`);
       }
+      if (hardcodedLegacyCredentialPattern.test(content)) {
+        errors.push(`${path}: hardcoded legacy API credentials are forbidden`);
+      }
     }
   }
 }
 
-scanPublicCredentials(sourceRoot);
+if (existsSync(sourceRoot)) {
+  scanPublicCredentials(sourceRoot);
+} else if (process.env.COMPLIANCEHUB_RUNTIME_PREFLIGHT !== "true") {
+  errors.push("src is unavailable and COMPLIANCEHUB_RUNTIME_PREFLIGHT is not enabled");
+}
 
 if (errors.length) {
   process.stderr.write(

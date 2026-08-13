@@ -22,9 +22,6 @@ const MAX_SNAPSHOTS = 120;
 function historyPath(): string {
   const fromEnv = process.env.ADVISOR_KPI_HISTORY_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-advisor-kpi-history.json");
-  }
   return join(process.cwd(), "data", "advisor-kpi-history.json");
 }
 

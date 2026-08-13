@@ -3,12 +3,12 @@ import { NextResponse } from "next/server";
 import { computeBoardReadinessPayload } from "@/lib/boardReadinessAggregate";
 import { generateQuarterlyBoardPack } from "@/lib/boardPackGenerate";
 import { readBoardReadinessBriefingBaseline } from "@/lib/boardReadinessBriefingSnapshotStore";
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

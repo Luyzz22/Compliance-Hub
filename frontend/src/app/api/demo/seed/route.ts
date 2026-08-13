@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE =
-  process.env.COMPLIANCEHUB_API_BASE_URL || "http://localhost:8000";
-const DEMO_KEY = process.env.COMPLIANCEHUB_DEMO_SEED_API_KEY?.trim() || "";
+import { readServerSecret } from "@/lib/serverSecret";
+import {
+  complianceApiBaseUrl,
+  mutationCsrfIsValid,
+  noStoreJson,
+} from "@/lib/serverSession";
 
 export async function POST(request: NextRequest) {
-  if (!DEMO_KEY) {
+  if (!mutationCsrfIsValid(request)) {
+    return noStoreJson({ error: "csrf_validation_failed" }, { status: 403 });
+  }
+  const demoKey = readServerSecret({
+    environmentVariable: "COMPLIANCEHUB_DEMO_SEED_API_KEY",
+    fileEnvironmentVariable: "COMPLIANCEHUB_DEMO_SEED_API_KEY_FILE",
+    minimumBytes: 32,
+  });
+  if (!demoKey) {
     return NextResponse.json(
-      { error: "COMPLIANCEHUB_DEMO_SEED_API_KEY nicht gesetzt" },
+      { error: "Demo-Seeding ist nicht freigeschaltet" },
       { status: 503 },
     );
   }
@@ -17,14 +28,16 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Ungültiger JSON-Body" }, { status: 400 });
   }
-  const res = await fetch(`${API_BASE}/api/v1/demo/tenants/seed`, {
+  const res = await fetch(`${complianceApiBaseUrl()}/api/v1/demo/tenants/seed`, {
     method: "POST",
     headers: {
-      "x-api-key": DEMO_KEY,
+      "x-api-key": demoKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
     cache: "no-store",
+    redirect: "manual",
+    signal: AbortSignal.timeout(30_000),
   });
   const text = await res.text();
   if (!res.ok) {

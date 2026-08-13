@@ -28,9 +28,6 @@ export { getOpsEntryForLead } from "@/lib/leadOpsSelectors";
 function resolveOpsPath(): string {
   const fromEnv = process.env.LEAD_INQUIRY_OPS_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-lead-ops-state.json");
-  }
   return join(process.cwd(), "data", "lead-inquiries", "ops-state.json");
 }
 

@@ -27,7 +27,9 @@ from app.advisor_governance_maturity_brief_models import (
 from app.ai_kpi_models import AiKpiSummaryResponse
 from app.ai_system_models import AISystemCriticality, AISystemRiskLevel
 from app.feature_flags import FeatureFlag, is_feature_enabled
-from app.llm_models import LLMTaskType
+from app.llm.client_wrapped import guardrailed_route_and_call_sync
+from app.llm.context import LlmCallContext
+from app.llm_models import LLMDataClass, LLMTaskType
 from app.readiness_score_models import ReadinessScoreResponse
 from app.repositories.advisor_tenants import AdvisorTenantRepository
 from app.repositories.ai_compliance_board_reports import AiComplianceBoardReportRepository
@@ -44,7 +46,6 @@ from app.services.advisor_governance_maturity_brief_markdown import (
 from app.services.ai_kpi_service import build_ai_kpi_summary
 from app.services.cross_regulation import build_cross_regulation_summary
 from app.services.cross_regulation_gaps import compute_cross_regulation_gaps
-from app.services.llm_router import LLMRouter
 from app.services.oami_explanation import explain_tenant_oami_de
 from app.services.operational_monitoring_index import compute_tenant_operational_monitoring_index
 from app.services.readiness_score_service import compute_readiness_score
@@ -360,11 +361,17 @@ def generate_advisor_governance_snapshot_markdown(
     facts = json.dumps(snapshot.model_dump(mode="json"), ensure_ascii=False)
     prompt = system_block + _STRUCTURE_HINT + "\n\nJSON-Fakten:\n" + facts
 
-    router = LLMRouter(session=session)
-    resp = router.route_and_call(
+    resp = guardrailed_route_and_call_sync(
+        session,
         LLMTaskType.ADVISOR_GOVERNANCE_SNAPSHOT,
         prompt,
         client_tenant_id,
+        context=LlmCallContext(
+            tenant_id=client_tenant_id,
+            action_name="generate_advisor_governance_snapshot",
+            data_class=LLMDataClass.CONFIDENTIAL,
+        ),
+        response_format=None,
     )
     md_body = (resp.text or "").strip()
     prefix = ""

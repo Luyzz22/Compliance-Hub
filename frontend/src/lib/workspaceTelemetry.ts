@@ -69,7 +69,7 @@ export async function trackWorkspaceFeatureUsed(args: TrackWorkspaceFeatureUsedA
   try {
     await fetch("/api/workspace/feature-used", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...browserCsrfHeaders() },
       body: JSON.stringify(body),
       cache: "no-store",
     });
@@ -77,3 +77,4 @@ export async function trackWorkspaceFeatureUsed(args: TrackWorkspaceFeatureUsedA
     /* bewusst verschlucken */
   }
 }
+import { browserCsrfHeaders } from "@/lib/clientSessionHeaders";

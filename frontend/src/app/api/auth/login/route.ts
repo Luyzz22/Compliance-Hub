@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { parseLoginBody } from "@/lib/sessionSecurity";
+import { isEnterpriseProductionRuntime } from "@/lib/outboundEndpointPolicy";
 import {
   bffBackendHeaders,
   complianceApiBaseUrl,
@@ -22,6 +23,9 @@ type BackendLogin = {
 };
 
 export async function POST(request: NextRequest) {
+  if (isEnterpriseProductionRuntime()) {
+    return noStoreJson({ ok: false, error: "password_login_disabled" }, { status: 404 });
+  }
   if (!mutationRequestIsTrusted(request)) {
     return noStoreJson({ ok: false, error: "invalid_origin" }, { status: 403 });
   }
@@ -35,6 +39,7 @@ export async function POST(request: NextRequest) {
   try {
     backend = await fetch(`${complianceApiBaseUrl()}/api/v1/auth/session/login`, {
       method: "POST",
+      redirect: "manual",
       headers: { "Content-Type": "application/json", ...bffBackendHeaders() },
       body: JSON.stringify(body),
       cache: "no-store",

@@ -1,0 +1,11 @@
+.git
+.venv
+.env*
+frontend
+node_modules
+output
+test_compliancehub.db
+*.pyc
+__pycache__
+.pytest_cache
+.ruff_cache

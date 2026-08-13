@@ -49,6 +49,45 @@ def test_default_mode_does_not_break_existing_provider_configuration(
     assert sovereignty.filter_llm_provider_chain(chain) == chain
 
 
+def test_unrestricted_mode_is_forbidden_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_mode(monkeypatch, "unrestricted")
+    monkeypatch.setenv("COMPLIANCEHUB_ENV", "production")
+
+    with pytest.raises(
+        sovereignty.SovereigntyConfigurationError,
+        match="explicitly restrictive in production",
+    ):
+        sovereignty.verify_startup_configuration()
+
+
+def test_production_rejects_direct_automation_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_mode(monkeypatch, "standard_dach")
+    monkeypatch.setenv("COMPLIANCEHUB_ENV", "production")
+    monkeypatch.setenv("COMPLIANCEHUB_N8N_WEBHOOK_SECRET", "direct-secret")
+
+    with pytest.raises(
+        sovereignty.SovereigntyConfigurationError,
+        match="N8N_WEBHOOK_SECRET.*direct secret",
+    ):
+        sovereignty.verify_startup_configuration()
+
+
+def test_production_requires_internal_fail_closed_opa(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_mode(monkeypatch, "standard_dach")
+    monkeypatch.setenv("COMPLIANCEHUB_ENV", "production")
+    monkeypatch.delenv("OPA_URL", raising=False)
+    monkeypatch.setenv("COMPLIANCEHUB_OPA_STRICT_MISSING", "false")
+
+    violations = sovereignty.verify_startup_configuration(raise_on_error=False)
+
+    assert "COMPLIANCEHUB_OPA_STRICT_MISSING must be true in production" in violations
+    assert "OPA_URL is required in production" in violations
+
+
 def test_unknown_mode_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_mode(monkeypatch, "eu_sovereign_ish")
     with pytest.raises(sovereignty.SovereigntyConfigurationError):
@@ -117,11 +156,66 @@ def test_startup_verification_passes_for_clean_configuration(
     assert sovereignty.verify_startup_configuration() == []
 
 
+@pytest.mark.parametrize(
+    ("variable", "value"),
+    [
+        ("OPENAI_API_KEY", "configured-key"),
+        ("ANTHROPIC_API_KEY", "configured-key"),
+        ("GOOGLE_API_KEY", "configured-key"),
+        ("HAYSTACK_TELEMETRY_ENABLED", "true"),
+        ("POSTHOG_API_KEY", "configured-key"),
+        ("POSTHOG_HOST", "https://telemetry.example"),
+        ("COMPLIANCEHUB_STRIPE_WEBHOOK_SECRET", "configured-key"),
+        ("TEMPORAL_API_KEY", "configured-key"),
+    ],
+)
+def test_standard_dach_rejects_unapproved_provider_configuration(
+    monkeypatch: pytest.MonkeyPatch, variable: str, value: str
+) -> None:
+    _set_mode(monkeypatch, "standard_dach")
+    monkeypatch.setenv(variable, value)
+
+    with pytest.raises(sovereignty.SovereigntyConfigurationError, match=variable):
+        sovereignty.verify_startup_configuration()
+
+
 def test_strict_mode_forbids_azure_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_mode(monkeypatch, "strict_sovereign")
     monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com")
     violations = sovereignty.verify_startup_configuration(raise_on_error=False)
     assert any("AZURE_OPENAI_ENDPOINT" in v for v in violations)
+
+
+def test_production_temporal_requires_private_allowlisted_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_mode(monkeypatch, "standard_dach")
+    monkeypatch.setenv("COMPLIANCEHUB_ENV", "production")
+    monkeypatch.setenv("COMPLIANCEHUB_OPA_STRICT_MISSING", "true")
+    monkeypatch.setenv("OPA_URL", "http://opa:8181")
+    monkeypatch.setenv("COMPLIANCEHUB_OPA_ALLOWED_HOSTS", "opa")
+    monkeypatch.setenv("COMPLIANCEHUB_TEMPORAL_ENABLED", "true")
+    monkeypatch.setenv("TEMPORAL_ADDRESS", "namespace.tmprl.cloud:7233")
+    monkeypatch.setenv("COMPLIANCEHUB_TEMPORAL_ALLOWED_HOSTS", "namespace.tmprl.cloud")
+
+    violations = sovereignty.verify_startup_configuration(raise_on_error=False)
+
+    assert any("must not target Temporal Cloud" in violation for violation in violations)
+
+
+def test_production_temporal_accepts_self_hosted_allowlisted_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_mode(monkeypatch, "standard_dach")
+    monkeypatch.setenv("COMPLIANCEHUB_ENV", "production")
+    monkeypatch.setenv("COMPLIANCEHUB_OPA_STRICT_MISSING", "true")
+    monkeypatch.setenv("OPA_URL", "http://opa:8181")
+    monkeypatch.setenv("COMPLIANCEHUB_OPA_ALLOWED_HOSTS", "opa")
+    monkeypatch.setenv("COMPLIANCEHUB_TEMPORAL_ENABLED", "true")
+    monkeypatch.setenv("TEMPORAL_ADDRESS", "temporal.internal:7233")
+    monkeypatch.setenv("COMPLIANCEHUB_TEMPORAL_ALLOWED_HOSTS", "temporal.internal")
+
+    assert sovereignty.verify_startup_configuration() == []
 
 
 def test_unrestricted_mode_permits_no_residency_claims(

@@ -40,3 +40,17 @@ def test_board_report_user_prompt_includes_oami_subtype_when_profile_set() -> No
     prompt = build_board_report_user_prompt(inp)
     assert "OAMI Incident-Subtypen" in prompt
     assert "oami_subtype_profile" in prompt
+
+
+def test_board_report_prompt_excludes_technical_tenant_identifier() -> None:
+    technical_tenant_id = "br-gov-BC85C3AB15"
+    inp = AiComplianceBoardReportInput(
+        tenant_id=technical_tenant_id,
+        audience_type="board",
+        language="de",
+    )
+
+    prompt = build_board_report_user_prompt(inp)
+
+    assert technical_tenant_id not in prompt
+    assert "ohne technische Mandantenkennung" in prompt

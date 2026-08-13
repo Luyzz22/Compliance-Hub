@@ -14,9 +14,6 @@ const FILE_VERSION = "wave47-v1";
 function statePath(): string {
   const fromEnv = process.env.ADVISOR_SLA_SIGNAL_STATE_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-advisor-sla-signal-state.json");
-  }
   return join(process.cwd(), "data", "advisor-sla-signal-state.json");
 }
 

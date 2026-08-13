@@ -15,10 +15,10 @@ function installDatabase(
   rowsForQuery: (text: string) => unknown[] = () => [],
 ): QueryCall[] {
   vi.stubEnv("NODE_ENV", "test");
-  vi.stubEnv("AZURE_POSTGRES_HOST", "compliancehub.postgres.database.azure.com");
-  vi.stubEnv("AZURE_POSTGRES_DATABASE", "compliancehub");
-  vi.stubEnv("AZURE_POSTGRES_USER", "runtime-principal");
-  vi.stubEnv("COMPLIANCEHUB_RUNTIME_STORAGE_AUTH", "default");
+  vi.stubEnv("POSTGRES_HOST", "postgres.internal");
+  vi.stubEnv("POSTGRES_DATABASE", "compliancehub");
+  vi.stubEnv("POSTGRES_USER", "runtime-principal");
+  vi.stubEnv("POSTGRES_PASSWORD_FILE", "/run/secrets/postgres-password");
   const calls: QueryCall[] = [];
   const client = {
     async query(text: string, values?: unknown[]) {

@@ -46,18 +46,12 @@ export type {
 function historyPath(): string {
   const fromEnv = process.env.ADVISOR_MANDANT_HISTORY_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-advisor-mandant-history.json");
-  }
   return join(process.cwd(), "data", "advisor-mandant-history.json");
 }
 
 function legacyTouchpointsPath(): string {
   const fromEnv = process.env.ADVISOR_PORTFOLIO_TOUCHPOINTS_PATH?.trim();
   if (fromEnv) return absoluteRuntimeFilePath(fromEnv);
-  if (process.env.VERCEL) {
-    return join("/tmp", "compliancehub-advisor-portfolio-touchpoints.json");
-  }
   return join(process.cwd(), "data", "advisor-portfolio-touchpoints.json");
 }
 
@@ -170,7 +164,7 @@ function mergeLegacyIntoMap(map: Map<string, AdvisorMandantHistoryEntry>, legacy
  * Alle Einträge als Map (inkl. Legacy-Touchpoints aus Wave 39, falls vorhanden).
  */
 export async function readAdvisorMandantHistoryMap(): Promise<Map<string, AdvisorMandantHistoryEntry>> {
-  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+  if (resolveRelationalRuntimeBackend() === "postgres") {
     const state = await readAllAdvisorMandantHistoryPostgres();
     return new Map(state.entries.map((entry) => [entry.tenant_id, { ...entry }]));
   }
@@ -187,7 +181,7 @@ export async function readAdvisorMandantHistoryMap(): Promise<Map<string, Adviso
 export async function readAdvisorMandantHistoryEntry(
   tenantId: string,
 ): Promise<AdvisorMandantHistoryEntry> {
-  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+  if (resolveRelationalRuntimeBackend() === "postgres") {
     return (await readAdvisorMandantHistoryPostgres(tenantId)) ?? emptyEntry(tenantId);
   }
   const m = await readAdvisorMandantHistoryMap();
@@ -203,7 +197,7 @@ export async function recordMandantReadinessExport(tenantId: string, atIso?: str
   const t = (atIso ?? new Date().toISOString()).trim();
   const tid = tenantId.trim();
   if (!tid) return;
-  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+  if (resolveRelationalRuntimeBackend() === "postgres") {
     await recordMandantReadinessExportPostgres(tid, t);
     return;
   }
@@ -226,7 +220,7 @@ export async function recordDatevBundleExport(tenantId: string, atIso?: string):
   const t = (atIso ?? new Date().toISOString()).trim();
   const tid = tenantId.trim();
   if (!tid) return;
-  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+  if (resolveRelationalRuntimeBackend() === "postgres") {
     await recordDatevBundleExportPostgres(tid, t);
     return;
   }
@@ -253,7 +247,7 @@ export async function recordAdvisorReviewMarked(
   const t = (atIso ?? new Date().toISOString()).trim();
   const tid = tenantId.trim();
   if (!tid) return;
-  if (resolveRelationalRuntimeBackend() === "azure_postgres") {
+  if (resolveRelationalRuntimeBackend() === "postgres") {
     await recordAdvisorReviewMarkedPostgres(tid, noteDe, t);
     return;
   }

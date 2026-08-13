@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Leichtgewichtige Client-Events (Vercel/Server-Logs via `/api/marketing-event`).
+ * Leichtgewichtige Client-Events (serverseitige Logs via `/api/marketing-event`).
  * Keine Drittanbieter-Analytics; keine sensiblen Formularinhalte.
  */
 

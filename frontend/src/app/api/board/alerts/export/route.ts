@@ -1,24 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
-
-const API_BASE =
-  process.env.COMPLIANCEHUB_API_BASE_URL || "http://localhost:8000";
-const API_KEY =
-  process.env.COMPLIANCEHUB_API_KEY || "tenant-overview-key";
+import { serverSessionApiFetch } from "@/lib/serverBackendApi";
 
 export async function GET(request: NextRequest) {
-  const tenantId = await getWorkspaceTenantIdServer();
   const format = request.nextUrl.searchParams.get("format") || "json";
   const validFormat = format === "csv" ? "csv" : "json";
-  const url = `${API_BASE}/api/v1/ai-governance/alerts/board/export?format=${validFormat}`;
-  const res = await fetch(url, {
-    headers: {
-      "x-api-key": API_KEY,
-      "x-tenant-id": tenantId,
-    },
-    cache: "no-store",
-  });
+  const res = await serverSessionApiFetch(
+    `/api/v1/ai-governance/alerts/board/export?format=${validFormat}`,
+  );
   if (!res.ok) {
     return NextResponse.json(
       { error: "Export fehlgeschlagen" },

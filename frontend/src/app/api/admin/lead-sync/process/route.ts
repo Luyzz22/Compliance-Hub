@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { isLeadAdminAuthorized } from "@/lib/leadAdminAuth";
+import { isLeadAdminAuthorized, leadAdminIsConfigured } from "@/lib/leadAdminAuth";
 import { processPendingLeadSyncJobs } from "@/lib/leadSyncDispatcher";
 
 export const runtime = "nodejs";
 
 /** Warteschlange abarbeiten (Cron oder manuell). */
 export async function POST(req: Request) {
-  if (!process.env.LEAD_ADMIN_SECRET?.trim()) {
+  if (!leadAdminIsConfigured()) {
     return NextResponse.json({ error: "not_configured" }, { status: 404 });
   }
   if (!isLeadAdminAuthorized(req)) {

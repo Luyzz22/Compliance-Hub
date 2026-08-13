@@ -49,7 +49,10 @@ export function resolveAdvisorRuntimeRetentionDays(
 ): number {
   const configured = env.COMPLIANCEHUB_ADVISOR_RUNTIME_RETENTION_DAYS?.trim();
   if (!configured) {
-    if (env.NODE_ENV === "production" || env.VERCEL) {
+    if (
+      env.NODE_ENV === "production" ||
+      env.COMPLIANCEHUB_RELEASE_CHANNEL === "production"
+    ) {
       throw new RuntimePostgresConfigurationError(
         "COMPLIANCEHUB_ADVISOR_RUNTIME_RETENTION_DAYS is required in production",
       );

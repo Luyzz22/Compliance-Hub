@@ -13,7 +13,15 @@ from app.demo_tenant_guard import ensure_tenant_writes_allowed_if_not_demo
 from app.repositories.tenant_api_keys import TenantApiKeyRepository
 from app.repositories.user_sessions import UserSessionRepository
 from app.repositories.users import UserRepository
-from app.security import AuthContext, get_settings, secret_matches_any
+from app.security import (
+    AuthContext,
+    get_settings,
+    require_advisor_allowlist_configured,
+    secret_matches_any,
+)
+from app.security import (
+    require_advisor_api_access as require_advisor_api_key_access,
+)
 from app.services.user_session_service import UserSessionService
 
 
@@ -172,6 +180,66 @@ def get_auth_context(
     )
     ensure_tenant_writes_allowed_if_not_demo(request, session, context.tenant_id)
     return context
+
+
+def require_advisor_access(
+    advisor_id: str,
+    request: Request,
+    session: Annotated[Session, Depends(get_session)],
+    x_advisor_id: Annotated[str | None, Header(alias="x-advisor-id")] = None,
+    x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
+    x_tenant_id: Annotated[str | None, Header(alias="x-tenant-id")] = None,
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> str:
+    """Authorize advisor APIs through a bound user session or legacy machine key.
+
+    Browser sessions are accepted only when the persisted user identity, the
+    advisor path and the production advisor allowlist all name the same email.
+    The endpoint-level advisor-to-tenant link remains the data access boundary.
+    """
+    if not _bearer_token(authorization):
+        return require_advisor_api_key_access(advisor_id, x_advisor_id, x_api_key)
+
+    context = _resolve_request_auth_context(
+        request=request,
+        session=session,
+        x_api_key=x_api_key,
+        x_tenant_id=x_tenant_id,
+        authorization=authorization,
+    )
+    if context.credential_kind != "user_session" or not context.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Advisor user session required",
+        )
+    if context.role != "contributor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Advisor role required",
+        )
+
+    normalized_advisor = advisor_id.strip().lower()
+    if x_advisor_id and x_advisor_id.strip().lower() != normalized_advisor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Advisor ID mismatch with x-advisor-id header",
+        )
+    allowed = require_advisor_allowlist_configured()
+    if allowed is not None and normalized_advisor not in {
+        candidate.strip().lower() for candidate in allowed
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Advisor not authorized for portfolio access",
+        )
+
+    user = UserRepository(session).get_by_id(context.user_id)
+    if user is None or user.email.strip().lower() != normalized_advisor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Advisor identity does not match the authenticated user",
+        )
+    return advisor_id
 
 
 def require_path_tenant_matches_auth(tenant_id: str, auth: AuthContext) -> None:

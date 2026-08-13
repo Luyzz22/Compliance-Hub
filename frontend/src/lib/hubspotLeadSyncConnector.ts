@@ -1,5 +1,6 @@
 import "server-only";
 
+import { crmProviderIsForbiddenInProduction } from "@/lib/outboundEndpointPolicy";
 import type { LeadSyncConnectorResult, LeadSyncPayloadV1 } from "@/lib/leadSyncTypes";
 
 const HUBSPOT_API = "https://api.hubapi.com";
@@ -366,6 +367,9 @@ function toConnectorError(err: unknown): LeadSyncConnectorResult {
 
 /** Echter HubSpot-Sync: Kontakt upsert, konservative Firma, idempotente Notiz pro Inquiry. */
 export async function runHubspotLeadSyncConnector(payload: LeadSyncPayloadV1): Promise<LeadSyncConnectorResult> {
+  if (crmProviderIsForbiddenInProduction("hubspot")) {
+    return { ok: false, error: "hubspot_forbidden_by_provider_policy", retryable: false };
+  }
   const token = process.env.HUBSPOT_ACCESS_TOKEN?.trim();
   if (!token) {
     return { ok: false, error: "hubspot_token_not_configured", retryable: false };

@@ -1,19 +1,23 @@
 import { entraConfig } from "@/lib/entraAuth";
+import { isEnterpriseProductionRuntime } from "@/lib/outboundEndpointPolicy";
 import { noStoreJson } from "@/lib/serverSession";
 
 export const runtime = "nodejs";
 
 export function GET() {
+  const production = isEnterpriseProductionRuntime();
   try {
     entraConfig();
-    const production =
-      process.env.VERCEL_ENV === "production" ||
-      process.env.COMPLIANCEHUB_RELEASE_CHANNEL === "production";
     return noStoreJson({
       enabled: true,
       passwordLoginEnabled: !production,
+      selfRegistrationEnabled: !production,
     });
   } catch {
-    return noStoreJson({ enabled: false, passwordLoginEnabled: true });
+    return noStoreJson({
+      enabled: false,
+      passwordLoginEnabled: !production,
+      selfRegistrationEnabled: !production,
+    });
   }
 }

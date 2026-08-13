@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE =
-  process.env.COMPLIANCEHUB_API_BASE_URL || "http://localhost:8000";
-const API_KEY = process.env.COMPLIANCEHUB_API_KEY || "tenant-overview-key";
+import { serverSessionApiFetch } from "@/lib/serverBackendApi";
 
 export async function GET(request: NextRequest) {
   const tenantId = request.nextUrl.searchParams.get("tenantId")?.trim();
@@ -22,14 +20,9 @@ export async function GET(request: NextRequest) {
 
   const aid = encodeURIComponent(advisorId);
   const tid = encodeURIComponent(tenantId);
-  const url = `${API_BASE}/api/v1/advisors/${aid}/tenants/${tid}/report?format=${format}`;
-  const res = await fetch(url, {
-    headers: {
-      "x-api-key": API_KEY,
-      "x-advisor-id": advisorId,
-    },
-    cache: "no-store",
-  });
+  const res = await serverSessionApiFetch(
+    `/api/v1/advisors/${aid}/tenants/${tid}/report?format=${format}`,
+  );
   if (!res.ok) {
     return NextResponse.json(
       { error: "Mandanten-Steckbrief konnte nicht geladen werden" },

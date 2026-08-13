@@ -1106,6 +1106,7 @@ class LLMCallMetadataDB(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     task_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    data_class: Mapped[str] = mapped_column(String(32), nullable=False, default="internal")
     provider: Mapped[str] = mapped_column(String(32), nullable=False)
     model_id: Mapped[str] = mapped_column(String(128), nullable=False)
     prompt_length: Mapped[int] = mapped_column(Integer, nullable=False)

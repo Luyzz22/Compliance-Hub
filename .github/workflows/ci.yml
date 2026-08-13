@@ -17,6 +17,8 @@ jobs:
     name: Backend / Python 3.11
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -40,11 +42,25 @@ jobs:
       - name: Dependency vulnerability audit
         run: pip-audit --skip-editable --desc
 
+      - name: Audit locked production dependency set
+        run: pip-audit -r requirements.lock --desc
+
+      - name: Generate backend CycloneDX SBOM
+        run: pip-audit -r requirements.lock --format cyclonedx-json --output backend-sbom.cdx.json
+
       - name: Static security analysis
         run: bandit -q -r app -x app/db_migrations -lll
 
       - name: Test
         run: python -m pytest tests/ -q
+
+      - name: Upload backend SBOM
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: backend-cyclonedx-sbom
+          path: backend-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
 
   frontend:
     name: Frontend / Node 24
@@ -70,6 +86,9 @@ jobs:
       - name: Dependency vulnerability audit
         run: npm audit --audit-level=moderate
 
+      - name: Generate frontend CycloneDX SBOM
+        run: npm sbom --sbom-format cyclonedx > frontend-sbom.cdx.json
+
       - name: Lint
         run: npm run lint
 
@@ -78,6 +97,82 @@ jobs:
 
       - name: Production compile
         run: npm run build
+
+      - name: Upload frontend SBOM
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: frontend-cyclonedx-sbom
+          path: frontend/frontend-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+
+  container-security:
+    name: Containers / build and scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: backend
+            context: .
+            dockerfile: Dockerfile.hetzner
+          - component: frontend
+            context: .
+            dockerfile: frontend/Dockerfile.hetzner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Build production image for security verification
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          load: true
+          push: false
+          provenance: false
+          sbom: false
+          tags: compliancehub-ci/${{ matrix.component }}:${{ github.sha }}
+
+      - name: Scan image and fail on High or Critical findings
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.73.0
+          image-ref: compliancehub-ci/${{ matrix.component }}:${{ github.sha }}
+          format: json
+          output: trivy-${{ matrix.component }}.json
+          exit-code: "1"
+          ignore-unfixed: false
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+      - name: Upload container scan evidence
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: trivy-${{ matrix.component }}-${{ github.sha }}
+          path: trivy-${{ matrix.component }}.json
+          if-no-files-found: error
+          retention-days: 30
+
+  release-evidence-contract:
+    name: Release / evidence contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Confirm the example remains fail-closed
+        run: |
+          if python3 scripts/verify_release_evidence.py deploy/hetzner/release-evidence.example.json --expected-commit HEAD; then
+            echo "The placeholder release evidence unexpectedly passed" >&2
+            exit 1
+          fi
 
   policy:
     name: Policy / OPA

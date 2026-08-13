@@ -2047,7 +2047,7 @@ export async function fetchAdvisorBoardReportDetail(
   return res.json() as Promise<AiComplianceBoardReportDetailDto>;
 }
 
-/** Same-origin Proxy: `/api/advisor/tenant-report` (serverseitig API-Key, optional COMPLIANCEHUB_ADVISOR_ID). */
+/** Same-origin Proxy: `/api/advisor/tenant-report` (gebundene Advisor-Sitzung). */
 export function getAdvisorTenantReportUrl(
   tenantId: string,
   format: "json" | "markdown",
@@ -2101,7 +2101,7 @@ export async function postDemoTenantSeed(payload: {
 }): Promise<DemoSeedResponseDto> {
   const res = await fetch("/api/demo/seed", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...browserCsrfHeaders() },
     body: JSON.stringify(payload),
     cache: "no-store",
   });
@@ -2130,7 +2130,7 @@ export async function fetchTenantUsageMetrics(
   return tenantApiFetch(`/api/v1/tenants/${tid}/usage-metrics`, tenantId);
 }
 
-/** Same-origin Proxy: nutzt serverseitigen API-Key und Advisor-Header. */
+/** Same-origin Proxy: nutzt die gebundene Advisor-Sitzung. */
 export async function fetchAdvisorTenantUsageMetrics(
   advisorId: string,
   tenantId: string,

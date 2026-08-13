@@ -1,26 +1,31 @@
 import "server-only";
 
+import { isAbsolute } from "node:path";
 import { Pool, type PoolClient, type PoolConfig } from "pg";
 
-import { createAzureTokenCredential } from "@/lib/azureIdentity";
+import { readMountedServerSecretFile } from "@/lib/serverSecret";
 
-const AZURE_POSTGRES_SCOPE = "https://ossrdbms-aad.database.windows.net/.default";
-const AZURE_POSTGRES_HOST_PATTERN =
-  /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.postgres\.database\.azure\.com$/;
 const DATABASE_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]{0,62}$/;
 const TENANT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$/;
 const ACTOR_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
-const FORBIDDEN_RUNTIME_USERS = new Set(["postgres", "azure_pg_admin", "azuresu"]);
+const HOST_PATTERN = /^(?:[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?|\[[0-9A-Fa-f:]+\])$/;
+const FORBIDDEN_RUNTIME_USERS = new Set([
+  "postgres",
+  "azure_pg_admin",
+  "azuresu",
+  "root",
+]);
 
-export type RelationalRuntimeBackend = "local" | "azure_postgres";
+export type RelationalRuntimeBackend = "local" | "postgres";
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 type RuntimePostgresPool = Pick<Pool, "connect">;
 
-export type AzurePostgresConfig = Readonly<{
+export type RuntimePostgresConfig = Readonly<{
   host: string;
-  port: 5432;
+  port: number;
   database: string;
   user: string;
+  passwordFile: string;
   sslCa?: string;
 }>;
 
@@ -39,7 +44,10 @@ export class RuntimePostgresOperationError extends Error {
 }
 
 function isProductionRuntime(env: RuntimeEnvironment): boolean {
-  return env.NODE_ENV === "production" || Boolean(env.VERCEL);
+  return (
+    env.NODE_ENV === "production" ||
+    env.COMPLIANCEHUB_RELEASE_CHANNEL === "production"
+  );
 }
 
 function requiredEnv(name: string, env: RuntimeEnvironment): string {
@@ -52,7 +60,7 @@ export function resolveRelationalRuntimeBackend(
   env: RuntimeEnvironment = process.env,
 ): RelationalRuntimeBackend {
   const configured = env.COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND?.trim().toLowerCase();
-  if (configured === "azure_postgres") return "azure_postgres";
+  if (configured === "postgres") return "postgres";
   if (configured === "local") {
     if (isProductionRuntime(env)) {
       throw new RuntimePostgresConfigurationError(
@@ -68,49 +76,81 @@ export function resolveRelationalRuntimeBackend(
   }
   if (isProductionRuntime(env)) {
     throw new RuntimePostgresConfigurationError(
-      "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND must be azure_postgres in production",
+      "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND must be postgres in production",
     );
   }
   return "local";
 }
 
-export function resolveAzurePostgresConfig(
+function allowedPostgresHosts(env: RuntimeEnvironment): Set<string> {
+  return new Set(
+    (env.COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS || "")
+      .split(",")
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+export function resolveRuntimePostgresConfig(
   env: RuntimeEnvironment = process.env,
-): AzurePostgresConfig {
-  const host = requiredEnv("AZURE_POSTGRES_HOST", env).toLowerCase();
-  if (!AZURE_POSTGRES_HOST_PATTERN.test(host)) {
+): RuntimePostgresConfig {
+  const host = requiredEnv("POSTGRES_HOST", env).toLowerCase();
+  if (!HOST_PATTERN.test(host) || host.includes("..")) {
+    throw new RuntimePostgresConfigurationError("Invalid PostgreSQL hostname");
+  }
+  if (isProductionRuntime(env) && !allowedPostgresHosts(env).has(host)) {
     throw new RuntimePostgresConfigurationError(
-      "AZURE_POSTGRES_HOST must be an Azure PostgreSQL hostname",
+      "POSTGRES_HOST must be explicitly listed in COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS",
     );
   }
-  const configuredPort = env.AZURE_POSTGRES_PORT?.trim();
-  if (configuredPort && configuredPort !== "5432") {
-    throw new RuntimePostgresConfigurationError("Azure PostgreSQL port must be 5432");
+  const port = Number(env.POSTGRES_PORT?.trim() || "5432");
+  if (!Number.isSafeInteger(port) || port < 1 || port > 65535) {
+    throw new RuntimePostgresConfigurationError("Invalid PostgreSQL port");
   }
 
-  const database = requiredEnv("AZURE_POSTGRES_DATABASE", env);
+  const database = requiredEnv("POSTGRES_DATABASE", env);
   if (!DATABASE_PATTERN.test(database)) {
     throw new RuntimePostgresConfigurationError("Invalid Azure PostgreSQL database name");
   }
 
-  const user = requiredEnv("AZURE_POSTGRES_USER", env);
+  const user = requiredEnv("POSTGRES_USER", env);
   if (user.length > 256 || /[\u0000-\u001f\u007f]/.test(user)) {
     throw new RuntimePostgresConfigurationError("Invalid Azure PostgreSQL user");
   }
   if (FORBIDDEN_RUNTIME_USERS.has(user.toLowerCase())) {
     throw new RuntimePostgresConfigurationError(
-      "Azure PostgreSQL administrator identities are forbidden for application runtime",
+      "PostgreSQL administrator identities are forbidden for application runtime",
     );
   }
 
-  const sslCa = env.AZURE_POSTGRES_SSL_CA_PEM?.trim();
+  const passwordFile = requiredEnv("POSTGRES_PASSWORD_FILE", env);
+  if (!isAbsolute(passwordFile)) {
+    throw new RuntimePostgresConfigurationError("POSTGRES_PASSWORD_FILE must be absolute");
+  }
+  const sslCa = env.POSTGRES_SSL_CA_PEM?.trim();
   return {
     host,
-    port: 5432,
+    port,
     database,
     user,
+    passwordFile,
     ...(sslCa ? { sslCa } : {}),
   };
+}
+
+async function readPostgresPassword(path: string): Promise<string> {
+  try {
+    return readMountedServerSecretFile({
+      fileVariable: "POSTGRES_PASSWORD_FILE",
+      filePath: path,
+      minimumBytes: 32,
+      maximumBytes: 4096,
+    });
+  } catch (error) {
+    throw new RuntimePostgresConfigurationError(
+      `Unable to read POSTGRES_PASSWORD_FILE: ${error instanceof Error ? error.name : "Error"}`,
+    );
+  }
 }
 
 function assertTenantId(tenantId: string): string {
@@ -147,25 +187,13 @@ export function __setRuntimePostgresPoolFactoryForTests(
 function getRuntimePostgresPool(): RuntimePostgresPool {
   if (runtimePostgresPool) return runtimePostgresPool;
 
-  const database = resolveAzurePostgresConfig();
-  const credential = createAzureTokenCredential(
-    process.env,
-    RuntimePostgresConfigurationError,
-  );
+  const database = resolveRuntimePostgresConfig();
   const config: PoolConfig = {
     host: database.host,
     port: database.port,
     database: database.database,
     user: database.user,
-    password: async () => {
-      const accessToken = await credential.getToken(AZURE_POSTGRES_SCOPE);
-      if (!accessToken?.token) {
-        throw new RuntimePostgresConfigurationError(
-          "Azure PostgreSQL access token acquisition failed",
-        );
-      }
-      return accessToken.token;
-    },
+    password: () => readPostgresPassword(database.passwordFile),
     ssl: {
       rejectUnauthorized: true,
       ...(database.sslCa ? { ca: database.sslCa } : {}),

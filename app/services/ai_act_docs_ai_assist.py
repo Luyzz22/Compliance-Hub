@@ -10,10 +10,11 @@ from uuid import uuid4
 from app.ai_act_doc_models import AIActDoc, AIActDocContentSource, AIActDocSectionKey
 from app.ai_system_models import AISystem
 from app.classification_models import RiskClassification
-from app.llm_models import LLMTaskType
+from app.llm.client_wrapped import guardrailed_route_and_call_sync
+from app.llm.context import LlmCallContext
+from app.llm_models import LLMDataClass, LLMTaskType
 from app.nis2_kritis_models import Nis2KritisKpi
 from app.services.llm_json_utils import LLMJsonParseError, extract_json_object
-from app.services.llm_router import LLMRouter
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -99,8 +100,19 @@ def generate_ai_act_doc_draft(
         f"Fakten (JSON):\n{facts_json}\n"
     )
 
-    router = LLMRouter(session=session)
-    legal_out = router.route_and_call(LLMTaskType.LEGAL_REASONING, legal_prompt, tenant_id).text
+    context = LlmCallContext(
+        tenant_id=tenant_id,
+        action_name="generate_ai_act_doc_draft",
+        data_class=LLMDataClass.CONFIDENTIAL,
+    )
+    legal_out = guardrailed_route_and_call_sync(
+        session,
+        LLMTaskType.LEGAL_REASONING,
+        legal_prompt,
+        tenant_id,
+        context=context,
+        response_format=None,
+    ).text
 
     structured_prompt = (
         "Erzeuge die eigentliche Dokumentationssektion als strukturiertes Markdown für Auditoren.\n"
@@ -112,10 +124,12 @@ def generate_ai_act_doc_draft(
         f"Stichpunkte aus juristisch-technischer Voranalyse:\n{legal_out}\n\n"
         f"Fakten (JSON, maßgeblich):\n{facts_json}\n"
     )
-    resp2 = router.route_and_call(
+    resp2 = guardrailed_route_and_call_sync(
+        session,
         LLMTaskType.STRUCTURED_OUTPUT,
         structured_prompt,
         tenant_id,
+        context=context,
         response_format="json_object",
     )
     try:

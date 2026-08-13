@@ -3,7 +3,6 @@ import { resolve } from "node:path";
 
 const errors = [];
 const runtimeBoundary = readFileSync(resolve("src/lib/runtimeFileIO.ts"), "utf8");
-const azureIdentityBoundary = readFileSync(resolve("src/lib/azureIdentity.ts"), "utf8");
 const postgresBoundary = readFileSync(resolve("src/lib/runtimePostgres.ts"), "utf8");
 const advisorPostgresStore = readFileSync(
   resolve("src/lib/advisorRuntimePostgresStore.ts"),
@@ -18,7 +17,6 @@ const postgresContractTest = readFileSync(
   "utf8",
 );
 const packageJson = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
-const vercelConfig = JSON.parse(readFileSync(resolve("vercel.json"), "utf8"));
 const stores = [
   "advisorEvidenceHookStore.ts",
   "advisorKpiHistoryStore.ts",
@@ -34,7 +32,7 @@ const stores = [
   "leadSyncStore.ts",
 ];
 
-for (const dependency of ["@azure/identity", "@azure/storage-blob", "@vercel/oidc", "pg"]) {
+for (const dependency of ["@aws-sdk/client-s3", "pg"]) {
   const version = packageJson.dependencies?.[dependency];
   if (!version) {
     errors.push(`package.json: ${dependency} must be a pinned runtime dependency`);
@@ -43,18 +41,13 @@ for (const dependency of ["@azure/identity", "@azure/storage-blob", "@vercel/oid
   }
 }
 
-if (JSON.stringify(vercelConfig.regions) !== JSON.stringify(["fra1"])) {
-  errors.push("vercel.json: production functions must be pinned exclusively to fra1");
-}
-if (vercelConfig.functionFailoverRegions !== undefined) {
-  errors.push("vercel.json: unreviewed cross-region function failover is forbidden");
-}
-
 for (const invariant of [
-  "COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND must be azure_blob in production",
-  "withAzureRuntimeStorageLock",
-  "getBlobLeaseClient",
-  "getAppendBlobClient",
+  "COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND must be s3 in production",
+  "withS3RuntimeStorageLock",
+  "S3Client",
+  "COMPLIANCEHUB_S3_ACCESS_KEY_FILE",
+  "COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE",
+  "pg_advisory_xact_lock",
 ]) {
   if (!runtimeBoundary.includes(invariant)) {
     errors.push(`runtimeFileIO.ts: missing required invariant ${invariant}`);
@@ -73,22 +66,11 @@ for (const invariant of [
 }
 
 for (const invariant of [
-  "ClientAssertionCredential",
-  "ManagedIdentityCredential",
-  "getVercelOidcToken",
-  "Default Azure credential chaining is forbidden in production",
-]) {
-  if (!azureIdentityBoundary.includes(invariant)) {
-    errors.push(`azureIdentity.ts: missing required invariant ${invariant}`);
-  }
-}
-
-for (const invariant of [
-  "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND must be azure_postgres in production",
-  "postgres\\.database\\.azure\\.com",
-  "https://ossrdbms-aad.database.windows.net/.default",
+  "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND must be postgres in production",
+  "COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS",
+  "POSTGRES_PASSWORD_FILE",
   "rejectUnauthorized: true",
-  "Azure PostgreSQL administrator identities are forbidden for application runtime",
+  "PostgreSQL administrator identities are forbidden for application runtime",
   "withTenantRuntimePostgres",
   "withPlatformRuntimePostgres",
   "SET LOCAL statement_timeout",
@@ -142,10 +124,29 @@ for (const forbidden of [
   "AZURE_STORAGE_CONNECTION_STRING",
   "AZURE_STORAGE_ACCOUNT_KEY",
   "AZURE_POSTGRES_PASSWORD",
+  "POSTGRES_PASSWORD=",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
   "connectionString:",
 ]) {
   if (runtimeBoundary.includes(forbidden) || postgresBoundary.includes(forbidden)) {
     errors.push(`Runtime boundary: long-lived credential path ${forbidden} is forbidden`);
+  }
+}
+
+for (const forbiddenVendorPath of ["@vercel/oidc", "getVercelOidcToken", 'env.VERCEL']) {
+  if (runtimeBoundary.includes(forbiddenVendorPath)) {
+    errors.push(`Runtime boundary: forbidden Vercel path ${forbiddenVendorPath}`);
+  }
+}
+
+for (const forbiddenAzureStoragePath of [
+  "@azure/storage-blob",
+  "AZURE_STORAGE_",
+  "azure_blob",
+]) {
+  if (runtimeBoundary.includes(forbiddenAzureStoragePath)) {
+    errors.push(`Runtime boundary: removed Azure storage path ${forbiddenAzureStoragePath}`);
   }
 }
 
