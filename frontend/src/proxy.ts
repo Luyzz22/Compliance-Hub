@@ -20,6 +20,15 @@ import { isPublicSiteRelease } from "@/lib/releaseProfile";
 const WORKSPACE_COOKIE_MAX_AGE_SEC = 90 * 24 * 60 * 60;
 const PUBLIC_SITE_PATHS = new Set([
   "/",
+  "/plattform",
+  "/eu-ai-act-iso-42001",
+  "/nis2-kritis",
+  "/fuer-beratungen",
+  "/integrationen",
+  "/sicherheit",
+  "/ressourcen",
+  "/produkt-tour",
+  "/demo",
   "/kontakt",
   "/trust-center",
   "/impressum",
