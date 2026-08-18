@@ -1,0 +1,881 @@
+/**
+ * Compliance Hub — Marketing Design System
+ * ----------------------------------------
+ * Enterprise-GRC-Bildsprache: ruhig, präzise, europäisch. Dunkle Board-Flächen
+ * als Autoritätsanker, helle Arbeitsflächen für Lesbarkeit.
+ *
+ * Aufbau:
+ *   1. Farb-Tokens (Basis, Akzent, Status, Datenvisualisierung)
+ *   2. Typografie-Skala & Zahlenästhetik
+ *   3. Grid, Container, vertikaler Rhythmus
+ *   4. Kontext-Layer (hell / dunkel) über semantische Variablen
+ *   5. Komponenten: Buttons, Cards, Chips, Tabellen, Meter, Nav, Motion
+ *
+ * Constraint: Strict CSP (`style-src-attr 'none'`) — keine Inline-Styles.
+ * Dynamische Geometrie (Balken, Diagramme) wird über SVG-Attribute gelöst.
+ */
+
+/* ── 1. Farb-Tokens ────────────────────────────────────────────────── */
+
+:root {
+  /* Basis: Deep Navy / Graphite */
+  --mk-navy-950: #050a13;
+  --mk-navy-900: #08101d;
+  --mk-navy-850: #0b1727;
+  --mk-navy-800: #102031;
+  --mk-navy-700: #18293e;
+  --mk-navy-600: #22364e;
+  --mk-navy-500: #2f4762;
+
+  /* Neutrale Graustufen für Struktur, Tabellen, Controls */
+  --mk-slate-25: #fbfcfe;
+  --mk-slate-50: #f6f8fb;
+  --mk-slate-100: #eef2f7;
+  --mk-slate-200: #e2e8f0;
+  --mk-slate-300: #cbd5e1;
+  --mk-slate-400: #94a3b8;
+  --mk-slate-500: #64748b;
+  --mk-slate-600: #475569;
+  --mk-slate-700: #334155;
+  --mk-slate-800: #1e293b;
+
+  /* Primärakzent: Indigo / Electric Blue */
+  --mk-accent-700: #2440b8;
+  --mk-accent-600: #2f4fd8;
+  --mk-accent-500: #3f63ea;
+  --mk-accent-400: #6b87f5;
+  --mk-accent-300: #9fb3fa;
+  --mk-accent-100: #dee6fe;
+  --mk-accent-50: #eff3ff;
+
+  /* Status: Mint/Emerald nur für positive Compliance-Zustände */
+  --mk-ok-700: #05614a;
+  --mk-ok-600: #067a55;
+  --mk-ok-500: #0e9f6e;
+  --mk-ok-300: #6ee7b7;
+  --mk-ok-100: #d6f5e8;
+  --mk-ok-50: #edfbf5;
+
+  /* Amber für „At Risk“ */
+  --mk-warn-700: #8a5406;
+  --mk-warn-600: #a86609;
+  --mk-warn-500: #d98207;
+  --mk-warn-300: #fbc35c;
+  --mk-warn-100: #fbeed5;
+  --mk-warn-50: #fdf7ec;
+
+  /* Red sparsam, nur kritische Findings */
+  --mk-crit-700: #921c14;
+  --mk-crit-600: #b42318;
+  --mk-crit-500: #d92d20;
+  --mk-crit-300: #fda29b;
+  --mk-crit-100: #fbdedb;
+  --mk-crit-50: #fdefee;
+
+  /* Diagramm-Patterns (Kategorien in Mapping- und Architekturgrafiken) */
+  --mk-viz-1: #3f63ea;
+  --mk-viz-2: #0e9f6e;
+  --mk-viz-3: #7c5cf0;
+  --mk-viz-4: #0891b2;
+  --mk-viz-5: #d98207;
+  --mk-viz-6: #64748b;
+
+  /* ── 2. Typografie ──────────────────────────────────────────────── */
+  --mk-font-sans:
+    "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter",
+    "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --mk-font-mono:
+    "SFMono-Regular", "Cascadia Code", "JetBrains Mono", ui-monospace,
+    "Liberation Mono", monospace;
+
+  --mk-text-display: clamp(2.15rem, 1.5rem + 2.35vw, 3.4rem);
+  --mk-text-h1: clamp(1.95rem, 1.45rem + 1.8vw, 2.9rem);
+  --mk-text-h2: clamp(1.7rem, 1.3rem + 1.45vw, 2.4rem);
+  --mk-text-h3: clamp(1.2rem, 1.08rem + 0.5vw, 1.45rem);
+  --mk-text-h4: 1.0625rem;
+  --mk-text-lead: clamp(1.0rem, 0.96rem + 0.22vw, 1.125rem);
+  --mk-text-body: 0.9375rem;
+  --mk-text-sm: 0.875rem;
+  --mk-text-xs: 0.8125rem;
+  --mk-text-micro: 0.6875rem;
+
+  --mk-leading-tight: 1.05;
+  --mk-leading-snug: 1.25;
+  --mk-leading-body: 1.7;
+
+  --mk-tracking-display: -0.035em;
+  --mk-tracking-heading: -0.025em;
+  --mk-tracking-label: 0.12em;
+
+  /* ── 3. Grid, Container, Rhythmus ───────────────────────────────── */
+  --mk-container: 78rem;
+  --mk-container-narrow: 52rem;
+  --mk-gutter: 1.25rem;
+  --mk-section-y: clamp(4rem, 2.6rem + 4.4vw, 7rem);
+  --mk-section-y-tight: clamp(2.75rem, 2rem + 2.4vw, 4.5rem);
+
+  --mk-space-1: 0.25rem;
+  --mk-space-2: 0.5rem;
+  --mk-space-3: 0.75rem;
+  --mk-space-4: 1rem;
+  --mk-space-5: 1.5rem;
+  --mk-space-6: 2rem;
+  --mk-space-7: 3rem;
+  --mk-space-8: 4rem;
+
+  --mk-radius-xs: 4px;
+  --mk-radius-sm: 6px;
+  --mk-radius-md: 10px;
+  --mk-radius-lg: 14px;
+  --mk-radius-xl: 20px;
+  --mk-radius-pill: 999px;
+
+  --mk-shadow-xs: 0 1px 2px rgba(8, 16, 29, 0.06);
+  --mk-shadow-sm:
+    0 1px 2px rgba(8, 16, 29, 0.05), 0 4px 12px rgba(8, 16, 29, 0.04);
+  --mk-shadow-md:
+    0 2px 4px rgba(8, 16, 29, 0.04), 0 14px 34px rgba(8, 16, 29, 0.08);
+  --mk-shadow-lg:
+    0 4px 8px rgba(8, 16, 29, 0.04), 0 32px 72px rgba(8, 16, 29, 0.12);
+  --mk-shadow-dark: 0 36px 90px rgba(3, 7, 14, 0.5);
+
+  --mk-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --mk-gutter: 2rem;
+  }
+}
+
+/* ── 4. Kontext-Layer: semantische Variablen ───────────────────────── */
+
+.mk-scope {
+  --mk-bg: #ffffff;
+  --mk-bg-subtle: var(--mk-slate-50);
+  --mk-panel: #ffffff;
+  --mk-panel-subtle: var(--mk-slate-50);
+  --mk-fg: #0d1522;
+  --mk-fg-soft: #33415a;
+  --mk-fg-muted: #5a6879;
+  --mk-fg-faint: #8494a8;
+  --mk-bd: var(--mk-slate-200);
+  --mk-bd-strong: var(--mk-slate-300);
+  --mk-link: var(--mk-accent-600);
+  --mk-link-hover: var(--mk-accent-700);
+
+  font-family: var(--mk-font-sans);
+  color: var(--mk-fg);
+  background: var(--mk-bg);
+}
+
+.mk-dark {
+  --mk-bg: var(--mk-navy-900);
+  --mk-bg-subtle: var(--mk-navy-850);
+  --mk-panel: rgba(255, 255, 255, 0.035);
+  --mk-panel-subtle: rgba(255, 255, 255, 0.02);
+  --mk-fg: #f4f7fc;
+  --mk-fg-soft: #d3dcea;
+  --mk-fg-muted: #9aabc2;
+  --mk-fg-faint: #74869e;
+  --mk-bd: rgba(255, 255, 255, 0.1);
+  --mk-bd-strong: rgba(255, 255, 255, 0.2);
+  --mk-link: var(--mk-accent-300);
+  --mk-link-hover: #ffffff;
+
+  color: var(--mk-fg);
+  background: var(--mk-bg);
+}
+
+.mk-surface-subtle {
+  background: var(--mk-bg-subtle);
+}
+
+/* ── Layout ───────────────────────────────────────────────────────── */
+
+.mk-container {
+  width: 100%;
+  max-width: var(--mk-container);
+  margin-inline: auto;
+  padding-inline: var(--mk-gutter);
+}
+
+.mk-container-narrow {
+  width: 100%;
+  max-width: var(--mk-container-narrow);
+  margin-inline: auto;
+  padding-inline: var(--mk-gutter);
+}
+
+.mk-section {
+  padding-block: var(--mk-section-y);
+}
+
+.mk-section-tight {
+  padding-block: var(--mk-section-y-tight);
+}
+
+.mk-rule {
+  border-top: 1px solid var(--mk-bd);
+}
+
+/* ── Typografie-Klassen ───────────────────────────────────────────── */
+
+.mk-display {
+  font-size: var(--mk-text-display);
+  line-height: var(--mk-leading-tight);
+  letter-spacing: var(--mk-tracking-display);
+  font-weight: 640;
+  color: var(--mk-fg);
+  text-wrap: balance;
+}
+
+.mk-h1 {
+  font-size: var(--mk-text-h1);
+  line-height: 1.08;
+  letter-spacing: var(--mk-tracking-display);
+  font-weight: 640;
+  color: var(--mk-fg);
+  text-wrap: balance;
+}
+
+.mk-h2 {
+  font-size: var(--mk-text-h2);
+  line-height: 1.14;
+  letter-spacing: var(--mk-tracking-heading);
+  font-weight: 640;
+  color: var(--mk-fg);
+  text-wrap: balance;
+}
+
+.mk-h3 {
+  font-size: var(--mk-text-h3);
+  line-height: 1.28;
+  letter-spacing: -0.018em;
+  font-weight: 620;
+  color: var(--mk-fg);
+}
+
+.mk-h4 {
+  font-size: var(--mk-text-h4);
+  line-height: 1.35;
+  letter-spacing: -0.012em;
+  font-weight: 620;
+  color: var(--mk-fg);
+}
+
+.mk-lead {
+  font-size: var(--mk-text-lead);
+  line-height: 1.65;
+  color: var(--mk-fg-muted);
+  max-width: 60ch;
+}
+
+.mk-body {
+  font-size: var(--mk-text-body);
+  line-height: var(--mk-leading-body);
+  color: var(--mk-fg-muted);
+}
+
+.mk-body-sm {
+  font-size: var(--mk-text-xs);
+  line-height: 1.62;
+  color: var(--mk-fg-muted);
+}
+
+.mk-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--mk-text-micro);
+  font-weight: 660;
+  letter-spacing: var(--mk-tracking-label);
+  text-transform: uppercase;
+  color: var(--mk-accent-600);
+}
+
+.mk-dark .mk-eyebrow {
+  color: var(--mk-accent-300);
+}
+
+.mk-label {
+  font-size: var(--mk-text-micro);
+  font-weight: 640;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mk-fg-faint);
+}
+
+/* Zahlenästhetik für Scores, KPIs und Statuswerte */
+.mk-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+  letter-spacing: -0.02em;
+}
+
+.mk-kpi-value {
+  font-size: clamp(1.65rem, 1.3rem + 1.1vw, 2.35rem);
+  line-height: 1;
+  font-weight: 640;
+  color: var(--mk-fg);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.mk-mono {
+  font-family: var(--mk-font-mono);
+  font-size: var(--mk-text-micro);
+  letter-spacing: 0.01em;
+}
+
+.mk-link {
+  color: var(--mk-link);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--mk-link) 35%, transparent);
+  padding-bottom: 1px;
+  transition: color 160ms var(--mk-ease), border-color 160ms var(--mk-ease);
+}
+
+.mk-link:hover {
+  color: var(--mk-link-hover);
+  border-bottom-color: currentColor;
+}
+
+/* ── 5. Buttons ───────────────────────────────────────────────────── */
+
+.mk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1.1rem;
+  border-radius: var(--mk-radius-md);
+  border: 1px solid transparent;
+  font-size: var(--mk-text-sm);
+  font-weight: 620;
+  line-height: 1.2;
+  letter-spacing: -0.006em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--mk-ease),
+    border-color 160ms var(--mk-ease),
+    color 160ms var(--mk-ease),
+    box-shadow 160ms var(--mk-ease),
+    transform 120ms var(--mk-ease);
+}
+
+.mk-btn:active {
+  transform: translateY(1px);
+}
+
+.mk-btn--primary {
+  background: var(--mk-accent-600);
+  border-color: var(--mk-accent-600);
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(8, 16, 29, 0.16), 0 8px 22px rgba(47, 79, 216, 0.22);
+}
+
+.mk-btn--primary:hover {
+  background: var(--mk-accent-700);
+  border-color: var(--mk-accent-700);
+}
+
+.mk-btn--secondary {
+  background: var(--mk-panel);
+  border-color: var(--mk-bd-strong);
+  color: var(--mk-fg);
+  box-shadow: var(--mk-shadow-xs);
+}
+
+.mk-btn--secondary:hover {
+  border-color: var(--mk-fg-faint);
+  background: var(--mk-panel-subtle);
+}
+
+.mk-dark .mk-btn--secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.mk-dark .mk-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.mk-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--mk-fg-soft);
+  padding-inline: 0.75rem;
+}
+
+.mk-btn--ghost:hover {
+  background: var(--mk-slate-100);
+  color: var(--mk-fg);
+}
+
+.mk-dark .mk-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.mk-btn--sm {
+  min-height: 2.25rem;
+  padding: 0.4rem 0.8rem;
+  font-size: var(--mk-text-xs);
+}
+
+.mk-btn--lg {
+  min-height: 3rem;
+  padding: 0.75rem 1.4rem;
+  font-size: 0.9375rem;
+}
+
+/* ── Cards & Panels ───────────────────────────────────────────────── */
+
+.mk-card {
+  border: 1px solid var(--mk-bd);
+  border-radius: var(--mk-radius-lg);
+  background: var(--mk-panel);
+  box-shadow: var(--mk-shadow-sm);
+}
+
+.mk-dark .mk-card {
+  background: var(--mk-panel);
+  box-shadow: none;
+  backdrop-filter: blur(6px);
+}
+
+.mk-card-flat {
+  border: 1px solid var(--mk-bd);
+  border-radius: var(--mk-radius-lg);
+  background: var(--mk-panel);
+}
+
+.mk-card-interactive {
+  transition:
+    border-color 180ms var(--mk-ease),
+    box-shadow 180ms var(--mk-ease),
+    transform 180ms var(--mk-ease);
+}
+
+.mk-card-interactive:hover {
+  border-color: var(--mk-bd-strong);
+  box-shadow: var(--mk-shadow-md);
+  transform: translateY(-2px);
+}
+
+.mk-dark .mk-card-interactive:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Produkt-Mockup-Rahmen: erkennbare Ebene, keine Spielerei */
+.mk-app-frame {
+  border: 1px solid var(--mk-bd);
+  border-radius: var(--mk-radius-lg);
+  background: var(--mk-panel);
+  overflow: hidden;
+}
+
+.mk-app-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.6rem 0.875rem;
+  border-bottom: 1px solid var(--mk-bd);
+  background: var(--mk-panel-subtle);
+}
+
+.mk-dot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: var(--mk-radius-pill);
+  background: var(--mk-bd-strong);
+}
+
+/* ── Status-Chips ─────────────────────────────────────────────────── */
+
+.mk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.1875rem 0.5rem;
+  border-radius: var(--mk-radius-sm);
+  border: 1px solid transparent;
+  font-size: var(--mk-text-micro);
+  font-weight: 620;
+  line-height: 1.45;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+
+.mk-chip__dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: var(--mk-radius-pill);
+  background: currentColor;
+  flex: none;
+}
+
+.mk-chip--ok {
+  background: var(--mk-ok-50);
+  border-color: var(--mk-ok-100);
+  color: var(--mk-ok-700);
+}
+
+.mk-chip--warn {
+  background: var(--mk-warn-50);
+  border-color: var(--mk-warn-100);
+  color: var(--mk-warn-700);
+}
+
+.mk-chip--crit {
+  background: var(--mk-crit-50);
+  border-color: var(--mk-crit-100);
+  color: var(--mk-crit-700);
+}
+
+.mk-chip--info {
+  background: var(--mk-accent-50);
+  border-color: var(--mk-accent-100);
+  color: var(--mk-accent-700);
+}
+
+.mk-chip--neutral {
+  background: var(--mk-slate-100);
+  border-color: var(--mk-slate-200);
+  color: var(--mk-slate-700);
+}
+
+.mk-dark .mk-chip--ok {
+  background: rgba(14, 159, 110, 0.14);
+  border-color: rgba(14, 159, 110, 0.32);
+  color: #6ee7b7;
+}
+
+.mk-dark .mk-chip--warn {
+  background: rgba(217, 130, 7, 0.14);
+  border-color: rgba(217, 130, 7, 0.34);
+  color: #fbc35c;
+}
+
+.mk-dark .mk-chip--crit {
+  background: rgba(217, 45, 32, 0.16);
+  border-color: rgba(217, 45, 32, 0.36);
+  color: #fda29b;
+}
+
+.mk-dark .mk-chip--info {
+  background: rgba(63, 99, 234, 0.18);
+  border-color: rgba(63, 99, 234, 0.4);
+  color: #b9c8fc;
+}
+
+.mk-dark .mk-chip--neutral {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #c3cede;
+}
+
+/* ── Tabellen ─────────────────────────────────────────────────────── */
+
+.mk-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--mk-text-xs);
+}
+
+.mk-table thead th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-size: var(--mk-text-micro);
+  font-weight: 640;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--mk-fg-faint);
+  border-bottom: 1px solid var(--mk-bd);
+  background: var(--mk-panel-subtle);
+  white-space: nowrap;
+}
+
+.mk-table tbody td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--mk-bd);
+  color: var(--mk-fg-soft);
+  vertical-align: middle;
+}
+
+.mk-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.mk-table td.mk-td-num,
+.mk-table th.mk-th-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mk-table-scroll {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Definitionslisten / Spezifikations-Raster ────────────────────── */
+
+.mk-spec {
+  border-top: 1px solid var(--mk-bd-strong);
+}
+
+.mk-spec > div {
+  border-bottom: 1px solid var(--mk-bd);
+  padding-block: 1.125rem;
+}
+
+/* ── Meter (Fortschritt / Coverage) ───────────────────────────────── */
+
+.mk-meter-track {
+  fill: var(--mk-slate-200);
+}
+
+.mk-dark .mk-meter-track {
+  fill: rgba(255, 255, 255, 0.12);
+}
+
+.mk-meter-fill-ok {
+  fill: var(--mk-ok-500);
+}
+
+.mk-meter-fill-warn {
+  fill: var(--mk-warn-500);
+}
+
+.mk-meter-fill-crit {
+  fill: var(--mk-crit-500);
+}
+
+.mk-meter-fill-accent {
+  fill: var(--mk-accent-500);
+}
+
+/* ── Diagramm-Primitiven (SVG) ────────────────────────────────────── */
+
+.mk-viz-line {
+  stroke: var(--mk-bd-strong);
+  stroke-width: 1.25;
+  fill: none;
+}
+
+.mk-viz-line-active {
+  stroke: var(--mk-accent-500);
+  stroke-width: 1.75;
+  fill: none;
+}
+
+.mk-viz-node {
+  fill: var(--mk-panel);
+  stroke: var(--mk-bd);
+  stroke-width: 1;
+}
+
+.mk-viz-text {
+  fill: var(--mk-fg-soft);
+  font-family: var(--mk-font-sans);
+  font-size: 11px;
+}
+
+.mk-viz-label {
+  fill: var(--mk-fg-faint);
+  font-family: var(--mk-font-sans);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Navigation ───────────────────────────────────────────────────── */
+
+.mk-header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  border-bottom: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: saturate(160%) blur(14px);
+  transition: border-color 200ms var(--mk-ease), box-shadow 200ms var(--mk-ease);
+}
+
+.mk-header[data-scrolled="true"] {
+  border-bottom-color: var(--mk-slate-200);
+  box-shadow: 0 1px 0 rgba(8, 16, 29, 0.04), 0 8px 24px rgba(8, 16, 29, 0.05);
+}
+
+.mk-navlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--mk-radius-sm);
+  font-size: var(--mk-text-xs);
+  font-weight: 560;
+  color: var(--mk-slate-600);
+  text-decoration: none;
+  transition: color 140ms var(--mk-ease), background-color 140ms var(--mk-ease);
+}
+
+.mk-navlink:hover {
+  color: #0d1522;
+  background: var(--mk-slate-100);
+}
+
+.mk-navlink[data-active="true"] {
+  color: #0d1522;
+  font-weight: 640;
+}
+
+.mk-menu {
+  position: absolute;
+  top: calc(100% + 0.375rem);
+  left: 0;
+  z-index: 70;
+  min-width: 21rem;
+  padding: 0.5rem;
+  border: 1px solid var(--mk-slate-200);
+  border-radius: var(--mk-radius-lg);
+  background: #ffffff;
+  box-shadow: var(--mk-shadow-lg);
+}
+
+.mk-menu-item {
+  display: block;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--mk-radius-sm);
+  text-decoration: none;
+  transition: background-color 140ms var(--mk-ease);
+}
+
+.mk-menu-item:hover {
+  background: var(--mk-slate-50);
+}
+
+.mk-announce {
+  background: var(--mk-navy-950);
+  color: #dbe4f2;
+}
+
+/* ── Motion: nur zur Orientierung ─────────────────────────────────── */
+
+/*
+ * Scroll-Reveal ohne JavaScript: scroll-getriebene Animation über `view()`.
+ * Der Ruhezustand ist sichtbar — fehlt die Unterstützung oder ist reduzierte
+ * Bewegung gewünscht, bleibt der Inhalt schlicht stehen. Inhalte können damit
+ * nie dauerhaft unsichtbar bleiben (anders als bei einer JS-Sichtbarkeitslogik).
+ */
+.mk-reveal {
+  min-width: 0;
+}
+
+@keyframes mk-reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .mk-reveal {
+      animation: mk-reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 4% entry 62%;
+    }
+
+    /* Staffelung innerhalb einer Gruppe über den Sichtbereich, nicht über Delays:
+       scroll-getriebene Animationen kennen keine Verzögerung. */
+    .mk-reveal[data-delay="1"] {
+      animation-range: entry 4% entry 78%;
+    }
+
+    .mk-reveal[data-delay="2"] {
+      animation-range: entry 4% entry 94%;
+    }
+
+    .mk-reveal[data-delay="3"] {
+      animation-range: entry 4% cover 12%;
+    }
+
+    .mk-reveal[data-delay="4"] {
+      animation-range: entry 4% cover 20%;
+    }
+  }
+}
+
+.mk-fade-swap {
+  animation: mk-fade-in 320ms var(--mk-ease) both;
+}
+
+@keyframes mk-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-fade-swap {
+    animation: none;
+  }
+
+  .mk-card-interactive:hover {
+    transform: none;
+  }
+}
+
+/* ── Fokus: WCAG-orientierte Tastaturbedienung ────────────────────── */
+
+.mk-scope :focus-visible {
+  outline: 2px solid var(--mk-accent-500);
+  outline-offset: 3px;
+  border-radius: var(--mk-radius-xs);
+}
+
+.mk-dark :focus-visible {
+  outline-color: var(--mk-accent-300);
+}
+
+.mk-skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -4rem;
+  z-index: 100;
+  padding: 0.625rem 1rem;
+  border-radius: var(--mk-radius-md);
+  background: var(--mk-navy-900);
+  color: #ffffff;
+  font-size: var(--mk-text-xs);
+  font-weight: 620;
+  text-decoration: none;
+  transition: top 160ms var(--mk-ease);
+}
+
+.mk-skip-link:focus-visible {
+  top: 0.75rem;
+}

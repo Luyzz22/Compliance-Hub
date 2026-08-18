@@ -1,25 +1,17 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import React, { Suspense } from "react";
-
-import { DemoContextualHint } from "@/components/demo/DemoContextualHint";
-import { DemoEnvironmentBanner } from "@/components/demo/DemoEnvironmentBanner";
-import { DemoGuide } from "@/components/demo/DemoGuide";
-import { SessionAttributionCapture } from "@/components/marketing/SessionAttributionCapture";
-import { CookieBanner } from "@/components/sbs/CookieBanner";
-import { SbsFooter } from "@/components/sbs/SbsFooter";
-import { SbsHeader } from "@/components/sbs/SbsHeader";
-import { isPublicSiteRelease } from "@/lib/releaseProfile";
-import { isDemoUiDesiredForTenant } from "@/lib/workspaceDemoServer";
-import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
+import React from "react";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://complywithai.de"),
-  title: "Compliance Hub · Enterprise GRC & AI Governance",
+  title: {
+    default: "Compliance Hub · Governance-Layer für AI, Security und Compliance",
+    template: "%s · Compliance Hub",
+  },
   description:
-    "Mandantenfähige GRC-Plattform: EU AI Act, NIS2, ISO 42001, Board-KPIs und Exportpfade für Kanzlei-DMS – DSGVO-orientiert für den DACH-Markt. Unterstützung bei Dokumentation und Governance, keine Rechtsberatung.",
+    "Compliance Hub verbindet KI-Register, Controls, Evidenzen und Board-Reporting in einer mandantenfähigen Governance-Plattform für EU AI Act, ISO 42001, ISO 27001, NIS2 und DSGVO im DACH-Raum.",
   applicationName: "Compliance Hub",
   category: "business",
   alternates: { canonical: "/" },
@@ -28,9 +20,9 @@ export const metadata: Metadata = {
     locale: "de_DE",
     url: "/",
     siteName: "Compliance Hub",
-    title: "Compliance Hub · Enterprise GRC & AI Governance",
+    title: "Compliance Hub · Governance-Layer für AI, Security und Compliance",
     description:
-      "Governance, Evidence und Board-Readiness für EU AI Act, NIS2 und ISO 42001.",
+      "Map once, comply many: ein Kontrollmodell für EU AI Act, ISO 42001, ISO 27001/27701, NIS2 und DSGVO.",
   },
   robots: {
     index: true,
@@ -45,11 +37,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   await connection();
-  const publicSite = isPublicSiteRelease();
-  const workspaceTenantId = publicSite ? "" : await getWorkspaceTenantIdServer();
-  const showDemoUi = publicSite
-    ? false
-    : await isDemoUiDesiredForTenant(workspaceTenantId);
 
   return (
     <html
@@ -58,29 +45,7 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="sbs-body flex min-h-screen flex-col bg-[#f6f8fa] antialiased">
-        {!publicSite ? (
-          <Suspense fallback={null}>
-            <SessionAttributionCapture />
-          </Suspense>
-        ) : null}
-        <SbsHeader publicSite={publicSite} />
-        <DemoEnvironmentBanner visible={showDemoUi} />
-        <main
-          id="app-main"
-          className="mx-auto w-full min-w-0 max-w-[90rem] flex-1 px-4 pb-20 pt-8 md:px-8 md:pb-24 md:pt-12"
-        >
-          <DemoContextualHint enabled={showDemoUi} />
-          {children}
-        </main>
-        {!publicSite ? (
-          <DemoGuide tenantId={workspaceTenantId} enabled={showDemoUi} />
-        ) : null}
-        <SbsFooter publicSite={publicSite} />
-        {!publicSite ? (
-          <Suspense fallback={null}>
-            <CookieBanner />
-          </Suspense>
-        ) : null}
+        {children}
       </body>
     </html>
   );

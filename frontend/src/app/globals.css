@@ -1,6 +1,11 @@
+/* Cascade-Reihenfolge: Marketing-Komponenten liegen unter den Tailwind-Utilities,
+   damit Utility-Klassen (z. B. responsives `hidden`) sie überschreiben können. */
+@layer theme, base, marketing, components, utilities;
+
 @import "../../public/static/css/design-tokens.css";
 @import "../../public/static/css/components.css";
 @import "../../public/static/css/sbs-2026.css";
+@import "../../public/static/css/marketing.css" layer(marketing);
 @import "tailwindcss";
 
 /* Tailwind bleibt für Feinjustierung; primäres Layout über SBS-CSS-Dateien. */
