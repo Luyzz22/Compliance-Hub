@@ -62,6 +62,19 @@ describe("enterprise release gate profiles", () => {
     expect(result.stdout).toContain("passed (public_site)");
   });
 
+  it("starts the public-site runtime image, which sets the preflight flag itself", () => {
+    // frontend/Dockerfile.hetzner setzt COMPLIANCEHUB_RUNTIME_PREFLIGHT=true und ruft
+    // das Gate im CMD auf. Fehlt die Variable auf der Allowlist, bricht jeder
+    // Containerstart ab — die Website wäre nicht ausrollbar.
+    const result = runGate({
+      ...publicSiteEnvironment(),
+      COMPLIANCEHUB_RUNTIME_PREFLIGHT: "true",
+    });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("passed (public_site)");
+  });
+
   it("rejects inherited database credentials in the public-site release", () => {
     const result = runGate({
       ...publicSiteEnvironment(),
