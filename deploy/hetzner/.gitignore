@@ -1,3 +1,5 @@
+.env
+.env.public-site
 .env.production
 .env.candidate
 release-evidence.json

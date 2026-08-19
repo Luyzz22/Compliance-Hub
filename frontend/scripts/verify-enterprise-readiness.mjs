@@ -207,6 +207,9 @@ if (releaseProfile === "public_site") {
     "COMPLIANCEHUB_LEGAL_PUBLISH_READY",
     "COMPLIANCEHUB_PRIVACY_DPO_CONTACT",
     "COMPLIANCEHUB_LLM_PII_MODE",
+    // Vom Laufzeit-Image gesetzt: im Runtime-Layer existiert `src` nicht mehr,
+    // die Quellcode-Prüfung greift dort bewusst nicht. Kein Konfigurationswert.
+    "COMPLIANCEHUB_RUNTIME_PREFLIGHT",
   ]);
   const forbiddenPublicPrefixes = [
     "POSTGRES_",
