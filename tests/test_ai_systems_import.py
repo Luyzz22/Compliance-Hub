@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import io
+import zipfile
 
+import pytest
 from fastapi.testclient import TestClient
 from openpyxl import Workbook
 
 from app.main import app
+from app.services.ai_system_import import MAX_IMPORT_UPLOAD_BYTES, _iter_xlsx_rows
 from tests.conftest import _headers
 
 
@@ -169,3 +172,28 @@ def test_import_empty_file_400() -> None:
             files={"file": ("empty.csv", b"", "text/csv")},
         )
     assert resp.status_code == 400
+
+
+def test_import_rejects_oversized_upload() -> None:
+    with TestClient(app) as client:
+        resp = client.post(
+            "/api/v1/ai-systems/import",
+            headers=_headers(),
+            files={
+                "file": (
+                    "oversized.csv",
+                    b"x" * (MAX_IMPORT_UPLOAD_BYTES + 1),
+                    "text/csv",
+                ),
+            },
+        )
+    assert resp.status_code == 413
+
+
+def test_import_rejects_xlsx_decompression_bomb() -> None:
+    raw = io.BytesIO()
+    with zipfile.ZipFile(raw, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("xl/worksheets/sheet1.xml", "A" * 1_000_000)
+
+    with pytest.raises(ValueError, match="Kompressionsrate"):
+        _iter_xlsx_rows(raw.getvalue())

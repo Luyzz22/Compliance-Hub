@@ -838,6 +838,12 @@ class AuditLogTable(Base):
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
     previous_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     entry_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    integrity_version: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="sha256-v2",
+        server_default="sha256-v2",
+    )
     created_at_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,
@@ -1119,6 +1125,22 @@ class LLMCallMetadataDB(Base):
         default=datetime.utcnow,
         nullable=False,
         index=True,
+    )
+
+
+class LLMDailyUsageBudgetDB(Base):
+    """Atomically reserved per-tenant LLM capacity for one UTC day."""
+
+    __tablename__ = "llm_daily_usage_budgets"
+
+    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    usage_day_utc: Mapped[str] = mapped_column(String(10), primary_key=True)
+    calls_reserved: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tokens_reserved: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
     )
 
 
@@ -2089,6 +2111,7 @@ class SCIMSyncStateDB(Base):
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
     scim_external_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     provision_status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="active"
     )  # active | disabled | deprovisioned
@@ -2143,6 +2166,7 @@ class MFAFactorDB(Base):
     __tablename__ = "mfa_factors"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
@@ -2167,6 +2191,7 @@ class MFABackupCodeDB(Base):
     __tablename__ = "mfa_backup_codes"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )

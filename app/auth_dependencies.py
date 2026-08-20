@@ -182,6 +182,28 @@ def get_auth_context(
     return context
 
 
+def get_auth_context_for_non_persisting_action(
+    request: Request,
+    session: Annotated[Session, Depends(get_session)],
+    x_api_key: Annotated[str | None, Header(alias="x-api-key")] = None,
+    x_tenant_id: Annotated[str | None, Header(alias="x-tenant-id")] = None,
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> AuthContext:
+    """Authenticate without treating an explicitly non-persisting POST as a domain mutation.
+
+    This dependency is intentionally separate from ``get_auth_context``. Routes using it
+    must not create, update or delete tenant domain records; security/audit metadata remains
+    permitted so governed inference can be measured in a read-only demo workspace.
+    """
+    return _resolve_request_auth_context(
+        request=request,
+        session=session,
+        x_api_key=x_api_key,
+        x_tenant_id=x_tenant_id,
+        authorization=authorization,
+    )
+
+
 def require_advisor_access(
     advisor_id: str,
     request: Request,

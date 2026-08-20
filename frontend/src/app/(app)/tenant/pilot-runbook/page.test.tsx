@@ -9,6 +9,7 @@ vi.mock("@/lib/config", async () => {
   const actual = await vi.importActual<typeof import("@/lib/config")>("@/lib/config");
   return {
     ...actual,
+    featureDemoAzureInference: () => false,
     featurePilotRunbook: () => true,
   };
 });

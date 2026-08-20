@@ -23,7 +23,7 @@ from app.llm.guardrails import (
     scan_input_for_pii_and_injection,
     validate_llm_json_output,
 )
-from app.llm_models import LLMDataClass, LLMResponse, LLMTaskType
+from app.llm_models import LLMDataClass, LLMProvider, LLMResponse, LLMTaskType
 from app.services import llm_client
 from app.services.llm_router import LLMRouter
 from app.services.readiness_explain_structured import extract_json_object
@@ -265,6 +265,7 @@ def guardrailed_route_and_call_sync(
     *,
     context: LlmCallContext,
     response_format: str | None = "json_object",
+    required_provider: LLMProvider | None = None,
 ) -> LLMResponse:
     """
     For flows whose output is not a single Pydantic JSON contract (e.g. readiness explain).
@@ -295,6 +296,7 @@ def guardrailed_route_and_call_sync(
                 effective,
                 tenant_id,
                 data_class=context.data_class,
+                required_provider=required_provider,
                 **kwargs,
             )
             if span.is_recording():

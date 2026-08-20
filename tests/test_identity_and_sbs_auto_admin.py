@@ -337,7 +337,7 @@ class TestPasswordReset:
 
 
 class TestProfile:
-    def test_get_profile(self) -> None:
+    def test_api_key_cannot_get_global_profile(self) -> None:
         reg = client.post(
             "/api/v1/auth/register",
             json={
@@ -349,17 +349,14 @@ class TestProfile:
         user_id = reg.json()["user_id"]
         headers = _headers()
         resp = client.get(f"/api/v1/auth/profile/{user_id}", headers=headers)
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["email"] == "profile.get@example.com"
-        assert data["display_name"] == "Profile User"
+        assert resp.status_code == 403
 
-    def test_get_profile_not_found(self) -> None:
+    def test_api_key_profile_lookup_does_not_disclose_existence(self) -> None:
         headers = _headers()
         resp = client.get("/api/v1/auth/profile/nonexistent-id", headers=headers)
-        assert resp.status_code == 404
+        assert resp.status_code == 403
 
-    def test_update_profile(self) -> None:
+    def test_api_key_cannot_update_global_profile(self) -> None:
         reg = client.post(
             "/api/v1/auth/register",
             json={"email": "profile.update@example.com", "password": "StrongPass123"},
@@ -371,10 +368,11 @@ class TestProfile:
             headers=headers,
             json={"display_name": "Updated Name", "company": "Updated GmbH"},
         )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["display_name"] == "Updated Name"
-        assert data["company"] == "Updated GmbH"
+        assert resp.status_code == 403
+        with Session(engine) as session:
+            user = UserRepository(session).get_by_id(user_id)
+            assert user is not None
+            assert user.display_name != "Updated Name"
 
 
 # ── Integration Tests: Role Assignment & Tenant Isolation ────────────────────
@@ -393,14 +391,14 @@ class TestRoleAssignment:
             headers=headers,
             json={
                 "user_id": user_id,
-                "tenant_id": "test-tenant-1",
+                "tenant_id": _headers()["x-tenant-id"],
                 "role": "editor",
             },
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["role"] == "editor"
-        assert data["tenant_id"] == "test-tenant-1"
+        assert data["tenant_id"] == _headers()["x-tenant-id"]
 
     def test_assign_role_requires_manage_users_permission(self) -> None:
         reg = client.post(
@@ -418,6 +416,48 @@ class TestRoleAssignment:
                 "role": "editor",
             },
         )
+        assert resp.status_code == 403
+
+    def test_tenant_admin_cannot_assign_role_in_another_tenant(self) -> None:
+        reg = client.post(
+            "/api/v1/auth/register",
+            json={"email": "role.cross-tenant@example.com", "password": "StrongPass123"},
+        )
+        user_id = reg.json()["user_id"]
+        headers = {**_headers(), "x-opa-user-role": "tenant_admin"}
+
+        resp = client.post(
+            "/api/v1/auth/roles/assign",
+            headers=headers,
+            json={
+                "user_id": user_id,
+                "tenant_id": "unrelated-victim-tenant",
+                "role": "super_admin",
+            },
+        )
+
+        assert resp.status_code == 403
+        with Session(engine) as session:
+            assert UserRepository(session).get_role(user_id, "unrelated-victim-tenant") is None
+
+    def test_tenant_admin_cannot_grant_platform_super_admin(self) -> None:
+        reg = client.post(
+            "/api/v1/auth/register",
+            json={"email": "role.ceiling@example.com", "password": "StrongPass123"},
+        )
+        user_id = reg.json()["user_id"]
+        headers = {**_headers(), "x-opa-user-role": "tenant_admin"}
+
+        resp = client.post(
+            "/api/v1/auth/roles/assign",
+            headers=headers,
+            json={
+                "user_id": user_id,
+                "tenant_id": _headers()["x-tenant-id"],
+                "role": "super_admin",
+            },
+        )
+
         assert resp.status_code == 403
 
     def test_list_tenant_users(self) -> None:

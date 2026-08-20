@@ -519,7 +519,10 @@ class TestSapInboundValidation:
 class TestSapInboundProcessing:
     def test_creates_ai_system_stub(self) -> None:
         _cleanup()
-        result = process_sap_ai_system_event(_valid_sap_envelope())
+        result = process_sap_ai_system_event(
+            _valid_sap_envelope(),
+            authorized_tenant_id="t1",
+        )
         assert result["status"] == "accepted"
         assert result["system_id"] == "sap-scoring-01"
         assert result["tenant_id"] == "t1"
@@ -539,7 +542,10 @@ class TestSapInboundProcessing:
                 name="",
             )
         )
-        result = process_sap_ai_system_event(_valid_sap_envelope())
+        result = process_sap_ai_system_event(
+            _valid_sap_envelope(),
+            authorized_tenant_id="t1",
+        )
         assert result["status"] == "accepted"
 
         ai_sys = get_ai_system(tenant_id="t1", system_id="sap-scoring-01")
@@ -556,7 +562,10 @@ class TestSapInboundProcessing:
                 description="Existing Desc",
             )
         )
-        result = process_sap_ai_system_event(_valid_sap_envelope())
+        result = process_sap_ai_system_event(
+            _valid_sap_envelope(),
+            authorized_tenant_id="t1",
+        )
         assert result["status"] == "accepted"
 
         ai_sys = get_ai_system(tenant_id="t1", system_id="sap-scoring-01")
@@ -566,7 +575,10 @@ class TestSapInboundProcessing:
 
     def test_emits_evidence_event(self) -> None:
         _cleanup()
-        process_sap_ai_system_event(_valid_sap_envelope())
+        process_sap_ai_system_event(
+            _valid_sap_envelope(),
+            authorized_tenant_id="t1",
+        )
 
         events = list_all_events()
         sap_events = [e for e in events if e.get("event_type") == "sap_btp_ai_system_event"]
@@ -587,7 +599,7 @@ class TestSapInboundProcessing:
             "sap.s4.ai.deployment.requested",
         ]:
             env = _valid_sap_envelope(type=etype, data={"system_id": f"sys-{etype}"})
-            result = process_sap_ai_system_event(env)
+            result = process_sap_ai_system_event(env, authorized_tenant_id="t1")
             assert result["status"] == "accepted"
 
 

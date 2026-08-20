@@ -25,6 +25,8 @@ class LLMProviderHTTPError(RuntimeError):
 
 _AZURE_CERTIFICATE_ALLOWED_MODES = {0o400, 0o600}
 _AZURE_CERTIFICATE_MAX_BYTES = 1024 * 1024
+_DEFAULT_MAX_OUTPUT_TOKENS = 1024
+_ABSOLUTE_MAX_OUTPUT_TOKENS = 16_384
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -38,6 +40,34 @@ def _estimate_tokens(text: str) -> int:
     if not text:
         return 0
     return max(1, len(text) // 4)
+
+
+def effective_max_output_tokens(kwargs: dict[str, Any] | None = None) -> int:
+    """Resolve a provider-independent output cap and reject ambiguous configuration."""
+    raw_configured = _env("COMPLIANCEHUB_LLM_MAX_OUTPUT_TOKENS")
+    try:
+        configured = (
+            int(raw_configured) if raw_configured is not None else _DEFAULT_MAX_OUTPUT_TOKENS
+        )
+    except ValueError as exc:
+        raise LLMConfigurationError(
+            "COMPLIANCEHUB_LLM_MAX_OUTPUT_TOKENS must be an integer",
+        ) from exc
+    if not 1 <= configured <= _ABSOLUTE_MAX_OUTPUT_TOKENS:
+        raise LLMConfigurationError(
+            "COMPLIANCEHUB_LLM_MAX_OUTPUT_TOKENS must be between 1 and 16384",
+        )
+
+    requested_raw = (kwargs or {}).get("max_tokens")
+    if requested_raw is None:
+        return configured
+    try:
+        requested = int(requested_raw)
+    except (TypeError, ValueError) as exc:
+        raise LLMConfigurationError("max_tokens must be an integer") from exc
+    if requested < 1:
+        raise LLMConfigurationError("max_tokens must be positive")
+    return min(requested, configured)
 
 
 def chat_model_id(provider: LLMProvider) -> str:
@@ -176,7 +206,7 @@ def _anthropic_key() -> str:
 
 
 def _call_claude(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
-    max_tokens = int(kwargs.get("max_tokens") or 1024)
+    max_tokens = effective_max_output_tokens(kwargs)
     base = _env("ANTHROPIC_API_URL", "https://api.anthropic.com")
     url = f"{base.rstrip('/')}/v1/messages"
     payload = {
@@ -248,6 +278,7 @@ def _call_openai_chat(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
     payload: dict[str, Any] = {
         "model": model_id,
         "messages": [{"role": "user", "content": prompt}],
+        "max_completion_tokens": effective_max_output_tokens(kwargs),
     }
     if kwargs.get("response_format") == "json_object":
         payload["response_format"] = {"type": "json_object"}
@@ -373,6 +404,7 @@ def _call_azure_openai_chat(model_id: str, prompt: str, **kwargs: Any) -> LLMRes
     payload: dict[str, Any] = {
         "model": model_id,
         "messages": [{"role": "user", "content": prompt}],
+        "max_completion_tokens": effective_max_output_tokens(kwargs),
     }
     if kwargs.get("response_format") == "json_object":
         payload["response_format"] = {"type": "json_object"}
@@ -409,7 +441,10 @@ def _call_gemini(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
     key = _gemini_key()
     base = _env("GEMINI_API_URL", "https://generativelanguage.googleapis.com/v1beta")
     url = f"{base.rstrip('/')}/models/{model_id}:generateContent"
-    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"maxOutputTokens": effective_max_output_tokens(kwargs)},
+    }
     with httpx.Client(timeout=120.0) as client:
         r = client.post(url, params={"key": key}, json=payload)
     if r.status_code >= 400:
@@ -448,6 +483,7 @@ def _call_llama_chat(model_id: str, prompt: str, **kwargs: Any) -> LLMResponse:
     payload = {
         "model": model_id,
         "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": effective_max_output_tokens(kwargs),
     }
     with httpx.Client(timeout=120.0) as client:
         r = client.post(url, json=payload, headers=headers)

@@ -27,6 +27,7 @@ from app.llm_models import (
 )
 from app.services import llm_client
 from app.services.llm_task_flags import is_llm_task_feature_enabled
+from app.services.llm_usage_policy import enforce_llm_usage_policy
 from app.services.tenant_llm_policy import get_tenant_llm_policy
 
 if TYPE_CHECKING:
@@ -320,6 +321,7 @@ class LLMRouter:
         prompt: str,
         tenant_id: str,
         data_class: LLMDataClass | None = None,
+        required_provider: LLMProvider | None = None,
         **kwargs: Any,
     ) -> LLMResponse:
         if not is_llm_task_feature_enabled(task_type, tenant_id, session=self._session):
@@ -343,11 +345,27 @@ class LLMRouter:
             ordered = [LLMProvider.LLAMA] + [p for p in ordered if p != LLMProvider.LLAMA]
 
         candidates = filter_candidates(policy, ordered, data_class=effective_data_class)
+        if required_provider is not None:
+            candidates = [provider for provider in candidates if provider == required_provider]
         if not candidates:
             raise llm_client.LLMConfigurationError(
                 "No LLM provider available for this tenant, task type, data class, and policy "
                 f"(task={task_type.value}, data_class={effective_data_class.value})",
             )
+
+        projected_output_tokens = (
+            0
+            if task_type == LLMTaskType.EMBEDDING_RETRIEVAL
+            else llm_client.effective_max_output_tokens(kwargs)
+        )
+        enforce_llm_usage_policy(
+            self._session,
+            tenant_id=tenant_id,
+            prompt=prompt,
+            projected_output_tokens=projected_output_tokens,
+        )
+        if task_type != LLMTaskType.EMBEDDING_RETRIEVAL:
+            kwargs["max_tokens"] = projected_output_tokens
 
         last_err: Exception | None = None
         t0 = time.perf_counter()

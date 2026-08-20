@@ -69,12 +69,16 @@ def validate_sap_envelope(
 
 def process_sap_ai_system_event(
     envelope: dict[str, Any],
+    *,
+    authorized_tenant_id: str,
 ) -> dict[str, Any]:
     """Process a validated SAP envelope and create/update an AiSystem.
 
     Returns a result dict with the created/updated system info.
     """
     tenant_id = envelope.get("tenantid", "")
+    if not tenant_id or tenant_id != authorized_tenant_id:
+        raise PermissionError("SAP event tenant is not bound to the authenticated connector")
     client_id = envelope.get("clientid", "")
     system_id_from_data = envelope["data"].get("system_id", "")
     event_type = envelope.get("type", "")

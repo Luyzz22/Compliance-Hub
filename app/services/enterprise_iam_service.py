@@ -348,11 +348,6 @@ class SCIMProvisioningService:
             )
             self._session.add(user)
             self._session.flush()
-        else:
-            # Re-activate if disabled
-            if not user.is_active:
-                user.is_active = True
-                user.updated_at_utc = now
 
         # Assign tenant role
         existing_role = self._session.execute(
@@ -391,6 +386,7 @@ class SCIMProvisioningService:
                 tenant_id=tenant_id,
                 user_id=user.id,
                 scim_external_id=scim_external_id,
+                display_name=display_name,
                 provision_status="active",
                 last_sync_at=now,
                 sync_source=sync_source,
@@ -401,6 +397,8 @@ class SCIMProvisioningService:
         else:
             sync.provision_status = "active"
             sync.scim_external_id = scim_external_id
+            if display_name is not None:
+                sync.display_name = display_name
             sync.last_sync_at = now
             sync.sync_source = sync_source
             sync.updated_at_utc = now
@@ -411,6 +409,7 @@ class SCIMProvisioningService:
             "email": user.email,
             "tenant_id": tenant_id,
             "role": role,
+            "display_name": sync.display_name or user.display_name,
             "provision_status": "active",
         }
 
@@ -424,26 +423,24 @@ class SCIMProvisioningService:
         scim_external_id: str | None = None,
     ) -> dict | None:
         """Update SCIM-provisioned user attributes and/or role."""
+        existing_role = self._session.execute(
+            select(UserTenantRoleDB).where(
+                UserTenantRoleDB.user_id == user_id,
+                UserTenantRoleDB.tenant_id == tenant_id,
+            )
+        ).scalar_one_or_none()
+        if existing_role is None:
+            return None
         user = self._session.execute(
             select(UserDB).where(UserDB.id == user_id)
         ).scalar_one_or_none()
         if user is None:
             return None
         now = datetime.now(UTC)
-        if display_name is not None:
-            user.display_name = display_name
-            user.updated_at_utc = now
         if role is not None:
-            existing_role = self._session.execute(
-                select(UserTenantRoleDB).where(
-                    UserTenantRoleDB.user_id == user_id,
-                    UserTenantRoleDB.tenant_id == tenant_id,
-                )
-            ).scalar_one_or_none()
-            if existing_role:
-                existing_role.role = role
-                existing_role.assigned_by = "system:scim"
-                existing_role.updated_at_utc = now
+            existing_role.role = role
+            existing_role.assigned_by = "system:scim"
+            existing_role.updated_at_utc = now
         # Update sync state
         sync = self._session.execute(
             select(SCIMSyncStateDB).where(
@@ -453,6 +450,8 @@ class SCIMProvisioningService:
         ).scalar_one_or_none()
         if sync:
             sync.last_sync_at = now
+            if display_name is not None:
+                sync.display_name = display_name
             if scim_external_id is not None:
                 sync.scim_external_id = scim_external_id
             sync.updated_at_utc = now
@@ -460,20 +459,30 @@ class SCIMProvisioningService:
         return {
             "user_id": user.id,
             "email": user.email,
-            "display_name": user.display_name,
+            "display_name": sync.display_name if sync else user.display_name,
             "tenant_id": tenant_id,
+            "role": existing_role.role,
         }
 
     def disable_user(self, tenant_id: str, user_id: str) -> dict | None:
-        """Soft-disable a SCIM-provisioned user (does NOT delete)."""
+        """Disable only the tenant-local SCIM membership."""
+        role = self._session.execute(
+            select(UserTenantRoleDB).where(
+                UserTenantRoleDB.tenant_id == tenant_id,
+                UserTenantRoleDB.user_id == user_id,
+            )
+        ).scalar_one_or_none()
+        if role is None:
+            return None
         user = self._session.execute(
             select(UserDB).where(UserDB.id == user_id)
         ).scalar_one_or_none()
         if user is None:
             return None
         now = datetime.now(UTC)
-        user.is_active = False
-        user.updated_at_utc = now
+        role.role = "viewer"
+        role.assigned_by = "system:scim:disable"
+        role.updated_at_utc = now
         sync = self._session.execute(
             select(SCIMSyncStateDB).where(
                 SCIMSyncStateDB.tenant_id == tenant_id,
@@ -493,15 +502,21 @@ class SCIMProvisioningService:
         }
 
     def deprovision_user(self, tenant_id: str, user_id: str) -> dict | None:
-        """Soft-deprovision: disable + mark as deprovisioned (no hard delete)."""
+        """Remove only the tenant-local membership and preserve the global identity."""
+        role = self._session.execute(
+            select(UserTenantRoleDB).where(
+                UserTenantRoleDB.tenant_id == tenant_id,
+                UserTenantRoleDB.user_id == user_id,
+            )
+        ).scalar_one_or_none()
+        if role is None:
+            return None
         user = self._session.execute(
             select(UserDB).where(UserDB.id == user_id)
         ).scalar_one_or_none()
         if user is None:
             return None
         now = datetime.now(UTC)
-        user.is_active = False
-        user.updated_at_utc = now
         sync = self._session.execute(
             select(SCIMSyncStateDB).where(
                 SCIMSyncStateDB.tenant_id == tenant_id,
@@ -512,6 +527,7 @@ class SCIMProvisioningService:
             sync.provision_status = "deprovisioned"
             sync.last_sync_at = now
             sync.updated_at_utc = now
+        self._session.delete(role)
         self._session.commit()
         return {
             "user_id": user.id,
@@ -732,9 +748,6 @@ class UserLifecycleService:
         ).scalar_one_or_none()
         if user is None:
             return None
-        now = datetime.now(UTC)
-        user.is_active = True
-        user.updated_at_utc = now
         existing_role = self._session.execute(
             select(UserTenantRoleDB).where(
                 UserTenantRoleDB.user_id == user_id,
@@ -742,21 +755,25 @@ class UserLifecycleService:
             )
         ).scalar_one_or_none()
         if existing_role is None:
-            self._session.add(
-                UserTenantRoleDB(
-                    id=str(uuid.uuid4()),
-                    user_id=user_id,
-                    tenant_id=tenant_id,
-                    role=role,
-                    assigned_by=assigned_by or "system:lifecycle",
-                    created_at_utc=now,
-                    updated_at_utc=now,
-                )
+            other_membership = self._session.execute(
+                select(UserTenantRoleDB.id).where(UserTenantRoleDB.user_id == user_id).limit(1),
+            ).scalar_one_or_none()
+            if other_membership is not None:
+                return None
+            existing_role = UserTenantRoleDB(
+                id=str(uuid.uuid4()),
+                user_id=user_id,
+                tenant_id=tenant_id,
+                role=role,
+                assigned_by=assigned_by or "system:lifecycle",
+                created_at_utc=datetime.now(UTC),
+                updated_at_utc=datetime.now(UTC),
             )
-        else:
-            existing_role.role = role
-            existing_role.assigned_by = assigned_by or "system:lifecycle"
-            existing_role.updated_at_utc = now
+            self._session.add(existing_role)
+        now = datetime.now(UTC)
+        existing_role.role = role
+        existing_role.assigned_by = assigned_by or "system:lifecycle"
+        existing_role.updated_at_utc = now
         self._session.commit()
         return {
             "user_id": user.id,
@@ -789,23 +806,12 @@ class UserLifecycleService:
                 UserTenantRoleDB.tenant_id == tenant_id,
             )
         ).scalar_one_or_none()
-        old_role = existing_role.role if existing_role else None
         if existing_role is None:
-            self._session.add(
-                UserTenantRoleDB(
-                    id=str(uuid.uuid4()),
-                    user_id=user_id,
-                    tenant_id=tenant_id,
-                    role=new_role,
-                    assigned_by=assigned_by or "system:lifecycle",
-                    created_at_utc=now,
-                    updated_at_utc=now,
-                )
-            )
-        else:
-            existing_role.role = new_role
-            existing_role.assigned_by = assigned_by or "system:lifecycle"
-            existing_role.updated_at_utc = now
+            return None
+        old_role = existing_role.role if existing_role else None
+        existing_role.role = new_role
+        existing_role.assigned_by = assigned_by or "system:lifecycle"
+        existing_role.updated_at_utc = now
         self._session.commit()
         return {
             "user_id": user.id,
@@ -817,35 +823,30 @@ class UserLifecycleService:
         }
 
     def leaver(self, tenant_id: str, user_id: str) -> dict | None:
-        """Disable user and downgrade role (Leaver flow)."""
+        """Revoke one tenant membership without disabling the shared global identity."""
         user = self._session.execute(
             select(UserDB).where(UserDB.id == user_id)
         ).scalar_one_or_none()
         if user is None:
             return None
-        now = datetime.now(UTC)
-        user.is_active = False
-        user.updated_at_utc = now
-        # Downgrade role to viewer (least privilege)
         existing_role = self._session.execute(
             select(UserTenantRoleDB).where(
                 UserTenantRoleDB.user_id == user_id,
                 UserTenantRoleDB.tenant_id == tenant_id,
             )
         ).scalar_one_or_none()
-        old_role = None
-        if existing_role:
-            old_role = existing_role.role
-            existing_role.role = "viewer"
-            existing_role.assigned_by = "system:lifecycle"
-            existing_role.updated_at_utc = now
+        if existing_role is None:
+            return None
+        old_role = existing_role.role
+        self._session.delete(existing_role)
         self._session.commit()
         return {
             "user_id": user.id,
             "email": user.email,
             "tenant_id": tenant_id,
             "old_role": old_role,
-            "is_active": False,
+            "is_active": user.is_active,
+            "tenant_membership_active": False,
             "lifecycle_event": "leaver",
         }
 
@@ -862,6 +863,8 @@ class UserLifecycleService:
                 UserTenantRoleDB.tenant_id == tenant_id,
             )
         ).scalar_one_or_none()
+        if role_assignment is None:
+            return None
         scim_sync = self._session.execute(
             select(SCIMSyncStateDB).where(
                 SCIMSyncStateDB.user_id == user_id,

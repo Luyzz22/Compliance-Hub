@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.db import engine
 from app.main import app
-from app.models_db import UserDB, UserTenantRoleDB
+from app.models_db import MFAFactorDB, UserDB, UserTenantRoleDB
 from app.rbac.permissions import Permission, has_permission
 from app.rbac.roles import EnterpriseRole
 from app.services.enterprise_governance_service import (
@@ -50,29 +51,56 @@ def _super_admin_headers() -> dict[str, str]:
     return {**_headers(), "x-opa-user-role": "super_admin"}
 
 
-def _ensure_test_user(session: Session, email: str = "gov-test@example.com") -> str:
+def _ensure_test_user(
+    session: Session,
+    email: str = "gov-test@example.com",
+    *,
+    ensure_membership: bool = False,
+) -> str:
     """Create a test user if not present, return user_id."""
-    existing = session.execute(
+    user = session.execute(
         __import__("sqlalchemy").select(UserDB).where(UserDB.email == email)
     ).scalar_one_or_none()
-    if existing:
-        return existing.id
-    from datetime import UTC, datetime
+    if user is None:
+        from datetime import UTC, datetime
 
-    uid = str(uuid.uuid4())
-    user = UserDB(
-        id=uid,
-        email=email,
-        password_hash="!test_no_login",
-        display_name="Gov Test User",
-        email_verified=True,
-        is_active=True,
-        created_at_utc=datetime.now(UTC),
-        updated_at_utc=datetime.now(UTC),
-    )
-    session.add(user)
+        user = UserDB(
+            id=str(uuid.uuid4()),
+            email=email,
+            password_hash="!test_no_login",
+            display_name="Gov Test User",
+            email_verified=True,
+            is_active=True,
+            created_at_utc=datetime.now(UTC),
+            updated_at_utc=datetime.now(UTC),
+        )
+        session.add(user)
+        session.flush()
+    membership = session.execute(
+        __import__("sqlalchemy")
+        .select(UserTenantRoleDB)
+        .where(
+            UserTenantRoleDB.user_id == user.id,
+            UserTenantRoleDB.tenant_id == _TENANT,
+        )
+    ).scalar_one_or_none()
+    if ensure_membership and membership is None:
+        from datetime import UTC, datetime
+
+        now = datetime.now(UTC)
+        session.add(
+            UserTenantRoleDB(
+                id=str(uuid.uuid4()),
+                user_id=user.id,
+                tenant_id=_TENANT,
+                role="viewer",
+                assigned_by="test",
+                created_at_utc=now,
+                updated_at_utc=now,
+            )
+        )
     session.commit()
-    return uid
+    return user.id
 
 
 # ── Unit Tests: New RBAC Permissions ─────────────────────────────────────────
@@ -262,126 +290,145 @@ class TestSoDServiceUnit:
 class TestMFAServiceUnit:
     def test_enroll_and_verify_totp(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-enroll@example.com")
+            uid = _ensure_test_user(s, "mfa-enroll@example.com", ensure_membership=True)
             svc = MFAService(s)
             # Enroll
-            result = svc.enroll_totp(uid)
+            result = svc.enroll_totp(_TENANT, uid)
             assert "error" not in result
             assert result["secret"]
             assert result["verified"] is False
+            stored = s.get(MFAFactorDB, result["factor_id"])
+            assert stored is not None
+            assert stored.secret_encrypted != result["secret"]
+            assert stored.secret_encrypted.startswith("aesgcm-v1:")
             # Verify enrollment with current code
             code = _current_totp(result["secret"])
-            verify_result = svc.verify_totp_enrollment(uid, code)
+            verify_result = svc.verify_totp_enrollment(_TENANT, uid, code)
             assert verify_result["verified"] is True
             # Cleanup
-            svc.reset_mfa(uid)
+            svc.reset_mfa(_TENANT, uid)
+
+    def test_foreign_tenant_cannot_access_or_reset_mfa(self) -> None:
+        with Session(engine) as s:
+            uid = _ensure_test_user(s, "mfa-cross-tenant@example.com", ensure_membership=True)
+            svc = MFAService(s)
+            enrolled = svc.enroll_totp(_TENANT, uid)
+
+            with pytest.raises(PermissionError, match="not a member"):
+                svc.get_mfa_status("foreign-tenant", uid)
+            with pytest.raises(PermissionError, match="not a member"):
+                svc.reset_mfa("foreign-tenant", uid)
+
+            stored = s.get(MFAFactorDB, enrolled["factor_id"])
+            assert stored is not None
+            svc.reset_mfa(_TENANT, uid)
 
     def test_duplicate_enrollment_rejected(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-dup@example.com")
+            uid = _ensure_test_user(s, "mfa-dup@example.com", ensure_membership=True)
             svc = MFAService(s)
-            r1 = svc.enroll_totp(uid)
+            r1 = svc.enroll_totp(_TENANT, uid)
             code = _current_totp(r1["secret"])
-            svc.verify_totp_enrollment(uid, code)
-            r2 = svc.enroll_totp(uid)
+            svc.verify_totp_enrollment(_TENANT, uid, code)
+            r2 = svc.enroll_totp(_TENANT, uid)
             assert r2.get("error") == "already_enrolled"
-            svc.reset_mfa(uid)
+            svc.reset_mfa(_TENANT, uid)
 
     def test_invalid_totp_rejected(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-invalid@example.com")
+            uid = _ensure_test_user(s, "mfa-invalid@example.com", ensure_membership=True)
             svc = MFAService(s)
-            svc.enroll_totp(uid)
-            result = svc.verify_totp_enrollment(uid, "000000")
+            svc.enroll_totp(_TENANT, uid)
+            result = svc.verify_totp_enrollment(_TENANT, uid, "000000")
             assert result.get("error") == "invalid_token"
-            svc.reset_mfa(uid)
+            svc.reset_mfa(_TENANT, uid)
 
     def test_verify_totp_for_step_up(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-stepup@example.com")
+            uid = _ensure_test_user(s, "mfa-stepup@example.com", ensure_membership=True)
             svc = MFAService(s)
-            r = svc.enroll_totp(uid)
+            r = svc.enroll_totp(_TENANT, uid)
             code = _current_totp(r["secret"])
-            svc.verify_totp_enrollment(uid, code)
+            svc.verify_totp_enrollment(_TENANT, uid, code)
             # Step-up verification
             code2 = _current_totp(r["secret"])
-            assert svc.verify_totp(uid, code2) is True
-            assert svc.verify_totp(uid, "999999") is False
-            svc.reset_mfa(uid)
+            assert svc.verify_totp(_TENANT, uid, code2) is True
+            assert svc.verify_totp(_TENANT, uid, "999999") is False
+            svc.reset_mfa(_TENANT, uid)
 
     def test_backup_codes_generation_and_use(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-backup@example.com")
+            uid = _ensure_test_user(s, "mfa-backup@example.com", ensure_membership=True)
             svc = MFAService(s)
-            result = svc.generate_backup_codes(uid)
+            result = svc.generate_backup_codes(_TENANT, uid)
             assert result["count"] == 10
             assert len(result["codes"]) == 10
             # Verify one code
             code = result["codes"][0]
-            assert svc.verify_backup_code(uid, code) is True
+            assert svc.verify_backup_code(_TENANT, uid, code) is True
             # Same code cannot be reused
-            assert svc.verify_backup_code(uid, code) is False
+            assert svc.verify_backup_code(_TENANT, uid, code) is False
             # Wrong code fails
-            assert svc.verify_backup_code(uid, "deadbeef") is False
-            svc.reset_mfa(uid)
+            assert svc.verify_backup_code(_TENANT, uid, "deadbeef") is False
+            svc.reset_mfa(_TENANT, uid)
 
     def test_mfa_status(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-status@example.com")
+            uid = _ensure_test_user(s, "mfa-status@example.com", ensure_membership=True)
             svc = MFAService(s)
-            status = svc.get_mfa_status(uid)
+            status = svc.get_mfa_status(_TENANT, uid)
             assert status["totp_enrolled"] is False
             assert status["backup_codes_remaining"] == 0
-            r = svc.enroll_totp(uid)
-            status = svc.get_mfa_status(uid)
+            r = svc.enroll_totp(_TENANT, uid)
+            status = svc.get_mfa_status(_TENANT, uid)
             assert status["totp_pending_verification"] is True
             code = _current_totp(r["secret"])
-            svc.verify_totp_enrollment(uid, code)
-            status = svc.get_mfa_status(uid)
+            svc.verify_totp_enrollment(_TENANT, uid, code)
+            status = svc.get_mfa_status(_TENANT, uid)
             assert status["totp_enrolled"] is True
-            svc.generate_backup_codes(uid)
-            status = svc.get_mfa_status(uid)
+            svc.generate_backup_codes(_TENANT, uid)
+            status = svc.get_mfa_status(_TENANT, uid)
             assert status["backup_codes_remaining"] == 10
-            svc.reset_mfa(uid)
+            svc.reset_mfa(_TENANT, uid)
 
     def test_step_up_challenge_totp(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-challenge@example.com")
+            uid = _ensure_test_user(s, "mfa-challenge@example.com", ensure_membership=True)
             svc = MFAService(s)
-            r = svc.enroll_totp(uid)
+            r = svc.enroll_totp(_TENANT, uid)
             code = _current_totp(r["secret"])
-            svc.verify_totp_enrollment(uid, code)
+            svc.verify_totp_enrollment(_TENANT, uid, code)
             code2 = _current_totp(r["secret"])
-            result = svc.step_up_challenge(uid, code2)
+            result = svc.step_up_challenge(_TENANT, uid, code2)
             assert result["verified"] is True
             assert result["method"] == "totp"
-            svc.reset_mfa(uid)
+            svc.reset_mfa(_TENANT, uid)
 
     def test_step_up_challenge_backup_code(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-challenge-bc@example.com")
+            uid = _ensure_test_user(s, "mfa-challenge-bc@example.com", ensure_membership=True)
             svc = MFAService(s)
-            codes = svc.generate_backup_codes(uid)
-            result = svc.step_up_challenge(uid, codes["codes"][0])
+            codes = svc.generate_backup_codes(_TENANT, uid)
+            result = svc.step_up_challenge(_TENANT, uid, codes["codes"][0])
             assert result["verified"] is True
             assert result["method"] == "backup_code"
-            svc.reset_mfa(uid)
+            svc.reset_mfa(_TENANT, uid)
 
     def test_step_up_challenge_invalid(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-challenge-bad@example.com")
+            uid = _ensure_test_user(s, "mfa-challenge-bad@example.com", ensure_membership=True)
             svc = MFAService(s)
-            result = svc.step_up_challenge(uid, "invalid")
+            result = svc.step_up_challenge(_TENANT, uid, "invalid")
             assert result["verified"] is False
 
     def test_reset_mfa_clears_all(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-reset@example.com")
+            uid = _ensure_test_user(s, "mfa-reset@example.com", ensure_membership=True)
             svc = MFAService(s)
-            svc.enroll_totp(uid)
-            svc.generate_backup_codes(uid)
-            svc.reset_mfa(uid)
-            status = svc.get_mfa_status(uid)
+            svc.enroll_totp(_TENANT, uid)
+            svc.generate_backup_codes(_TENANT, uid)
+            svc.reset_mfa(_TENANT, uid)
+            status = svc.get_mfa_status(_TENANT, uid)
             assert status["totp_enrolled"] is False
             assert status["backup_codes_remaining"] == 0
 
@@ -554,7 +601,7 @@ class TestSoDEndpoints:
 class TestMFAEndpoints:
     def test_mfa_status_api(self) -> None:
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "mfa-api-status@example.com")
+            uid = _ensure_test_user(s, "mfa-api-status@example.com", ensure_membership=True)
         resp = client.get(
             f"/api/v1/enterprise/governance/mfa/status/{uid}",
             headers=_admin_headers(),
@@ -651,7 +698,7 @@ class TestNegativeGovernance:
     def test_step_up_bypass_blocked(self) -> None:
         """Step-up with invalid token must fail."""
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "bypass-test@example.com")
+            uid = _ensure_test_user(s, "bypass-test@example.com", ensure_membership=True)
         resp = client.post(
             "/api/v1/enterprise/governance/mfa/step-up",
             json={"token": "invalid", "action": "role_change"},
@@ -713,9 +760,9 @@ class TestNegativeGovernance:
     def test_invalid_mfa_token_blocked(self) -> None:
         """Invalid MFA token must fail enrollment verification."""
         with Session(engine) as s:
-            uid = _ensure_test_user(s, "bad-mfa@example.com")
+            uid = _ensure_test_user(s, "bad-mfa@example.com", ensure_membership=True)
             svc = MFAService(s)
-            svc.enroll_totp(uid)
-            result = svc.verify_totp_enrollment(uid, "000000")
+            svc.enroll_totp(_TENANT, uid)
+            result = svc.verify_totp_enrollment(_TENANT, uid, "000000")
             assert result.get("error") == "invalid_token"
-            svc.reset_mfa(uid)
+            svc.reset_mfa(_TENANT, uid)

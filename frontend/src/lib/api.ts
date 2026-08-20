@@ -2111,6 +2111,45 @@ export async function postDemoTenantSeed(payload: {
   return res.json() as Promise<DemoSeedResponseDto>;
 }
 
+export type DemoAzureBriefScenario =
+  | "governance_release_gate"
+  | "supplier_risk"
+  | "incident_readiness";
+
+export interface DemoAzureBriefDto {
+  scenario: DemoAzureBriefScenario;
+  provider: "azure_openai";
+  model_id: string;
+  title: string;
+  executive_summary: string;
+  recommended_actions: [string, string, string];
+  human_review_note: string;
+  input_tokens_est: number;
+  output_tokens_est: number;
+  data_class: "public";
+  synthetic_data_only: true;
+}
+
+/** Fixed-input demo call; the contract accepts no customer prompt or document. */
+export async function postDemoAzureGovernanceBrief(
+  tenantId: string,
+  scenario: DemoAzureBriefScenario,
+): Promise<DemoAzureBriefDto> {
+  const path = "/api/v1/demo/azure-governance-brief";
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: tenantRequestHeaders(tenantId, undefined, { json: true }),
+    body: JSON.stringify({ scenario }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { detail?: string };
+    const detail = typeof payload.detail === "string" ? payload.detail : "";
+    throw new Error(detail || `Azure-Demopfad nicht verfügbar (HTTP ${res.status}).`);
+  }
+  return res.json() as Promise<DemoAzureBriefDto>;
+}
+
 // ─── Tenant-Nutzungsmetriken (Pilot / Telemetrie) ─────────────────────────────
 
 export interface TenantUsageMetrics {

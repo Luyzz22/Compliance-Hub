@@ -1,4 +1,4 @@
-"""GoBD-compliant (§14) XML export for audit trail entries."""
+"""GoBD-oriented XML export for audit trail entries."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ _NAMESPACE = "urn:compliancehub:gobd:audit:v1"
 
 
 def generate_gobd_xml(entries: list[AuditLog]) -> str:
-    """Return a UTF-8 XML string representing the GoBD audit trail."""
+    """Return a UTF-8 XML representation; legal suitability needs case-specific review."""
     root = new_xml_root("AuditTrail")
     root.set("xmlns", _NAMESPACE)
     root.set("exportDate", datetime.now(UTC).isoformat())
@@ -27,6 +27,7 @@ def generate_gobd_xml(entries: list[AuditLog]) -> str:
             "createdAt": entry.created_at_utc.isoformat(),
             "entryHash": entry.entry_hash or "",
             "previousHash": entry.previous_hash or "",
+            "integrityVersion": entry.integrity_version,
             "actorRole": entry.actor_role or "",
             "outcome": entry.outcome or "",
             "correlationId": entry.correlation_id or "",

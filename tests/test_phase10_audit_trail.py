@@ -132,6 +132,9 @@ def test_verify_integrity_valid(session: Session, audit_repo: AuditLogRepository
     result = svc.verify_integrity(_TENANT)
     assert result.valid is True
     assert result.checked_count >= 3
+    assert result.assurance_level == "v2-chain-consistent"
+    assert result.fully_covered is True
+    assert result.limitations
 
 
 def test_export_csv_format(session: Session, audit_repo: AuditLogRepository) -> None:

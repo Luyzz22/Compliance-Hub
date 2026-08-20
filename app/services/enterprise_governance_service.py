@@ -17,8 +17,10 @@ import secrets
 import struct
 import time
 import uuid
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import UTC, datetime, timedelta
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -30,6 +32,7 @@ from app.models_db import (
     SoDPolicyDB,
     UserTenantRoleDB,
 )
+from app.secret_files import production_runtime, read_secret
 from app.services.enterprise_iam_service import PRIVILEGED_ROLES
 
 logger = logging.getLogger(__name__)
@@ -54,6 +57,65 @@ APPROVAL_EXPIRY_HOURS = 72
 
 # Number of backup codes generated per user
 BACKUP_CODE_COUNT = 10
+_MFA_CIPHERTEXT_VERSION = "aesgcm-v1"
+
+
+def _mfa_encryption_key() -> bytes:
+    secret = read_secret(
+        "COMPLIANCEHUB_MFA_ENCRYPTION_KEY",
+        "COMPLIANCEHUB_MFA_ENCRYPTION_KEY_FILE",
+        required=production_runtime(),
+        minimum_characters=32,
+    )
+    if not secret:
+        secret = "compliancehub-development-mfa-encryption-key-only"
+    return hashlib.sha256(secret.encode("utf-8")).digest()
+
+
+def _mfa_aad(tenant_id: str, user_id: str, factor_id: str) -> bytes:
+    return f"{tenant_id}|{user_id}|{factor_id}".encode()
+
+
+def _encrypt_totp_secret(secret: str, tenant_id: str, user_id: str, factor_id: str) -> str:
+    nonce = secrets.token_bytes(12)
+    ciphertext = AESGCM(_mfa_encryption_key()).encrypt(
+        nonce,
+        secret.encode("ascii"),
+        _mfa_aad(tenant_id, user_id, factor_id),
+    )
+    encoded = urlsafe_b64encode(nonce + ciphertext).decode("ascii")
+    return f"{_MFA_CIPHERTEXT_VERSION}:{encoded}"
+
+
+def _decrypt_totp_secret(value: str, tenant_id: str, user_id: str, factor_id: str) -> str:
+    version, separator, encoded = value.partition(":")
+    if separator != ":" or version != _MFA_CIPHERTEXT_VERSION:
+        raise RuntimeError("MFA factor is not encrypted with the supported envelope")
+    try:
+        payload = urlsafe_b64decode(encoded.encode("ascii"))
+        return (
+            AESGCM(_mfa_encryption_key())
+            .decrypt(
+                payload[:12],
+                payload[12:],
+                _mfa_aad(tenant_id, user_id, factor_id),
+            )
+            .decode("ascii")
+        )
+    except Exception as exc:
+        raise RuntimeError("MFA factor decryption failed") from exc
+
+
+def _backup_code_digest(tenant_id: str, user_id: str, code: str) -> str:
+    payload = f"{tenant_id}|{user_id}|{code}".encode()
+    return (
+        "hmac-sha256-v1:"
+        + hmac.new(
+            _mfa_encryption_key(),
+            payload,
+            hashlib.sha256,
+        ).hexdigest()
+    )
 
 
 # ── Segregation of Duties (SoD) Service ─────────────────────────────────────
@@ -236,11 +298,23 @@ class MFAService:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def enroll_totp(self, user_id: str) -> dict:
+    def _require_tenant_membership(self, tenant_id: str, user_id: str) -> None:
+        membership = self._session.execute(
+            select(UserTenantRoleDB.id).where(
+                UserTenantRoleDB.tenant_id == tenant_id,
+                UserTenantRoleDB.user_id == user_id,
+            ),
+        ).scalar_one_or_none()
+        if membership is None:
+            raise PermissionError("Target user is not a member of the authenticated tenant")
+
+    def enroll_totp(self, tenant_id: str, user_id: str) -> dict:
         """Create a new TOTP factor for a user (must be verified before active use)."""
+        self._require_tenant_membership(tenant_id, user_id)
         # Check if already enrolled
         existing = self._session.execute(
             select(MFAFactorDB).where(
+                MFAFactorDB.tenant_id == tenant_id,
                 MFAFactorDB.user_id == user_id,
                 MFAFactorDB.factor_type == "totp",
                 MFAFactorDB.enabled.is_(True),
@@ -256,11 +330,18 @@ class MFAService:
 
         secret = _generate_totp_secret()
         now = datetime.now(UTC)
+        factor_id = str(uuid.uuid4())
         factor = MFAFactorDB(
-            id=str(uuid.uuid4()),
+            id=factor_id,
+            tenant_id=tenant_id,
             user_id=user_id,
             factor_type="totp",
-            secret_encrypted=secret,  # In prod: encrypt-at-rest via KMS
+            secret_encrypted=_encrypt_totp_secret(
+                secret,
+                tenant_id,
+                user_id,
+                factor_id,
+            ),
             verified=False,
             enabled=True,
             created_at_utc=now,
@@ -276,10 +357,12 @@ class MFAService:
             "verified": False,
         }
 
-    def verify_totp_enrollment(self, user_id: str, token: str) -> dict:
+    def verify_totp_enrollment(self, tenant_id: str, user_id: str, token: str) -> dict:
         """Verify the initial TOTP enrollment by providing a valid code."""
+        self._require_tenant_membership(tenant_id, user_id)
         factor = self._session.execute(
             select(MFAFactorDB).where(
+                MFAFactorDB.tenant_id == tenant_id,
                 MFAFactorDB.user_id == user_id,
                 MFAFactorDB.factor_type == "totp",
                 MFAFactorDB.enabled.is_(True),
@@ -289,17 +372,25 @@ class MFAService:
             return {"error": "no_factor", "detail": "No TOTP factor found"}
         if factor.verified:
             return {"error": "already_verified", "detail": "Factor already verified"}
-        if not _verify_totp(factor.secret_encrypted, token):
+        secret = _decrypt_totp_secret(
+            factor.secret_encrypted,
+            tenant_id,
+            user_id,
+            factor.id,
+        )
+        if not _verify_totp(secret, token):
             return {"error": "invalid_token", "detail": "Invalid TOTP code"}
         factor.verified = True
         factor.updated_at_utc = datetime.now(UTC)
         self._session.commit()
         return {"factor_id": factor.id, "verified": True}
 
-    def verify_totp(self, user_id: str, token: str) -> bool:
+    def verify_totp(self, tenant_id: str, user_id: str, token: str) -> bool:
         """Verify a TOTP code for step-up / login MFA challenge."""
+        self._require_tenant_membership(tenant_id, user_id)
         factor = self._session.execute(
             select(MFAFactorDB).where(
+                MFAFactorDB.tenant_id == tenant_id,
                 MFAFactorDB.user_id == user_id,
                 MFAFactorDB.factor_type == "totp",
                 MFAFactorDB.verified.is_(True),
@@ -308,12 +399,20 @@ class MFAService:
         ).scalar_one_or_none()
         if factor is None:
             return False
-        return _verify_totp(factor.secret_encrypted, token)
+        secret = _decrypt_totp_secret(
+            factor.secret_encrypted,
+            tenant_id,
+            user_id,
+            factor.id,
+        )
+        return _verify_totp(secret, token)
 
-    def get_mfa_status(self, user_id: str) -> dict:
+    def get_mfa_status(self, tenant_id: str, user_id: str) -> dict:
         """Return the MFA enrollment status for a user."""
+        self._require_tenant_membership(tenant_id, user_id)
         factor = self._session.execute(
             select(MFAFactorDB).where(
+                MFAFactorDB.tenant_id == tenant_id,
                 MFAFactorDB.user_id == user_id,
                 MFAFactorDB.factor_type == "totp",
                 MFAFactorDB.enabled.is_(True),
@@ -322,6 +421,7 @@ class MFAService:
         backup_count = (
             self._session.execute(
                 select(MFABackupCodeDB).where(
+                    MFABackupCodeDB.tenant_id == tenant_id,
                     MFABackupCodeDB.user_id == user_id,
                     MFABackupCodeDB.used.is_(False),
                 )
@@ -335,11 +435,17 @@ class MFAService:
             "backup_codes_remaining": len(backup_count),
         }
 
-    def generate_backup_codes(self, user_id: str) -> dict:
+    def generate_backup_codes(self, tenant_id: str, user_id: str) -> dict:
         """Generate a new set of backup codes (invalidates previous ones)."""
+        self._require_tenant_membership(tenant_id, user_id)
         # Delete old codes
         old_codes = (
-            self._session.execute(select(MFABackupCodeDB).where(MFABackupCodeDB.user_id == user_id))
+            self._session.execute(
+                select(MFABackupCodeDB).where(
+                    MFABackupCodeDB.tenant_id == tenant_id,
+                    MFABackupCodeDB.user_id == user_id,
+                )
+            )
             .scalars()
             .all()
         )
@@ -351,10 +457,11 @@ class MFAService:
         codes: list[str] = []
         for _ in range(BACKUP_CODE_COUNT):
             raw_code = secrets.token_hex(4)  # 8 hex chars
-            code_hash = hashlib.sha256(raw_code.encode()).hexdigest()
+            code_hash = _backup_code_digest(tenant_id, user_id, raw_code)
             self._session.add(
                 MFABackupCodeDB(
                     id=str(uuid.uuid4()),
+                    tenant_id=tenant_id,
                     user_id=user_id,
                     code_hash=code_hash,
                     used=False,
@@ -365,11 +472,13 @@ class MFAService:
         self._session.commit()
         return {"codes": codes, "count": len(codes)}
 
-    def verify_backup_code(self, user_id: str, code: str) -> bool:
+    def verify_backup_code(self, tenant_id: str, user_id: str, code: str) -> bool:
         """Verify and consume a single-use backup code."""
-        code_hash = hashlib.sha256(code.encode()).hexdigest()
+        self._require_tenant_membership(tenant_id, user_id)
+        code_hash = _backup_code_digest(tenant_id, user_id, code)
         bc = self._session.execute(
             select(MFABackupCodeDB).where(
+                MFABackupCodeDB.tenant_id == tenant_id,
                 MFABackupCodeDB.user_id == user_id,
                 MFABackupCodeDB.code_hash == code_hash,
                 MFABackupCodeDB.used.is_(False),
@@ -381,17 +490,28 @@ class MFAService:
         self._session.commit()
         return True
 
-    def reset_mfa(self, user_id: str) -> dict:
+    def reset_mfa(self, tenant_id: str, user_id: str) -> dict:
         """Remove all MFA factors and backup codes for a user (admin-only)."""
+        self._require_tenant_membership(tenant_id, user_id)
         factors = (
-            self._session.execute(select(MFAFactorDB).where(MFAFactorDB.user_id == user_id))
+            self._session.execute(
+                select(MFAFactorDB).where(
+                    MFAFactorDB.tenant_id == tenant_id,
+                    MFAFactorDB.user_id == user_id,
+                )
+            )
             .scalars()
             .all()
         )
         for f in factors:
             self._session.delete(f)
         codes = (
-            self._session.execute(select(MFABackupCodeDB).where(MFABackupCodeDB.user_id == user_id))
+            self._session.execute(
+                select(MFABackupCodeDB).where(
+                    MFABackupCodeDB.tenant_id == tenant_id,
+                    MFABackupCodeDB.user_id == user_id,
+                )
+            )
             .scalars()
             .all()
         )
@@ -400,14 +520,14 @@ class MFAService:
         self._session.commit()
         return {"user_id": user_id, "mfa_reset": True}
 
-    def step_up_challenge(self, user_id: str, token: str) -> dict:
+    def step_up_challenge(self, tenant_id: str, user_id: str, token: str) -> dict:
         """Verify a step-up MFA challenge (TOTP or backup code).
 
         Returns success/failure dict — callers use this before executing sensitive actions.
         """
-        if self.verify_totp(user_id, token):
+        if self.verify_totp(tenant_id, user_id, token):
             return {"verified": True, "method": "totp"}
-        if self.verify_backup_code(user_id, token):
+        if self.verify_backup_code(tenant_id, user_id, token):
             return {"verified": True, "method": "backup_code"}
         return {"verified": False, "detail": "Invalid MFA token"}
 

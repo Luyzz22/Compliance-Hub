@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from azure import identity
 
@@ -149,3 +151,58 @@ def test_production_azure_endpoint_rejects_nonstandard_port(
 
     with pytest.raises(llm_client.LLMConfigurationError, match="approved Azure OpenAI"):
         llm_client._azure_openai_base()
+
+
+def test_azure_chat_payload_enforces_configured_output_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com")
+    monkeypatch.setenv("AZURE_OPENAI_AUTH", "managed_identity")
+    monkeypatch.setenv("COMPLIANCEHUB_LLM_MAX_OUTPUT_TOKENS", "700")
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        status_code = 200
+
+        @staticmethod
+        def json() -> dict[str, object]:
+            return {
+                "choices": [{"message": {"content": "synthetic result"}}],
+                "usage": {"prompt_tokens": 4, "completion_tokens": 8},
+            }
+
+    class FakeClient:
+        def __init__(self, **kwargs: object) -> None:
+            captured["client_kwargs"] = kwargs
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def post(self, url: str, **kwargs: object) -> FakeResponse:
+            captured["url"] = url
+            captured.update(kwargs)
+            return FakeResponse()
+
+    credential = SimpleNamespace(
+        get_token=lambda scope: SimpleNamespace(token="synthetic-access-token")
+    )
+    monkeypatch.setattr(llm_client.httpx, "Client", FakeClient)
+    monkeypatch.setattr(llm_client, "_azure_credential", lambda: credential)
+
+    response = llm_client._call_azure_openai_chat(
+        "gpt-enterprise",
+        "fixed synthetic prompt",
+        max_tokens=900,
+        response_format="json_object",
+    )
+
+    assert response.provider == LLMProvider.AZURE_OPENAI
+    assert captured["json"] == {
+        "model": "gpt-enterprise",
+        "messages": [{"role": "user", "content": "fixed synthetic prompt"}],
+        "max_completion_tokens": 700,
+        "response_format": {"type": "json_object"},
+    }

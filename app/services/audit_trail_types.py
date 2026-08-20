@@ -47,6 +47,7 @@ class AuditLogItem(BaseModel):
     user_agent: str | None = None
     previous_hash: str | None = None
     entry_hash: str | None = None
+    integrity_version: str = "sha256-v2"
     created_at_utc: datetime
     actor_role: str | None = None
     outcome: str | None = None
@@ -82,6 +83,9 @@ class ChainIntegrityResult(BaseModel):
     valid: bool
     checked_count: int
     first_invalid_id: int | None = None
+    assurance_level: str
+    fully_covered: bool
+    limitations: list[str]
 
 
 AUDIT_ACTIVITY_EXPORT_DISCLAIMER = (

@@ -10,6 +10,9 @@ http://{$COMPLIANCEHUB_PUBLIC_HOST}:80 {
 https://{$COMPLIANCEHUB_PUBLIC_HOST}:443 {
 	tls /run/secrets/tls_certificate /run/secrets/tls_private_key
 	encode zstd gzip
+	request_body {
+		max_size 32MB
+	}
 
 	header {
 		-Server

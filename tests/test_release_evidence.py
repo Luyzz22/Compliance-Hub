@@ -8,7 +8,7 @@ import json
 import subprocess
 import sys
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -34,13 +34,17 @@ DIGEST_C = "c" * 64
 DIGEST_D = "d" * 64
 
 
-def _valid_evidence() -> dict:
+def _timestamp(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _valid_evidence(*, now: datetime = NOW) -> dict:
     return {
         "schema_version": 1,
         "release_id": "REL-2026-0812-01",
         "commit_sha": "a" * 40,
-        "created_at": "2026-08-12T10:00:00Z",
-        "expires_at": "2026-08-19T10:00:00Z",
+        "created_at": _timestamp(now - timedelta(hours=2)),
+        "expires_at": _timestamp(now + timedelta(days=7)),
         "built_by": "ci-builder-prod",
         "approved_by": "security-reviewer-01",
         "change_ticket": "CHG-4815",
@@ -81,7 +85,7 @@ def _valid_evidence() -> dict:
             "blueprint_sha256": DIGEST_B,
             "backend_image": f"registry.internal/compliancehub/backend@sha256:{DIGEST_C}",
             "frontend_image": f"registry.internal/compliancehub/frontend@sha256:{DIGEST_D}",
-            "tested_at": "2026-08-11T09:00:00Z",
+            "tested_at": _timestamp(now - timedelta(days=1)),
             "evidence_reference": "evidence://rollback/2026-08-11/approved",
         },
         "approvals": {
@@ -109,12 +113,15 @@ def _valid_evidence() -> dict:
     }
 
 
-def _valid_restore_evidence() -> dict:
+def _valid_restore_evidence(*, now: datetime = NOW) -> dict:
+    started_at = now - timedelta(days=1)
+    completed_at = started_at + timedelta(hours=1)
+    backup_created_at = started_at - timedelta(minutes=15)
     return {
         "schema_version": 1,
         "drill_id": "DR-20260811-CHANGE4815",
-        "started_at": "2026-08-11T08:00:00Z",
-        "completed_at": "2026-08-11T09:00:00Z",
+        "started_at": _timestamp(started_at),
+        "completed_at": _timestamp(completed_at),
         "tools": {
             "psql": "17.9",
             "pg_restore": "17.9",
@@ -129,7 +136,7 @@ def _valid_restore_evidence() -> dict:
             "restore_seconds": 120.5,
             "cleanup_status": "passed",
             "backup_sha256": DIGEST_A,
-            "backup_created_at": "2026-08-11T07:45:00Z",
+            "backup_created_at": _timestamp(backup_created_at),
             "restore_host_sha256": DIGEST_B,
         },
         "object_storage": {
@@ -140,7 +147,7 @@ def _valid_restore_evidence() -> dict:
             "restore_seconds": 90.25,
             "cleanup_status": "passed",
             "backup_reference_sha256": DIGEST_C,
-            "backup_created_at": "2026-08-11T07:45:00Z",
+            "backup_created_at": _timestamp(backup_created_at),
             "endpoint_host_sha256": DIGEST_D,
         },
         "recovery": {
@@ -413,7 +420,8 @@ def test_cyclonedx_sbom_requires_a_supported_non_empty_document(tmp_path) -> Non
 
 
 def test_production_cli_verifies_keys_sboms_environment_and_evidence_hash(tmp_path) -> None:
-    evidence = _valid_evidence()
+    cli_now = datetime.now(UTC)
+    evidence = _valid_evidence(now=cli_now)
     backend_sbom = tmp_path / "backend.cdx.json"
     frontend_sbom = tmp_path / "frontend.cdx.json"
     backend_sbom.write_text(
@@ -443,7 +451,10 @@ def test_production_cli_verifies_keys_sboms_environment_and_evidence_hash(tmp_pa
         "frontend_sha256": hashlib.sha256(frontend_sbom.read_bytes()).hexdigest(),
     }
     restore_evidence = tmp_path / "restore-drill.json"
-    restore_evidence.write_text(json.dumps(_valid_restore_evidence()), encoding="utf-8")
+    restore_evidence.write_text(
+        json.dumps(_valid_restore_evidence(now=cli_now)),
+        encoding="utf-8",
+    )
     evidence["database"]["restore_evidence_sha256"] = hashlib.sha256(
         restore_evidence.read_bytes()
     ).hexdigest()

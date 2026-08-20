@@ -126,8 +126,7 @@ def check_container_env(env: dict[str, str]) -> list[str]:
         env["COMPLIANCEHUB_APP_ORIGIN"] != "https://complywithai.de"
     ):
         findings.append(
-            "COMPLIANCEHUB_APP_ORIGIN muss im public_site-Profil "
-            "https://complywithai.de sein"
+            "COMPLIANCEHUB_APP_ORIGIN muss im public_site-Profil https://complywithai.de sein"
         )
 
     hosts = {
@@ -153,9 +152,7 @@ def check_container_env(env: dict[str, str]) -> list[str]:
 
     contact = env.get("COMPLIANCEHUB_SECURITY_CONTACT", "")
     if contact and not contact.startswith(("https://", "mailto:")):
-        findings.append(
-            "COMPLIANCEHUB_SECURITY_CONTACT muss eine HTTPS- oder mailto-Adresse sein"
-        )
+        findings.append("COMPLIANCEHUB_SECURITY_CONTACT muss eine HTTPS- oder mailto-Adresse sein")
 
     reviewed = env.get("COMPLIANCEHUB_PRIVACY_REVIEWED_AT", "")
     if reviewed:
@@ -171,8 +168,7 @@ def check_container_env(env: dict[str, str]) -> list[str]:
                 )
             elif (today - reviewed_date).days > 366:
                 findings.append(
-                    "Die Datenschutzerklärung muss mindestens jährlich erneut "
-                    "geprüft werden"
+                    "Die Datenschutzerklärung muss mindestens jährlich erneut geprüft werden"
                 )
 
     for key, low, high in (
@@ -198,7 +194,11 @@ def check_compose_env(env: dict[str, str]) -> list[str]:
             "tragen (…@sha256:…), keinen beweglichen Tag"
         )
 
-    for key in ("COMPLIANCEHUB_PUBLIC_HOST", "COMPLIANCEHUB_RELEASE_ID", "COMPLIANCEHUB_RELEASE_COMMIT"):
+    for key in (
+        "COMPLIANCEHUB_PUBLIC_HOST",
+        "COMPLIANCEHUB_RELEASE_ID",
+        "COMPLIANCEHUB_RELEASE_COMMIT",
+    ):
         if not env.get(key):
             findings.append(f"{key} fehlt")
 

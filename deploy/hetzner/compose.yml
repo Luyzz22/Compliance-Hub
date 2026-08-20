@@ -23,6 +23,8 @@ x-secret-host-contract:
     { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [backend], rotation_policy: coordinated_change_window }
   credential_pepper:
     { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [backend], rotation_policy: coordinated_change_window }
+  mfa_encryption_key:
+    { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [backend], rotation_policy: coordinated_change_window }
   internal_health_api_key:
     { uid: 10001, mode: "0400", min_bytes: 32, content_kind: opaque, consumers: [backend], rotation_policy: standard_90d }
   entra_client_secret:
@@ -142,6 +144,7 @@ services:
       COMPLIANCEHUB_BFF_SHARED_SECRET_FILE: /run/secrets/bff_shared_secret
       COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY_FILE: /run/secrets/audit_pseudonymization_key
       COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE: /run/secrets/credential_pepper
+      COMPLIANCEHUB_MFA_ENCRYPTION_KEY_FILE: /run/secrets/mfa_encryption_key
       INTERNAL_HEALTH_API_KEY_FILE: /run/secrets/internal_health_api_key
       INTERNAL_HEALTH_ALLOWED_IPS: 127.0.0.1
       COMPLIANCEHUB_PUBLIC_HOST: ${COMPLIANCEHUB_PUBLIC_HOST:?required}
@@ -167,6 +170,8 @@ services:
         target: audit_pseudonymization_key
       - source: credential_pepper
         target: credential_pepper
+      - source: mfa_encryption_key
+        target: mfa_encryption_key
       - source: internal_health_api_key
         target: internal_health_api_key
     tmpfs:
@@ -257,6 +262,8 @@ secrets:
     file: ./secrets/audit-pseudonymization-key
   credential_pepper:
     file: ./secrets/credential-pepper
+  mfa_encryption_key:
+    file: ./secrets/mfa-encryption-key
   internal_health_api_key:
     file: ./secrets/internal-health-api-key
   entra_client_secret:

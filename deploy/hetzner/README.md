@@ -41,6 +41,7 @@ secrets/azure-openai-client-certificate.pem
 secrets/bff-shared-secret
 secrets/audit-pseudonymization-key
 secrets/credential-pepper
+secrets/mfa-encryption-key
 secrets/internal-health-api-key
 secrets/entra-client-secret
 secrets/auth-transaction-secret
@@ -80,6 +81,13 @@ bleiben im Enterprise-Profil verboten.
 schützt die deterministischen Datenbankindizes von API-Keys und Sessions per HMAC und
 darf weder mit dem Audit-Pseudonymisierungsschlüssel geteilt noch nach dem Go-live ohne
 eine geplante API-Key-Rotation gewechselt werden.
+
+`mfa-encryption-key` ist davon getrennt. Er schützt TOTP-Seeds per AES-256-GCM und
+Backup-Codes per HMAC. Eine Rotation benötigt eine versionierte Re-Verschlüsselung aller
+aktiven Faktoren; der Wert darf nicht ersatzlos gewechselt oder mit anderen Schlüsseln geteilt
+werden. Die Migration `20260820_scope_and_reencrypt_mfa` widerruft unsichere Legacy-Faktoren,
+deren Tenant-Zuordnung und Klartextschutz nicht belastbar waren; betroffene Nutzer müssen MFA
+neu einrichten.
 
 HubSpot, Pipedrive, Stripe und deren produktive Adapter sind im souveränen
 Produktionsprofil technisch gesperrt. Zulässig sind nur selbst betriebene

@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server";
 
+import {
+  InvalidJsonBodyError,
+  readBoundedJsonBody,
+  RequestBodyTooLargeError,
+} from "@/lib/boundedJsonBody";
+
+const MAX_REQUEST_BYTES = 16 * 1024;
+
 type Body = {
   event?: string;
   cta_id?: string;
@@ -16,8 +24,12 @@ type Body = {
 export async function POST(req: Request) {
   let parsed: Body;
   try {
-    parsed = (await req.json()) as Body;
-  } catch {
+    parsed = await readBoundedJsonBody<Body>(req, MAX_REQUEST_BYTES);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ ok: false }, { status: 413 });
+    }
+    if (!(error instanceof InvalidJsonBodyError)) throw error;
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 

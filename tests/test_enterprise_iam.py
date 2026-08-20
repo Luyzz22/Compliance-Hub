@@ -332,6 +332,7 @@ class TestSCIMProvisioningUnit:
             )
             assert updated is not None
             assert updated["display_name"] == "After"
+            assert updated["role"] == "auditor"
 
     def test_scim_disable_user(self) -> None:
         with Session(engine) as s:
@@ -357,11 +358,12 @@ class TestSCIMProvisioningUnit:
             result = svc.deprovision_user("scim-deprov-tenant", created["user_id"])
             assert result is not None
             assert result["provision_status"] == "deprovisioned"
-            # User should be inactive
+            # Global identity remains active; only this tenant membership is removed.
             repo = UserRepository(s)
             user = repo.get_by_id(created["user_id"])
             assert user is not None
-            assert user.is_active is False
+            assert user.is_active is True
+            assert repo.get_role(user.id, "scim-deprov-tenant") is None
 
     def test_scim_reprovision_reactivates_user(self) -> None:
         with Session(engine) as s:
@@ -561,15 +563,16 @@ class TestUserLifecycleUnit:
             svc.joiner("lifecycle-leaver-tenant", user.id, role="tenant_admin")
             result = svc.leaver("lifecycle-leaver-tenant", user.id)
             assert result is not None
-            assert result["is_active"] is False
+            assert result["is_active"] is True
+            assert result["tenant_membership_active"] is False
             assert result["old_role"] == "tenant_admin"
             assert result["lifecycle_event"] == "leaver"
-            # User should be inactive with viewer role
+            # Shared identity remains active while tenant access is fully removed.
             user_db = repo.get_by_id(user.id)
             assert user_db is not None
-            assert user_db.is_active is False
+            assert user_db.is_active is True
             role = repo.get_role(user.id, "lifecycle-leaver-tenant")
-            assert role.role == "viewer"
+            assert role is None
 
     def test_get_user_status(self) -> None:
         with Session(engine) as s:
@@ -1053,7 +1056,8 @@ class TestLifecycleAPI:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["is_active"] is False
+        assert data["is_active"] is True
+        assert data["tenant_membership_active"] is False
         assert data["lifecycle_event"] == "leaver"
 
     def test_lifecycle_status(self) -> None:
@@ -1182,7 +1186,7 @@ class TestEnterpriseIAMNegative:
         assert resp2.status_code == 404
 
     def test_scim_deprovision_does_not_hard_delete(self) -> None:
-        """Deprovisioning must soft-disable, not hard delete the user."""
+        """Deprovisioning must revoke only the tenant membership, not the global user."""
         prov = client.post(
             "/api/v1/enterprise/scim/users",
             headers=_admin_headers(),
@@ -1198,10 +1202,11 @@ class TestEnterpriseIAMNegative:
             repo = UserRepository(s)
             user = repo.get_by_id(user_id)
             assert user is not None
-            assert user.is_active is False
+            assert user.is_active is True
+            assert repo.get_role(user_id, _headers()["x-tenant-id"]) is None
 
     def test_leaver_prevents_privilege_accumulation(self) -> None:
-        """After leaver flow, user should only have viewer role."""
+        """After leaver flow, the tenant role must be removed entirely."""
         reg = client.post(
             "/api/v1/auth/register",
             json={"email": "no.privaccum@example.com", "password": "StrongPass123"},
@@ -1211,7 +1216,7 @@ class TestEnterpriseIAMNegative:
         client.post(
             "/api/v1/enterprise/lifecycle/joiner",
             headers=_admin_headers(),
-            json={"user_id": user_id, "role": "super_admin"},
+            json={"user_id": user_id, "role": "tenant_admin"},
         )
         # Leaver
         client.post(
@@ -1219,9 +1224,8 @@ class TestEnterpriseIAMNegative:
             headers=_admin_headers(),
             json={"user_id": user_id},
         )
-        # Verify downgraded to viewer
+        # Verify all access in this tenant is revoked.
         with Session(engine) as s:
             repo = UserRepository(s)
             role = repo.get_role(user_id, _headers()["x-tenant-id"])
-            assert role is not None
-            assert role.role == "viewer"
+            assert role is None

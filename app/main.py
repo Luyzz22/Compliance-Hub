@@ -131,6 +131,7 @@ from app.audit_models import AuditEvent, AuditLog
 from app.auth_dependencies import (
     get_api_key_and_tenant,
     get_auth_context,
+    get_auth_context_for_non_persisting_action,
     get_optional_opa_user_role_header,
     require_advisor_access,
     require_path_tenant_matches_auth,
@@ -175,6 +176,8 @@ from app.cross_regulation_models import (
 from app.db import engine, get_database_url, get_session
 from app.db_schema_startup import ensure_runtime_schema
 from app.demo_models import (
+    DemoAzureBriefRequest,
+    DemoAzureBriefResponse,
     DemoGovernanceMaturityLayerRequest,
     DemoGovernanceMaturityLayerResponse,
     DemoSeedRequest,
@@ -432,6 +435,10 @@ from app.services.cross_regulation_llm_gap_assistant import (
     generate_cross_regulation_llm_gap_suggestions,
 )
 from app.services.cross_regulation_seed import ensure_cross_regulation_catalog_seeded
+from app.services.demo_azure_brief import (
+    generate_demo_azure_brief,
+    verify_demo_azure_runtime_configuration,
+)
 from app.services.demo_governance_maturity_seed import seed_demo_governance_maturity_layer
 from app.services.demo_tenant_seeder import seed_demo_tenant
 from app.services.enterprise_connector_candidate_scoring import (
@@ -482,6 +489,7 @@ from app.services.governance_maturity_service import build_governance_maturity_r
 from app.services.health_monitor import run_operational_health_poll_all_tenants
 from app.services.high_risk_scenarios import list_high_risk_scenarios
 from app.services.internal_health_core import compute_internal_deep_health
+from app.services.llm_usage_policy import LLMUsagePolicyExceeded
 from app.services.nis2_kritis_ai_assist import generate_nis2_kpi_suggestions
 from app.services.nis2_kritis_alert_signals import build_nis2_kritis_alert_signals
 from app.services.nis2_kritis_drilldown import build_nis2_kritis_kpi_drilldown
@@ -600,6 +608,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             minimum_characters=32,
         )
         read_secret(
+            "COMPLIANCEHUB_MFA_ENCRYPTION_KEY",
+            "COMPLIANCEHUB_MFA_ENCRYPTION_KEY_FILE",
+            required=True,
+            minimum_characters=32,
+        )
+        read_secret(
             "INTERNAL_HEALTH_API_KEY",
             "INTERNAL_HEALTH_API_KEY_FILE",
             required=True,
@@ -632,6 +646,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Fail closed when the configured vendors contradict the sovereignty mode: booting
     # anyway would silently invalidate every claim that mode authorises.
     verify_sovereignty_configuration()
+    verify_demo_azure_runtime_configuration()
     ensure_runtime_schema(engine, production=IS_PRODUCTION)
     configure_telemetry()
     with Session(engine) as seed_session:
@@ -1194,7 +1209,7 @@ def create_ai_system(
 
 
 @app.post("/api/v1/ai-systems/import", response_model=AIImportResult)
-async def import_ai_systems(
+def import_ai_systems(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
     repository: Annotated[AISystemRepository, Depends(get_ai_system_repository)],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
@@ -1203,11 +1218,18 @@ async def import_ai_systems(
     violation_repo: Annotated[ViolationRepository, Depends(get_violation_repository)],
     file: UploadFile = File(..., description="CSV- oder Excel-Datei (.xlsx)"),
 ) -> AIImportResult:
-    raw = await file.read()
+    from app.services.ai_system_import import MAX_IMPORT_UPLOAD_BYTES
+
+    raw = file.file.read(MAX_IMPORT_UPLOAD_BYTES + 1)
     if not raw:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Empty upload",
+        )
+    if len(raw) > MAX_IMPORT_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"Upload exceeds the {MAX_IMPORT_UPLOAD_BYTES}-byte import limit",
         )
     return import_ai_systems_from_file(
         tenant_id=auth_context.tenant_id,
@@ -4088,6 +4110,57 @@ def post_demo_governance_maturity_layer(
     )
 
 
+@app.post(
+    "/api/v1/demo/azure-governance-brief",
+    response_model=DemoAzureBriefResponse,
+    tags=["demo"],
+)
+def post_demo_azure_governance_brief(
+    body: DemoAzureBriefRequest,
+    auth_context: Annotated[
+        AuthContext,
+        Depends(get_auth_context_for_non_persisting_action),
+    ],
+    session: Annotated[Session, Depends(get_session)],
+) -> DemoAzureBriefResponse:
+    """Generate one bounded Azure brief from a fixed synthetic scenario.
+
+    The route is intentionally separate from mutable demo-domain APIs. It accepts no
+    customer text or documents and persists only existing security/audit metadata.
+    """
+    try:
+        return generate_demo_azure_brief(
+            session,
+            tenant_id=auth_context.tenant_id,
+            scenario=body.scenario,
+        )
+    except LLMUsagePolicyExceeded as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Das tägliche Azure-Demobudget ist ausgeschöpft.",
+        ) from exc
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Der Azure-Demopfad ist für diesen Mandanten nicht freigegeben.",
+        ) from exc
+    except llm_client_mod.LLMConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Der Azure-Demopfad ist nicht vollständig konfiguriert.",
+        ) from exc
+    except llm_client_mod.LLMProviderHTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Azure konnte das synthetische Briefing nicht bereitstellen.",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Die Azure-Antwort entsprach nicht dem erwarteten Datenvertrag.",
+        ) from exc
+
+
 @app.get("/api/v1/tenant/compliance-overview", response_model=TenantComplianceOverview)
 def get_tenant_compliance_overview(
     auth_context: Annotated[AuthContext, Depends(get_auth_context)],
@@ -5693,7 +5766,7 @@ def export_audit_logs_gobd_xml(
     _: Annotated[EnterpriseRole, Depends(require_permission(Permission.EXPORT_AUDIT_LOG))],
     audit_repo: Annotated[AuditLogRepository, Depends(get_audit_log_repository)],
 ) -> Response:
-    """GoBD §14 compliant XML export of the audit trail."""
+    """GoBD-oriented XML export; suitability requires case-specific legal review."""
     entries = audit_repo.list_for_tenant(tenant_id=tenant_id, limit=10_000)
     xml = generate_gobd_xml(entries)
     return Response(
@@ -7246,16 +7319,25 @@ def receive_sap_ai_system_event(
 
     require_capability(auth.tenant_id, Capability.enterprise_integrations)
 
-    if not body.get("tenantid"):
-        body["tenantid"] = auth.tenant_id
+    envelope = dict(body)
+    supplied_tenant = str(envelope.get("tenantid") or "").strip()
+    if supplied_tenant and supplied_tenant != auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="SAP event tenant does not match the authenticated connector tenant",
+        )
+    envelope["tenantid"] = auth.tenant_id
 
-    errors = validate_sap_envelope(body)
+    errors = validate_sap_envelope(envelope)
     if errors:
         raise HTTPException(
             status_code=422,
             detail={"validation_errors": errors},
         )
-    result = process_sap_ai_system_event(body)
+    result = process_sap_ai_system_event(
+        envelope,
+        authorized_tenant_id=auth.tenant_id,
+    )
     return result
 
 
@@ -7637,7 +7719,40 @@ class ProfileUpdateRequest(BaseModel):
 class RoleAssignRequest(BaseModel):
     user_id: str
     tenant_id: str
-    role: str
+    role: EnterpriseRole
+
+
+def _require_tenant_user_membership(session: Session, tenant_id: str, user_id: str) -> None:
+    if UserRepository(session).get_role(user_id, tenant_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User is not a member of the authenticated tenant",
+        )
+
+
+def _require_tenant_member_or_globally_unassigned(
+    session: Session,
+    tenant_id: str,
+    user_id: str,
+) -> None:
+    roles = UserRepository(session).list_roles_for_user(user_id)
+    if any(role.tenant_id == tenant_id for role in roles) or not roles:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="User is not eligible for onboarding into the authenticated tenant",
+    )
+
+
+def _enforce_role_grant_ceiling(
+    requested_role: EnterpriseRole,
+    caller_role: EnterpriseRole,
+) -> None:
+    if requested_role == EnterpriseRole.SUPER_ADMIN and caller_role != EnterpriseRole.SUPER_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only an existing platform super administrator may grant super_admin",
+        )
 
 
 @app.post("/api/v1/auth/register", status_code=status.HTTP_201_CREATED, tags=["identity"])
@@ -7996,10 +8111,10 @@ def get_user_profile(
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
 ) -> dict:
-    if auth.credential_kind == "user_session" and auth.user_id != user_id:
+    if auth.credential_kind != "user_session" or auth.user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="A user session may access only its own profile",
+            detail="Profile self-service requires the matching user session",
         )
     repo = UserRepository(session)
     svc = IdentityService(repo)
@@ -8016,10 +8131,10 @@ def update_user_profile(
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
 ) -> dict:
-    if auth.credential_kind == "user_session" and auth.user_id != user_id:
+    if auth.credential_kind != "user_session" or auth.user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="A user session may update only its own profile",
+            detail="Profile self-service requires the matching user session",
         )
     repo = UserRepository(session)
     svc = IdentityService(repo)
@@ -8049,30 +8164,36 @@ def update_user_profile(
 @app.post("/api/v1/auth/roles/assign", tags=["identity"])
 def assign_user_role(
     body: RoleAssignRequest,
-    tenant_id: Annotated[str, Depends(get_api_key_and_tenant)],
+    auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
 ) -> dict:
+    if body.tenant_id != auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Role assignments are restricted to the authenticated tenant",
+        )
+    _enforce_role_grant_ceiling(body.role, _role)
     repo = UserRepository(session)
     svc = IdentityService(repo)
     result = svc.assign_role(
         user_id=body.user_id,
-        tenant_id=body.tenant_id,
-        role=body.role,
-        assigned_by=None,
+        tenant_id=auth.tenant_id,
+        role=body.role.value,
+        assigned_by=auth.actor_id,
     )
     if "error" in result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result["detail"])
     # Audit log
     audit_repo = AuditLogRepository(session)
     audit_repo.record_event(
-        tenant_id=tenant_id,
-        actor="admin",
+        tenant_id=auth.tenant_id,
+        actor=auth.actor_id,
         action="user.role_assigned",
         entity_type="user_tenant_role",
         entity_id=body.user_id,
         before=None,
-        after=f"role={body.role} tenant={body.tenant_id}",
+        after=f"role={body.role.value} tenant={auth.tenant_id}",
     )
     return result
 
@@ -8371,13 +8492,13 @@ class SCIMProvisionRequest(BaseModel):
     email: str
     display_name: str | None = None
     scim_external_id: str | None = None
-    role: str = "viewer"
+    role: EnterpriseRole = EnterpriseRole.VIEWER
     sync_source: str | None = None
 
 
 class SCIMUpdateRequest(BaseModel):
     display_name: str | None = None
-    role: str | None = None
+    role: EnterpriseRole | None = None
     scim_external_id: str | None = None
 
 
@@ -8392,13 +8513,14 @@ def scim_provision_user(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SCIM))],
 ) -> dict:
+    _enforce_role_grant_ceiling(body.role, _role)
     svc = SCIMProvisioningService(session)
     result = svc.provision_user(
         tenant_id=tenant_id,
         email=body.email,
         display_name=body.display_name,
         scim_external_id=body.scim_external_id,
-        role=body.role,
+        role=body.role.value,
         sync_source=body.sync_source,
     )
     audit_repo = AuditLogRepository(session)
@@ -8422,12 +8544,15 @@ def scim_update_user(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SCIM))],
 ) -> dict:
+    _require_tenant_user_membership(session, tenant_id, user_id)
+    if body.role is not None:
+        _enforce_role_grant_ceiling(body.role, _role)
     svc = SCIMProvisioningService(session)
     result = svc.update_user(
         tenant_id=tenant_id,
         user_id=user_id,
         display_name=body.display_name,
-        role=body.role,
+        role=body.role.value if body.role is not None else None,
         scim_external_id=body.scim_external_id,
     )
     if result is None:
@@ -8452,6 +8577,7 @@ def scim_disable_user(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SCIM))],
 ) -> dict:
+    _require_tenant_user_membership(session, tenant_id, user_id)
     svc = SCIMProvisioningService(session)
     result = svc.disable_user(tenant_id, user_id)
     if result is None:
@@ -8476,6 +8602,7 @@ def scim_deprovision_user(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_SCIM))],
 ) -> dict:
+    _require_tenant_user_membership(session, tenant_id, user_id)
     svc = SCIMProvisioningService(session)
     result = svc.deprovision_user(tenant_id, user_id)
     if result is None:
@@ -8666,12 +8793,12 @@ def bulk_create_access_reviews(
 
 class LifecycleJoinerRequest(BaseModel):
     user_id: str
-    role: str = "viewer"
+    role: EnterpriseRole = EnterpriseRole.VIEWER
 
 
 class LifecycleMoverRequest(BaseModel):
     user_id: str
-    new_role: str
+    new_role: EnterpriseRole
 
 
 class LifecycleLeaverRequest(BaseModel):
@@ -8685,8 +8812,10 @@ def lifecycle_joiner(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
 ) -> dict:
+    _require_tenant_member_or_globally_unassigned(session, tenant_id, body.user_id)
+    _enforce_role_grant_ceiling(body.role, _role)
     svc = UserLifecycleService(session)
-    result = svc.joiner(tenant_id, body.user_id, role=body.role)
+    result = svc.joiner(tenant_id, body.user_id, role=body.role.value)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     audit_repo = AuditLogRepository(session)
@@ -8697,7 +8826,7 @@ def lifecycle_joiner(
         entity_type="user",
         entity_id=body.user_id,
         before=None,
-        after=f"role={body.role}",
+        after=f"role={body.role.value}",
     )
     return result
 
@@ -8709,8 +8838,10 @@ def lifecycle_mover(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
 ) -> dict:
+    _require_tenant_user_membership(session, tenant_id, body.user_id)
+    _enforce_role_grant_ceiling(body.new_role, _role)
     svc = UserLifecycleService(session)
-    result = svc.mover(tenant_id, body.user_id, new_role=body.new_role)
+    result = svc.mover(tenant_id, body.user_id, new_role=body.new_role.value)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     audit_repo = AuditLogRepository(session)
@@ -8721,7 +8852,7 @@ def lifecycle_mover(
         entity_type="user",
         entity_id=body.user_id,
         before=result.get("old_role"),
-        after=f"role={body.new_role}",
+        after=f"role={body.new_role.value}",
     )
     return result
 
@@ -8733,6 +8864,7 @@ def lifecycle_leaver(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_USERS))],
 ) -> dict:
+    _require_tenant_user_membership(session, tenant_id, body.user_id)
     svc = UserLifecycleService(session)
     result = svc.leaver(tenant_id, body.user_id)
     if result is None:
@@ -8868,7 +9000,8 @@ def enroll_mfa(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
 ) -> dict:
-    result = MFAService(session).enroll_totp(user_id)
+    _require_tenant_user_membership(session, tenant_id, user_id)
+    result = MFAService(session).enroll_totp(tenant_id, user_id)
     if "error" in result:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=result["detail"])
     return result
@@ -8882,7 +9015,8 @@ def verify_mfa_enrollment(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
 ) -> dict:
-    result = MFAService(session).verify_totp_enrollment(user_id, body.token)
+    _require_tenant_user_membership(session, tenant_id, user_id)
+    result = MFAService(session).verify_totp_enrollment(tenant_id, user_id, body.token)
     if "error" in result:
         sc = status.HTTP_400_BAD_REQUEST
         if result["error"] == "invalid_token":
@@ -8898,7 +9032,8 @@ def get_mfa_status(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
 ) -> dict:
-    return MFAService(session).get_mfa_status(user_id)
+    _require_tenant_user_membership(session, tenant_id, user_id)
+    return MFAService(session).get_mfa_status(tenant_id, user_id)
 
 
 @app.post(
@@ -8912,7 +9047,8 @@ def generate_backup_codes(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
 ) -> dict:
-    return MFAService(session).generate_backup_codes(user_id)
+    _require_tenant_user_membership(session, tenant_id, user_id)
+    return MFAService(session).generate_backup_codes(tenant_id, user_id)
 
 
 @app.post("/api/v1/enterprise/governance/mfa/step-up", tags=["enterprise-governance"])
@@ -8923,7 +9059,8 @@ def mfa_step_up(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
 ) -> dict:
-    result = MFAService(session).step_up_challenge(user_id, body.token)
+    _require_tenant_user_membership(session, tenant_id, user_id)
+    result = MFAService(session).step_up_challenge(tenant_id, user_id, body.token)
     if not result.get("verified"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Step-up verification failed"
@@ -8943,7 +9080,8 @@ def reset_mfa(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.MANAGE_MFA))],
 ) -> dict:
-    return MFAService(session).reset_mfa(user_id)
+    _require_tenant_user_membership(session, tenant_id, user_id)
+    return MFAService(session).reset_mfa(tenant_id, user_id)
 
 
 # ── Approval Workflow Endpoints ──────────────────────────────────────────────
@@ -9269,7 +9407,7 @@ def get_board_pdf_report(
     session: Annotated[Session, Depends(get_session)],
     _role: Annotated[EnterpriseRole, Depends(require_permission(Permission.GENERATE_PDF_REPORT))],
 ) -> Response:
-    """Generate PDF/A-3 board report from KPI data. GoBD-konform, archivierungssicher."""
+    """Generate a PDF/A-3 board report; legal and archival suitability needs review."""
     import uuid as _uuid
     from datetime import datetime as _dt
 

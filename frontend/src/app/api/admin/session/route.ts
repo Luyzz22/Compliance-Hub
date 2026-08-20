@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import {
+  InvalidJsonBodyError,
+  readBoundedJsonBody,
+  RequestBodyTooLargeError,
+} from "@/lib/boundedJsonBody";
+import {
   createLeadAdminSessionToken,
   isLeadAdminAuthorized,
   LEAD_ADMIN_COOKIE_NAME,
@@ -11,6 +16,8 @@ import {
 
 export const runtime = "nodejs";
 
+const MAX_REQUEST_BYTES = 16 * 1024;
+
 /** Setzt Session-Cookie nach erfolgreicher Secret-Prüfung (internes Lead-Inbox-UI). */
 export async function POST(req: Request) {
   if (!leadAdminIsConfigured()) {
@@ -19,8 +26,12 @@ export async function POST(req: Request) {
 
   let body: { secret?: string } = {};
   try {
-    body = (await req.json()) as { secret?: string };
-  } catch {
+    body = await readBoundedJsonBody<{ secret?: string }>(req, MAX_REQUEST_BYTES);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ ok: false, error: "request_too_large" }, { status: 413 });
+    }
+    if (!(error instanceof InvalidJsonBodyError)) throw error;
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 

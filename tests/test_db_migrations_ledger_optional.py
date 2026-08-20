@@ -46,7 +46,9 @@ def test_run_all_ledgerless_does_not_raise_and_skips_ddl_when_ensure_fails(
     assert summary.applied_ddl == []
     assert summary.skipped_ledger == []
     assert summary.ledger_backfilled == []
-    assert summary.ledgerless_unsatisfied == []
+    # ORM create_all cannot install the DB-native append-only trigger. A restricted app
+    # role must report that privileged migration as pending instead of silently weakening it.
+    assert summary.ledgerless_unsatisfied == ["20260820_upgrade_audit_integrity"]
 
     assert not inspect(engine).has_table("schema_migrations")
     engine.dispose()
@@ -121,7 +123,11 @@ def test_run_all_ledgerless_reports_unsatisfied_without_ddl(tmp_path) -> None:
     assert "20260809_add_nis2_awareness_anchor" in ids
     assert "20260809_add_evidence_sha256" in ids
     assert "20260811_add_llm_call_data_class" in ids
-    assert len(ids) == 35
+    assert "20260820_add_llm_daily_usage_budget" in ids
+    assert "20260820_scim_tenant_profile" in ids
+    assert "20260820_scope_and_reencrypt_mfa" in ids
+    assert "20260820_upgrade_audit_integrity" in ids
+    assert len(ids) == 39
     cols = {c["name"] for c in inspect(engine).get_columns("tenants")}
     assert "kritis_sector" not in cols
     engine.dispose()

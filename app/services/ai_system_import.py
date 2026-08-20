@@ -4,6 +4,8 @@ import csv
 import io
 import json
 import re
+import zipfile
+from pathlib import PurePosixPath
 from uuid import uuid4
 
 from openpyxl import load_workbook
@@ -68,6 +70,15 @@ HEADER_SYNONYMS: dict[str, str] = {
     "supplier_register": "has_supplier_risk_register",
     "backup_runbook": "has_backup_runbook",
 }
+
+MAX_IMPORT_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_IMPORT_ROWS = 10_000
+MAX_IMPORT_COLUMNS = 64
+MAX_IMPORT_CELL_CHARS = 10_000
+MAX_XLSX_ARCHIVE_ENTRIES = 256
+MAX_XLSX_EXPANDED_BYTES = 40 * 1024 * 1024
+MAX_XLSX_ENTRY_BYTES = 20 * 1024 * 1024
+MAX_XLSX_COMPRESSION_RATIO = 150
 
 
 def _normalize_header_key(cell: str) -> str:
@@ -239,40 +250,92 @@ def _model_to_json(model: BaseModel) -> str:
     return json.dumps(model.model_dump(mode="json"), default=str)
 
 
+def _bounded_cell(value: object) -> str:
+    rendered = "" if value is None else str(value).strip()
+    if len(rendered) > MAX_IMPORT_CELL_CHARS:
+        raise ValueError(
+            f"Zellen dürfen höchstens {MAX_IMPORT_CELL_CHARS} Zeichen enthalten",
+        )
+    return rendered
+
+
 def _iter_csv_rows(data: bytes) -> list[tuple[int, dict[str, str]]]:
     text = data.decode("utf-8-sig")
-    reader = csv.reader(io.StringIO(text))
-    rows = list(reader)
-    if not rows:
+    reader = csv.reader(io.StringIO(text), strict=True)
+    header_cells = next(reader, None)
+    if header_cells is None:
         return []
-    header_cells = rows[0]
+    if len(header_cells) > MAX_IMPORT_COLUMNS:
+        raise ValueError(f"CSV darf höchstens {MAX_IMPORT_COLUMNS} Spalten enthalten")
     canonical = [_resolve_field(_normalize_header_key(h or "")) for h in header_cells]
     out: list[tuple[int, dict[str, str]]] = []
-    for row_idx, row in enumerate(rows[1:], start=2):
+    for row_idx, row in enumerate(reader, start=2):
+        if row_idx > MAX_IMPORT_ROWS + 1:
+            raise ValueError(f"Import darf höchstens {MAX_IMPORT_ROWS} Datenzeilen enthalten")
+        if len(row) > MAX_IMPORT_COLUMNS:
+            raise ValueError(f"CSV darf höchstens {MAX_IMPORT_COLUMNS} Spalten enthalten")
         d: dict[str, str] = {}
         for j, key in enumerate(canonical):
             if key is None:
                 continue
             val = (row[j] if j < len(row) else "") or ""
-            d[key] = str(val).strip()
+            d[key] = _bounded_cell(val)
         if not any(v for v in d.values()):
             continue
         out.append((row_idx, d))
     return out
 
 
+def _inspect_xlsx_archive(data: bytes) -> None:
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile as exc:
+        raise ValueError("Ungültiges XLSX-Archiv") from exc
+
+    with archive:
+        entries = archive.infolist()
+        if len(entries) > MAX_XLSX_ARCHIVE_ENTRIES:
+            raise ValueError("XLSX enthält zu viele Archiveinträge")
+        expanded_total = 0
+        for entry in entries:
+            path = PurePosixPath(entry.filename)
+            if path.is_absolute() or ".." in path.parts:
+                raise ValueError("XLSX enthält einen unsicheren Archivpfad")
+            if entry.flag_bits & 0x1:
+                raise ValueError("Verschlüsselte XLSX-Archive werden nicht unterstützt")
+            if entry.file_size > MAX_XLSX_ENTRY_BYTES:
+                raise ValueError("XLSX enthält einen zu großen Archiveintrag")
+            expanded_total += entry.file_size
+            if expanded_total > MAX_XLSX_EXPANDED_BYTES:
+                raise ValueError("XLSX überschreitet das erlaubte entpackte Datenvolumen")
+            if entry.file_size and entry.compress_size == 0:
+                raise ValueError("XLSX enthält einen ungültigen Kompressionswert")
+            compression_ratio = entry.file_size / entry.compress_size if entry.compress_size else 0
+            if compression_ratio > MAX_XLSX_COMPRESSION_RATIO:
+                raise ValueError("XLSX weist eine unzulässige Kompressionsrate auf")
+
+
 def _iter_xlsx_rows(data: bytes) -> list[tuple[int, dict[str, str]]]:
+    _inspect_xlsx_archive(data)
     wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
     try:
+        if len(wb.sheetnames) > 10:
+            raise ValueError("XLSX darf höchstens 10 Tabellenblätter enthalten")
         ws = wb.active
+        if ws.max_column > MAX_IMPORT_COLUMNS:
+            raise ValueError(f"XLSX darf höchstens {MAX_IMPORT_COLUMNS} Spalten enthalten")
+        if ws.max_row > MAX_IMPORT_ROWS + 1:
+            raise ValueError(f"Import darf höchstens {MAX_IMPORT_ROWS} Datenzeilen enthalten")
         rows_iter = ws.iter_rows(values_only=True)
         header_row = next(rows_iter, None)
         if not header_row:
             return []
-        header_cells = [str(c) if c is not None else "" for c in header_row]
+        header_cells = [_bounded_cell(c) for c in header_row]
         canonical = [_resolve_field(_normalize_header_key(h)) for h in header_cells]
         out: list[tuple[int, dict[str, str]]] = []
         for row_idx, row in enumerate(rows_iter, start=2):
+            if row_idx > MAX_IMPORT_ROWS + 1:
+                raise ValueError(f"Import darf höchstens {MAX_IMPORT_ROWS} Datenzeilen enthalten")
             if row is None:
                 continue
             d: dict[str, str] = {}
@@ -280,8 +343,7 @@ def _iter_xlsx_rows(data: bytes) -> list[tuple[int, dict[str, str]]]:
                 if key is None:
                     continue
                 cell = row[j] if j < len(row) else None
-                val = "" if cell is None else str(cell).strip()
-                d[key] = val
+                d[key] = _bounded_cell(cell)
             if not any(v for v in d.values()):
                 continue
             out.append((row_idx, d))
@@ -294,7 +356,9 @@ def _parse_table_rows(filename: str, data: bytes) -> list[tuple[int, dict[str, s
     name = filename.lower()
     if name.endswith(".xlsx"):
         return _iter_xlsx_rows(data)
-    return _iter_csv_rows(data)
+    if name.endswith(".csv"):
+        return _iter_csv_rows(data)
+    raise ValueError("Nur CSV- und XLSX-Dateien werden unterstützt")
 
 
 def _after_create(

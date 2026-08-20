@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 
+from app.audit_integrity import AUDIT_INTEGRITY_V2, compute_audit_entry_hash
 from app.db import SessionLocal
 from app.main import app, get_audit_log_repository
 from app.models_db import AuditLogTable
@@ -73,6 +77,7 @@ def test_audit_log_hash_chain_integrity(
     )
     assert e1.entry_hash is not None
     assert e1.previous_hash is None
+    assert e1.integrity_version == AUDIT_INTEGRITY_V2
 
     e2 = audit_repo.record_event(
         tenant_id=_TENANT,
@@ -211,6 +216,57 @@ def test_audit_log_append_only_delete_blocked(
     with pytest.raises(ValueError, match="append-only"):
         session.commit()
     session.rollback()
+
+
+def test_audit_log_database_trigger_blocks_bulk_update(
+    audit_repo: AuditLogRepository,
+) -> None:
+    entry = audit_repo.record_event(
+        tenant_id="gobd-db-trigger",
+        actor="trigger-test",
+        action="create",
+        entity_type="x",
+        entity_id="y",
+        before=None,
+        after="{}",
+    )
+    session: Session = audit_repo._session
+    with pytest.raises(DatabaseError, match="append-only"):
+        session.execute(
+            text("UPDATE audit_logs SET actor = 'forged' WHERE id = :id"),
+            {"id": entry.id},
+        )
+        session.commit()
+    session.rollback()
+
+
+def test_audit_hash_v2_covers_security_metadata() -> None:
+    created_at = datetime.now(UTC)
+    common = {
+        "integrity_version": AUDIT_INTEGRITY_V2,
+        "tenant_id": _TENANT,
+        "action": "update",
+        "entity_type": "policy",
+        "entity_id": "p-1",
+        "before": "{}",
+        "after": '{"state":"active"}',
+        "ip_address": "192.0.2.1",
+        "user_agent": "test-agent",
+        "created_at": created_at,
+        "actor_role": "admin",
+        "outcome": "success",
+        "correlation_id": "corr-1",
+        "metadata_json": '{"source":"api"}',
+        "previous_hash": None,
+    }
+    original = compute_audit_entry_hash(actor="actor-a", **common)
+    forged_actor = compute_audit_entry_hash(actor="actor-b", **common)
+    forged_metadata = compute_audit_entry_hash(
+        actor="actor-a",
+        **(common | {"metadata_json": '{"source":"forged"}'}),
+    )
+    assert original != forged_actor
+    assert original != forged_metadata
 
 
 def test_audit_log_gobd_tenant_isolation(

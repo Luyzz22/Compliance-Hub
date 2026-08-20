@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from enum import StrEnum
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DemoSeedRequest(BaseModel):
@@ -54,6 +55,39 @@ class DemoGovernanceMaturityLayerResponse(BaseModel):
     runtime_events_inserted: int
     oami_snapshot_persisted: bool
     skipped_already_seeded: bool
+
+
+class DemoAzureBriefScenario(StrEnum):
+    governance_release_gate = "governance_release_gate"
+    supplier_risk = "supplier_risk"
+    incident_readiness = "incident_readiness"
+
+
+class DemoAzureBriefRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    scenario: DemoAzureBriefScenario
+
+
+class DemoAzureBriefContent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(..., min_length=8, max_length=120)
+    executive_summary: str = Field(..., min_length=40, max_length=900)
+    recommended_actions: list[Annotated[str, Field(min_length=12, max_length=240)]] = Field(
+        ..., min_length=3, max_length=3
+    )
+    human_review_note: str = Field(..., min_length=20, max_length=360)
+
+
+class DemoAzureBriefResponse(DemoAzureBriefContent):
+    scenario: DemoAzureBriefScenario
+    provider: Literal["azure_openai"]
+    model_id: str = Field(..., min_length=1, max_length=128)
+    input_tokens_est: int = Field(ge=0)
+    output_tokens_est: int = Field(ge=0)
+    data_class: Literal["public"] = "public"
+    synthetic_data_only: Literal[True] = True
 
 
 class TenantWorkspaceMetaResponse(BaseModel):

@@ -62,6 +62,11 @@ export function featurePilotRunbook(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_PILOT_RUNBOOK, true);
 }
 
+/** Fest definierte, ausschließlich synthetische Azure-Demo-Inferenz im Pilot-Runbook. */
+export function featureDemoAzureInference(): boolean {
+  return envBool(process.env.NEXT_PUBLIC_FEATURE_DEMO_AZURE_INFERENCE, false);
+}
+
 /** API-Key-Verwaltung unter Einstellungen. */
 export function featureApiKeysUi(): boolean {
   return envBool(process.env.NEXT_PUBLIC_FEATURE_API_KEYS_UI, true);

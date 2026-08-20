@@ -37,6 +37,7 @@ def _row_to_item(row: AuditLogTable) -> AuditLogItem:
         user_agent=row.user_agent,
         previous_hash=row.previous_hash,
         entry_hash=row.entry_hash,
+        integrity_version=row.integrity_version,
         created_at_utc=row.created_at_utc,
         actor_role=row.actor_role,
         outcome=row.outcome,
@@ -104,14 +105,36 @@ class AuditTrailService:
         )
         rows = self._session.execute(stmt).scalars().all()
         prev_hash: str | None = None
+        legacy_seen = False
+        independent_anchor_limitation = (
+            "Diese Prüfung bestätigt nur die interne Hash-Kette und den Datenbank-"
+            "Schreibschutz; ein externer Zeitstempel oder unabhängig verwalteter "
+            "Integritätsanker wurde nicht geprüft."
+        )
         for row in rows:
             if row.entry_hash is None:
-                prev_hash = None
-                continue
+                return ChainIntegrityResult(
+                    valid=False,
+                    checked_count=len(rows),
+                    first_invalid_id=row.id,
+                    assurance_level="invalid",
+                    fully_covered=False,
+                    limitations=[
+                        "Mindestens ein Eintrag besitzt keinen prüfbaren Hash.",
+                        independent_anchor_limitation,
+                    ],
+                )
             if row.previous_hash != prev_hash:
                 return ChainIntegrityResult(
-                    valid=False, checked_count=len(rows), first_invalid_id=row.id
+                    valid=False,
+                    checked_count=len(rows),
+                    first_invalid_id=row.id,
+                    assurance_level="invalid",
+                    fully_covered=False,
+                    limitations=[independent_anchor_limitation],
                 )
+            if row.integrity_version == "sha256-v1":
+                legacy_seen = True
             expected = _compute_entry_hash(
                 tenant_id=row.tenant_id,
                 action=row.action,
@@ -121,13 +144,39 @@ class AuditTrailService:
                 after=row.after,
                 created_at=row.created_at_utc,
                 previous_hash=row.previous_hash,
+                actor=row.actor,
+                ip_address=row.ip_address,
+                user_agent=row.user_agent,
+                actor_role=row.actor_role,
+                outcome=row.outcome,
+                correlation_id=row.correlation_id,
+                metadata_json=row.metadata_json,
+                integrity_version=row.integrity_version,
             )
             if row.entry_hash != expected:
                 return ChainIntegrityResult(
-                    valid=False, checked_count=len(rows), first_invalid_id=row.id
+                    valid=False,
+                    checked_count=len(rows),
+                    first_invalid_id=row.id,
+                    assurance_level="invalid",
+                    fully_covered=False,
+                    limitations=[independent_anchor_limitation],
                 )
             prev_hash = row.entry_hash
-        return ChainIntegrityResult(valid=True, checked_count=len(rows))
+        limitations = [independent_anchor_limitation]
+        if legacy_seen:
+            limitations.insert(
+                0,
+                "Legacy-v1-Einträge decken Akteur, Rolle, Ergebnis, Netzwerk- und "
+                "Korrelationsmetadaten nicht im Hash ab.",
+            )
+        return ChainIntegrityResult(
+            valid=True,
+            checked_count=len(rows),
+            assurance_level=("legacy-chain-consistent" if legacy_seen else "v2-chain-consistent"),
+            fully_covered=bool(rows) and not legacy_seen,
+            limitations=limitations,
+        )
 
     def export_csv(self, tenant_id: str, limit: int = 10_000) -> str:
         entries = self._repo.list_for_tenant(tenant_id=tenant_id, limit=limit)
@@ -147,6 +196,7 @@ class AuditTrailService:
                 "user_agent",
                 "entry_hash",
                 "previous_hash",
+                "integrity_version",
             ]
         )
         for e in entries:
@@ -164,6 +214,7 @@ class AuditTrailService:
                     e.user_agent or "",
                     e.entry_hash or "",
                     e.previous_hash or "",
+                    e.integrity_version,
                 ]
             )
         return buf.getvalue()

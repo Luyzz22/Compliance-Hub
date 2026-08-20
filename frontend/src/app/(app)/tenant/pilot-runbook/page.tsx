@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import React from "react";
 
+import { DemoAzureGovernanceBriefPanel } from "@/components/demo/DemoAzureGovernanceBriefPanel";
 import { EnterprisePageHeader } from "@/components/sbs/EnterprisePageHeader";
 import {
   CH_BTN_PRIMARY,
@@ -10,7 +11,7 @@ import {
   CH_SECTION_LABEL,
   CH_SHELL,
 } from "@/lib/boardLayout";
-import { featurePilotRunbook } from "@/lib/config";
+import { featureDemoAzureInference, featurePilotRunbook } from "@/lib/config";
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
 export default async function PilotRunbookPage() {
@@ -38,6 +39,10 @@ export default async function PilotRunbookPage() {
       </p>
 
       <div className="space-y-6">
+        {featureDemoAzureInference() ? (
+          <DemoAzureGovernanceBriefPanel tenantId={tenantId} />
+        ) : null}
+
         <section className={CH_CARD} aria-labelledby="runbook-ziel">
           <h2 id="runbook-ziel" className={CH_SECTION_LABEL}>
             Zielbild
