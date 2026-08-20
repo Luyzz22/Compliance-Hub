@@ -59,7 +59,7 @@ PostgreSQL-DSN und den aufgelösten Compose-Vertrag:
 
 ```bash
 cd /opt/compliancehub/deploy/hetzner
-python3 preflight-synthetic-demo.py --env-file .env.synthetic-demo
+sudo python3 preflight-synthetic-demo.py --env-file .env.synthetic-demo
 ```
 
 Er gibt nur Status und Fehlerklasse aus, niemals Secret-Inhalte.
@@ -72,13 +72,13 @@ keine signierte Produktions-Supply-Chain.
 
 ```bash
 COMMIT="$(git rev-parse HEAD)"
-docker build \
+sudo docker build \
   --file Dockerfile.hetzner \
   --label "com.complywithai.release.commit=${COMMIT}" \
   --tag "compliancehub-backend:synthetic-demo-${COMMIT}" \
   .
 
-docker build \
+sudo docker build \
   --file frontend/Dockerfile.hetzner \
   --build-arg NEXT_PUBLIC_FEATURE_DEMO_AZURE_INFERENCE=true \
   --build-arg NEXT_PUBLIC_DEMO_WORKSPACE_TENANT_ID=demo-mittelstand-ag \
@@ -95,12 +95,12 @@ Die beiden Tags und der vollständige Commit kommen danach in `.env.synthetic-de
 ```bash
 cd /opt/compliancehub/deploy/hetzner
 export COMPLIANCEHUB_ENV_FILE=.env.synthetic-demo
-docker compose \
+sudo docker compose \
   --env-file .env.synthetic-demo \
   -f compose.synthetic-demo.yml \
   up -d
 
-docker compose \
+sudo docker compose \
   --env-file .env.synthetic-demo \
   -f compose.synthetic-demo.yml \
   ps
