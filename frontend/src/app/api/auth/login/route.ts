@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { parseLoginBody } from "@/lib/sessionSecurity";
 import { isEnterpriseProductionRuntime } from "@/lib/outboundEndpointPolicy";
+import { syntheticDemoPasswordLoginIsAllowed } from "@/lib/releaseProfile";
 import {
   bffBackendHeaders,
   complianceApiBaseUrl,
@@ -23,7 +24,7 @@ type BackendLogin = {
 };
 
 export async function POST(request: NextRequest) {
-  if (isEnterpriseProductionRuntime()) {
+  if (isEnterpriseProductionRuntime() && !syntheticDemoPasswordLoginIsAllowed()) {
     return noStoreJson({ ok: false, error: "password_login_disabled" }, { status: 404 });
   }
   if (!mutationRequestIsTrusted(request)) {

@@ -31,6 +31,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY --chown=compliancehub:compliancehub app ./app
 COPY --chown=compliancehub:compliancehub scripts/container_readiness.py ./scripts/container_readiness.py
 COPY --chown=compliancehub:compliancehub scripts/verify_db_schema.py ./scripts/verify_db_schema.py
+COPY --chown=compliancehub:compliancehub scripts/bootstrap_synthetic_demo.py ./scripts/bootstrap_synthetic_demo.py
 USER 10001:10001
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "10.89.0.0/24"]

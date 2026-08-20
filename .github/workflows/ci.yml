@@ -36,8 +36,8 @@ jobs:
 
       - name: Lint and format check
         run: |
-          ruff check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py tests/
-          ruff format --check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py tests/
+          ruff check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py scripts/bootstrap_synthetic_demo.py deploy/hetzner/preflight-synthetic-demo.py tests/
+          ruff format --check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py scripts/bootstrap_synthetic_demo.py deploy/hetzner/preflight-synthetic-demo.py tests/
 
       - name: Dependency vulnerability audit
         run: pip-audit --skip-editable --desc
@@ -51,10 +51,16 @@ jobs:
       - name: Static security analysis
         run: |
           bandit -q -r app -x app/db_migrations -lll
-          bandit -q scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py
+          bandit -q scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py scripts/bootstrap_synthetic_demo.py deploy/hetzner/preflight-synthetic-demo.py
 
       - name: Test
         run: python -m pytest tests/ -q
+
+      - name: Validate Hetzner Compose blueprints
+        run: |
+          cd deploy/hetzner
+          COMPLIANCEHUB_ENV_FILE=.env.production.example docker compose --env-file .env.production.example -f compose.yml config --quiet
+          COMPLIANCEHUB_ENV_FILE=.env.synthetic-demo.example docker compose --env-file .env.synthetic-demo.example -f compose.synthetic-demo.yml config --quiet
 
       - name: Upload backend SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

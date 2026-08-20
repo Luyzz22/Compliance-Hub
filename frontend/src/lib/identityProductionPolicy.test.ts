@@ -48,4 +48,40 @@ describe("enterprise production identity policy", () => {
     expect(await response.json()).toMatchObject({ error: "password_login_disabled" });
     expect(backendFetch).not.toHaveBeenCalled();
   });
+
+  it("opens password login only for the fully attested synthetic read-only profile", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("COMPLIANCEHUB_RELEASE_CHANNEL", "pilot");
+    vi.stubEnv("COMPLIANCEHUB_RELEASE_PROFILE", "synthetic_demo");
+    vi.stubEnv("COMPLIANCEHUB_FEATURE_DEMO_MODE", "true");
+    vi.stubEnv("COMPLIANCEHUB_DEMO_BLOCK_ALL_MUTATIONS", "true");
+    vi.stubEnv("COMPLIANCEHUB_DEMO_SYNTHETIC_ONLY_ATTESTED", "true");
+    vi.stubEnv("COMPLIANCEHUB_PASSWORD_LOGIN_ENABLED", "true");
+    vi.stubEnv("COMPLIANCEHUB_SELF_REGISTRATION_ENABLED", "false");
+    vi.stubEnv("COMPLIANCEHUB_PUBLIC_DEMO_ENABLED", "false");
+    vi.stubEnv("COMPLIANCEHUB_ENTRA_ENABLED", "false");
+
+    const response = identityStatus();
+    await expect(response.json()).resolves.toMatchObject({
+      enabled: false,
+      passwordLoginEnabled: true,
+      selfRegistrationEnabled: false,
+    });
+  });
+
+  it("keeps password login closed when one synthetic safety attestation is missing", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("COMPLIANCEHUB_RELEASE_CHANNEL", "pilot");
+    vi.stubEnv("COMPLIANCEHUB_RELEASE_PROFILE", "synthetic_demo");
+    vi.stubEnv("COMPLIANCEHUB_FEATURE_DEMO_MODE", "true");
+    vi.stubEnv("COMPLIANCEHUB_DEMO_BLOCK_ALL_MUTATIONS", "false");
+    vi.stubEnv("COMPLIANCEHUB_DEMO_SYNTHETIC_ONLY_ATTESTED", "true");
+    vi.stubEnv("COMPLIANCEHUB_PASSWORD_LOGIN_ENABLED", "true");
+
+    const response = identityStatus();
+    await expect(response.json()).resolves.toMatchObject({
+      passwordLoginEnabled: false,
+      selfRegistrationEnabled: false,
+    });
+  });
 });

@@ -1,0 +1,35 @@
+{
+	admin off
+	auto_https off
+}
+
+http://{$COMPLIANCEHUB_PUBLIC_HOST}:80 {
+	@outside not remote_ip {$COMPLIANCEHUB_DEMO_ALLOWED_CIDR}
+	respond @outside 403
+	redir https://{host}{uri} permanent
+}
+
+https://{$COMPLIANCEHUB_PUBLIC_HOST}:443 {
+	@outside not remote_ip {$COMPLIANCEHUB_DEMO_ALLOWED_CIDR}
+	respond @outside 403
+
+	tls /run/secrets/tls_certificate /run/secrets/tls_private_key
+	encode zstd gzip
+	request_body {
+		max_size 32MB
+	}
+
+	header {
+		-Server
+		Cache-Control "no-store"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=86400"
+	}
+
+	reverse_proxy frontend:3000 {
+		health_uri /
+		health_interval 30s
+		health_timeout 5s
+	}
+}

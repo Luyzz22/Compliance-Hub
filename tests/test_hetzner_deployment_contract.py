@@ -64,6 +64,8 @@ def test_runtime_dependencies_and_all_public_images_are_immutable() -> None:
     assert lockfile.exists()
     lock = lockfile.read_text(encoding="utf-8")
     assert "--hash=sha256:" in lock
+    assert "psycopg==" in lock
+    assert "psycopg-binary==" in lock
     dockerfile = (ROOT / "Dockerfile.hetzner").read_text(encoding="utf-8")
     assert 'pip install --index-url "${PYTHON_INDEX_URL}" --require-hashes' in dockerfile
     assert "pip install --no-deps --no-build-isolation ." in dockerfile

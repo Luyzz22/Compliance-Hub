@@ -1,0 +1,398 @@
+name: compliancehub-synthetic-demo
+
+# Private demonstration profile. Every record is synthetic, the tenant is read-only and
+# Caddy restricts access to one explicitly configured operator/customer CIDR. This file is
+# not a production-readiness attestation and must never be used for real customer data.
+
+services:
+  postgres:
+    image: postgres:17.9-alpine@sha256:c7526c0f6c3f30260a563d7bcf8ad778effac59a44f8ffa86678c35418338609
+    restart: unless-stopped
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      POSTGRES_DB: compliancehub
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=peer --data-checksums"
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/run/secrets/postgres_tls_certificate
+      - -c
+      - ssl_key_file=/run/secrets/postgres_tls_private_key
+      - -c
+      - ssl_min_protocol_version=TLSv1.2
+      - -c
+      - password_encryption=scram-sha-256
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - log_statement=none
+    configs:
+      - source: postgres_init_roles
+        target: /docker-entrypoint-initdb.d/10-runtime-roles.sh
+        mode: 0555
+    secrets:
+      - source: postgres_admin_password
+        target: postgres_admin_password
+      - source: postgres_backend_password
+        target: postgres_backend_password
+      - source: postgres_frontend_password
+        target: postgres_frontend_password
+      - source: postgres_tls_certificate
+        target: postgres_tls_certificate
+      - source: postgres_tls_private_key
+        target: postgres_tls_private_key
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    tmpfs:
+      - /run/postgresql:uid=70,gid=70,mode=0750
+      - /tmp:uid=70,gid=70,mode=0700
+    networks: [app_net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d compliancehub || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  schema-bootstrap:
+    image: ${COMPLIANCEHUB_BACKEND_IMAGE:?synthetic demo backend image required}
+    restart: "no"
+    user: "10001:10001"
+    read_only: true
+    init: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    env_file: ${COMPLIANCEHUB_ENV_FILE:-.env.synthetic-demo}
+    environment:
+      COMPLIANCEHUB_ENV: bootstrap
+      COMPLIANCEHUB_DB_URL_FILE: /run/secrets/backend_database_url
+      COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE: /run/secrets/credential_pepper
+      COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY_FILE: /run/secrets/audit_pseudonymization_key
+      COMPLIANCEHUB_MFA_ENCRYPTION_KEY_FILE: /run/secrets/mfa_encryption_key
+      COMPLIANCEHUB_DEMO_OPERATOR_PASSWORD_FILE: /run/secrets/demo_operator_password
+    command: ["python", "/app/scripts/bootstrap_synthetic_demo.py"]
+    secrets:
+      - source: backend_database_url
+        target: backend_database_url
+      - source: postgres_ca_certificate
+        target: postgres_ca_certificate
+      - source: credential_pepper
+        target: credential_pepper
+      - source: audit_pseudonymization_key
+        target: audit_pseudonymization_key
+      - source: mfa_encryption_key
+        target: mfa_encryption_key
+      - source: demo_operator_password
+        target: demo_operator_password
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700
+    networks: [app_net]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  runtime-policy:
+    image: postgres:17.9-alpine@sha256:c7526c0f6c3f30260a563d7bcf8ad778effac59a44f8ffa86678c35418338609
+    restart: "no"
+    user: "70:70"
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    entrypoint: ["/bin/sh", "/policies/apply-runtime-policy.sh"]
+    configs:
+      - source: apply_runtime_policy
+        target: /policies/apply-runtime-policy.sh
+        mode: 0555
+      - source: advisor_runtime_policy
+        target: /policies/advisor-runtime-state.sql
+        mode: 0444
+    secrets:
+      - source: postgres_admin_password
+        target: postgres_admin_password
+      - source: postgres_ca_certificate_policy
+        target: postgres_ca_certificate
+    tmpfs:
+      - /tmp:uid=70,gid=70,mode=0700
+    networks: [app_net]
+    depends_on:
+      schema-bootstrap:
+        condition: service_completed_successfully
+
+  opa:
+    image: openpolicyagent/opa:1.18.2-static@sha256:57f7d06808fff6de3ea1d698e6430990973ca1370be0e54975f0083d615521da
+    command:
+      [
+        "run",
+        "--v0-compatible",
+        "--server",
+        "--addr=0.0.0.0:8181",
+        "--log-format=json",
+        "/policies/action_policy.rego",
+      ]
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    init: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    configs:
+      - source: opa_action_policy
+        target: /policies/action_policy.rego
+        uid: "10001"
+        gid: "10001"
+        mode: 0444
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700
+    networks: [app_net]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/opa",
+          "eval",
+          "--v0-compatible",
+          "--fail",
+          "--data",
+          "/policies/action_policy.rego",
+          "data.compliancehub.allow_action == false",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  backend:
+    image: ${COMPLIANCEHUB_BACKEND_IMAGE:?synthetic demo backend image required}
+    labels:
+      com.complywithai.release.id: ${COMPLIANCEHUB_RELEASE_ID:?synthetic demo release id required}
+      com.complywithai.release.commit: ${COMPLIANCEHUB_RELEASE_COMMIT:?release commit required}
+      com.complywithai.release.profile: synthetic_demo
+      com.complywithai.data.contract: synthetic_only
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    init: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    env_file: ${COMPLIANCEHUB_ENV_FILE:-.env.synthetic-demo}
+    environment:
+      COMPLIANCEHUB_ENV: production
+      COMPLIANCEHUB_DB_URL_FILE: /run/secrets/backend_database_url
+      COMPLIANCEHUB_BFF_SHARED_SECRET_FILE: /run/secrets/bff_shared_secret
+      COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY_FILE: /run/secrets/audit_pseudonymization_key
+      COMPLIANCEHUB_CREDENTIAL_PEPPER_FILE: /run/secrets/credential_pepper
+      COMPLIANCEHUB_MFA_ENCRYPTION_KEY_FILE: /run/secrets/mfa_encryption_key
+      INTERNAL_HEALTH_API_KEY_FILE: /run/secrets/internal_health_api_key
+      INTERNAL_HEALTH_ALLOWED_IPS: 127.0.0.1
+      COMPLIANCEHUB_PUBLIC_HOST: ${COMPLIANCEHUB_PUBLIC_HOST:?required}
+      COMPLIANCEHUB_ALLOW_GLOBAL_API_KEYS: "false"
+      COMPLIANCEHUB_OPA_STRICT_MISSING: "true"
+      COMPLIANCEHUB_OPA_ALLOWED_HOSTS: opa
+      COMPLIANCEHUB_OPA_TRUST_CLIENT_ROLE_HEADER: "false"
+      OPA_URL: http://opa:8181
+      OPA_POLICY_PATH: /v1/data/compliancehub/allow_action
+      AZURE_OPENAI_AUTH: client_certificate
+      AZURE_CLIENT_CERTIFICATE_PATH: /run/secrets/azure_openai_client_certificate
+    secrets:
+      - source: backend_database_url
+        target: backend_database_url
+      - source: postgres_ca_certificate
+        target: postgres_ca_certificate
+      - source: azure_openai_client_certificate
+        target: azure_openai_client_certificate
+      - source: bff_shared_secret
+        target: bff_shared_secret
+      - source: audit_pseudonymization_key
+        target: audit_pseudonymization_key
+      - source: credential_pepper
+        target: credential_pepper
+      - source: mfa_encryption_key
+        target: mfa_encryption_key
+      - source: internal_health_api_key
+        target: internal_health_api_key
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700
+    networks: [app_net, egress_net]
+    depends_on:
+      runtime-policy:
+        condition: service_completed_successfully
+      opa:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "/app/scripts/container_readiness.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  frontend:
+    image: ${COMPLIANCEHUB_FRONTEND_IMAGE:?synthetic demo frontend image required}
+    labels:
+      com.complywithai.release.id: ${COMPLIANCEHUB_RELEASE_ID:?synthetic demo release id required}
+      com.complywithai.release.commit: ${COMPLIANCEHUB_RELEASE_COMMIT:?release commit required}
+      com.complywithai.release.profile: synthetic_demo
+      com.complywithai.data.contract: synthetic_only
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    init: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    env_file: ${COMPLIANCEHUB_ENV_FILE:-.env.synthetic-demo}
+    environment:
+      COMPLIANCEHUB_API_BASE_URL: http://backend:8000
+      COMPLIANCEHUB_API_ALLOWED_HOSTS: backend
+      COMPLIANCEHUB_RELEASE_CHANNEL: pilot
+      COMPLIANCEHUB_RELEASE_PROFILE: synthetic_demo
+      COMPLIANCEHUB_RUNTIME_STORAGE_BACKEND: s3
+      COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_frontend_password
+      POSTGRES_SSL_CA_FILE: /run/secrets/postgres_ca_certificate
+      COMPLIANCEHUB_S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+      COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE: /run/secrets/s3_secret_access_key
+      COMPLIANCEHUB_BFF_SHARED_SECRET_FILE: /run/secrets/bff_shared_secret
+      COMPLIANCEHUB_AUTH_TRANSACTION_SECRET_FILE: /run/secrets/auth_transaction_secret
+      LEAD_ADMIN_SECRET_FILE: /run/secrets/lead_admin_secret
+    secrets:
+      - source: postgres_frontend_password
+        target: postgres_frontend_password
+      - source: postgres_ca_certificate
+        target: postgres_ca_certificate
+      - source: s3_access_key
+        target: s3_access_key
+      - source: s3_secret_access_key
+        target: s3_secret_access_key
+      - source: bff_shared_secret
+        target: bff_shared_secret
+      - source: auth_transaction_secret
+        target: auth_transaction_secret
+      - source: lead_admin_secret
+        target: lead_admin_secret
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700
+    networks: [edge_net, app_net, egress_net]
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  edge:
+    image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    user: "65532:65532"
+    read_only: true
+    cap_drop: ["ALL"]
+    cap_add: ["NET_BIND_SERVICE"]
+    security_opt: ["no-new-privileges:true"]
+    ports: ["80:80", "443:443"]
+    environment:
+      COMPLIANCEHUB_PUBLIC_HOST: ${COMPLIANCEHUB_PUBLIC_HOST:?required}
+      COMPLIANCEHUB_DEMO_ALLOWED_CIDR: ${COMPLIANCEHUB_DEMO_ALLOWED_CIDR:?required}
+    configs:
+      - source: caddyfile_synthetic_demo
+        target: /etc/caddy/Caddyfile
+        mode: 0444
+    secrets:
+      - source: tls_certificate
+        target: tls_certificate
+      - source: tls_private_key
+        target: tls_private_key
+    tmpfs:
+      - /config:uid=65532,gid=65532,mode=0700
+      - /data:uid=65532,gid=65532,mode=0700
+    networks: [edge_net]
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+configs:
+  caddyfile_synthetic_demo:
+    file: ./Caddyfile.synthetic-demo
+  postgres_init_roles:
+    file: ./postgres-init-synthetic-demo.sh
+  apply_runtime_policy:
+    file: ./apply-synthetic-demo-runtime-policy.sh
+  advisor_runtime_policy:
+    file: ../../db/postgres/migrations/20260715_advisor_runtime_state_rls.sql
+  opa_action_policy:
+    file: ../../infra/opa/policies/compliancehub/regos/action_policy.rego
+
+secrets:
+  tls_certificate:
+    file: ./secrets/synthetic-demo-tls-certificate.pem
+  tls_private_key:
+    file: ./secrets/synthetic-demo-tls-private-key.pem
+  postgres_admin_password:
+    file: ./secrets/synthetic-demo-postgres-admin-password
+  postgres_backend_password:
+    file: ./secrets/synthetic-demo-postgres-backend-password
+  postgres_frontend_password:
+    file: ./secrets/synthetic-demo-postgres-frontend-password
+  postgres_tls_certificate:
+    file: ./secrets/synthetic-demo-postgres-server-certificate.pem
+  postgres_tls_private_key:
+    file: ./secrets/synthetic-demo-postgres-server-private-key.pem
+  postgres_ca_certificate:
+    file: ./secrets/synthetic-demo-postgres-ca-app.pem
+  postgres_ca_certificate_policy:
+    file: ./secrets/synthetic-demo-postgres-ca-policy.pem
+  backend_database_url:
+    file: ./secrets/synthetic-demo-backend-database-url
+  s3_access_key:
+    file: ./secrets/synthetic-demo-s3-access-key
+  s3_secret_access_key:
+    file: ./secrets/synthetic-demo-s3-secret-access-key
+  azure_openai_client_certificate:
+    file: ./secrets/synthetic-demo-azure-openai-client-certificate.pem
+  bff_shared_secret:
+    file: ./secrets/synthetic-demo-bff-shared-secret
+  audit_pseudonymization_key:
+    file: ./secrets/synthetic-demo-audit-pseudonymization-key
+  credential_pepper:
+    file: ./secrets/synthetic-demo-credential-pepper
+  mfa_encryption_key:
+    file: ./secrets/synthetic-demo-mfa-encryption-key
+  internal_health_api_key:
+    file: ./secrets/synthetic-demo-internal-health-api-key
+  auth_transaction_secret:
+    file: ./secrets/synthetic-demo-auth-transaction-secret
+  lead_admin_secret:
+    file: ./secrets/synthetic-demo-lead-admin-secret
+  demo_operator_password:
+    file: ./secrets/synthetic-demo-operator-password
+
+volumes:
+  postgres_data:
+
+networks:
+  edge_net:
+    driver: bridge
+    ipam:
+      config: [{ subnet: 10.88.10.0/24 }]
+  app_net:
+    driver: bridge
+    internal: true
+    ipam:
+      config: [{ subnet: 10.89.0.0/24 }]
+  egress_net:
+    driver: bridge
+    ipam:
+      config: [{ subnet: 10.90.10.0/24 }]

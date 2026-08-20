@@ -127,7 +127,33 @@ export function resolveRuntimePostgresConfig(
   if (!isAbsolute(passwordFile)) {
     throw new RuntimePostgresConfigurationError("POSTGRES_PASSWORD_FILE must be absolute");
   }
-  const sslCa = env.POSTGRES_SSL_CA_PEM?.trim();
+  const sslCaPem = env.POSTGRES_SSL_CA_PEM?.trim();
+  const sslCaFile = env.POSTGRES_SSL_CA_FILE?.trim();
+  if (sslCaPem && sslCaFile) {
+    throw new RuntimePostgresConfigurationError(
+      "POSTGRES_SSL_CA_PEM and POSTGRES_SSL_CA_FILE are mutually exclusive",
+    );
+  }
+  let sslCa = sslCaPem;
+  if (sslCaFile) {
+    if (!isAbsolute(sslCaFile)) {
+      throw new RuntimePostgresConfigurationError(
+        "POSTGRES_SSL_CA_FILE must be absolute",
+      );
+    }
+    try {
+      sslCa = readMountedServerSecretFile({
+        fileVariable: "POSTGRES_SSL_CA_FILE",
+        filePath: sslCaFile,
+        minimumBytes: 256,
+        maximumBytes: 64 * 1024,
+      });
+    } catch (error) {
+      throw new RuntimePostgresConfigurationError(
+        `Unable to read POSTGRES_SSL_CA_FILE: ${error instanceof Error ? error.name : "Error"}`,
+      );
+    }
+  }
   return {
     host,
     port,

@@ -1,4 +1,7 @@
 import type { PoolClient, PoolConfig } from "pg";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -111,6 +114,48 @@ describe("relational runtime policy", () => {
         POSTGRES_PASSWORD_FILE: "/run/secrets/postgres-password",
       }),
     ).toThrow("administrator identities are forbidden");
+  });
+
+  it("loads the PostgreSQL trust anchor from a protected mounted file", () => {
+    const directory = mkdtempSync(join(tmpdir(), "compliancehub-postgres-ca-"));
+    const certificate = join(directory, "ca.pem");
+    const pem = `-----BEGIN CERTIFICATE-----\n${"A".repeat(300)}\n-----END CERTIFICATE-----`;
+    try {
+      writeFileSync(certificate, pem, { mode: 0o400 });
+      chmodSync(certificate, 0o400);
+      expect(
+        resolveRuntimePostgresConfig({
+          NODE_ENV: "production",
+          POSTGRES_HOST: "postgres.internal",
+          COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS: "postgres.internal",
+          POSTGRES_DATABASE: "compliancehub",
+          POSTGRES_USER: "runtime-principal",
+          POSTGRES_PASSWORD_FILE: "/run/secrets/postgres-password",
+          POSTGRES_SSL_CA_FILE: certificate,
+        }),
+      ).toMatchObject({ sslCa: pem });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects ambiguous or relative PostgreSQL trust-anchor configuration", () => {
+    const base = {
+      POSTGRES_HOST: "postgres.internal",
+      POSTGRES_DATABASE: "compliancehub",
+      POSTGRES_USER: "runtime-principal",
+      POSTGRES_PASSWORD_FILE: "/run/secrets/postgres-password",
+    };
+    expect(() =>
+      resolveRuntimePostgresConfig({
+        ...base,
+        POSTGRES_SSL_CA_PEM: "pem",
+        POSTGRES_SSL_CA_FILE: "/run/secrets/postgres-ca.pem",
+      }),
+    ).toThrow("mutually exclusive");
+    expect(() =>
+      resolveRuntimePostgresConfig({ ...base, POSTGRES_SSL_CA_FILE: "relative-ca.pem" }),
+    ).toThrow("must be absolute");
   });
 });
 

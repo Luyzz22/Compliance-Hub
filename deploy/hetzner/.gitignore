@@ -1,6 +1,7 @@
 .env
 .env.public-site
 .env.production
+.env.synthetic-demo
 .env.candidate
 release-evidence.json
 secrets/

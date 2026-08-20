@@ -9,7 +9,13 @@ RUN npm ci --ignore-scripts --registry="${NPM_REGISTRY_URL}" --replace-registry-
 
 FROM ${NODE_BASE_IMAGE} AS builder
 WORKDIR /workspace/frontend
-ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_FEATURE_DEMO_AZURE_INFERENCE=false
+ARG NEXT_PUBLIC_DEMO_WORKSPACE_TENANT_ID=
+ARG NEXT_PUBLIC_TENANT_ID=
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_PUBLIC_FEATURE_DEMO_AZURE_INFERENCE=${NEXT_PUBLIC_FEATURE_DEMO_AZURE_INFERENCE} \
+    NEXT_PUBLIC_DEMO_WORKSPACE_TENANT_ID=${NEXT_PUBLIC_DEMO_WORKSPACE_TENANT_ID} \
+    NEXT_PUBLIC_TENANT_ID=${NEXT_PUBLIC_TENANT_ID}
 COPY --from=dependencies /workspace/frontend/node_modules ./node_modules
 COPY frontend/ ./
 # These reviewed contracts are inputs to the frontend prebuild gates. Keeping them in

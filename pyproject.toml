@@ -20,6 +20,7 @@ dependencies = [
   "defusedxml>=0.7.1,<0.8",
   "python-multipart>=0.0.9",
   "sqlalchemy>=2.0",
+  "psycopg[binary]>=3.3,<4",
   "greenlet>=3.0",
   "pydantic[email]>=2.0",
   "uvicorn[standard]>=0.30",

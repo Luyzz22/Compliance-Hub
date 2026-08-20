@@ -80,6 +80,7 @@ for (const invariant of [
   "COMPLIANCEHUB_RELATIONAL_RUNTIME_BACKEND must be postgres in production",
   "COMPLIANCEHUB_POSTGRES_ALLOWED_HOSTS",
   "POSTGRES_PASSWORD_FILE",
+  "POSTGRES_SSL_CA_FILE",
   "rejectUnauthorized: true",
   "PostgreSQL administrator identities are forbidden for application runtime",
   "withTenantRuntimePostgres",

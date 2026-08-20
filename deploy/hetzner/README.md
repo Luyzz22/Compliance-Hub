@@ -3,6 +3,12 @@
 Dieses Verzeichnis beschreibt den freigegebenen Zielpfad für Compliance Hub. Es ist
 ein Deployment-Blueprint, kein Nachweis einer bereits erfolgten Bereitstellung.
 
+Für Kundenvorführungen mit ausschließlich synthetischen Daten existiert zusätzlich der
+separat IP-begrenzte Pfad `compose.synthetic-demo.yml`. Er ist bewusst als `pilot`/
+`synthetic_demo` markiert, aktiviert keine Produktiv-Attestierung und wird im
+`SYNTHETIC-DEMO-RUNBOOK.md` betrieben. Er darf weder echte Personen-, Kunden- oder
+Mandatsdaten aufnehmen noch als Ersatz für die unten genannten Cutover-Nachweise gelten.
+
 ## Dienste und Grenzen
 
 - `edge`: einziger öffentlich exponierter Container; TLS-Zertifikat wird als Secret
