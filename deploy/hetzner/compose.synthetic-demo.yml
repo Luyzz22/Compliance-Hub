@@ -88,6 +88,8 @@ services:
       COMPLIANCEHUB_AUDIT_PSEUDONYMIZATION_KEY_FILE: /run/secrets/audit_pseudonymization_key
       COMPLIANCEHUB_MFA_ENCRYPTION_KEY_FILE: /run/secrets/mfa_encryption_key
       COMPLIANCEHUB_DEMO_OPERATOR_PASSWORD_FILE: /run/secrets/demo_operator_password
+      COMPLIANCEHUB_S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+      COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE: /run/secrets/s3_secret_access_key
     command: ["python", "/app/scripts/bootstrap_synthetic_demo.py"]
     secrets:
       - source: backend_database_url
@@ -102,9 +104,13 @@ services:
         target: mfa_encryption_key
       - source: demo_operator_password
         target: demo_operator_password
+      - source: s3_access_key
+        target: s3_access_key
+      - source: s3_secret_access_key
+        target: s3_secret_access_key
     tmpfs:
       - /tmp:uid=10001,gid=10001,mode=0700
-    networks: [app_net]
+    networks: [app_net, egress_net]
     depends_on:
       postgres:
         condition: service_healthy
@@ -206,6 +212,8 @@ services:
       OPA_POLICY_PATH: /v1/data/compliancehub/allow_action
       AZURE_OPENAI_AUTH: client_certificate
       AZURE_CLIENT_CERTIFICATE_PATH: /run/secrets/azure_openai_client_certificate
+      COMPLIANCEHUB_S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+      COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE: /run/secrets/s3_secret_access_key
     secrets:
       - source: backend_database_url
         target: backend_database_url
@@ -223,6 +231,10 @@ services:
         target: mfa_encryption_key
       - source: internal_health_api_key
         target: internal_health_api_key
+      - source: s3_access_key
+        target: s3_access_key
+      - source: s3_secret_access_key
+        target: s3_secret_access_key
     tmpfs:
       - /tmp:uid=10001,gid=10001,mode=0700
     networks: [app_net, egress_net]

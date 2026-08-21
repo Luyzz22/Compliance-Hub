@@ -171,6 +171,22 @@ def test_frontend_build_and_runtime_contain_the_explicit_demo_contract() -> None
     assert frontend["environment"]["COMPLIANCEHUB_RELEASE_PROFILE"] == "synthetic_demo"
     assert frontend["labels"]["com.complywithai.data.contract"] == "synthetic_only"
 
+    for service_name in ("schema-bootstrap", "backend"):
+        service = compose["services"][service_name]
+        assert service["environment"]["COMPLIANCEHUB_S3_ACCESS_KEY_FILE"] == (
+            "/run/secrets/s3_access_key"
+        )
+        assert service["environment"]["COMPLIANCEHUB_S3_SECRET_ACCESS_KEY_FILE"] == (
+            "/run/secrets/s3_secret_access_key"
+        )
+        mounted = {(secret["source"], secret["target"]) for secret in service["secrets"]}
+        assert ("s3_access_key", "s3_access_key") in mounted
+        assert ("s3_secret_access_key", "s3_secret_access_key") in mounted
+    assert set(compose["services"]["schema-bootstrap"]["networks"]) == {
+        "app_net",
+        "egress_net",
+    }
+
 
 def test_backend_image_contains_postgres_driver_and_bounded_bootstrap() -> None:
     dockerfile = (ROOT / "Dockerfile.hetzner").read_text(encoding="utf-8")

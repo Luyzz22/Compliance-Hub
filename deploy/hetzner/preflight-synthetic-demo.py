@@ -191,6 +191,8 @@ def _validate_environment(values: dict[str, str]) -> None:
     forbidden_keys = {
         "AZURE_OPENAI_API_KEY",
         "COMPLIANCEHUB_DB_URL",
+        "COMPLIANCEHUB_S3_ACCESS_KEY",
+        "COMPLIANCEHUB_S3_SECRET_ACCESS_KEY",
         "POSTGRES_PASSWORD",
         "NEXT_PUBLIC_API_KEY",
         "COMPLIANCEHUB_API_KEYS",

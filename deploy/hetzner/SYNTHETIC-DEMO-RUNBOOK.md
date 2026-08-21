@@ -22,6 +22,9 @@ Caddy (TLS, 80/443) -> Next.js BFF -> FastAPI -> OPA
   werden abgewiesen.
 - Azure erhält ausschließlich drei feste, öffentliche synthetische Sachverhalte. Freitext,
   Uploads und Kundendokumente sind in diesem Pfad nicht vorgesehen.
+- Auch die drei synthetischen Demo-Evidenzen werden vom Backend tenant-isoliert und
+  SigV4-signiert im privaten Hetzner-Object-Storage-Präfix abgelegt; lokaler
+  Backend-Evidence-Storage ist im Produktionsprozess fail-closed verboten.
 - Eine lokale Passwortidentität ist ausschließlich in `synthetic_demo` + `pilot` erlaubt,
   wenn alle Read-only-Attestierungen gesetzt, Selbstregistrierung und anonymer Demozugang
   aber deaktiviert sind. Der normale Produktionspfad bleibt Entra-only.
