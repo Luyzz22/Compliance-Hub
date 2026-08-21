@@ -154,7 +154,9 @@ def test_ai_act_doc_draft_llm_mocked(monkeypatch: pytest.MonkeyPatch) -> None:
         DataSensitivity,
     )
 
-    sid = f"ai-doc-llm-{uuid.uuid4().hex[:8]}"
+    # A random hex prefix can accidentally resemble an IBAN (for example DE12...),
+    # which the production PII guardrail must continue to block.
+    sid = "ai-doc-llm-synthetic-safe"
     system = AISystem(
         id=sid,
         tenant_id="t1",
