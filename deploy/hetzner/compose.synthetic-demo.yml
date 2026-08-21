@@ -36,7 +36,6 @@ services:
     configs:
       - source: postgres_init_roles
         target: /docker-entrypoint-initdb.d/10-runtime-roles.sh
-        mode: 0555
     secrets:
       - source: postgres_admin_password
         target: postgres_admin_password
@@ -55,7 +54,17 @@ services:
       - /tmp:uid=70,gid=70,mode=0700
     networks: [app_net]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d compliancehub || exit 1"]
+      test:
+        - CMD-SHELL
+        - >-
+          export PGPASSWORD="$$(tr -d '\r\n' < /run/secrets/postgres_admin_password)"
+          PGSSLMODE=require;
+          test "$$(psql --host=127.0.0.1 --username=postgres --dbname=compliancehub
+          --set=ON_ERROR_STOP=1 --tuples-only --no-align
+          --command="SELECT count(*) FROM pg_roles WHERE rolname IN
+          ('compliancehub_backend', 'compliancehub_frontend') AND NOT rolsuper
+          AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolreplication
+          AND NOT rolbypassrls")" = "2"
       interval: 10s
       timeout: 5s
       retries: 12
@@ -109,10 +118,8 @@ services:
     configs:
       - source: apply_runtime_policy
         target: /policies/apply-runtime-policy.sh
-        mode: 0555
       - source: advisor_runtime_policy
         target: /policies/advisor-runtime-state.sql
-        mode: 0444
     secrets:
       - source: postgres_admin_password
         target: postgres_admin_password
@@ -145,9 +152,6 @@ services:
     configs:
       - source: opa_action_policy
         target: /policies/action_policy.rego
-        uid: "10001"
-        gid: "10001"
-        mode: 0444
     tmpfs:
       - /tmp:uid=10001,gid=10001,mode=0700
     networks: [app_net]
@@ -309,7 +313,6 @@ services:
     configs:
       - source: caddyfile_synthetic_demo
         target: /etc/caddy/Caddyfile
-        mode: 0444
     secrets:
       - source: tls_certificate
         target: tls_certificate

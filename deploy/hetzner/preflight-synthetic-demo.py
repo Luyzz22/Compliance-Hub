@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
+from synthetic_demo_host_files import HostFileContractError, validate_host_files
+
 # subprocess is limited below to fixed argument vectors; shell execution is never enabled.
 
 BASE = Path(__file__).resolve().parent
@@ -354,6 +356,10 @@ def main() -> int:
         raise PreflightError("PostgreSQL trust-anchor copies differ")
     _certificate_contract(secrets, _require(values, "COMPLIANCEHUB_PUBLIC_HOST"))
     _database_contract(secrets)
+    try:
+        validate_host_files()
+    except HostFileContractError as error:
+        raise PreflightError(str(error)) from error
 
     _run_checked(
         [

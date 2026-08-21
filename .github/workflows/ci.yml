@@ -36,8 +36,8 @@ jobs:
 
       - name: Lint and format check
         run: |
-          ruff check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py scripts/bootstrap_synthetic_demo.py deploy/hetzner/preflight-synthetic-demo.py tests/
-          ruff format --check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py scripts/bootstrap_synthetic_demo.py deploy/hetzner/preflight-synthetic-demo.py tests/
+          ruff check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py scripts/bootstrap_synthetic_demo.py deploy/hetzner/preflight-synthetic-demo.py deploy/hetzner/synthetic_demo_host_files.py tests/
+          ruff format --check app/ scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py scripts/bootstrap_synthetic_demo.py deploy/hetzner/preflight-synthetic-demo.py deploy/hetzner/synthetic_demo_host_files.py tests/
 
       - name: Dependency vulnerability audit
         run: pip-audit --skip-editable --desc
@@ -51,7 +51,7 @@ jobs:
       - name: Static security analysis
         run: |
           bandit -q -r app -x app/db_migrations -lll
-          bandit -q scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py scripts/bootstrap_synthetic_demo.py deploy/hetzner/preflight-synthetic-demo.py
+          bandit -q scripts/hetzner_release.py scripts/verify_release_evidence.py scripts/sovereign_release_build.py scripts/sovereign_restore_drill.py scripts/bootstrap_synthetic_demo.py deploy/hetzner/preflight-synthetic-demo.py deploy/hetzner/synthetic_demo_host_files.py
 
       - name: Test
         run: python -m pytest tests/ -q

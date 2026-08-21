@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
+import os
+import stat
+import sys
 from pathlib import Path
 
 import yaml
@@ -24,6 +28,16 @@ def _example_env() -> dict[str, str]:
             key, value = line.split("=", 1)
             values[key] = value
     return values
+
+
+def _load_host_file_module():
+    path = DEPLOYMENT / "synthetic_demo_host_files.py"
+    spec = importlib.util.spec_from_file_location("synthetic_demo_host_files", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_only_the_cidr_restricted_edge_publishes_ports() -> None:
@@ -78,6 +92,13 @@ def test_database_bootstrap_precedes_runtime_and_uses_tls() -> None:
     assert "password_encryption=scram-sha-256" in postgres_command
     assert "log_statement=none" in postgres_command
     assert "postgres:17.9-alpine@sha256:" in services["postgres"]["image"]
+    healthcheck = " ".join(services["postgres"]["healthcheck"]["test"])
+    assert "PGSSLMODE=require" in healthcheck
+    assert "postgres_admin_password" in healthcheck
+    assert "compliancehub_backend" in healthcheck
+    assert "compliancehub_frontend" in healthcheck
+    assert "NOT rolbypassrls" in healthcheck
+    assert "pg_isready" not in healthcheck
 
     init = (DEPLOYMENT / "postgres-init-synthetic-demo.sh").read_text(encoding="utf-8")
     assert "NOBYPASSRLS" in init
@@ -159,7 +180,54 @@ def test_preflight_checks_identity_storage_certificates_and_database_binding() -
         "PostgreSQL trust-anchor copies differ",
         "openssl",
         "numeric UID",
+        "validate_host_files",
         "synthetic_demo_preflight=passed",
         "production_ready=false",
     ):
         assert invariant in preflight
+
+
+def test_local_compose_configs_rely_on_the_host_enforced_file_contract() -> None:
+    compose = _compose()
+    for service_name in ("postgres", "runtime-policy", "opa", "edge"):
+        for config in compose["services"][service_name]["configs"]:
+            assert set(config) == {"source", "target"}
+
+    module = _load_host_file_module()
+    expected = {
+        "Caddyfile.synthetic-demo": (65532, 65532, 0o400),
+        "postgres-init-synthetic-demo.sh": (70, 70, 0o400),
+        "apply-synthetic-demo-runtime-policy.sh": (70, 70, 0o400),
+        "20260715_advisor_runtime_state_rls.sql": (70, 70, 0o400),
+        "action_policy.rego": (10001, 10001, 0o400),
+    }
+    assert {
+        path.name: (uid, gid, mode) for path, uid, gid, mode in module.CONFIG_CONTRACT
+    } == expected
+
+
+def test_host_file_validator_accepts_exact_contract_and_rejects_unsafe_forms(tmp_path) -> None:
+    module = _load_host_file_module()
+    protected = tmp_path / "policy.rego"
+    protected.write_text("package demo\n", encoding="utf-8")
+    protected.chmod(0o400)
+    contract = ((protected, os.getuid(), os.getgid(), 0o400),)
+    module.validate_host_files(contract)
+
+    protected.chmod(0o640)
+    try:
+        module.validate_host_files(contract)
+    except module.HostFileContractError as error:
+        assert "mode 0400" in str(error)
+    else:
+        raise AssertionError("group-readable host config must fail closed")
+
+    protected.chmod(stat.S_IRUSR)
+    link = tmp_path / "policy-link.rego"
+    link.symlink_to(protected)
+    try:
+        module.validate_host_files(((link, os.getuid(), os.getgid(), 0o400),))
+    except module.HostFileContractError as error:
+        assert "regular non-symlink" in str(error)
+    else:
+        raise AssertionError("symlinked host config must fail closed")

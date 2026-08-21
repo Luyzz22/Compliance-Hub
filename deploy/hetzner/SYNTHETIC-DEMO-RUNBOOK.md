@@ -53,12 +53,17 @@ Caddy (TLS, 80/443) -> Next.js BFF -> FastAPI -> OPA
 - Keine Geheimnisse in Git, Compose-Umgebungsvariablen, Shell-History, Image-Layern oder
   Evidence-Ausgaben.
 
-Der Host-Preflight prüft Eigentümer, Dateimodus, Mindestlänge, Zertifikatsketten,
-Schlüsselpaare, Zertifikatsablauf, Azure-/S3-Ziel, CIDR-Begrenzung, Image-/Commit-Bindung,
-PostgreSQL-DSN und den aufgelösten Compose-Vertrag:
+Lokale Compose-Konfigurationen sind Bind-Mounts; Docker Compose wendet dabei deklarierte
+`uid`-, `gid`- oder `mode`-Werte nicht an. Deshalb setzt ein root-only Host-Schritt die
+numerischen Container-Eigentümer und Modus `0400` direkt auf den fünf nicht geheimen
+Runtime-Dateien. Er folgt keinen Symlinks. Der danach getrennt ausgeführte Preflight prüft
+diesen Vertrag erneut sowie Eigentümer und Dateimodus der Secrets, Mindestlänge,
+Zertifikatsketten, Schlüsselpaare, Zertifikatsablauf, Azure-/S3-Ziel, CIDR-Begrenzung,
+Image-/Commit-Bindung, PostgreSQL-DSN und den aufgelösten Compose-Vertrag:
 
 ```bash
 cd /opt/compliancehub/deploy/hetzner
+sudo python3 synthetic_demo_host_files.py
 sudo python3 preflight-synthetic-demo.py --env-file .env.synthetic-demo
 ```
 
@@ -106,8 +111,9 @@ sudo docker compose \
   ps
 ```
 
-Startreihenfolge: PostgreSQL → Schema-/Demo-Bootstrap → RLS-/Rollenvertrag → Backend + OPA
-→ Frontend → Caddy. Ein Fehler in einem einmaligen Bootstrap-Schritt blockiert die
+Startreihenfolge: PostgreSQL samt TLS/SCRAM und nachgewiesenen unprivilegierten Rollen →
+Schema-/Demo-Bootstrap → RLS-/Rollenvertrag → Backend + OPA → Frontend → Caddy. Ein
+Fehler in der Host-Dateivorbereitung oder einem einmaligen Bootstrap-Schritt blockiert die
 nachfolgenden Dienste.
 
 Abnahmekriterien:
