@@ -50,6 +50,9 @@ Caddy (TLS, 80/443) -> Next.js BFF -> FastAPI -> OPA
   Eigentümer `complianceops`, Modus `0600`
 - Geheimnisse: `/opt/compliancehub/deploy/hetzner/secrets`, Modus `0700`; jede Datei hat
   Modus `0400` und die vom Preflight geforderte numerische Container-UID.
+- Das Frontend-Datenbankpasswort liegt als zwei inhaltlich identische, getrennte
+  `0400`-Dateien vor: eine nur für PostgreSQL-Bootstrap UID `70`, eine nur für die
+  Frontend-UID `10001`. Der Preflight verwirft abweichende Kopien.
 - Keine Geheimnisse in Git, Compose-Umgebungsvariablen, Shell-History, Image-Layern oder
   Evidence-Ausgaben.
 

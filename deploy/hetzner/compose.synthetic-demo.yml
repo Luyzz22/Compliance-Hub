@@ -41,7 +41,7 @@ services:
         target: postgres_admin_password
       - source: postgres_backend_password
         target: postgres_backend_password
-      - source: postgres_frontend_password
+      - source: postgres_frontend_password_bootstrap
         target: postgres_frontend_password
       - source: postgres_tls_certificate
         target: postgres_tls_certificate
@@ -349,6 +349,8 @@ secrets:
     file: ./secrets/synthetic-demo-postgres-backend-password
   postgres_frontend_password:
     file: ./secrets/synthetic-demo-postgres-frontend-password
+  postgres_frontend_password_bootstrap:
+    file: ./secrets/synthetic-demo-postgres-frontend-password-bootstrap
   postgres_tls_certificate:
     file: ./secrets/synthetic-demo-postgres-server-certificate.pem
   postgres_tls_private_key:

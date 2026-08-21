@@ -28,6 +28,7 @@ SECRET_CONTRACT: dict[str, tuple[int, int, str]] = {
     "synthetic-demo-tls-private-key.pem": (65532, 256, "private_key"),
     "synthetic-demo-postgres-admin-password": (70, 32, "opaque"),
     "synthetic-demo-postgres-backend-password": (70, 32, "opaque"),
+    "synthetic-demo-postgres-frontend-password-bootstrap": (70, 32, "opaque"),
     "synthetic-demo-postgres-frontend-password": (10001, 32, "opaque"),
     "synthetic-demo-postgres-server-certificate.pem": (70, 256, "pem"),
     "synthetic-demo-postgres-server-private-key.pem": (70, 256, "private_key"),
@@ -354,6 +355,11 @@ def main() -> int:
         != secret_values["synthetic-demo-postgres-ca-policy.pem"]
     ):
         raise PreflightError("PostgreSQL trust-anchor copies differ")
+    if (
+        secret_values["synthetic-demo-postgres-frontend-password-bootstrap"]
+        != secret_values["synthetic-demo-postgres-frontend-password"]
+    ):
+        raise PreflightError("PostgreSQL frontend password copies differ")
     _certificate_contract(secrets, _require(values, "COMPLIANCEHUB_PUBLIC_HOST"))
     _database_contract(secrets)
     try:

@@ -92,6 +92,17 @@ def test_database_bootstrap_precedes_runtime_and_uses_tls() -> None:
     assert "password_encryption=scram-sha-256" in postgres_command
     assert "log_statement=none" in postgres_command
     assert "postgres:17.9-alpine@sha256:" in services["postgres"]["image"]
+    postgres_secrets = {
+        (secret["source"], secret["target"]) for secret in services["postgres"]["secrets"]
+    }
+    assert (
+        "postgres_frontend_password_bootstrap",
+        "postgres_frontend_password",
+    ) in postgres_secrets
+    frontend_secrets = {
+        (secret["source"], secret["target"]) for secret in services["frontend"]["secrets"]
+    }
+    assert ("postgres_frontend_password", "postgres_frontend_password") in frontend_secrets
     healthcheck = " ".join(services["postgres"]["healthcheck"]["test"])
     assert "PGSSLMODE=require" in healthcheck
     assert "postgres_admin_password" in healthcheck
@@ -178,6 +189,7 @@ def test_preflight_checks_identity_storage_certificates_and_database_binding() -
         "nbg1.your-objectstorage.com",
         "sslmode=verify-full",
         "PostgreSQL trust-anchor copies differ",
+        "PostgreSQL frontend password copies differ",
         "openssl",
         "numeric UID",
         "validate_host_files",
