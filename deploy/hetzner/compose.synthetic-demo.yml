@@ -47,6 +47,8 @@ services:
         target: postgres_tls_certificate
       - source: postgres_tls_private_key
         target: postgres_tls_private_key
+      - source: postgres_ca_certificate_policy
+        target: postgres_ca_certificate
     volumes:
       - postgres_data:/var/lib/postgresql/data
     tmpfs:
@@ -58,8 +60,8 @@ services:
         - CMD-SHELL
         - >-
           export PGPASSWORD="$$(tr -d '\r\n' < /run/secrets/postgres_admin_password)"
-          PGSSLMODE=require;
-          test "$$(psql --host=127.0.0.1 --username=postgres --dbname=compliancehub
+          PGSSLMODE=verify-full PGSSLROOTCERT=/run/secrets/postgres_ca_certificate;
+          test "$$(psql --host=postgres --username=postgres --dbname=compliancehub
           --set=ON_ERROR_STOP=1 --tuples-only --no-align
           --command="SELECT count(*) FROM pg_roles WHERE rolname IN
           ('compliancehub_backend', 'compliancehub_frontend') AND NOT rolsuper

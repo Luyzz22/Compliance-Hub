@@ -99,12 +99,16 @@ def test_database_bootstrap_precedes_runtime_and_uses_tls() -> None:
         "postgres_frontend_password_bootstrap",
         "postgres_frontend_password",
     ) in postgres_secrets
+    assert ("postgres_ca_certificate_policy", "postgres_ca_certificate") in postgres_secrets
     frontend_secrets = {
         (secret["source"], secret["target"]) for secret in services["frontend"]["secrets"]
     }
     assert ("postgres_frontend_password", "postgres_frontend_password") in frontend_secrets
     healthcheck = " ".join(services["postgres"]["healthcheck"]["test"])
-    assert "PGSSLMODE=require" in healthcheck
+    assert "PGSSLMODE=verify-full" in healthcheck
+    assert "PGSSLROOTCERT=/run/secrets/postgres_ca_certificate" in healthcheck
+    assert "--host=postgres" in healthcheck
+    assert "--host=127.0.0.1" not in healthcheck
     assert "postgres_admin_password" in healthcheck
     assert "compliancehub_backend" in healthcheck
     assert "compliancehub_frontend" in healthcheck

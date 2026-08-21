@@ -114,7 +114,8 @@ sudo docker compose \
   ps
 ```
 
-Startreihenfolge: PostgreSQL samt TLS/SCRAM und nachgewiesenen unprivilegierten Rollen →
+Startreihenfolge: PostgreSQL samt `verify-full`-TLS/SCRAM-Healthcheck über den internen
+Dienstnamen und nachgewiesenen unprivilegierten Rollen →
 Schema-/Demo-Bootstrap → RLS-/Rollenvertrag → Backend + OPA → Frontend → Caddy. Ein
 Fehler in der Host-Dateivorbereitung oder einem einmaligen Bootstrap-Schritt blockiert die
 nachfolgenden Dienste.
