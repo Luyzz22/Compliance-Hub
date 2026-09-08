@@ -17,16 +17,22 @@
 
 :root {
   color-scheme: light;
-  --ch-canvas: #f6f8fa;
+
+  /* Hausfarben der öffentlichen Flächen und der Anwendungs-Shell.
+     Dieselbe Petrol-Navy-Familie wie NormPilot Industrie; das frühere
+     GitHub-Blau (#0969da) gehörte zu keinem Produkt des Hauses. */
+  --ch-canvas: #f5f8f9;
   --ch-surface: #ffffff;
-  --ch-surface-subtle: #eef2f6;
-  --ch-ink: #1f2328;
-  --ch-ink-soft: #32383f;
-  --ch-muted: #59636e;
-  --ch-border: #d8dee4;
-  --ch-border-strong: #afb8c1;
-  --ch-accent: #0969da;
-  --ch-accent-hover: #0550ae;
+  --ch-surface-subtle: #ecf1f3;
+  --ch-ink: #161e23;
+  --ch-ink-soft: #38444c;
+  --ch-muted: #4e5c65;
+  --ch-border: #dde5e9;
+  --ch-border-strong: #c3cfd6;
+  --ch-accent: #003856;
+  --ch-accent-hover: #002a42;
+  --ch-brass: #b98f42;
+  --ch-brass-ink: #8a6626;
 }
 
 * {
@@ -34,17 +40,17 @@
 }
 
 ::selection {
-  background: rgba(22, 104, 232, 0.18);
-  color: #07111f;
+  background: rgba(0, 56, 86, 0.16);
+  color: #001220;
 }
 
 :focus-visible {
-  outline: 3px solid rgba(22, 104, 232, 0.38);
+  outline: 2px solid rgba(0, 56, 86, 0.62);
   outline-offset: 3px;
 }
 
 .sbs-premium-footer a {
-  color: #cbd5e1;
+  color: #c3cfd6;
 }
 
 .sbs-premium-footer a:hover {
@@ -79,7 +85,7 @@
   color: #ffffff;
   padding: 0.68rem 1.15rem;
   font-size: 0.875rem;
-  box-shadow: 0 8px 24px rgba(9, 105, 218, 0.18);
+  box-shadow: 0 8px 24px -14px rgba(12, 18, 22, 0.4);
 }
 
 .home-button-primary:hover {
@@ -97,7 +103,7 @@
 
 .home-button-secondary:hover,
 .home-control-button:hover {
-  border-color: var(--ch-ink-soft);
+  border-color: var(--ch-brass);
   background: var(--ch-surface-subtle);
 }
 
@@ -120,7 +126,7 @@
   font-size: 0.875rem;
   font-weight: 650;
   text-decoration: underline;
-  text-decoration-color: rgba(9, 105, 218, 0.35);
+  text-decoration-color: rgba(0, 56, 86, 0.35);
   text-underline-offset: 0.25rem;
 }
 

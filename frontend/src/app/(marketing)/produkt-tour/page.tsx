@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import React from "react";
 
 import { CTASection } from "@/components/marketing/sections/Sections";
-import { SectionHeading } from "@/components/marketing/ui/Primitives";
+import {
+  SectionHeading,
+  StageBackdrop,
+} from "@/components/marketing/ui/Primitives";
 import { Reveal } from "@/components/marketing/ui/Reveal";
 import { ProductTourSimulation } from "@/components/marketing/visuals/ProductTourSimulation";
 import { MARKETING_ROUTES } from "@/lib/marketing/navigation";
@@ -17,8 +20,9 @@ export const metadata: Metadata = {
 export default function ProductTourPage() {
   return (
     <>
-      <section className="mk-dark bg-[var(--mk-navy-900)]">
-        <div className="mk-container py-12 lg:py-16">
+      <section className="mk-stage relative isolate overflow-hidden">
+        <StageBackdrop />
+        <div className="mk-container relative py-12 lg:py-16">
           <div className="max-w-3xl">
             <p className="mk-eyebrow">Produkt-Tour · 5 Minuten</p>
             <h1 className="mk-h1 mt-4">

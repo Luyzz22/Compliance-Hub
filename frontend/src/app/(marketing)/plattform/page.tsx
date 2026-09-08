@@ -7,7 +7,12 @@ import {
   OutcomeStrip,
   TrustBar,
 } from "@/components/marketing/sections/Sections";
-import { SectionHeading, StatusChip } from "@/components/marketing/ui/Primitives";
+import {
+  Exhibit,
+  SectionHeading,
+  StageBackdrop,
+  StatusChip,
+} from "@/components/marketing/ui/Primitives";
 import { Reveal } from "@/components/marketing/ui/Reveal";
 import { BoardReportPreview } from "@/components/marketing/visuals/BoardReportPreview";
 import { ComplianceScoreCard } from "@/components/marketing/visuals/ComplianceScoreCard";
@@ -48,9 +53,10 @@ const OUTCOMES = [
 export default function PlatformPage() {
   return (
     <>
-      <section className="mk-dark bg-[var(--mk-navy-900)]">
-        <div className="mk-container py-14 lg:py-18">
-          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+      <section className="mk-stage relative isolate overflow-hidden">
+        <StageBackdrop />
+        <div className="mk-container relative py-14 lg:py-18">
+          <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
             <div className="max-w-xl">
               <p className="mk-eyebrow">Plattform</p>
               <h1 className="mk-h1 mt-4">
@@ -79,7 +85,15 @@ export default function PlatformPage() {
               </div>
             </div>
             <div className="min-w-0">
-              <HeroDashboardMockup />
+              <Exhibit
+                index={1}
+                paper
+                claim="Inventar, Controls, Risiken und Evidenz in einer Ansicht."
+                reading="Readiness je Regelwerk, offene Findings und fällige Reviews auf einem Stand."
+                source="Illustrative Produktansicht, Musterindustrie GmbH — keine Kundendaten"
+              >
+                <HeroDashboardMockup />
+              </Exhibit>
             </div>
           </div>
         </div>
@@ -270,9 +284,18 @@ export default function PlatformPage() {
             />
           </Reveal>
           <Reveal delay={1}>
-            <div className="mt-9 grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
-              <BoardReportPreview />
-              <ComplianceScoreCard />
+            <div className="mt-9">
+              <Exhibit
+                index={2}
+                claim="Lage, Entscheidungsbedarf und Fristen ohne Sonderauswertung."
+                reading="Links der Board-Report, rechts der Readiness-Stand je Regelwerk."
+                source="Illustrative Produktansicht, Musterindustrie GmbH — keine Kundendaten"
+              >
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
+                  <BoardReportPreview />
+                  <ComplianceScoreCard />
+                </div>
+              </Exhibit>
             </div>
           </Reveal>
         </div>

@@ -5,12 +5,19 @@ import { MARKETING_ROUTES } from "@/lib/marketing/navigation";
 
 import { IconArrowRight } from "./ui/Icons";
 
-/** Sachliche Ankündigungsleiste — Einordnung statt Alarm. */
+/**
+ * Sachliche Ankündigungsleiste — Einordnung statt Alarm.
+ *
+ * Sie liegt eine Stufe tiefer als die Kopfzeile und schließt mit einer
+ * Messing-Haarlinie ab (`.mk-announce`): die Seite beginnt an ihrer dunkelsten
+ * Stelle und wird nach unten hin heller. Kein Signalrot, kein Blinken — die
+ * Zeile ordnet ein, sie alarmiert nicht.
+ */
 export function AnnouncementBar() {
   return (
     <div className="mk-announce">
       <div className="mk-container flex min-h-9 flex-wrap items-center justify-center gap-x-3 gap-y-1 py-1.5 text-center">
-        <p className="text-[0.75rem] leading-snug text-[#c3cede]">
+        <p className="text-[0.75rem] leading-snug text-[var(--mk-slate-300)]">
           EU AI Act Readiness, NIS2 und ISO 42001 in einem Governance-System.
         </p>
         <Link

@@ -76,14 +76,14 @@ export default function TrustCenterPublicPage() {
   return (
     <div className="mk-container mk-section min-w-0 space-y-12 md:space-y-16">
       {/* Hero */}
-      <header className="border-b border-slate-200/80 pb-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
+      <header className="border-b border-[var(--mk-bd)] pb-10">
+        <p className="mk-eyebrow">
           Trust Center
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 sm:text-[2.25rem] sm:leading-tight">
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--mk-fg)] sm:text-[2.25rem] sm:leading-tight">
           Vertrauen auf Enterprise-Niveau.
         </h1>
-        <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--mk-fg-muted)]">
           Hier dokumentieren wir den tatsächlich freigegebenen Produktionsumfang,
           Sicherheitsgrenzen und den Evidenzstatus. Der öffentliche Release ist bewusst
           von der Enterprise-Datenebene getrennt.
@@ -91,7 +91,7 @@ export default function TrustCenterPublicPage() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/kontakt"
-            className="inline-flex items-center justify-center rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700"
+            className="mk-btn mk-btn--primary"
           >
             Security Review anfragen
           </Link>
@@ -104,11 +104,11 @@ export default function TrustCenterPublicPage() {
       <section aria-labelledby="security-overview">
         <h2
           id="security-overview"
-          className="text-xl font-semibold tracking-tight text-slate-900"
+          className="text-xl font-semibold tracking-tight text-[var(--mk-fg)]"
         >
           Sicherheitsarchitektur
         </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--mk-fg-muted)]">
           Verifizierbare Kontrollen des stateless Public-Site-Profils. Aussagen zur
           Enterprise-Plattform sind keine Produktzertifizierung und werden erst nach
           dokumentierter Betriebsfreigabe erweitert.
@@ -117,14 +117,14 @@ export default function TrustCenterPublicPage() {
           {securityCommitments.map((c) => (
             <li
               key={c}
-              className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/40"
+              className="flex items-start gap-3 rounded-xl border border-[var(--mk-bd)] bg-white p-4 shadow-sm"
             >
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--mk-ok-50)] text-[var(--mk-ok-600)]">
                 <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </span>
-              <span className="text-sm text-slate-700">{c}</span>
+              <span className="text-sm text-[var(--mk-fg-soft)]">{c}</span>
             </li>
           ))}
         </ul>
@@ -134,11 +134,11 @@ export default function TrustCenterPublicPage() {
       <section aria-labelledby="compliance-frameworks">
         <h2
           id="compliance-frameworks"
-          className="text-xl font-semibold tracking-tight text-slate-900"
+          className="text-xl font-semibold tracking-tight text-[var(--mk-fg)]"
         >
           Unterstützte Frameworks & Standards
         </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--mk-fg-muted)]">
           Die Produktlogik bildet Anforderungen dieser Frameworks in einem gemeinsamen
           Kontrollmodell ab. Das ist weder eine Zertifizierung noch eine automatische
           Feststellung der Rechtskonformität eines Kunden.
@@ -147,13 +147,13 @@ export default function TrustCenterPublicPage() {
           {frameworks.map((fw) => (
             <div
               key={fw.key}
-              className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40"
+              className="rounded-2xl border border-[var(--mk-bd)] bg-white p-5 shadow-sm"
             >
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 font-mono text-xs font-semibold text-white" aria-hidden>{fw.icon}</span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--mk-navy-700)] font-mono text-xs font-semibold text-white" aria-hidden>{fw.icon}</span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{fw.label}</p>
-                  <p className="text-xs text-emerald-600 font-medium">{fw.status}</p>
+                  <p className="text-sm font-semibold text-[var(--mk-fg)]">{fw.label}</p>
+                  <p className="text-xs text-[var(--mk-state-ok)] font-medium">{fw.status}</p>
                 </div>
               </div>
             </div>
@@ -165,23 +165,23 @@ export default function TrustCenterPublicPage() {
       <section aria-labelledby="data-residency">
         <h2
           id="data-residency"
-          className="text-xl font-semibold tracking-tight text-slate-900"
+          className="text-xl font-semibold tracking-tight text-[var(--mk-fg)]"
         >
           Datenumfang des Public Release
         </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--mk-fg-muted)]">
           Der öffentliche Webauftritt ist technisch und organisatorisch von der späteren
           Enterprise-Datenebene getrennt.
         </p>
-        <div className="mt-5 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 text-xs">01</span>
+        <div className="mt-5 rounded-2xl border border-[var(--mk-bd)] bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-medium text-[var(--mk-fg)]">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--mk-accent-50)] text-[var(--mk-accent-700)] text-xs">01</span>
             Freigegebener Umfang: öffentliche Produktinformation
           </div>
           <ul className="mt-4 space-y-2">
             {dataResidencyFeatures.map((f) => (
-              <li key={f} className="flex items-center gap-2 text-sm text-slate-600">
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" aria-hidden />
+              <li key={f} className="flex items-center gap-2 text-sm text-[var(--mk-fg-muted)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--mk-brass)]" aria-hidden />
                 {f}
               </li>
             ))}
@@ -193,23 +193,23 @@ export default function TrustCenterPublicPage() {
       <section aria-labelledby="subprocessors">
         <h2
           id="subprocessors"
-          className="text-xl font-semibold tracking-tight text-slate-900"
+          className="text-xl font-semibold tracking-tight text-[var(--mk-fg)]"
         >
           Subprocessor-Transparenz
         </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--mk-fg-muted)]">
           Für die öffentliche Website wird Vercel zur Web-Auslieferung eingesetzt. Weitere
           Unterauftragsverarbeiter und Datenregionen werden für Enterprise-Leistungen
           vertrags- und instanzbezogen offengelegt, bevor Kundendaten verarbeitet werden.
         </p>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--mk-fg-muted)]">
           Wir weisen zu jedem Unterauftragsverarbeiter die <strong>kontrollierende
           Jurisdiktion</strong> getrennt vom Verarbeitungsstandort aus. Vercel Inc. ist ein
           US-Unternehmen und unterliegt US-Recht — auch bei Auslieferung aus einer
           EU-Region. Wir halten es für redlicher, das offen zu benennen, als es unter
           „EU-Hosting“ zusammenzufassen.
         </p>
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-[var(--mk-fg-faint)]">
           Letzte Aktualisierung: 15.07.2026
         </p>
       </section>
@@ -220,11 +220,11 @@ export default function TrustCenterPublicPage() {
       <section aria-labelledby="limitations">
         <h2
           id="limitations"
-          className="text-xl font-semibold tracking-tight text-slate-900"
+          className="text-xl font-semibold tracking-tight text-[var(--mk-fg)]"
         >
           Was wir heute nicht können
         </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--mk-fg-muted)]">
           Diese Punkte werden in einer Sicherheitsprüfung ohnehin auffallen. Wir nennen sie
           lieber vorher, damit Sie früh entscheiden können, ob wir zu Ihren Anforderungen
           passen.
@@ -232,19 +232,19 @@ export default function TrustCenterPublicPage() {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th scope="col" className="py-2 pr-4 font-semibold text-slate-700">
+              <tr className="border-b border-[var(--mk-bd)]">
+                <th scope="col" className="py-2 pr-4 font-semibold text-[var(--mk-fg-soft)]">
                   Thema
                 </th>
-                <th scope="col" className="py-2 font-semibold text-slate-700">
+                <th scope="col" className="py-2 font-semibold text-[var(--mk-fg-soft)]">
                   Stand
                 </th>
               </tr>
             </thead>
-            <tbody className="text-slate-600">
+            <tbody className="text-[var(--mk-fg-muted)]">
               {currentLimitations.map((item) => (
-                <tr key={item.topic} className="border-b border-slate-100">
-                  <th scope="row" className="py-2 pr-4 font-medium text-slate-800">
+                <tr key={item.topic} className="border-b border-[var(--mk-bd)]">
+                  <th scope="row" className="py-2 pr-4 font-medium text-[var(--mk-fg-soft)]">
                     {item.topic}
                   </th>
                   <td className="py-2">{item.status}</td>
@@ -253,7 +253,7 @@ export default function TrustCenterPublicPage() {
             </tbody>
           </table>
         </div>
-        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--mk-fg-muted)]">
           Fehlt Ihnen etwas Entscheidendes? Sprechen Sie uns an. Wenn wir es nicht liefern
           können, sagen wir das im ersten Gespräch.
         </p>
@@ -263,31 +263,31 @@ export default function TrustCenterPublicPage() {
       <section aria-labelledby="disclosure">
         <h2
           id="disclosure"
-          className="text-xl font-semibold tracking-tight text-slate-900"
+          className="text-xl font-semibold tracking-tight text-[var(--mk-fg)]"
         >
           Responsible Disclosure & Kontakt
         </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--mk-fg-muted)]">
           Sicherheitslücken verantwortungsvoll melden.
         </p>
-        <div className="mt-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
-          <p className="text-sm text-slate-700">
+        <div className="mt-4 rounded-2xl border border-[var(--mk-bd)] bg-white p-5 shadow-sm">
+          <p className="text-sm text-[var(--mk-fg-soft)]">
             <span className="font-medium">Security-Kontakt:</span>{" "}
             <a
               href={securityContact}
-              className="text-cyan-700 underline decoration-cyan-600/25 underline-offset-4 transition hover:text-cyan-900"
+              className="text-[var(--mk-accent-700)] underline decoration-cyan-600/25 underline-offset-4 transition hover:text-[var(--mk-fg)]"
             >
               {securityContactLabel}
             </a>
           </p>
-          <p className="mt-2 text-sm text-slate-700">
+          <p className="mt-2 text-sm text-[var(--mk-fg-soft)]">
             <span className="font-medium">PGP-Schlüssel:</span>{" "}
-            <span className="text-slate-500">Auf Anfrage verfügbar</span>
+            <span className="text-[var(--mk-fg-faint)]">Auf Anfrage verfügbar</span>
           </p>
           <div className="mt-4">
             <Link
               href="/kontakt"
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              className="inline-flex items-center justify-center rounded-xl border border-[var(--mk-bd)] bg-white px-4 py-2 text-sm font-semibold text-[var(--mk-fg-soft)] shadow-sm transition hover:border-[var(--mk-bd-strong)] hover:bg-[var(--mk-panel-subtle)]"
             >
               NDA-geschützten Zugang anfragen
             </Link>

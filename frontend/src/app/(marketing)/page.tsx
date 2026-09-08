@@ -9,7 +9,14 @@ import {
   ResourceCard,
   TrustBar,
 } from "@/components/marketing/sections/Sections";
-import { SectionHeading, StatusChip } from "@/components/marketing/ui/Primitives";
+import {
+  BrassRule,
+  Exhibit,
+  KeyFigure,
+  SectionHeading,
+  StageBackdrop,
+  StatusChip,
+} from "@/components/marketing/ui/Primitives";
 import { Reveal } from "@/components/marketing/ui/Reveal";
 import { BeforeAfterFlow } from "@/components/marketing/visuals/BeforeAfterFlow";
 import { BoardReportPreview } from "@/components/marketing/visuals/BoardReportPreview";
@@ -32,6 +39,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+/**
+ * Die Ergebniszusagen der Plattform.
+ *
+ * Jede beschreibt eine Zustandsänderung, keine Eigenschaft: „wird einmal
+ * gepflegt und mehrfach verwendet" statt „umfassendes Control-Framework". Was
+ * sich nicht als Zustandsänderung formulieren lässt, ist keine Zusage, sondern
+ * eine Aufzählung — und gehört nicht an diese Stelle.
+ */
 const OUTCOMES = [
   {
     title: "Ein Kontrollmodell für mehrere Normen",
@@ -50,13 +65,46 @@ const OUTCOMES = [
   },
 ];
 
+/**
+ * Die Ausgangslage in drei prüfbaren Größen.
+ *
+ * Jede Kennzahl nennt ihre Grundlage; `KeyFigure` erzwingt das über ein
+ * Pflichtfeld. Regulatorische Fristen und Normstände sind belegbar — sie
+ * stehen hier, weil sie nachschlagbar sind. Marktzahlen ohne benennbare
+ * Quelle stehen nicht hier.
+ */
+const SITUATION_FIGURES = [
+  {
+    label: "Anwendbar ab",
+    value: "08/2026",
+    detail:
+      "Die Pflichten für Hochrisiko-KI-Systeme nach EU AI Act greifen gestaffelt; der breite Anwendungszeitpunkt liegt im August 2026.",
+    basis: "Verordnung (EU) 2024/1689, Art. 113",
+  },
+  {
+    label: "Regelwerke im Zugriff",
+    value: "5",
+    detail:
+      "EU AI Act, ISO/IEC 42001, ISO/IEC 27001, NIS2 und DSGVO greifen auf dieselben Controls und Nachweise zu.",
+    basis: "Abgedeckte Regelwerke im Kontrollmodell der Plattform",
+  },
+  {
+    label: "Leitungspflicht",
+    value: "persönlich",
+    detail:
+      "NIS2 nimmt Leitungsorgane in die Billigungs- und Überwachungspflicht für Risikomanagementmaßnahmen.",
+    basis: "Richtlinie (EU) 2022/2555, Art. 20",
+  },
+];
+
 export default function HomePage() {
   return (
     <>
-      {/* 1 — Hero */}
-      <section className="mk-dark relative overflow-hidden bg-[var(--mk-navy-900)]">
-        <div className="mk-container py-14 lg:py-20">
-          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12">
+      {/* 1 — Hero: Bühne, Kernaussage, genau eine Primäraktion */}
+      <section className="mk-stage relative isolate overflow-hidden">
+        <StageBackdrop />
+        <div className="mk-container relative py-14 lg:py-20">
+          <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] lg:gap-12">
             <div className="max-w-xl">
               <p className="mk-eyebrow">Governance-Layer für den DACH-Mittelstand</p>
               <h1 className="mk-display mt-4">
@@ -64,8 +112,8 @@ export default function HomePage() {
               </h1>
               <p className="mk-lead mt-5 text-[var(--mk-fg-soft)]">
                 Compliance Hub verbindet KI-Register, Controls, Evidenzen und
-                Board-Reporting in einer mandantenfähigen Plattform für Industrie,
-                Mittelstand und Beratungen im DACH-Raum.
+                Board-Reporting in einer mandantenfähigen Plattform für
+                Industrie, Mittelstand und Beratungen im DACH-Raum.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link
@@ -83,18 +131,26 @@ export default function HomePage() {
                   Produkt-Tour ansehen
                 </Link>
               </div>
-              <p className="mt-5 text-[0.75rem] leading-relaxed text-[var(--mk-fg-faint)]">
-                Map once, comply many: ein Control, mehrere Nachweise — über EU AI Act,
-                ISO 42001, ISO 27001/27701, NIS2 und DSGVO.
+              <BrassRule className="mt-8 max-w-xs" />
+              <p className="mt-4 text-[0.75rem] leading-relaxed text-[var(--mk-fg-faint)]">
+                Map once, comply many: ein Control, mehrere Nachweise — über
+                EU AI Act, ISO 42001, ISO 27001/27701, NIS2 und DSGVO.
               </p>
             </div>
 
+            {/* Die Produktansicht ist eine Unterlage auf der Bühne: sie behält
+                ihren Weißgrund, weil ihre 1px-Linien, Statusfarben und
+                Monospace-Locator darauf kalibriert sind. */}
             <div className="min-w-0">
-              <HeroDashboardMockup />
-              <p className="mt-3 text-[0.6875rem] leading-relaxed text-[var(--mk-fg-faint)]">
-                Illustrative Produktansicht mit Beispieldaten der Musterindustrie GmbH.
-                Keine Kundendaten.
-              </p>
+              <Exhibit
+                index={1}
+                paper
+                claim="Der Governance-Stand einer Organisation auf einem Bildschirm."
+                reading="Readiness je Regelwerk, offene Findings und fällige Reviews in einer Ansicht."
+                source="Illustrative Produktansicht, Musterindustrie GmbH — keine Kundendaten"
+              >
+                <HeroDashboardMockup />
+              </Exhibit>
             </div>
           </div>
         </div>
@@ -103,8 +159,24 @@ export default function HomePage() {
       {/* 1b — Trust-Leiste */}
       <TrustBar />
 
+      {/* 2 — Ausgangslage in prüfbaren Größen */}
+      <section className="mk-section-tight" aria-labelledby="lage-heading">
+        <div className="mk-container">
+          <h2 id="lage-heading" className="sr-only">
+            Ausgangslage in Zahlen
+          </h2>
+          <div className="grid gap-4 md:grid-cols-3">
+            {SITUATION_FIGURES.map((figure, index) => (
+              <Reveal key={figure.label} delay={(index % 3) as 0 | 1 | 2}>
+                <KeyFigure {...figure} className="h-full" />
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 3 — Outcomes */}
-      <section className="mk-section-tight">
+      <section className="mk-section-tight pt-0">
         <div className="mk-container">
           <OutcomeStrip items={OUTCOMES} />
         </div>
@@ -123,7 +195,15 @@ export default function HomePage() {
           </Reveal>
           <Reveal delay={1}>
             <div className="mt-10">
-              <BeforeAfterFlow />
+              <Exhibit
+                index={2}
+                claim="Der Bruch liegt zwischen den Werkzeugen, nicht in den Anforderungen."
+                reading="Links der heutige Ablauf über getrennte Ablagen, rechts derselbe Ablauf auf einem gemeinsamen Datenstand."
+                basis="Typischer Ist-Ablauf in Organisationen ohne Governance-System"
+                source="Compliance Hub, Ablaufmodell der Plattform"
+              >
+                <BeforeAfterFlow />
+              </Exhibit>
             </div>
           </Reveal>
         </div>
@@ -141,16 +221,20 @@ export default function HomePage() {
             />
           </Reveal>
           <div className="mt-10">
-            <GovernanceFlow />
+            <Exhibit
+              index={3}
+              claim="Jeder Schritt übergibt Daten an den nächsten — erhoben wird einmal."
+              reading="Von links nach rechts: Geltungsbereich, Kontrollmodell, Evidenz, Board-Output."
+              source="Compliance Hub, Ablaufmodell der Plattform"
+            >
+              <GovernanceFlow />
+            </Exhibit>
           </div>
         </div>
       </section>
 
       {/* 6 — Module */}
-      <section
-        className="mk-surface-subtle border-y border-[var(--mk-bd)]"
-        id="module"
-      >
+      <section className="mk-surface-subtle border-y border-[var(--mk-bd)]" id="module">
         <div className="mk-container mk-section">
           <Reveal>
             <SectionHeading
@@ -161,7 +245,14 @@ export default function HomePage() {
             />
           </Reveal>
           <div className="mt-10">
-            <ModuleGrid />
+            <Exhibit
+              index={4}
+              claim="Sechs Module, aber nur ein Inventar und eine Control-Bibliothek."
+              reading="Jede Kachel ist ein Modul; die gemeinsame Datenbasis liegt darunter, nicht daneben."
+              source="Compliance Hub, Funktionsumfang der Plattform"
+            >
+              <ModuleGrid />
+            </Exhibit>
           </div>
         </div>
       </section>
@@ -190,7 +281,7 @@ export default function HomePage() {
                     >
                       <span
                         aria-hidden
-                        className="mt-[0.65rem] h-px bg-[var(--mk-accent-400)]"
+                        className="mt-[0.65rem] h-px bg-[var(--mk-brass)]"
                       />
                       <span>{item}</span>
                     </li>
@@ -199,7 +290,15 @@ export default function HomePage() {
               </div>
             </Reveal>
             <Reveal delay={1}>
-              <FrameworkMappingGraph />
+              <Exhibit
+                index={5}
+                claim="Eine gepflegte Risikobeurteilung bedient sechs Nachweispflichten."
+                reading="Links das Control, rechts die Regelwerke; jede Linie ist eine Referenz auf Artikel- oder Abschnittsebene."
+                basis="EU AI Act, ISO/IEC 42001, ISO/IEC 27001, ISO/IEC 27701, NIS2, DSGVO"
+                source="Compliance Hub, Kontrollmodell der Plattform"
+              >
+                <FrameworkMappingGraph />
+              </Exhibit>
             </Reveal>
           </div>
         </div>
@@ -270,14 +369,23 @@ export default function HomePage() {
             />
           </Reveal>
           <Reveal delay={1}>
-            <div className="mt-9 grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
-              <BoardReportPreview />
-              <ComplianceScoreCard />
+            <div className="mt-9">
+              <Exhibit
+                index={6}
+                claim="Drei Führungsfragen, beantwortet aus dem laufenden Betrieb."
+                reading="Links der Board-Report mit Lage und Entscheidungsbedarf, rechts der Readiness-Stand je Regelwerk."
+                source="Illustrative Produktansicht, Musterindustrie GmbH — keine Kundendaten"
+              >
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
+                  <BoardReportPreview />
+                  <ComplianceScoreCard />
+                </div>
+              </Exhibit>
             </div>
           </Reveal>
           <p className="mt-4 text-[0.75rem] leading-relaxed text-[var(--mk-fg-faint)]">
-            Der Readiness-Score beschreibt den Bearbeitungsstand im System. Er ist kein
-            Prüfergebnis und keine Konformitätsaussage.
+            Der Readiness-Score beschreibt den Bearbeitungsstand im System. Er ist
+            kein Prüfergebnis und keine Konformitätsaussage.
           </p>
         </div>
       </section>
@@ -298,11 +406,22 @@ export default function HomePage() {
           </Reveal>
           <Reveal delay={1}>
             <div className="mt-10">
-              <IntegrationArchitecture />
+              <Exhibit
+                index={7}
+                claim="Die Plattform liest aus den führenden Systemen — sie ersetzt keines davon."
+                reading="Quellsysteme links, Governance-Ebene in der Mitte, Nachweise und Reports rechts."
+                source="Compliance Hub, Integrationsarchitektur"
+              >
+                <IntegrationArchitecture />
+              </Exhibit>
             </div>
           </Reveal>
-          <div className="mt-5">
-            <Link href={MARKETING_ROUTES.integrations} prefetch={false} className="mk-link">
+          <div className="mt-6">
+            <Link
+              href={MARKETING_ROUTES.integrations}
+              prefetch={false}
+              className="mk-link"
+            >
               Alle Integrationen und Anbindungswege
             </Link>
           </div>
@@ -323,12 +442,30 @@ export default function HomePage() {
                 />
                 <ul className="mt-6 space-y-3.5">
                   {[
-                    ["Mandantenisolation auf Datenbankebene", "Row Level Security erzwingt die Trennung, nicht die Anwendungslogik."],
-                    ["Rollenbasierte Zugriffe", "Rechte kommen aus dem Verzeichnis des Kunden, nicht aus lokalen Listen."],
-                    ["Audit-Logs", "Änderungen und Freigaben sind verkettet und nachvollziehbar."],
-                    ["Verschlüsselung", "In Transit und at Rest, mit getrennten Schlüsseln je Umgebung."],
-                    ["SSO für das Enterprise-Onboarding", "SAML 2.0, Microsoft Entra ID und SAP IAS."],
-                    ["EU-zentrierte Hosting-Architektur", "Betrieb in der EU mit Deutschland-Option."],
+                    [
+                      "Mandantenisolation auf Datenbankebene",
+                      "Row Level Security erzwingt die Trennung, nicht die Anwendungslogik.",
+                    ],
+                    [
+                      "Rollenbasierte Zugriffe",
+                      "Rechte kommen aus dem Verzeichnis des Kunden, nicht aus lokalen Listen.",
+                    ],
+                    [
+                      "Audit-Logs",
+                      "Änderungen und Freigaben sind verkettet und nachvollziehbar.",
+                    ],
+                    [
+                      "Verschlüsselung",
+                      "In Transit und at Rest, mit getrennten Schlüsseln je Umgebung.",
+                    ],
+                    [
+                      "SSO für das Enterprise-Onboarding",
+                      "SAML 2.0, Microsoft Entra ID und SAP IAS.",
+                    ],
+                    [
+                      "EU-zentrierte Hosting-Architektur",
+                      "Betrieb in der EU mit Deutschland-Option.",
+                    ],
                   ].map(([title, detail]) => (
                     <li key={title} className="grid gap-1">
                       <span className="text-[0.875rem] font-semibold text-[var(--mk-fg)]">
@@ -349,7 +486,14 @@ export default function HomePage() {
               </div>
             </Reveal>
             <Reveal delay={1}>
-              <SecurityArchitectureDiagram />
+              <Exhibit
+                index={8}
+                claim="Die Mandantentrennung liegt in der Datenbank, nicht in der Anwendung."
+                reading="Von außen nach innen: Zugang, Anwendungsebene, Datenhaltung mit Row Level Security je Mandant."
+                source="Compliance Hub, Sicherheitsarchitektur"
+              >
+                <SecurityArchitectureDiagram />
+              </Exhibit>
             </Reveal>
           </div>
         </div>

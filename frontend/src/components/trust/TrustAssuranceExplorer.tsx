@@ -50,12 +50,12 @@ export function TrustAssuranceExplorer() {
 
   return (
     <section
-      className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-[#07111f] text-white shadow-2xl shadow-slate-950/15"
+      className="mk-stage overflow-hidden rounded-[12px] border border-[var(--mk-bd)]"
       aria-labelledby="assurance-explorer-title"
     >
       <div className="grid lg:grid-cols-[0.78fr_1.22fr]">
-        <div className="border-b border-white/10 p-6 sm:p-8 lg:border-b-0 lg:border-r">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-cyan-300">
+        <div className="border-b border-[var(--mk-bd)] p-6 sm:p-8 lg:border-b-0 lg:border-r">
+          <p className="mk-eyebrow">
             Assurance Explorer
           </p>
           <h2
@@ -64,7 +64,7 @@ export function TrustAssuranceExplorer() {
           >
             Status statt Marketing-Behauptung.
           </h2>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
+          <p className="mt-3 text-sm leading-6 text-[var(--mk-fg-muted)]">
             Wählen Sie eine Ebene und sehen Sie, was produktiv aktiv, modelliert oder noch
             evidenzpflichtig ist.
           </p>
@@ -77,8 +77,8 @@ export function TrustAssuranceExplorer() {
                 onClick={() => setActive(index)}
                 className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${
                   index === active
-                    ? "bg-white text-slate-950 shadow-lg"
-                    : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                    ? "bg-[var(--mk-cta)] text-[var(--mk-cta-ink)]"
+                    : "border border-[var(--mk-bd)] bg-[var(--mk-panel)] text-[var(--mk-fg-muted)] hover:border-[var(--mk-bd-strong)] hover:text-white"
                 }`}
               >
                 {item.label}
@@ -92,23 +92,23 @@ export function TrustAssuranceExplorer() {
           aria-live="polite"
           className="flex min-h-[24rem] flex-col justify-center p-6 sm:p-10 lg:p-12"
         >
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1.5 text-xs font-semibold text-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-300" aria-hidden />
+          <div className="mk-chip mk-chip--ok w-fit">
+            <span className="mk-chip__dot" aria-hidden />
             {view.status}
           </div>
           <h3 className="mt-5 max-w-2xl text-2xl font-semibold tracking-[-0.035em] text-white sm:text-3xl">
             {view.title}
           </h3>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--mk-fg-muted)] sm:text-base">
             {view.description}
           </p>
           <ul className="mt-7 grid gap-3 sm:grid-cols-3">
             {view.controls.map((control) => (
               <li
                 key={control}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-slate-200"
+                className="rounded-[8px] border border-[var(--mk-bd)] bg-[var(--mk-panel)] p-4 text-sm leading-6 text-[var(--mk-fg-soft)]"
               >
-                <span className="mb-3 block h-1.5 w-8 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400" aria-hidden />
+                <span className="mb-3 block h-px w-8 bg-[var(--mk-brass)]" aria-hidden />
                 {control}
               </li>
             ))}

@@ -1,4 +1,11 @@
-/* Wiederverwendbare Bausteine für App-Seiten (Compliance Hub + SBS-Stil) */
+/**
+ * Wiederverwendbare Bausteine der Anwendungsflächen (Compliance Hub, SBS-Stil).
+ *
+ * Farben kommen ausschließlich aus `design-tokens.css`. Die frühere Fassung
+ * mischte drei Familien: das Signalblau der Marke, bläuliche Tailwind-Slates
+ * für Flächen und ein Cyan für die aktive Navigation. Alle drei sind hier auf
+ * die Hausrollen zurückgeführt.
+ */
 
 .sbs-page-main {
   max-width: 80rem;
@@ -28,7 +35,7 @@
 .sbs-panel-muted {
   border-radius: var(--sbs-radius-lg);
   border: 1px solid var(--sbs-border);
-  background: #f8fafc;
+  background: var(--sbs-bg-page);
 }
 
 .sbs-h1 {
@@ -65,8 +72,8 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--sbs-text-accent);
-  background: rgba(0, 102, 179, 0.08);
-  border: 1px solid rgba(0, 102, 179, 0.2);
+  background: rgba(0, 56, 86, 0.07);
+  border: 1px solid rgba(0, 56, 86, 0.2);
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
 }
@@ -87,7 +94,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--sbs-text-secondary);
-  background: #f8fafc;
+  background: var(--sbs-bg-page);
 }
 
 .sbs-table th,
@@ -97,7 +104,7 @@
 }
 
 .sbs-table tbody tr:hover {
-  background: rgba(0, 102, 179, 0.04);
+  background: rgba(0, 56, 86, 0.04);
 }
 
 /* Tenant-Bereich: helle Shell (Enterprise SaaS, Fiori-inspiriert) */
@@ -128,20 +135,21 @@
 }
 
 .sbs-tenant-sidebar a:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--sbs-bg-alt);
+  color: var(--sbs-text-primary);
 }
 
 .sbs-tenant-sidebar a.sbs-nav-active {
-  background: rgba(6, 182, 212, 0.1);
-  color: #0e7490;
+  background: rgba(0, 56, 86, 0.07);
+  color: var(--sbs-navy-brand);
   font-weight: 600;
+  box-shadow: inset 2px 0 0 0 var(--sbs-brass);
 }
 
 .sbs-tenant-main {
   flex: 1;
   padding: 2rem;
-  background: #f8fafc;
+  background: var(--sbs-bg-page);
   color: var(--sbs-text-primary);
 }
 
@@ -173,13 +181,13 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.65rem 1.25rem;
-  background: var(--sbs-gradient-amber);
-  color: var(--sbs-navy-deep);
-  font-weight: 700;
+  background: var(--sbs-navy-brand);
+  color: #ffffff;
+  font-weight: 650;
   font-size: 0.9rem;
-  border-radius: 10px;
+  border-radius: var(--sbs-radius);
   text-decoration: none;
-  border: none;
+  border: 1px solid var(--sbs-navy-brand);
   cursor: pointer;
   box-shadow: var(--sbs-shadow-amber);
 }
@@ -193,25 +201,25 @@
   color: var(--sbs-text-primary);
   font-weight: 600;
   font-size: 0.9rem;
-  border-radius: 10px;
+  border-radius: var(--sbs-radius);
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--sbs-bg-elevated);
 }
 
 .sbs-alert-warn {
   border-radius: var(--sbs-radius);
-  border: 1px solid #fcd34d;
-  background: #fffbeb;
+  border: 1px solid #ead4a6;
+  background: #fbf1de;
   padding: 1rem;
   font-size: 0.875rem;
-  color: #92400e;
+  color: #6d4708;
 }
 
 .sbs-alert-info {
   border-radius: var(--sbs-radius);
-  border: 1px solid #bae6fd;
-  background: #f0f9ff;
+  border: 1px solid #bad5e4;
+  background: #e6f0f6;
   padding: 1rem;
   font-size: 0.875rem;
-  color: #0369a1;
+  color: #0e4d6e;
 }

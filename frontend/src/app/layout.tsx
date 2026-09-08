@@ -44,7 +44,7 @@ export default async function RootLayout({
       className="scroll-smooth scroll-pt-[7.5rem]"
       data-scroll-behavior="smooth"
     >
-      <body className="sbs-body flex min-h-screen flex-col bg-[#f6f8fa] antialiased">
+      <body className="sbs-body flex min-h-screen flex-col antialiased">
         {children}
       </body>
     </html>

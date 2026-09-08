@@ -1,27 +1,60 @@
 /**
- * Design-Tokens – SBS Deutschland / Enterprise KI (DACH), konsistent mit KanzleiAI.
- * Referenz: https://sbsdeutschland.com/sbshomepage/ · Produktlinie https://kanzlei-ai.com/
+ * Design-Tokens — SBS Deutschland GmbH & Co. KG, Produktlinie Enterprise-KI (DACH).
+ *
+ * Eine Hausfarbe für alle Produkte des Anbieters: das Petrol-Navy #003856 mit
+ * Messing als einzigem Autoritätsakzent, wie es NormPilot Industrie führt.
+ * Vorher stand hier ein eigenständiges Signalblau (#1668e8) und eine als
+ * „amber" benannte, tatsächlich blaue Akzentfarbe — zwei Produkte desselben
+ * Hauses sahen dadurch aus wie zwei Anbieter.
+ *
+ * Die Rollennamen sind unverändert: `--sbs-navy-mid` ist weiterhin der
+ * Interaktionsakzent, `--sbs-text-secondary` weiterhin der Fließtext. Nur die
+ * Werte wechseln in die Hausfamilie, damit die Arbeitsflächen der Anwendung
+ * ohne Umbau mitziehen.
+ *
+ * Kontrast auf Weiß (WCAG 2.1): text-primary 18.0:1 · text-secondary 6.9:1 ·
+ * text-muted 5.1:1 · text-accent 9.0:1. Alle Textrollen erfüllen AA, die
+ * Fließtextrollen mit Reserve.
+ *
+ * Referenz: https://sbsdeutschland.com · Schwesterprodukt https://www.normpilot-industrie.de
  */
 :root {
-  --sbs-navy-deep: #07111f;
-  --sbs-navy-mid: #1668e8;
-  --sbs-text-primary: #07111f;
-  --sbs-text-secondary: #526071;
-  --sbs-text-muted: #8793a3;
-  --sbs-text-accent: #1668e8;
-  --sbs-bg-page: #f5f7fb;
+  /* Marke — Petrol-Navy. Anker #003856, identisch zum Schwesterprodukt. */
+  --sbs-navy-deep: #00182a;
+  --sbs-navy-mid: #0e4d6e;
+  --sbs-navy-brand: #003856;
+
+  /* Text — kühl-neutrale Graphitskala statt bläulicher Slates. */
+  --sbs-text-primary: #161e23;
+  --sbs-text-secondary: #4e5c65;
+  --sbs-text-muted: #61717c;
+  --sbs-text-accent: #0e4d6e;
+
+  /* Flächen */
+  --sbs-bg-page: #f5f8f9;
   --sbs-bg-elevated: #ffffff;
-  --sbs-bg-alt: #edf1f7;
-  --sbs-border: rgba(110, 128, 151, 0.18);
-  --sbs-border-hover: rgba(68, 88, 115, 0.3);
-  --sbs-border-amber: #8aaeff;
-  --sbs-gradient-amber: linear-gradient(135deg, #07111f 0%, #17263b 100%);
-  --sbs-shadow-sm: 0 1px 2px rgba(7, 17, 31, 0.05), 0 8px 28px rgba(7, 17, 31, 0.04);
-  --sbs-shadow-md: 0 24px 80px rgba(7, 17, 31, 0.12);
-  --sbs-shadow-amber: 0 12px 32px rgba(7, 17, 31, 0.18);
+  --sbs-bg-alt: #ecf1f3;
+
+  /* Linien */
+  --sbs-border: rgba(56, 68, 76, 0.16);
+  --sbs-border-hover: rgba(56, 68, 76, 0.32);
+
+  /* Messing — Linie und Marke, nie Fläche. Der Rollenname stammt aus der
+     ersten Fassung und bleibt, damit bestehende Regeln weiterlaufen; der
+     Wert ist jetzt tatsächlich Messing und nicht mehr ein helles Blau. */
+  --sbs-border-amber: #b98f42;
+  --sbs-brass: #b98f42;
+  --sbs-brass-ink: #8a6626;
+
+  --sbs-gradient-amber: linear-gradient(135deg, #00243c 0%, #00182a 100%);
+
+  --sbs-shadow-sm: 0 1px 2px rgba(12, 18, 22, 0.05), 0 1px 3px -1px rgba(12, 18, 22, 0.04);
+  --sbs-shadow-md: 0 1px 2px rgba(12, 18, 22, 0.05), 0 24px 48px -28px rgba(12, 18, 22, 0.28);
+  --sbs-shadow-amber: 0 8px 24px -14px rgba(12, 18, 22, 0.4);
+
   --sbs-header-h: 64px;
-  --sbs-radius: 14px;
-  --sbs-radius-lg: 22px;
+  --sbs-radius: 10px;
+  --sbs-radius-lg: 14px;
   --sbs-font: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
 }

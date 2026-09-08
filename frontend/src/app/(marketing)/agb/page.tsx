@@ -12,14 +12,14 @@ export const metadata: Metadata = {
 export default function AgbPage() {
   return (
     <div className={`mk-container mk-section ${CH_SHELL}`}>
-      <header className="mb-8 border-b border-slate-200/80 pb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
+      <header className="mb-8 border-b border-[var(--mk-bd)] pb-8">
+        <p className="mk-eyebrow">
           Rechtliches
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--mk-fg)]">
           Vertragsbedingungen
         </h1>
-        <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-base leading-relaxed text-[var(--mk-fg-muted)]">
           Geprüfte Bedingungen für die Compliance Hub Plattform.
         </p>
       </header>

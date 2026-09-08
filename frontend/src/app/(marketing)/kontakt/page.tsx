@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 function FormFallback() {
   return (
-    <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+    <p className="rounded-xl border border-[var(--mk-bd)] bg-white p-6 text-sm text-[var(--mk-fg-muted)] shadow-sm">
       Formular wird geladen …
     </p>
   );

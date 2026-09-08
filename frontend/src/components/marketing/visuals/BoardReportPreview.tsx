@@ -14,7 +14,7 @@ import { Meter, StatusChip, toneForCoverage } from "../ui/Primitives";
 
 function Headline({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-[#74869e]">
+    <p className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-[var(--mk-fg-faint)]">
       {children}
     </p>
   );
@@ -29,12 +29,12 @@ export function BoardReportPreview({ className = "" }: { className?: string }) {
 
   return (
     <div
-      className={`mk-dark overflow-hidden rounded-[16px] border border-white/10 bg-[#0b1727] shadow-[var(--mk-shadow-dark)] ${className}`.trim()}
+      className={`mk-card overflow-hidden rounded-[12px] ${className}`.trim()}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] px-4 py-3">
         <div>
           <Headline>Board Report · {DEMO_ORG.reportingPeriod}</Headline>
-          <p className="mt-1 text-[0.9375rem] font-semibold text-white">{DEMO_ORG.name}</p>
+          <p className="mt-1 text-[0.9375rem] font-semibold text-[var(--mk-fg)]">{DEMO_ORG.name}</p>
         </div>
         <div className="flex flex-wrap gap-1.5">
           <StatusChip tone="crit">{BOARD_KPIS.openDecisions} Entscheidungen erforderlich</StatusChip>
@@ -54,24 +54,24 @@ export function BoardReportPreview({ className = "" }: { className?: string }) {
             ].map((kpi) => (
               <div
                 key={kpi.label}
-                className="rounded-[10px] border border-white/10 bg-white/[0.04] px-3 py-2.5"
+                className="rounded-[10px] border border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] px-3 py-2.5"
               >
-                <p className="truncate text-[0.5625rem] font-semibold uppercase tracking-[0.1em] text-[#74869e]">
+                <p className="text-[0.5625rem] font-semibold uppercase leading-tight tracking-[0.08em] text-[var(--mk-fg-faint)]">
                   {kpi.label}
                 </p>
-                <p className="mk-num mt-1.5 text-[1.25rem] font-semibold leading-none text-white">
+                <p className="mk-num mt-1.5 text-[1.25rem] font-semibold leading-none text-[var(--mk-fg)]">
                   {kpi.value}
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="rounded-[10px] border border-white/10 bg-white/[0.04] p-3.5">
+          <div className="rounded-[10px] border border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] p-3.5">
             <Headline>Framework Coverage</Headline>
             <ul className="mt-2.5 space-y-2">
               {FRAMEWORK_COVERAGE.map((framework) => (
                 <li key={framework.id} className="grid grid-cols-[7.5rem_minmax(0,1fr)_2.5rem] items-center gap-2.5">
-                  <span className="truncate text-[0.6875rem] text-[#c3cede]">
+                  <span className="truncate text-[0.6875rem] text-[var(--mk-fg-muted)]">
                     {framework.label}
                   </span>
                   <Meter
@@ -80,7 +80,7 @@ export function BoardReportPreview({ className = "" }: { className?: string }) {
                     label={framework.label}
                     height={5}
                   />
-                  <span className="mk-num text-right text-[0.6875rem] font-semibold text-white">
+                  <span className="mk-num text-right text-[0.6875rem] font-semibold text-[var(--mk-fg)]">
                     {framework.coverage}%
                   </span>
                 </li>
@@ -88,21 +88,21 @@ export function BoardReportPreview({ className = "" }: { className?: string }) {
             </ul>
           </div>
 
-          <div className="rounded-[10px] border border-white/10 bg-white/[0.04] p-3.5">
+          <div className="rounded-[10px] border border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] p-3.5">
             <Headline>Nächste Review-Termine</Headline>
-            <ul className="mt-2 divide-y divide-white/10">
+            <ul className="mt-2 divide-y divide-[var(--mk-bd)]">
               {DEADLINES.map((deadline) => (
                 <li key={deadline.label} className="flex items-center justify-between gap-3 py-2">
                   <span className="min-w-0">
-                    <span className="block text-[0.75rem] font-medium text-white">
+                    <span className="block text-[0.75rem] font-medium text-[var(--mk-fg)]">
                       {deadline.label}
                     </span>
-                    <span className="block truncate text-[0.625rem] text-[#8798b0]">
+                    <span className="block truncate text-[0.625rem] text-[var(--mk-fg-faint)]">
                       {deadline.detail}
                     </span>
                   </span>
-                  <span className="flex shrink-0 items-center gap-1.5 text-[0.6875rem] text-[#c3cede]">
-                    <IconClock className="h-3.5 w-3.5 text-[#74869e]" />
+                  <span className="flex shrink-0 items-center gap-1.5 text-[0.6875rem] text-[var(--mk-fg-muted)]">
+                    <IconClock className="h-3.5 w-3.5 text-[var(--mk-fg-faint)]" />
                     <span className="mk-num">in {deadline.inDays} Tagen</span>
                   </span>
                 </li>
@@ -115,23 +115,23 @@ export function BoardReportPreview({ className = "" }: { className?: string }) {
         <div className="flex flex-col gap-3">
           <div className="rounded-[10px] border border-[rgba(217,45,32,0.36)] bg-[rgba(217,45,32,0.1)] p-3.5">
             <div className="flex items-center gap-2">
-              <IconAlert className="h-4 w-4 shrink-0 text-[#fda29b]" />
+              <IconAlert className="h-4 w-4 shrink-0 text-[var(--mk-state-crit)]" />
               <Headline>Entscheidungen des Gremiums</Headline>
             </div>
             <ol className="mt-2.5 space-y-2.5">
               {BOARD_DECISIONS.map((decision, index) => (
                 <li key={decision.title} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-2">
-                  <span className="mk-num text-[0.6875rem] font-bold text-[#fda29b]">
+                  <span className="mk-num text-[0.6875rem] font-bold text-[var(--mk-state-crit)]">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[0.75rem] font-semibold text-white">
+                    <span className="block text-[0.75rem] font-semibold text-[var(--mk-fg)]">
                       {decision.title}
                     </span>
-                    <span className="mt-0.5 block text-[0.6875rem] leading-relaxed text-[#c3cede]">
+                    <span className="mt-0.5 block text-[0.6875rem] leading-relaxed text-[var(--mk-fg-muted)]">
                       {decision.context}
                     </span>
-                    <span className="mt-1 block text-[0.6875rem] leading-relaxed text-[#8798b0]">
+                    <span className="mt-1 block text-[0.6875rem] leading-relaxed text-[var(--mk-fg-faint)]">
                       Benötigt: {decision.needed}
                     </span>
                   </span>
@@ -140,25 +140,25 @@ export function BoardReportPreview({ className = "" }: { className?: string }) {
             </ol>
           </div>
 
-          <div className="min-w-0 overflow-hidden rounded-[10px] border border-white/10 bg-white/[0.04]">
-            <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3.5 py-2.5">
+          <div className="min-w-0 overflow-hidden rounded-[10px] border border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)]">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--mk-bd)] px-3.5 py-2.5">
               <Headline>Kritische offene Maßnahmen</Headline>
-              <span className="mk-num text-[0.625rem] text-[#74869e]">
+              <span className="mk-num text-[0.625rem] text-[var(--mk-fg-faint)]">
                 {BOARD_KPIS.actionsDueBySeptember} bis 30.09. fällig
               </span>
             </div>
-            <ul className="divide-y divide-white/10">
+            <ul className="divide-y divide-[var(--mk-bd)]">
               {dueSoon.map((action) => (
                 <li key={action.id} className="px-3.5 py-2.5">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="min-w-0 text-[0.75rem] font-medium leading-snug text-white">
+                    <p className="min-w-0 text-[0.75rem] font-medium leading-snug text-[var(--mk-fg)]">
                       {action.title}
                     </p>
-                    <p className="mk-num shrink-0 text-[0.6875rem] text-[#d3dcea]">
+                    <p className="mk-num shrink-0 text-[0.6875rem] text-[var(--mk-fg-soft)]">
                       {action.due}
                     </p>
                   </div>
-                  <p className="mk-mono mt-1 truncate text-[#74869e]">
+                  <p className="mk-mono mt-1 truncate text-[var(--mk-fg-faint)]">
                     {action.framework} {action.reference} · {action.owner} ·{" "}
                     {action.ownerRole}
                   </p>
@@ -169,7 +169,7 @@ export function BoardReportPreview({ className = "" }: { className?: string }) {
         </div>
       </div>
 
-      <p className="border-t border-white/10 bg-white/[0.02] px-4 py-2.5 text-[0.6875rem] leading-relaxed text-[#74869e]">
+      <p className="border-t border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] px-4 py-2.5 text-[0.6875rem] leading-relaxed text-[var(--mk-fg-faint)]">
         Der Bericht bereitet den Stand für die Entscheidung auf. Die Bewertung und Freigabe
         bleibt bei den verantwortlichen Personen.
       </p>

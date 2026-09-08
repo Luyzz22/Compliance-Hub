@@ -3,7 +3,11 @@ import Link from "next/link";
 import React from "react";
 
 import { CTASection, OutcomeStrip } from "@/components/marketing/sections/Sections";
-import { SectionHeading, StatusChip } from "@/components/marketing/ui/Primitives";
+import {
+  SectionHeading,
+  StageBackdrop,
+  StatusChip,
+} from "@/components/marketing/ui/Primitives";
 import { Reveal } from "@/components/marketing/ui/Reveal";
 import { EvidenceTimeline } from "@/components/marketing/visuals/EvidenceTimeline";
 import { FrameworkMappingGraph } from "@/components/marketing/visuals/FrameworkMappingGraph";
@@ -64,8 +68,9 @@ const AIMS_MAPPING: [string, string, string][] = [
 export default function AiActPage() {
   return (
     <>
-      <section className="mk-dark bg-[var(--mk-navy-900)]">
-        <div className="mk-container py-14 lg:py-18">
+      <section className="mk-stage relative isolate overflow-hidden">
+        <StageBackdrop />
+        <div className="mk-container relative py-14 lg:py-18">
           <div className="max-w-3xl">
             <p className="mk-eyebrow">EU AI Act · ISO/IEC 42001</p>
             <h1 className="mk-h1 mt-4">

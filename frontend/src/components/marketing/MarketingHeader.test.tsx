@@ -64,3 +64,42 @@ describe("MarketingHeader", () => {
     expect(screen.queryByRole("navigation", { name: "Hauptnavigation mobil" })).toBeNull();
   });
 });
+
+/**
+ * Die Kopfzeile trug die Desktop-Navigation ab `lg` (1024px). Dort passen
+ * Marke, sieben Navigationsgruppen, Login und zwei Aktionen nicht nebeneinander
+ * — die Leiste lief um 100px über den Viewport hinaus, auf jeder Seite.
+ *
+ * Sichtbar war das nicht als Überlauf, sondern als „Comp…": die Wortmarke trug
+ * `truncate` und schluckte die fehlende Breite. Diese Tests halten beides fest
+ * — den Umschaltpunkt und das Fehlen der Notlösung.
+ */
+describe("MarketingHeader — responsiver Vertrag", () => {
+  afterEach(cleanup);
+
+  it("schaltet Navigation und Menütaste am selben Punkt um", () => {
+    const { container } = render(<MarketingHeader />);
+
+    const nav = container.querySelector('nav[aria-label="Hauptnavigation"]');
+    const toggle = screen.getByRole("button", { name: "Menü öffnen" });
+
+    // Genau ein Umschaltpunkt: sonst gäbe es eine Breite, in der beide
+    // sichtbar sind — oder schlimmer, keine von beiden.
+    expect(nav?.className).toContain("xl:flex");
+    expect(nav?.className).toContain("hidden");
+    expect(toggle.className).toContain("xl:hidden");
+  });
+
+  it("kürzt die Wortmarke nicht", () => {
+    const { container } = render(<MarketingHeader />);
+    const wordmark = screen.getByText("Compliance Hub");
+
+    expect(wordmark.className).not.toContain("truncate");
+    expect(wordmark.className).toContain("whitespace-nowrap");
+
+    // Auch der Markenlink darf nicht schrumpfen — täte er es, wäre der
+    // Überlauf wieder unsichtbar statt behoben.
+    const brandLink = container.querySelector('a[href="/"]');
+    expect(brandLink?.className).toContain("shrink-0");
+  });
+});

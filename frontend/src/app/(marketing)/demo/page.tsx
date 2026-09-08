@@ -4,7 +4,11 @@ import React, { Suspense } from "react";
 
 import { ContactLeadForm } from "@/components/contact/ContactLeadForm";
 import { DemoRequestPathways } from "@/components/marketing/DemoRequestPathways";
-import { SectionHeading, StatusChip } from "@/components/marketing/ui/Primitives";
+import {
+  SectionHeading,
+  StageBackdrop,
+  StatusChip,
+} from "@/components/marketing/ui/Primitives";
 import { Reveal } from "@/components/marketing/ui/Reveal";
 import { ComplianceScoreCard } from "@/components/marketing/visuals/ComplianceScoreCard";
 import { MARKETING_ROUTES } from "@/lib/marketing/navigation";
@@ -45,8 +49,9 @@ export default function DemoPage() {
 
   return (
     <>
-      <section className="mk-dark bg-[var(--mk-navy-900)]">
-        <div className="mk-container py-12 lg:py-16">
+      <section className="mk-stage relative isolate overflow-hidden">
+        <StageBackdrop />
+        <div className="mk-container relative py-12 lg:py-16">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-center">
             <div className="max-w-2xl">
               <p className="mk-eyebrow">Demo anfragen</p>

@@ -65,7 +65,7 @@ function StatusDistribution() {
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <p className="mk-label">Kontrollstatus</p>
-        <p className="mk-num whitespace-nowrap text-[0.625rem] text-[#74869e]">
+        <p className="mk-num whitespace-nowrap text-[0.625rem] text-[var(--mk-fg-faint)]">
           {total} aktive Controls
         </p>
       </div>
@@ -97,11 +97,11 @@ function StatusDistribution() {
               <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden className="shrink-0">
                 <circle cx="4" cy="4" r="4" fill={segment.fill} />
               </svg>
-              <span className="mk-num text-[0.8125rem] font-semibold text-white">
+              <span className="mk-num text-[0.8125rem] font-semibold text-[var(--mk-fg)]">
                 {segment.count}
               </span>
             </span>
-            <span className="mt-0.5 block truncate text-[0.625rem] text-[#8798b0]">
+            <span className="mt-0.5 block truncate text-[0.625rem] text-[var(--mk-fg-faint)]">
               {segment.label}
             </span>
           </li>
@@ -127,14 +127,14 @@ function KpiTile({
   meterTone?: "ok" | "warn" | "crit" | "info";
 }) {
   return (
-    <div className="min-w-0 rounded-[10px] border border-white/10 bg-white/[0.04] px-3 py-3">
-      <p className="text-[0.625rem] font-semibold uppercase leading-tight tracking-[0.08em] text-[#8798b0]">
+    <div className="min-w-0 rounded-[10px] border border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] px-3 py-3">
+      <p className="text-[0.625rem] font-semibold uppercase leading-tight tracking-[0.08em] text-[var(--mk-fg-faint)]">
         {label}
       </p>
-      <p className="mk-num mt-2 text-[1.5rem] font-semibold leading-none text-white">
+      <p className="mk-num mt-2 text-[1.5rem] font-semibold leading-none text-[var(--mk-fg)]">
         {value}
         {suffix ? (
-          <span className="ml-0.5 align-top text-[0.75rem] font-semibold text-[#8798b0]">
+          <span className="ml-0.5 align-top text-[0.75rem] font-semibold text-[var(--mk-fg-faint)]">
             {suffix}
           </span>
         ) : null}
@@ -145,7 +145,7 @@ function KpiTile({
         </div>
       ) : null}
       {hint ? (
-        <p className="mt-2 text-[0.625rem] leading-snug text-[#74869e]">{hint}</p>
+        <p className="mt-2 text-[0.625rem] leading-snug text-[var(--mk-fg-faint)]">{hint}</p>
       ) : null}
     </div>
   );
@@ -160,15 +160,15 @@ export function HeroDashboardMockup() {
   const actions = ACTION_PLAN.slice(0, 4);
 
   return (
-    <div className="mk-dark overflow-hidden rounded-[16px] border border-white/10 bg-[#0b1727] shadow-[var(--mk-shadow-dark)]">
+    <div className="mk-card overflow-hidden rounded-[12px]">
       {/* Fensterleiste */}
-      <div className="flex items-center gap-2.5 border-b border-white/10 bg-white/[0.03] px-3.5 py-2.5">
+      <div className="flex items-center gap-2.5 border-b border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] px-3.5 py-2.5">
         <span className="flex gap-1.5" aria-hidden>
-          <span className="h-[7px] w-[7px] rounded-full bg-white/20" />
-          <span className="h-[7px] w-[7px] rounded-full bg-white/20" />
-          <span className="h-[7px] w-[7px] rounded-full bg-white/20" />
+          <span className="h-[7px] w-[7px] rounded-full bg-[var(--mk-bd-strong)]" />
+          <span className="h-[7px] w-[7px] rounded-full bg-[var(--mk-bd-strong)]" />
+          <span className="h-[7px] w-[7px] rounded-full bg-[var(--mk-bd-strong)]" />
         </span>
-        <span className="mk-mono min-w-0 flex-1 truncate text-[#74869e]">
+        <span className="mk-mono min-w-0 flex-1 truncate text-[var(--mk-fg-faint)]">
           app.complywithai.de / board / uebersicht
         </span>
         <StatusChip tone="info" dot={false}>
@@ -180,19 +180,19 @@ export function HeroDashboardMockup() {
         {/* Navigationsleiste */}
         <nav
           aria-hidden
-          className="hidden flex-col gap-1 border-r border-white/10 bg-white/[0.02] p-3 lg:flex"
+          className="hidden flex-col gap-1 border-r border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] p-3 lg:flex"
         >
-          <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2">
-            <p className="truncate text-[0.6875rem] font-semibold text-white">
+          <div className="mb-3 rounded-lg border border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] px-2.5 py-2">
+            <p className="truncate text-[0.6875rem] font-semibold text-[var(--mk-fg)]">
               {DEMO_ORG.name}
             </p>
-            <p className="truncate text-[0.5625rem] text-[#74869e]">{DEMO_ORG.workspace}</p>
+            <p className="truncate text-[0.5625rem] text-[var(--mk-fg-faint)]">{DEMO_ORG.workspace}</p>
           </div>
           {RAIL_ITEMS.map(({ label, Icon, active }) => (
             <span
               key={label}
               className={`flex items-center gap-2 rounded-md px-2.5 py-2 text-[0.6875rem] font-medium ${
-                active ? "bg-white/[0.09] text-white" : "text-[#8798b0]"
+                active ? "bg-[var(--mk-panel-subtle)] text-[var(--mk-fg)]" : "text-[var(--mk-fg-faint)]"
               }`}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -205,10 +205,10 @@ export function HeroDashboardMockup() {
           {/* Kopfzeile */}
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-[#74869e]">
+              <p className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-[var(--mk-fg-faint)]">
                 Board Readiness
               </p>
-              <h3 className="mt-1 truncate text-[0.9375rem] font-semibold text-white">
+              <h3 className="mt-1 truncate text-[0.9375rem] font-semibold text-[var(--mk-fg)]">
                 {DEMO_ORG.name}
               </h3>
             </div>
@@ -219,7 +219,7 @@ export function HeroDashboardMockup() {
           </div>
 
           {/* Kennzahlen */}
-          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 2xl:grid-cols-5">
             <KpiTile
               label="Readiness"
               value={BOARD_KPIS.readinessScore}
@@ -256,18 +256,18 @@ export function HeroDashboardMockup() {
           {/* Status + Frist + Maßnahmen */}
           <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
             <div className="flex flex-col gap-3">
-              <div className="rounded-[10px] border border-white/10 bg-white/[0.04] p-3.5">
+              <div className="rounded-[10px] border border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)] p-3.5">
                 <StatusDistribution />
               </div>
 
               <div className="rounded-[10px] border border-[rgba(217,130,7,0.34)] bg-[rgba(217,130,7,0.1)] p-3.5">
                 <div className="flex items-start gap-2.5">
-                  <IconClock className="mt-0.5 h-4 w-4 shrink-0 text-[#fbc35c]" />
+                  <IconClock className="mt-0.5 h-4 w-4 shrink-0 text-[var(--mk-state-warn)]" />
                   <div className="min-w-0">
-                    <p className="text-[0.75rem] font-semibold text-white">
+                    <p className="text-[0.75rem] font-semibold text-[var(--mk-fg)]">
                       {deadline.label}: Review in {deadline.inDays} Tagen
                     </p>
-                    <p className="mt-1 text-[0.6875rem] leading-snug text-[#c3cede]">
+                    <p className="mt-1 text-[0.6875rem] leading-snug text-[var(--mk-fg-muted)]">
                       {deadline.detail}
                     </p>
                   </div>
@@ -275,26 +275,26 @@ export function HeroDashboardMockup() {
               </div>
             </div>
 
-            <div className="min-w-0 overflow-hidden rounded-[10px] border border-white/10 bg-white/[0.04]">
-              <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3.5 py-2.5">
+            <div className="min-w-0 overflow-hidden rounded-[10px] border border-[var(--mk-bd)] bg-[var(--mk-panel-subtle)]">
+              <div className="flex items-center justify-between gap-2 border-b border-[var(--mk-bd)] px-3.5 py-2.5">
                 <p className="mk-label">Offene Maßnahmen</p>
-                <p className="mk-num text-[0.625rem] text-[#74869e]">
+                <p className="mk-num text-[0.625rem] text-[var(--mk-fg-faint)]">
                   {BOARD_KPIS.actionsDueBySeptember} fällig bis 30.09.
                 </p>
               </div>
-              <ul className="divide-y divide-white/10">
+              <ul className="divide-y divide-[var(--mk-bd)]">
                 {actions.map((action) => (
                   <li key={action.id} className="px-3.5 py-2.5">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="min-w-0 text-[0.75rem] font-medium leading-snug text-white">
+                      <p className="min-w-0 text-[0.75rem] font-medium leading-snug text-[var(--mk-fg)]">
                         {action.title}
                       </p>
-                      <p className="mk-num shrink-0 text-[0.6875rem] text-[#d3dcea]">
+                      <p className="mk-num shrink-0 text-[0.6875rem] text-[var(--mk-fg-soft)]">
                         {action.due}
                       </p>
                     </div>
                     <div className="mt-1.5 flex items-center justify-between gap-3">
-                      <p className="mk-mono min-w-0 truncate text-[#74869e]">
+                      <p className="mk-mono min-w-0 truncate text-[var(--mk-fg-faint)]">
                         {action.id} · {action.owner} · {action.ownerRole}
                       </p>
                       <StatusChip

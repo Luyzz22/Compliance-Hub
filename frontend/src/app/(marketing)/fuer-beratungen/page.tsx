@@ -6,6 +6,7 @@ import { CTASection, OutcomeStrip } from "@/components/marketing/sections/Sectio
 import {
   Meter,
   SectionHeading,
+  StageBackdrop,
   StatusChip,
   toneForCoverage,
 } from "@/components/marketing/ui/Primitives";
@@ -73,8 +74,9 @@ const ROLES: [string, string][] = [
 export default function AdvisorsPage() {
   return (
     <>
-      <section className="mk-dark bg-[var(--mk-navy-900)]">
-        <div className="mk-container py-14 lg:py-18">
+      <section className="mk-stage relative isolate overflow-hidden">
+        <StageBackdrop />
+        <div className="mk-container relative py-14 lg:py-18">
           <div className="max-w-3xl">
             <p className="mk-eyebrow">Für Kanzleien & Beratungen</p>
             <h1 className="mk-h1 mt-4">

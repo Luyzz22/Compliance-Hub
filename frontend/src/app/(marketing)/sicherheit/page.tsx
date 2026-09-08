@@ -3,7 +3,11 @@ import Link from "next/link";
 import React from "react";
 
 import { CTASection, OutcomeStrip } from "@/components/marketing/sections/Sections";
-import { SectionHeading, StatusChip } from "@/components/marketing/ui/Primitives";
+import {
+  SectionHeading,
+  StageBackdrop,
+  StatusChip,
+} from "@/components/marketing/ui/Primitives";
 import { Reveal } from "@/components/marketing/ui/Reveal";
 import { SecurityArchitectureDiagram } from "@/components/marketing/visuals/SecurityArchitectureDiagram";
 import { MARKETING_ROUTES } from "@/lib/marketing/navigation";
@@ -94,8 +98,9 @@ const AI_HANDLING: [string, string][] = [
 export default function SecurityPage() {
   return (
     <>
-      <section className="mk-dark bg-[var(--mk-navy-900)]">
-        <div className="mk-container py-14 lg:py-18">
+      <section className="mk-stage relative isolate overflow-hidden">
+        <StageBackdrop />
+        <div className="mk-container relative py-14 lg:py-18">
           <div className="max-w-3xl">
             <p className="mk-eyebrow">Sicherheit & Architektur</p>
             <h1 className="mk-h1 mt-4">

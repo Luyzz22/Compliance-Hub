@@ -13,26 +13,26 @@ export default function DatenschutzPage() {
   const legal = getLegalConfig();
   return (
     <div className={`mk-container mk-section ${CH_SHELL}`}>
-      <header className="mb-8 border-b border-slate-200/80 pb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
+      <header className="mb-8 border-b border-[var(--mk-bd)] pb-8">
+        <p className="mk-eyebrow">
           Rechtliches
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--mk-fg)]">
           Datenschutzerklärung
         </h1>
-        <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600">
+        <p className="mt-2 max-w-2xl text-base leading-relaxed text-[var(--mk-fg-muted)]">
           Informationen gemäß DSGVO Art. 13 / Art. 14.
         </p>
       </header>
       {!legal ? (
         <LegalReleaseGate />
       ) : (
-        <article className={`${CH_CARD} space-y-8 text-sm leading-6 text-slate-700`}>
-          <p className="text-xs text-slate-500">
+        <article className={`${CH_CARD} space-y-8 text-sm leading-6 text-[var(--mk-fg-soft)]`}>
+          <p className="text-xs text-[var(--mk-fg-faint)]">
             Version {legal.privacyNoticeVersion} · geprüft am {legal.privacyReviewedAt}
           </p>
           <section>
-            <h2 className="text-lg font-semibold text-slate-950">1. Verantwortlicher</h2>
+            <h2 className="text-lg font-semibold text-[var(--mk-fg)]">1. Verantwortlicher</h2>
             <address className="mt-2 not-italic">
               {legal.entityName}, {legal.street}, {legal.postalCode} {legal.city},{" "}
               {legal.country}<br />
@@ -41,7 +41,7 @@ export default function DatenschutzPage() {
             </address>
           </section>
           <section>
-            <h2 className="text-lg font-semibold text-slate-950">2. Website und Protokolldaten</h2>
+            <h2 className="text-lg font-semibold text-[var(--mk-fg)]">2. Website und Protokolldaten</h2>
             <p className="mt-2">
               Beim Abruf werden technisch erforderliche Verbindungsdaten verarbeitet, um die
               Website sicher und verfügbar bereitzustellen. Rechtsgrundlage ist Art. 6 Abs. 1
@@ -51,7 +51,7 @@ export default function DatenschutzPage() {
             </p>
           </section>
           <section>
-            <h2 className="text-lg font-semibold text-slate-950">3. Kontakt und Demo-Anfragen</h2>
+            <h2 className="text-lg font-semibold text-[var(--mk-fg)]">3. Kontakt und Demo-Anfragen</h2>
             <p className="mt-2">
               Wir verarbeiten Ihre Angaben zur Bearbeitung der Anfrage und zur Vorbereitung
               eines Vertragsverhältnisses nach Art. 6 Abs. 1 lit. b DSGVO; bei allgemeinen
@@ -61,7 +61,7 @@ export default function DatenschutzPage() {
             </p>
           </section>
           <section>
-            <h2 className="text-lg font-semibold text-slate-950">4. Konten und Plattformnutzung</h2>
+            <h2 className="text-lg font-semibold text-[var(--mk-fg)]">4. Konten und Plattformnutzung</h2>
             <p className="mt-2">
               Konto-, Rollen-, Mandanten- und Nachweisdaten werden zur Vertragserfüllung,
               Zugriffskontrolle, Revisionsfähigkeit und IT-Sicherheit verarbeitet. Inhalte und
@@ -70,7 +70,7 @@ export default function DatenschutzPage() {
             </p>
           </section>
           <section>
-            <h2 className="text-lg font-semibold text-slate-950">5. KI-Funktionen</h2>
+            <h2 className="text-lg font-semibold text-[var(--mk-fg)]">5. KI-Funktionen</h2>
             <p className="mt-2">
               KI-Funktionen sind standardmäßig deaktiviert und werden mandantenspezifisch
               freigegeben. Erkannte personenbezogene Daten und Prompt-Injection-Muster werden
@@ -81,7 +81,7 @@ export default function DatenschutzPage() {
             </p>
           </section>
           <section>
-            <h2 className="text-lg font-semibold text-slate-950">6. Empfänger und Übermittlungen</h2>
+            <h2 className="text-lg font-semibold text-[var(--mk-fg)]">6. Empfänger und Übermittlungen</h2>
             <p className="mt-2">
               Empfänger erhalten Daten nur, soweit dies für Hosting, Betrieb, Support oder
               vertraglich aktivierte Integrationen erforderlich ist und eine Vereinbarung zur
@@ -92,7 +92,7 @@ export default function DatenschutzPage() {
             </p>
           </section>
           <section>
-            <h2 className="text-lg font-semibold text-slate-950">7. Ihre Rechte</h2>
+            <h2 className="text-lg font-semibold text-[var(--mk-fg)]">7. Ihre Rechte</h2>
             <p className="mt-2">
               Sie haben insbesondere Rechte auf Auskunft, Berichtigung, Löschung,
               Einschränkung, Datenübertragbarkeit und Widerspruch sowie das Recht, eine

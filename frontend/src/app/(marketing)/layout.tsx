@@ -9,7 +9,12 @@ import { isPublicSiteRelease } from "@/lib/releaseProfile";
 
 /**
  * Shell der öffentlichen Website. Vollbreite Sektionen, eigene Navigation und
- * ein Footer, der die rechtlichen Hinweise trägt.
+ * ein Footer, der Herkunft und rechtliche Hinweise trägt.
+ *
+ * `mk-scope` belegt die hellen Rollen als Grundzustand: Arbeitsflächen sind
+ * hell, weil dort gelesen wird. Kopfzeile, Hero und Abschluss tragen `mk-stage`
+ * selbst und schalten die Rollen für ihre Fläche auf die dunkle Belegung um —
+ * die Bühne ist damit die Ausnahme mit Begründung, nicht der Normalfall.
  */
 export default function MarketingLayout({
   children,
@@ -19,7 +24,7 @@ export default function MarketingLayout({
   const publicSite = isPublicSiteRelease();
 
   return (
-    <div className="mk-scope flex min-h-screen flex-col bg-white">
+    <div className="mk-scope flex min-h-screen flex-col">
       <a href="#marketing-main" className="mk-skip-link">
         Zum Inhalt springen
       </a>

@@ -12,38 +12,71 @@ import {
 
 import { IconChevronDown, IconClose, IconMenu } from "./ui/Icons";
 
+/**
+ * Die Hausmarke.
+ *
+ * Konstruktion und Bauteile sind dieselben wie beim Schwesterprodukt
+ * NormPilot Industrie: Schild in Petrol-Navy, drei Registerlinien absteigender
+ * Länge, ein Messingsiegel unten rechts. Das Siegel trägt hier ein Häkchen
+ * statt einer Lupe — NormPilot prüft, Compliance Hub belegt. Gleiche Familie,
+ * andere Handlung; genau daran soll die Verwandtschaft erkennbar sein.
+ *
+ * Die Verläufe brauchen dokumentweit eindeutige `id`-Werte: erscheint dieselbe
+ * `id` ein zweites Mal im DOM, greifen alle Referenzen auf die erste Definition
+ * zu.
+ */
 function BrandMark() {
   return (
     <Link
       href={MARKETING_ROUTES.home}
       prefetch={false}
-      className="flex min-w-0 items-center gap-2.5 no-underline"
+      className="flex shrink-0 items-center gap-2.5 no-underline"
     >
-      <span
+      <svg
+        viewBox="0 0 32 32"
+        className="h-8 w-8 shrink-0"
         aria-hidden
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--mk-navy-900)] text-white"
+        focusable="false"
       >
-        <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" aria-hidden>
-          <path
-            d="M12 3.5 19 6.2v5.6c0 3.8-2.8 6.9-7 8.2-4.2-1.3-7-4.4-7-8.2V6.2z"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M9 12.1 11 14.2l4-4.3"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </span>
-      <span className="min-w-0 leading-tight">
-        <span className="block truncate text-[0.9375rem] font-semibold tracking-[-0.02em] text-[var(--mk-navy-900)]">
+        <defs>
+          <linearGradient id="ch-mark-navy" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0e4d6e" />
+            <stop offset="100%" stopColor="#003856" />
+          </linearGradient>
+          <linearGradient id="ch-mark-brass" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#d2b26f" />
+            <stop offset="100%" stopColor="#b98f42" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M16 2L5 7v10c0 7.2 4.7 12.1 11 13 6.3-.9 11-5.8 11-13V7L16 2z"
+          fill="url(#ch-mark-navy)"
+        />
+        <path
+          d="M16 4.5L7 8.5v8.5c0 5.8 3.8 9.8 9 10.5 5.2-.7 9-4.7 9-10.5V8.5L16 4.5z"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="0.5"
+          opacity="0.15"
+        />
+        <line x1="11" y1="11" x2="21" y2="11" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+        <line x1="11" y1="14.5" x2="19" y2="14.5" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
+        <line x1="11" y1="18" x2="17" y2="18" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.35" />
+        <circle cx="21" cy="19" r="3.1" fill="url(#ch-mark-brass)" />
+        <path
+          d="M19.6 19.1l1 1.05 1.9-2.1"
+          fill="none"
+          stroke="#0c1216"
+          strokeWidth="1.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span className="leading-tight">
+        <span className="block whitespace-nowrap text-[0.9375rem] font-semibold tracking-[-0.02em] text-white">
           Compliance Hub
         </span>
-        <span className="hidden text-[0.625rem] font-medium text-[var(--mk-slate-500)] sm:block">
+        <span className="hidden whitespace-nowrap text-[0.625rem] font-medium text-[var(--mk-fg-faint)] 2xl:block">
           Governance für AI, Security &amp; Compliance
         </span>
       </span>
@@ -107,7 +140,11 @@ function DesktopGroup({
     );
   }
 
-  const groupActive = group.items.some((item) => isActive(item.href.split("#")[0]));
+  const groupActive = group.items.some((item) => {
+    const [path, hash] = item.href.split("#");
+    if (hash && path !== group.href) return false;
+    return isActive(path);
+  });
 
   return (
     <div
@@ -147,18 +184,18 @@ function DesktopGroup({
               className="mk-menu-item"
               onClick={() => setOpen(false)}
             >
-              <span className="block text-[0.8125rem] font-semibold text-[var(--mk-navy-900)]">
+              <span className="block text-[0.8125rem] font-semibold text-white">
                 {item.label}
               </span>
               {item.description ? (
-                <span className="mt-0.5 block text-[0.6875rem] leading-relaxed text-[var(--mk-slate-500)]">
+                <span className="mt-0.5 block text-[0.6875rem] leading-relaxed text-[var(--mk-fg-faint)]">
                   {item.description}
                 </span>
               ) : null}
             </Link>
           ))}
           {group.footnote ? (
-            <p className="mt-1 border-t border-[var(--mk-slate-200)] px-3 pb-1 pt-2.5 text-[0.625rem] leading-relaxed text-[var(--mk-slate-400)]">
+            <p className="mt-1 border-t border-[var(--mk-bd)] px-3 pb-1 pt-2.5 text-[0.625rem] leading-relaxed text-[var(--mk-fg-faint)]">
               {group.footnote}
             </p>
           ) : null}
@@ -180,10 +217,10 @@ function MobileNav({
   return (
     <div
       id="marketing-mobile-nav"
-      className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-[var(--mk-slate-200)] bg-white lg:hidden"
+      className="mk-stage max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-[var(--mk-bd)] xl:hidden"
     >
       <nav aria-label="Hauptnavigation mobil" className="mk-container py-4">
-        <ul className="divide-y divide-[var(--mk-slate-200)]">
+        <ul className="divide-y divide-[var(--mk-bd)]">
           {MARKETING_NAV.map((group) => (
             <li key={group.id} className="py-2.5">
               {group.href ? (
@@ -191,13 +228,13 @@ function MobileNav({
                   href={group.href}
                   prefetch={false}
                   onClick={onClose}
-                  className="block py-2 text-[0.9375rem] font-semibold text-[var(--mk-navy-900)] no-underline"
+                  className="block py-2 text-[0.9375rem] font-semibold text-white no-underline"
                   data-active={isActive(group.href) ? "true" : "false"}
                 >
                   {group.label}
                 </Link>
               ) : (
-                <p className="py-2 text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-[var(--mk-slate-400)]">
+                <p className="py-2 text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-[var(--mk-fg-faint)]">
                   {group.label}
                 </p>
               )}
@@ -211,7 +248,7 @@ function MobileNav({
                           href={item.href}
                           prefetch={false}
                           onClick={onClose}
-                          className="block rounded-[6px] py-2 text-[0.8125rem] text-[var(--mk-slate-600)] no-underline"
+                          className="block rounded-[6px] py-2 text-[0.8125rem] text-[var(--mk-fg-muted)] no-underline"
                         >
                           {item.label}
                         </Link>
@@ -285,11 +322,14 @@ export function MarketingHeader({ showLogin = false }: { showLogin?: boolean }) 
   );
 
   return (
-    <header className="mk-header" data-scrolled={scrolled ? "true" : "false"}>
+    <header
+      className="mk-stage mk-stage-veil mk-header"
+      data-scrolled={scrolled ? "true" : "false"}
+    >
       <div className="mk-container flex min-h-16 items-center justify-between gap-4">
         <BrandMark />
 
-        <nav aria-label="Hauptnavigation" className="hidden items-center gap-0.5 lg:flex">
+        <nav aria-label="Hauptnavigation" className="hidden items-center gap-0.5 xl:flex">
           {MARKETING_NAV.map((group) => (
             <DesktopGroup key={group.id} group={group} isActive={isActive} />
           ))}
@@ -297,14 +337,14 @@ export function MarketingHeader({ showLogin = false }: { showLogin?: boolean }) 
 
         <div className="flex items-center gap-2">
           {showLogin ? (
-            <Link href="/auth/login" prefetch={false} className="mk-navlink hidden sm:inline-flex">
+            <Link href="/auth/login" prefetch={false} className="mk-navlink hidden xl:inline-flex">
               Login
             </Link>
           ) : null}
           <Link
             href={MARKETING_ROUTES.productTour}
             prefetch={false}
-            className="mk-btn mk-btn--secondary mk-btn--sm hidden xl:inline-flex"
+            className="mk-btn mk-btn--secondary mk-btn--sm hidden 2xl:inline-flex"
           >
             Produkt-Tour
           </Link>
@@ -317,7 +357,7 @@ export function MarketingHeader({ showLogin = false }: { showLogin?: boolean }) 
           </Link>
           <button
             type="button"
-            className="mk-btn mk-btn--ghost mk-btn--sm lg:hidden"
+            className="mk-btn mk-btn--ghost mk-btn--sm xl:hidden"
             aria-label={mobileOpen ? "Menü schließen" : "Menü öffnen"}
             aria-expanded={mobileOpen}
             aria-controls="marketing-mobile-nav"
