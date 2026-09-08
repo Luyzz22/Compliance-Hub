@@ -24,14 +24,29 @@ ohne die Schutzwirkung zu erhöhen.
 
 - `complywithai.de` wird von **Vercel** ausgeliefert.
 - Der letzte erfolgreiche Deploy stammt vom **11.08.2026** (Commit `2d57a0a`).
-- Seit dem 13.08.2026 schlägt dort **jeder** Build fehl:
+- Seit dem 13.08.2026 schlug dort **jeder** Build fehl:
   `Enterprise release gate failed: Vercel runtime variables are forbidden in
-  the Hetzner-first profile`. Ursache ist PR #290, der das Hetzner-first-Gate
-  eingeführt hat. Vercel setzt `VERCEL=1` selbst — der Check ist unbedingt.
+  the Hetzner-first profile`. Ursache war PR #290, der das Hetzner-first-Gate
+  eingeführt hat. Vercel setzt `VERCEL=1` selbst, und der Check stand unbedingt
+  vor jeder Profilauswertung.
+
+  **Behoben.** Die Plattformregel ist jetzt auf die Datenebene begrenzt: nur ein
+  ausdrücklich als `public_site` deklarierter Release darf auf Vercel bauen,
+  `enterprise` und ein fehlendes Profil weiterhin nicht. Der zustandslose
+  Release trägt kein PostgreSQL, kein S3, kein Entra und keine Anmeldung — für
+  ihn hatte das Verbot kein Schutzziel, es hat nur die Auslieferung blockiert.
+  Damit ist Vercel bis zum Cutover wieder ein gangbarer Übergangsweg.
+
+  Voraussetzung im Vercel-Projekt: `COMPLIANCEHUB_RELEASE_PROFILE=public_site`
+  muss als Environment-Variable gesetzt sein, sonst greift die Sperre wie zuvor.
 - `preproduction-build.yml` ist **noch nie gelaufen**; der self-hosted Runner
   mit dem Label `compliancehub-hetzner-release` existiert nicht.
+- Die GitHub-Verknüpfung des Vercel-Projekts `compliance-hub` ist **getrennt**
+  (`link: null`). Solange sie fehlt, löst kein Push einen Build aus — unabhängig
+  vom Gate. Sie ist in den Projekteinstellungen wiederherzustellen.
 
-Die Website hängt damit auf einem Stand von vor mehreren Releases fest.
+Die Website hing damit auf einem Stand von vor mehreren Releases fest. Der
+Gate-Blocker ist gelöst; offen bleibt die GitHub-Verknüpfung.
 
 ## Reihenfolge — die Website darf nicht offline gehen
 

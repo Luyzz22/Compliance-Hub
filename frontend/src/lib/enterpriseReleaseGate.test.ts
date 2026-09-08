@@ -87,22 +87,80 @@ describe("enterprise release gate profiles", () => {
     );
   });
 
-  it("rejects Vercel runtime metadata and application browser variables", () => {
-    const platformResult = runGate({
-      ...publicSiteEnvironment(),
-      VERCEL_ENV: "production",
-    });
+  it("rejects application browser variables", () => {
     const applicationResult = runGate({
       ...publicSiteEnvironment(),
       NEXT_PUBLIC_APPLICATION_FLAG: "true",
     });
 
-    expect(platformResult.status).toBe(1);
-    expect(platformResult.stderr).toContain("Vercel runtime variables are forbidden");
     expect(applicationResult.status).toBe(1);
     expect(applicationResult.stderr).toContain(
       "NEXT_PUBLIC_APPLICATION_FLAG is forbidden in the stateless public_site release",
     );
+  });
+
+  /**
+   * Die Plattformregel schützt die Datenebene, nicht die Broschüre.
+   *
+   * Sie stand zuvor unbedingt und vor jeder Profilauswertung — damit schlug auf
+   * Vercel *jeder* Build fehl, auch der der zustandslosen Website. Die Seite hing
+   * dadurch monatelang auf einem alten Stand fest.
+   *
+   * Diese vier Fälle halten die neue Grenze: der zustandslose Release darf dort
+   * bauen, alles andere nicht — auch nicht bei vergessenem Profil.
+   */
+  describe("Plattformgrenze", () => {
+    it("lässt den zustandslosen public_site-Release auf Vercel bauen", () => {
+      const result = runGate({
+        ...publicSiteEnvironment(),
+        VERCEL: "1",
+        VERCEL_ENV: "production",
+      });
+
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain("passed (public_site)");
+    });
+
+    it("hält die Datenebene von Vercel fern", () => {
+      const result = runGate({
+        ...publicSiteEnvironment(),
+        COMPLIANCEHUB_RELEASE_PROFILE: "enterprise",
+        VERCEL_ENV: "production",
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        "Vercel is reserved for the stateless public_site profile",
+      );
+    });
+
+    it("bricht bei fehlendem Profil ab, statt die Plattform zu erlauben", () => {
+      // Ein vergessenes Profil darf die Datenebene nicht versehentlich auf eine
+      // fremde Plattform tragen — die Freigabe ist eine ausdrückliche Angabe.
+      const environment = publicSiteEnvironment();
+      delete environment.COMPLIANCEHUB_RELEASE_PROFILE;
+      const result = runGate({ ...environment, VERCEL: "1" });
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("profile: missing");
+    });
+
+    it("prüft die Plattform auch ausserhalb des Produktionskanals", () => {
+      // Der Kanal-Ausstieg liegt hinter der Plattformprüfung. Sonst käme ein
+      // Vorschau-Build der Datenebene ungeprüft durch.
+      const environment = publicSiteEnvironment();
+      delete environment.COMPLIANCEHUB_RELEASE_CHANNEL;
+      const result = runGate({
+        ...environment,
+        COMPLIANCEHUB_RELEASE_PROFILE: "enterprise",
+        VERCEL: "1",
+      });
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain(
+        "Vercel is reserved for the stateless public_site profile",
+      );
+    });
   });
 
   it("requires explicit legal approval for the public-site release", () => {

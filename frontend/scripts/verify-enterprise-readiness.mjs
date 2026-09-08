@@ -2,10 +2,38 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 
 const production = process.env.COMPLIANCEHUB_RELEASE_CHANNEL === "production";
+const releaseProfile = process.env.COMPLIANCEHUB_RELEASE_PROFILE?.trim() || "";
+const supportedReleaseProfiles = new Set(["public_site", "enterprise"]);
 
-if (process.env.VERCEL || process.env.VERCEL_ENV) {
+/**
+ * Souveränitätsregel für die Betriebsplattform.
+ *
+ * Die Regel schützt die *Datenebene*, nicht die Broschüre. Der
+ * `enterprise`-Release trägt Mandantendaten, Identität und Schlüssel; er läuft
+ * auf eigener Infrastruktur und nicht bei einem US-Anbieter. Der
+ * `public_site`-Release ist demgegenüber zustandslos: kein PostgreSQL, kein S3,
+ * kein Entra, keine Anmeldung, keine Lead-Speicherung. Für ihn trägt das Verbot
+ * kein Schutzziel — es hat nur die Auslieferung blockiert.
+ *
+ * Zuvor stand die Prüfung unbedingt und vor jeder Profilauswertung. Ergebnis:
+ * seit dem Hetzner-first-Gate schlug auf Vercel *jeder* Build fehl, auch der
+ * der öffentlichen Website. Die Seite hing dadurch monatelang auf einem alten
+ * Stand fest, während `main` weiterlief.
+ *
+ * Die Freigabe ist bewusst eng: nur das ausdrücklich als `public_site`
+ * deklarierte Profil darf auf Vercel bauen. Fehlt die Angabe oder lautet sie
+ * `enterprise`, bleibt es beim Abbruch — ein vergessenes Profil darf die
+ * Datenebene nicht versehentlich auf eine fremde Plattform tragen.
+ */
+if (
+  (process.env.VERCEL || process.env.VERCEL_ENV) &&
+  releaseProfile !== "public_site"
+) {
   process.stderr.write(
-    "Enterprise release gate failed: Vercel runtime variables are forbidden in the Hetzner-first profile\n",
+    "Enterprise release gate failed: Vercel is reserved for the stateless public_site profile; " +
+      `set COMPLIANCEHUB_RELEASE_PROFILE=public_site or build elsewhere (profile: ${
+        releaseProfile || "missing"
+      })\n`,
   );
   process.exit(1);
 }
@@ -16,8 +44,6 @@ if (!production) {
 }
 
 const errors = [];
-const releaseProfile = process.env.COMPLIANCEHUB_RELEASE_PROFILE?.trim() || "";
-const supportedReleaseProfiles = new Set(["public_site", "enterprise"]);
 const guidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const nilGuid = "00000000-0000-0000-0000-000000000000";
