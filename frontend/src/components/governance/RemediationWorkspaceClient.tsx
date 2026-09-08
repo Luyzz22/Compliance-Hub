@@ -198,7 +198,7 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
   const tabContent = (
     <div className="space-y-6">
       {error ? (
-        <p className="text-sm text-rose-800" role="alert">
+        <p className="text-sm text-red-800" role="alert">
           {error}
         </p>
       ) : null}
@@ -219,7 +219,7 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
         </article>
         <article className={`${CH_CARD} border-slate-200/80`}>
           <p className={CH_SECTION_LABEL}>Überfällig</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-800">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-red-800">
             {summary?.overdue_actions ?? "—"}
           </p>
         </article>
@@ -376,7 +376,7 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
                             <span className="inline-flex flex-col gap-0.5">
                               <span>{new Date(row.due_at_utc).toLocaleDateString("de-DE")}</span>
                               {row.is_overdue === true ? (
-                                <span className="text-xs font-medium text-rose-700">überfällig</span>
+                                <span className="text-xs font-medium text-red-700">überfällig</span>
                               ) : null}
                             </span>
                           ) : (
@@ -425,7 +425,7 @@ export function RemediationWorkspaceClient({ tenantId }: Props) {
                         ? new Date(detail.due_at_utc).toLocaleString("de-DE")
                         : "—"}
                       {detail.is_overdue === true ? (
-                        <span className="mt-0.5 block text-xs font-medium text-rose-700">
+                        <span className="mt-0.5 block text-xs font-medium text-red-700">
                           überfällig (aktiver Status)
                         </span>
                       ) : null}

@@ -18,7 +18,7 @@ type Props = { adminConfigured: boolean };
 function healthStatusClass(s: GtmHealthStatus): string {
   if (s === "good") return "border-emerald-200 bg-emerald-50/90 text-emerald-950";
   if (s === "watch") return "border-amber-200 bg-amber-50/90 text-amber-950";
-  return "border-rose-200 bg-rose-50/90 text-rose-950";
+  return "border-red-200 bg-red-50/90 text-red-950";
 }
 
 function healthStatusLabel(s: GtmHealthStatus): string {
@@ -60,7 +60,7 @@ function KpiCard({
 function readinessPillClass(cls: string): string {
   if (cls === "no_footprint") return "border-slate-200 bg-slate-50 text-slate-800";
   if (cls === "early_pilot") return "border-amber-200 bg-amber-50 text-amber-950";
-  if (cls === "baseline_governance") return "border-cyan-200 bg-cyan-50 text-cyan-950";
+  if (cls === "baseline_governance") return "border-brand-200 bg-brand-50 text-brand-950";
   return "border-emerald-200 bg-emerald-50 text-emerald-950";
 }
 
@@ -191,7 +191,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
         <h1 className="text-lg font-semibold text-slate-900">GTM Command Center</h1>
         <p className="mt-2 text-sm text-slate-600">
           Bitte zuerst unter{" "}
-          <a className="text-cyan-700 underline" href="/admin/leads">
+          <a className="text-brand-700 underline" href="/admin/leads">
             Lead-Inbox
           </a>{" "}
           mit dem Admin-Secret anmelden (Session-Cookie), dann diese Seite neu laden.
@@ -248,7 +248,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
               ? "border-emerald-200 bg-emerald-50/90"
               : boardReadinessBanner.status === "amber"
                 ? "border-amber-200 bg-amber-50/90"
-                : "border-rose-200 bg-rose-50/90"
+                : "border-red-200 bg-red-50/90"
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -266,7 +266,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
             Mandanten (Map): {boardReadinessBanner.mapped_tenant_count} · Backend:{" "}
             {boardReadinessBanner.backend_reachable ? "OK" : "teilweise offline"}
           </p>
-          <p className="mt-2 text-xs font-medium text-cyan-900 underline underline-offset-2">
+          <p className="mt-2 text-xs font-medium text-brand-900 underline underline-offset-2">
             Details anzeigen →
           </p>
         </a>
@@ -292,7 +292,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
                   <p className="mt-2 text-xs leading-relaxed opacity-95">{t.explanation_de}</p>
                   <a
                     href={t.href}
-                    className="mt-2 inline-block text-xs font-medium text-cyan-900 underline underline-offset-2"
+                    className="mt-2 inline-block text-xs font-medium text-brand-900 underline underline-offset-2"
                   >
                     {t.link_label_de} →
                   </a>
@@ -394,7 +394,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
                   <li key={h.id} className="flex flex-wrap items-baseline gap-2">
                     <span className="font-mono text-xs text-slate-500">×{h.count}</span>
                     <span>{h.message_de}</span>
-                    <a href={h.href} className="text-xs text-cyan-800 underline">
+                    <a href={h.href} className="text-xs text-brand-800 underline">
                       Öffnen
                     </a>
                   </li>
@@ -810,7 +810,7 @@ export function GtmCommandCenterClient({ adminConfigured }: Props) {
                         {" "}
                         ·{" "}
                         <a
-                          className="font-mono text-cyan-800 underline"
+                          className="font-mono text-brand-800 underline"
                           href={`/admin/leads?focus=${encodeURIComponent(a.lead_id)}`}
                         >
                           {a.lead_id.slice(0, 8)}…

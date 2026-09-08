@@ -34,7 +34,7 @@ export function ClassificationPanel({
       {!runCompleted ? (
         <p className="mt-4 text-sm leading-relaxed text-slate-600">{defaultPending}</p>
       ) : classificationError ? (
-        <p className="mt-4 text-sm text-rose-800" role="alert">
+        <p className="mt-4 text-sm text-red-800" role="alert">
           {classificationError}
         </p>
       ) : model ? (

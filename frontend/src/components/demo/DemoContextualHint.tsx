@@ -16,10 +16,10 @@ export function DemoContextualHint({ enabled }: { enabled: boolean }) {
   }
   const step = DEMO_GUIDE_STEPS[idx];
   return (
-    <div className="mb-4 rounded-lg border border-sky-200/80 bg-sky-50/90 px-3 py-2 text-sm text-sky-950">
-      <span className="font-semibold text-sky-900">Demo-Hinweis · Schritt {idx + 1} von </span>
-      <span className="font-semibold text-sky-900">{DEMO_GUIDE_STEPS.length}</span>
-      <span className="text-sky-900/90"> — {step.hint}</span>
+    <div className="mb-4 rounded-lg border border-brand-200/80 bg-brand-50/90 px-3 py-2 text-sm text-brand-950">
+      <span className="font-semibold text-brand-900">Demo-Hinweis · Schritt {idx + 1} von </span>
+      <span className="font-semibold text-brand-900">{DEMO_GUIDE_STEPS.length}</span>
+      <span className="text-brand-900/90"> — {step.hint}</span>
     </div>
   );
 }

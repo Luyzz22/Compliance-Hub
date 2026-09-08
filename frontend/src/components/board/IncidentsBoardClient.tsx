@@ -193,7 +193,7 @@ export function IncidentsBoardClient({ overview, bySystem }: Props) {
                 }
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ring-inset transition ${
                   severityFocus === entry.severity
-                    ? "ring-2 ring-cyan-500 " + severityBadgeClass(entry.severity)
+                    ? "ring-2 ring-brand-500 " + severityBadgeClass(entry.severity)
                     : severityBadgeClass(entry.severity)
                 }`}
               >
@@ -229,7 +229,7 @@ export function IncidentsBoardClient({ overview, bySystem }: Props) {
                 {filteredRows.map((row) => (
                   <tr
                     key={row.ai_system_id}
-                    className="border-b border-slate-100 transition hover:bg-cyan-50/50"
+                    className="border-b border-slate-100 transition hover:bg-brand-50/50"
                   >
                     <td className="px-4 py-3">
                       <div className="font-semibold text-slate-900">{row.ai_system_name}</div>

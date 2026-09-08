@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
             </Link>
             <Link
               href="/auth/reset-password"
-              className="inline-flex items-center text-sm font-medium text-cyan-700 underline underline-offset-2"
+              className="inline-flex items-center text-sm font-medium text-brand-700 underline underline-offset-2"
             >
               Token eingeben
             </Link>
@@ -91,7 +91,7 @@ export default function ForgotPasswordPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
               />
             </div>
 
@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
           <p className="mt-4 text-sm text-slate-500">
             <Link
               href="/auth/login"
-              className="font-medium text-cyan-700 underline underline-offset-2"
+              className="font-medium text-brand-700 underline underline-offset-2"
             >
               Zurück zum Login
             </Link>

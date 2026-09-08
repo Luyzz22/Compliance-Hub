@@ -56,7 +56,7 @@ function crossRegBucketTitle(b: CrossRegulationBucket): string {
 }
 
 function crossRegBucketCellClass(b: CrossRegulationBucket): string {
-  if (b === "priority") return "border-rose-200 bg-rose-50 text-rose-950";
+  if (b === "priority") return "border-red-200 bg-red-50 text-red-950";
   if (b === "needs_attention") return "border-amber-200 bg-amber-50 text-amber-950";
   if (b === "ok") return "border-emerald-200 bg-emerald-50 text-emerald-950";
   return "border-slate-200 bg-slate-50 text-slate-600";
@@ -122,7 +122,7 @@ function kpiTileClasses(t: AdvisorKpiTraffic): string {
       : t === "amber"
         ? "border-l-[3px] border-l-amber-500"
         : t === "red"
-          ? "border-l-[3px] border-l-rose-500"
+          ? "border-l-[3px] border-l-red-500"
           : "border-l-[3px] border-l-slate-300";
   return `${base} ${left}`;
 }
@@ -130,7 +130,7 @@ function kpiTileClasses(t: AdvisorKpiTraffic): string {
 function trafficPill(s: BoardReadinessTraffic): string {
   if (s === "green") return "border-emerald-300 bg-emerald-50 text-emerald-950";
   if (s === "amber") return "border-amber-300 bg-amber-50 text-amber-950";
-  return "border-rose-300 bg-rose-50 text-rose-950";
+  return "border-red-300 bg-red-50 text-red-950";
 }
 
 function trafficLabel(s: BoardReadinessTraffic): string {
@@ -152,7 +152,7 @@ function advisorSlaDeepLinkHref(link: AdvisorSlaDeepLinkId): string {
 }
 
 function slaSeverityPillClass(sev: "info" | "warning" | "critical"): string {
-  if (sev === "critical") return "border-rose-200 bg-rose-50 text-rose-950";
+  if (sev === "critical") return "border-red-200 bg-red-50 text-red-950";
   if (sev === "warning") return "border-amber-200 bg-amber-50 text-amber-950";
   return "border-slate-200 bg-slate-50 text-slate-800";
 }
@@ -211,21 +211,21 @@ function AttentionQueuePanel({
                 ))}
               </ul>
               <p className="mt-2 text-[11px] text-slate-800">
-                <span className="font-semibold text-violet-900">Nächster Schritt:</span>{" "}
+                <span className="font-semibold text-brand-900">Nächster Schritt:</span>{" "}
                 {q.naechster_schritt_de}
               </p>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
-                <a className="text-cyan-700 underline" href={q.links.mandant_export_page}>
+                <a className="text-brand-700 underline" href={q.links.mandant_export_page}>
                   Mandanten-Export
                 </a>
-                <a className="text-cyan-700 underline" href={q.links.datev_bundle_api}>
+                <a className="text-brand-700 underline" href={q.links.datev_bundle_api}>
                   DATEV-ZIP
                 </a>
                 <button
                   type="button"
                   disabled={reviewBusyId === q.tenant_id}
                   onClick={() => onMarkReview(q.tenant_id)}
-                  className="text-violet-800 underline disabled:opacity-50"
+                  className="text-brand-800 underline disabled:opacity-50"
                 >
                   {reviewBusyId === q.tenant_id ? "…" : "Review durchgeführt"}
                 </button>
@@ -276,7 +276,7 @@ function ReminderRowItem({
   onDismiss: () => void;
 }) {
   return (
-    <li className="rounded border border-rose-100 bg-white/90 p-2 text-[11px] text-slate-800">
+    <li className="rounded border border-red-100 bg-white/90 p-2 text-[11px] text-slate-800">
       <div className="font-medium text-slate-900">
         {r.mandant_label ?? r.tenant_id}{" "}
         <span className="font-mono text-[10px] text-slate-400">({r.tenant_id})</span>
@@ -289,7 +289,7 @@ function ReminderRowItem({
           type="button"
           disabled={busy}
           onClick={onDone}
-          className="text-cyan-800 underline disabled:opacity-50"
+          className="text-brand-800 underline disabled:opacity-50"
         >
           Erledigt
         </button>
@@ -949,7 +949,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
               <span
                 key={s.signal_id}
                 className={`inline-flex max-w-full items-center rounded-md border px-2 py-1 text-[11px] font-medium ${
-                  s.active ? "border-rose-300 bg-rose-50 text-rose-950" : "border-slate-200 bg-slate-50 text-slate-600"
+                  s.active ? "border-red-300 bg-red-50 text-red-950" : "border-slate-200 bg-slate-50 text-slate-600"
                 }`}
                 title={s.detail_de}
               >
@@ -1020,11 +1020,11 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       {aiGovernance ? (
         <section
           id="kanzlei-ai-governance-panel"
-          className="rounded-xl border border-cyan-200/80 bg-white p-4 shadow-sm ring-1 ring-cyan-950/[0.06]"
+          className="rounded-xl border border-brand-200/80 bg-white p-4 shadow-sm ring-1 ring-brand-950/[0.06]"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 max-w-2xl">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-cyan-800/90">AI Governance</p>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-brand-800/90">AI Governance</p>
               <h2 className="mt-0.5 text-sm font-semibold tracking-tight text-slate-900">
                 EU AI Act & ISO 42001 – Portfolio-Fokus
               </h2>
@@ -1092,10 +1092,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                     <p className="mt-0.5 text-slate-600">{t.priority_hint_de}</p>
                   </div>
                   <div className="flex shrink-0 flex-col gap-1 text-[10px]">
-                    <a className="text-cyan-800 underline" href={t.links.mandant_export_page}>
+                    <a className="text-brand-800 underline" href={t.links.mandant_export_page}>
                       Export
                     </a>
-                    <a className="text-cyan-800 underline" href={t.links.board_readiness_admin}>
+                    <a className="text-brand-800 underline" href={t.links.board_readiness_admin}>
                       Board Readiness
                     </a>
                   </div>
@@ -1115,11 +1115,11 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       {crossRegMatrix && payload ? (
         <section
           id="kanzlei-cross-regulation-panel"
-          className="rounded-xl border border-violet-200/80 bg-white p-4 shadow-sm ring-1 ring-violet-950/[0.05]"
+          className="rounded-xl border border-brand-200/80 bg-white p-4 shadow-sm ring-1 ring-brand-950/[0.05]"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 max-w-2xl">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-violet-800/90">Cross-Regulation</p>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-brand-800/90">Cross-Regulation</p>
               <h2 className="mt-0.5 text-sm font-semibold tracking-tight text-slate-900">
                 Vier Säulen – Portfolio-Matrix
               </h2>
@@ -1198,10 +1198,10 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                       })}
                       <td className="px-2 py-1 align-top">
                         <div className="flex flex-col gap-0.5 text-[10px]">
-                          <a className="text-cyan-800 underline" href={m.links.mandant_export_page}>
+                          <a className="text-brand-800 underline" href={m.links.mandant_export_page}>
                             Export
                           </a>
-                          <a className="text-cyan-800 underline" href={m.links.readiness_export_api}>
+                          <a className="text-brand-800 underline" href={m.links.readiness_export_api}>
                             Readiness-API
                           </a>
                         </div>
@@ -1443,8 +1443,8 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       ) : null}
 
       {payload ? (
-        <section id="kanzlei-kpi-reminders" className="rounded-xl border border-rose-200 bg-rose-50/20 p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-rose-950">Reminders & Follow-ups (Wave 43)</h2>
+        <section id="kanzlei-kpi-reminders" className="rounded-xl border border-red-200 bg-red-50/20 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-red-950">Reminders & Follow-ups (Wave 43)</h2>
           <p className="mt-1 text-[11px] text-slate-600">
             Gespeichert in{" "}
             <code className="rounded bg-white px-1">data/advisor-mandant-reminders.json</code> – Auto-Hooks aus
@@ -1459,7 +1459,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
           </p>
           <div className="mt-3 grid gap-4 lg:grid-cols-2">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-800">Heute / überfällig</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-red-800">Heute / überfällig</p>
               {remindersDueUrgent.length === 0 ? (
                 <p className="mt-1 text-[11px] text-slate-500">Keine offenen Reminder in dieser Kategorie.</p>
               ) : (
@@ -1497,7 +1497,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
               )}
             </div>
           </div>
-          <div className="mt-4 rounded-lg border border-rose-100 bg-white/80 p-3">
+          <div className="mt-4 rounded-lg border border-red-100 bg-white/80 p-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">Manuell anlegen</p>
             <div className="mt-2 flex flex-wrap items-end gap-2">
               <label className="text-[11px] font-medium text-slate-700">
@@ -1548,7 +1548,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                 type="button"
                 disabled={manualRemBusy || !manualRemTenantId || !manualRemDue}
                 onClick={() => void submitManualReminder()}
-                className="rounded bg-rose-800 px-2 py-1 text-[11px] text-white hover:bg-rose-900 disabled:opacity-50"
+                className="rounded bg-red-800 px-2 py-1 text-[11px] text-white hover:bg-red-900 disabled:opacity-50"
               >
                 {manualRemBusy ? "…" : "Speichern"}
               </button>
@@ -1562,7 +1562,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       ) : null}
 
       {payload ? (
-        <section className="rounded-xl border border-cyan-200 bg-cyan-50/30 p-4 shadow-sm">
+        <section className="rounded-xl border border-brand-200 bg-brand-50/30 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-900">Monatsreport / Sammelreport (Wave 42–45)</h2>
           <p className="mt-1 text-[11px] text-slate-600">
             Portfolio-weiter Überblick für interne Kanzlei-Reviews und Status-Mails. JSON + Markdown über{" "}
@@ -1603,7 +1603,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
               type="button"
               disabled={reportLoading}
               onClick={() => void fetchMonthlyReport()}
-              className="rounded-lg bg-cyan-800 px-3 py-1.5 text-sm text-white hover:bg-cyan-900 disabled:opacity-50"
+              className="rounded-lg bg-brand-800 px-3 py-1.5 text-sm text-white hover:bg-brand-900 disabled:opacity-50"
             >
               {reportLoading ? "Erzeuge…" : "Monatsreport erstellen"}
             </button>
@@ -1632,7 +1632,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
       ) : null}
 
       {payload ? (
-        <section className="rounded-xl border border-indigo-200 bg-indigo-50/30 p-4 shadow-sm">
+        <section className="rounded-xl border border-brand-200 bg-brand-50/30 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-900">Partner-Review-Paket (Wave 44–45)</h2>
           <p className="mt-1 text-[11px] text-slate-600">
             Kompaktes Sammelpaket für Partnerrunden und Portfolio-Steuerung (nicht Mandanten-Einzel, nicht
@@ -1670,7 +1670,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
               type="button"
               disabled={partnerLoading}
               onClick={() => void fetchPartnerReviewPackage()}
-              className="rounded-lg bg-indigo-800 px-3 py-1.5 text-sm text-white hover:bg-indigo-900 disabled:opacity-50"
+              className="rounded-lg bg-brand-800 px-3 py-1.5 text-sm text-white hover:bg-brand-900 disabled:opacity-50"
             >
               {partnerLoading ? "Erzeuge…" : "Partner-Review-Paket erstellen"}
             </button>
@@ -1877,7 +1877,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                           </span>
                         ) : null}
                         {row.review_stale ? (
-                          <span className="rounded border border-violet-200 bg-violet-50 px-1 py-0.5 text-[9px] font-medium text-violet-900">
+                          <span className="rounded border border-brand-200 bg-brand-50 px-1 py-0.5 text-[9px] font-medium text-brand-900">
                             Review
                           </span>
                         ) : null}
@@ -1900,7 +1900,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                     <td className="px-3 py-2 align-top text-slate-800">{row.top_gap_pillar_label_de}</td>
                     <td className="px-3 py-2 align-top">
                       {row.board_report_stale ? (
-                        <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-900">
+                        <span className="rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-900">
                           Überfällig
                         </span>
                       ) : (
@@ -1910,7 +1910,7 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                     <td className="px-3 py-2 align-top font-mono text-slate-800">
                       {row.open_points_count}
                       {row.open_points_hoch > 0 ? (
-                        <span className="ml-1 text-rose-700">({row.open_points_hoch} hoch)</span>
+                        <span className="ml-1 text-red-700">({row.open_points_hoch} hoch)</span>
                       ) : null}
                     </td>
                     <td className="px-3 py-2 align-top text-[10px] text-slate-600">
@@ -1951,20 +1951,20 @@ export function KanzleiPortfolioCockpitClient({ adminConfigured }: Props) {
                           type="button"
                           disabled={reviewBusyId === row.tenant_id}
                           onClick={() => void markReviewDone(row.tenant_id)}
-                          className="text-left text-[11px] text-violet-800 underline disabled:opacity-50"
+                          className="text-left text-[11px] text-brand-800 underline disabled:opacity-50"
                         >
                           {reviewBusyId === row.tenant_id ? "…" : "Review durchgeführt"}
                         </button>
                         <a
-                          className="text-cyan-700 underline"
+                          className="text-brand-700 underline"
                           href={row.links.mandant_export_page}
                         >
                           Readiness-Export (UI)
                         </a>
-                        <a className="text-cyan-700 underline" href={row.links.datev_bundle_api}>
+                        <a className="text-brand-700 underline" href={row.links.datev_bundle_api}>
                           ZIP-Bundle
                         </a>
-                        <a className="text-cyan-700 underline" href={row.links.board_readiness_admin}>
+                        <a className="text-brand-700 underline" href={row.links.board_readiness_admin}>
                           Board Readiness
                         </a>
                       </div>

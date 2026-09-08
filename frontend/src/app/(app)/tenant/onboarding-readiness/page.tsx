@@ -50,7 +50,7 @@ export default async function TenantOnboardingReadinessPage({ searchParams }: Pa
       <section className="grid gap-4 md:grid-cols-4">
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Blocker</p>
-          <p className="mt-2 text-3xl font-semibold text-rose-700">{data.blockers.length}</p>
+          <p className="mt-2 text-3xl font-semibold text-red-700">{data.blockers.length}</p>
         </article>
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>SSO</p>
@@ -167,7 +167,7 @@ export default async function TenantOnboardingReadinessPage({ searchParams }: Pa
         connectorRuntime.last_sync_result.retry_recommended ? (
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
             <Link
-              className="rounded border border-cyan-600 bg-cyan-50 px-3 py-1 font-semibold text-cyan-900"
+              className="rounded border border-brand-600 bg-brand-50 px-3 py-1 font-semibold text-brand-900"
               href={`/tenant/onboarding-readiness?retry_connector_sync=1&sync_run_id=${encodeURIComponent(
                 connectorRuntime.last_sync_result.sync_run_id,
               )}`}
@@ -180,7 +180,7 @@ export default async function TenantOnboardingReadinessPage({ searchParams }: Pa
           </div>
         ) : null}
         {retryResult ? (
-          <p className="mt-2 rounded border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-950">
+          <p className="mt-2 rounded border border-brand-200 bg-brand-50 px-3 py-2 text-xs text-brand-950">
             Retry abgeschlossen: {retryResult.sync_result.sync_status} · normalisiert{" "}
             {retryResult.sync_result.records_normalized} (Dauer {retryResult.sync_result.duration_ms ?? "—"} ms).
           </p>
@@ -213,7 +213,7 @@ export default async function TenantOnboardingReadinessPage({ searchParams }: Pa
                   <td className="py-1">
                     {run.retry_recommended ? (
                       <Link
-                        className="text-cyan-700 underline"
+                        className="text-brand-700 underline"
                         href={`/tenant/onboarding-readiness?retry_connector_sync=1&sync_run_id=${encodeURIComponent(run.sync_run_id)}`}
                       >
                         Retry

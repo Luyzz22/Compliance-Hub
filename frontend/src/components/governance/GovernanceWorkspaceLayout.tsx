@@ -99,7 +99,7 @@ export function GovernanceWorkspaceLayout({
           role="status"
           className={
             toast.kind === "error"
-              ? "rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 shadow-sm"
+              ? "rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm"
               : "rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm"
           }
         >
@@ -121,7 +121,7 @@ export function GovernanceWorkspaceLayout({
           <div className="mt-4">{metadataSection}</div>
 
           {actionError ? (
-            <p className="mt-4 text-sm text-rose-800" role="alert">
+            <p className="mt-4 text-sm text-red-800" role="alert">
               {actionError}
             </p>
           ) : null}
@@ -164,7 +164,7 @@ export function GovernanceWorkspaceLayout({
       ) : hasDefaultActions ? (
         <article className={CH_CARD}>
           {actionError ? (
-            <p className="text-sm text-rose-800" role="alert">
+            <p className="text-sm text-red-800" role="alert">
               {actionError}
             </p>
           ) : null}

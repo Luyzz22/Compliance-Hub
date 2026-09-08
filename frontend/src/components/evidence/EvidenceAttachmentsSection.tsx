@@ -180,7 +180,7 @@ export function EvidenceAttachmentsSection(props: {
 
   if (!filter) {
     return (
-      <p className="text-xs text-rose-700">
+      <p className="text-xs text-red-700">
         Interne Konfiguration: genau ein Kontext (System, Audit-Record oder Maßnahme)
         erforderlich.
       </p>
@@ -217,7 +217,7 @@ export function EvidenceAttachmentsSection(props: {
               ref={inputRef}
               type="file"
               accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,application/pdf,image/*"
-              className="mt-0.5 block w-full text-xs text-slate-700 file:mr-2 file:rounded-lg file:border-0 file:bg-cyan-50 file:px-2 file:py-1.5 file:text-xs file:font-semibold file:text-cyan-900"
+              className="mt-0.5 block w-full text-xs text-slate-700 file:mr-2 file:rounded-lg file:border-0 file:bg-brand-50 file:px-2 file:py-1.5 file:text-xs file:font-semibold file:text-brand-900"
             />
           </div>
           <input
@@ -312,7 +312,7 @@ export function EvidenceAttachmentsSection(props: {
                       </button>
                       <button
                         type="button"
-                        className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-900 hover:bg-rose-100"
+                        className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-semibold text-red-900 hover:bg-red-100"
                         onClick={() => void onDelete(ev.id)}
                       >
                         Löschen

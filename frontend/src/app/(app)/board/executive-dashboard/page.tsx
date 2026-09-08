@@ -209,7 +209,7 @@ export default async function ExecutiveDashboardPage() {
               key={d.deadline}
               className={`${CH_CARD} flex items-center gap-4`}
             >
-              <span className="whitespace-nowrap rounded-lg bg-cyan-100 px-3 py-1 text-sm font-semibold text-cyan-900">
+              <span className="whitespace-nowrap rounded-lg bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-900">
                 {d.deadline}
               </span>
               <div>

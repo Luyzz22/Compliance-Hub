@@ -304,7 +304,7 @@ export default function XRechnungExportPage() {
         <button
           type="button"
           onClick={addLineItem}
-          className="text-sm text-cyan-700 hover:underline"
+          className="text-sm text-brand-700 hover:underline"
         >
           + Position hinzufügen
         </button>

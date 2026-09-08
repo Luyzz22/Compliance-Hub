@@ -22,7 +22,7 @@ function statusBadge(status: string): { label: string; cls: string } {
         cls: "bg-emerald-100 text-emerald-900",
       };
     case "running":
-      return { label: "Läuft", cls: "bg-blue-100 text-blue-900" };
+      return { label: "Läuft", cls: "bg-brand-100 text-brand-900" };
     case "failed":
       return { label: "Fehlgeschlagen", cls: "bg-red-100 text-red-900" };
     default:

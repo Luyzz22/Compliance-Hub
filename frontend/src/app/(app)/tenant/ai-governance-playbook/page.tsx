@@ -29,7 +29,7 @@ import {
 
 function raciCellClass(v: RaciCell): string {
   if (v === "A") return "bg-slate-900 font-bold text-white";
-  if (v === "R") return "bg-cyan-700 font-semibold text-white";
+  if (v === "R") return "bg-brand-700 font-semibold text-white";
   if (v === "C") return "bg-amber-100 font-semibold text-amber-950";
   if (v === "I") return "bg-slate-100 font-medium text-slate-700";
   return "bg-white text-slate-400";
@@ -86,7 +86,7 @@ export default async function AiGovernancePlaybookPage() {
 
       {featureAiComplianceBoardReport() ? (
         <section
-          className={`${CH_CARD} mb-8 border-cyan-200 bg-cyan-50/40`}
+          className={`${CH_CARD} mb-8 border-brand-200 bg-brand-50/40`}
           aria-label="Board-Report"
           data-testid="playbook-board-report-hint"
         >
@@ -207,7 +207,7 @@ export default async function AiGovernancePlaybookPage() {
           {PLAYBOOK_PHASES.map((phase) => (
             <article key={phase.id} className={`${CH_CARD} flex flex-col`}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-cyan-800">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-brand-800">
                   {phase.stage}
                 </span>
                 {phase.badges.map((b) => (
@@ -294,7 +294,7 @@ export default async function AiGovernancePlaybookPage() {
               className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3"
             >
               <div className="flex flex-wrap items-baseline gap-2">
-                <span className="text-sm font-bold text-cyan-900">{w.week}</span>
+                <span className="text-sm font-bold text-brand-900">{w.week}</span>
                 <span className="text-sm font-semibold text-slate-900">{w.title}</span>
               </div>
               <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-700">
@@ -320,14 +320,14 @@ export default async function AiGovernancePlaybookPage() {
       </section>
 
       <section
-        className={`${CH_CARD} mt-8 border-cyan-200 bg-cyan-50/40`}
+        className={`${CH_CARD} mt-8 border-brand-200 bg-brand-50/40`}
         aria-labelledby="playbook-advisor-heading"
       >
         <h2 id="playbook-advisor-heading" className={CH_SECTION_LABEL}>
           Für Berater
         </h2>
         <p className="mt-2 text-sm text-slate-700">
-          Nutzen Sie den <Link className="font-semibold text-cyan-900 underline" href="/advisor">
+          Nutzen Sie den <Link className="font-semibold text-brand-900 underline" href="/advisor">
             Advisor-Workspace
           </Link>
           , Mandanten-Steckbriefe und das Guided Setup <strong>je Mandant</strong>. Demo-Tenants und

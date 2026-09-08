@@ -37,7 +37,7 @@ import {
 import { openWorkspaceTenantAndGo } from "@/lib/workspaceTenantClient";
 
 function scoreAccent(score: number): string {
-  if (score < 40) return "text-rose-700";
+  if (score < 40) return "text-red-700";
   if (score < 70) return "text-amber-800";
   return "text-emerald-800";
 }
@@ -149,7 +149,7 @@ export function BoardReadinessCard({
       ) : null}
       {busy && !data ? <p className="mt-2 text-sm text-slate-600">Lade Score…</p> : null}
       {err ? (
-        <p className="mt-2 text-sm text-rose-800">{err}</p>
+        <p className="mt-2 text-sm text-red-800">{err}</p>
       ) : null}
       {data ? (
         <>
@@ -260,7 +260,7 @@ export function BoardReadinessCard({
               >
                 {explainBusy ? "KI formuliert…" : "Score per KI erklären (Top-3-Maßnahmen)"}
               </button>
-              {explainErr ? <p className="mt-2 text-sm text-rose-800">{explainErr}</p> : null}
+              {explainErr ? <p className="mt-2 text-sm text-red-800">{explainErr}</p> : null}
               {explainResult ? (
                 <div className="mt-3 space-y-2" data-testid="board-readiness-explain-block">
                   <p

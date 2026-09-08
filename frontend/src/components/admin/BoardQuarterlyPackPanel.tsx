@@ -65,10 +65,10 @@ export function BoardQuarterlyPackPanel() {
   }, [pack]);
 
   return (
-    <section className="rounded-xl border border-violet-200 bg-violet-50/40 p-4 shadow-sm">
+    <section className="rounded-xl border border-brand-200 bg-brand-50/40 p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-violet-900">Wave 36</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-900">Wave 36</p>
           <h2 className="text-sm font-semibold text-slate-900">Quarterly Board Pack</h2>
           <p className="mt-1 max-w-3xl text-xs text-slate-600">
             Formales Memo-Gerüst, priorisierte Attention-Liste und Aktionsregister – für Notion, Confluence
@@ -79,17 +79,17 @@ export function BoardQuarterlyPackPanel() {
           type="button"
           onClick={() => void generate()}
           disabled={loading}
-          className="rounded-lg bg-violet-900 px-3 py-1.5 text-sm text-white hover:bg-violet-800 disabled:opacity-50"
+          className="rounded-lg bg-brand-900 px-3 py-1.5 text-sm text-white hover:bg-brand-800 disabled:opacity-50"
         >
           {loading ? "Erzeuge…" : "Board Pack erzeugen"}
         </button>
       </div>
 
       {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-      {msg ? <p className="mt-2 text-sm text-violet-900">{msg}</p> : null}
+      {msg ? <p className="mt-2 text-sm text-brand-900">{msg}</p> : null}
 
       {pack ? (
-        <div className="mt-4 space-y-4 border-t border-violet-100 pt-4">
+        <div className="mt-4 space-y-4 border-t border-brand-100 pt-4">
           <p className="font-mono text-[10px] text-slate-500">
             {pack.version} · {new Date(pack.meta.generated_at).toLocaleString("de-DE")} ·{" "}
             {pack.meta.scope_de}
@@ -139,7 +139,7 @@ export function BoardQuarterlyPackPanel() {
                       <td className="py-1 pr-2 font-mono">{r.priority_rank}</td>
                       <td className="py-1 pr-2 text-slate-700">{r.priority_rule_de}</td>
                       <td className="py-1 pr-2 uppercase">{r.severity}</td>
-                      <td className="py-1 pr-2 font-mono text-violet-900">{r.reference_id}</td>
+                      <td className="py-1 pr-2 font-mono text-brand-900">{r.reference_id}</td>
                       <td className="py-1 pr-2 text-slate-800">{r.summary_de}</td>
                     </tr>
                   ))}
@@ -170,7 +170,7 @@ export function BoardQuarterlyPackPanel() {
                       <td className="py-1 pr-2">{PILLAR_LABEL[a.pillar] ?? a.pillar}</td>
                       <td className="py-1 pr-2 text-slate-700">{a.owner_de}</td>
                       <td className="py-1 pr-2">{BOARD_PACK_HORIZON_LABEL_DE[a.horizon]}</td>
-                      <td className="py-1 pr-2 font-mono text-[10px] text-violet-900">
+                      <td className="py-1 pr-2 font-mono text-[10px] text-brand-900">
                         {a.reference_ids.join(", ")}
                       </td>
                     </tr>
@@ -180,7 +180,7 @@ export function BoardQuarterlyPackPanel() {
             </div>
           </div>
 
-          <details className="rounded-lg border border-violet-100 bg-white/70 px-3 py-2 text-xs text-slate-700">
+          <details className="rounded-lg border border-brand-100 bg-white/70 px-3 py-2 text-xs text-slate-700">
             <summary className="cursor-pointer font-medium text-slate-800">Priorisierungsregeln</summary>
             <ul className="mt-2 list-inside list-disc space-y-1">
               {pack.meta.prioritization_rules_de.map((r) => (

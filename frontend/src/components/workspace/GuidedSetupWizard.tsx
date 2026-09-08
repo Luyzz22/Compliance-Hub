@@ -206,7 +206,7 @@ export function GuidedSetupWizard({ initialStatus, loadFailed = false }: GuidedS
             <p className="mt-2 max-w-3xl text-sm">
               <Link
                 href="/tenant/ai-governance-playbook"
-                className="font-semibold text-cyan-800 underline decoration-cyan-300 underline-offset-2 hover:text-cyan-950"
+                className="font-semibold text-brand-800 underline decoration-brand-300 underline-offset-2 hover:text-brand-950"
               >
                 Mehr dazu im AI Governance Playbook
               </Link>

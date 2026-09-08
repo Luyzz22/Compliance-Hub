@@ -21,7 +21,7 @@ interface Props {
 }
 
 function metricTone(m: BoardMetricDto) {
-  if (m.traffic_light === "red") return "text-rose-800";
+  if (m.traffic_light === "red") return "text-red-800";
   if (m.traffic_light === "amber") return "text-amber-800";
   return "text-emerald-800";
 }
@@ -86,7 +86,7 @@ export function BoardReportsWorkspaceClient({ tenantId, reportId }: Props) {
   const overview = (
     <div className="space-y-6">
       {error ? (
-        <p className="text-sm text-rose-800" role="alert">
+        <p className="text-sm text-red-800" role="alert">
           {error}
         </p>
       ) : null}

@@ -99,12 +99,12 @@ export function DemoTenantSetupPanel({
       </p>
 
       {listError ? (
-        <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
           <p>{listError}</p>
           {loadingList ? null : (
             <button
               type="button"
-              className="mt-2 text-xs font-semibold text-rose-800 underline"
+              className="mt-2 text-xs font-semibold text-red-800 underline"
               onClick={() => setTemplateLoadAttempt((n) => n + 1)}
             >
               Template-Liste erneut laden
@@ -114,7 +114,7 @@ export function DemoTenantSetupPanel({
       ) : null}
 
       {seedError ? (
-        <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
           {seedError}
         </p>
       ) : null}

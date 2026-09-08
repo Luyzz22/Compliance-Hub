@@ -91,7 +91,7 @@ function utcDate(date: string): string | null {
 
 function sectionStatusClasses(status: ImpactSectionStatusDto): string {
   if (status === "reviewed") return "bg-emerald-50 text-emerald-800 ring-emerald-200";
-  if (status === "evidenced") return "bg-cyan-50 text-cyan-900 ring-cyan-200";
+  if (status === "evidenced") return "bg-brand-50 text-brand-900 ring-brand-200";
   if (status === "not_applicable") return "bg-slate-100 text-slate-700 ring-slate-200";
   if (status === "drafted") return "bg-amber-50 text-amber-900 ring-amber-200";
   return "bg-white text-slate-500 ring-slate-200";
@@ -636,7 +636,7 @@ export function ImpactAssessmentEditor({
       </div>
       <div aria-live="polite" aria-atomic="true">
         {error ? (
-          <p role="alert" className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
             {error}
           </p>
         ) : null}

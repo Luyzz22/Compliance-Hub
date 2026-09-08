@@ -70,7 +70,7 @@ export function DemoGuide({ tenantId, enabled }: { tenantId: string; enabled: bo
         {currentIdx !== null ? (
           <button
             type="button"
-            className="pointer-events-auto rounded-full border border-indigo-200 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-indigo-700"
+            className="pointer-events-auto rounded-full border border-brand-200 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-brand-700"
             onClick={() => void goNext()}
           >
             Nächster Demo-Schritt
@@ -97,7 +97,7 @@ export function DemoGuide({ tenantId, enabled }: { tenantId: string; enabled: bo
                   <li
                     key={step.id}
                     className={`rounded-lg border px-3 py-2 ${
-                      currentIdx === i ? "border-indigo-300 bg-indigo-50/80" : "border-slate-200"
+                      currentIdx === i ? "border-brand-300 bg-brand-50/80" : "border-slate-200"
                     }`}
                   >
                     <div className="text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -107,7 +107,7 @@ export function DemoGuide({ tenantId, enabled }: { tenantId: string; enabled: bo
                     <p className="mt-1 text-sm text-slate-600">{step.hint}</p>
                     <button
                       type="button"
-                      className="mt-2 text-sm font-semibold text-indigo-700 hover:text-indigo-900"
+                      className="mt-2 text-sm font-semibold text-brand-700 hover:text-brand-900"
                       onClick={() => void goStep(step.path, step.resolveHighRiskSystem)}
                     >
                       Diesen Schritt öffnen →
@@ -117,7 +117,7 @@ export function DemoGuide({ tenantId, enabled }: { tenantId: string; enabled: bo
               </ol>
               <p className="mt-4 text-xs text-slate-500">
                 Kurzlink mit Session-Cookie:{" "}
-                <Link href="/?demo=1" className="text-indigo-700 underline">
+                <Link href="/?demo=1" className="text-brand-700 underline">
                   ?demo=1
                 </Link>{" "}
                 (optional{" "}

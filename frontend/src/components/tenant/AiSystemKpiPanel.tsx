@@ -28,7 +28,7 @@ function MiniSparkline({ values }: { values: number[] }) {
     return `${x},${y}`;
   });
   return (
-    <svg width={w} height={h} className="inline-block text-cyan-700" aria-hidden>
+    <svg width={w} height={h} className="inline-block text-brand-700" aria-hidden>
       <polyline
         fill="none"
         stroke="currentColor"
@@ -112,7 +112,7 @@ export function AiSystemKpiPanel({ tenantId, systemId }: { tenantId: string; sys
   return (
     <div data-testid="ai-system-kpi-panel">
       {loading ? <p className="text-sm text-slate-500">Lade KPIs…</p> : null}
-      {err ? <p className="text-sm text-rose-700">{err}</p> : null}
+      {err ? <p className="text-sm text-red-700">{err}</p> : null}
 
       {!loading && !err ? (
         <form
@@ -232,7 +232,7 @@ export function AiSystemKpiPanel({ tenantId, systemId }: { tenantId: string; sys
                       Trend {trendArrow(s.trend)}{" "}
                       <span
                         className={
-                          s.latest_status === "red" ? "font-semibold text-rose-700" : "text-emerald-700"
+                          s.latest_status === "red" ? "font-semibold text-red-700" : "text-emerald-700"
                         }
                       >
                         {s.latest_status === "red" ? "Ampel rot" : "OK"}

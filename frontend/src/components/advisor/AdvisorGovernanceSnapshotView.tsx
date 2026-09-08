@@ -194,7 +194,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
   if (!advisorId) {
     return (
       <div className={CH_SHELL}>
-        <p className="text-sm text-rose-800">Kein Berater konfiguriert (NEXT_PUBLIC_ADVISOR_ID).</p>
+        <p className="text-sm text-red-800">Kein Berater konfiguriert (NEXT_PUBLIC_ADVISOR_ID).</p>
       </div>
     );
   }
@@ -202,7 +202,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
   return (
     <div className={CH_SHELL} data-testid="advisor-governance-snapshot-view">
       <header className="mb-8">
-        <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-cyan-800">Berater</p>
+        <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-brand-800">Berater</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
           Mandanten-Governance-Snapshot
         </h1>
@@ -239,7 +239,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
       </header>
 
       {err ? (
-        <div className="mb-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           {err}
         </div>
       ) : null}
@@ -275,7 +275,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
                     snap.framework_scope.active_frameworks.map((k) => (
                       <span
                         key={k}
-                        className="rounded-full bg-cyan-50 px-2 py-0.5 text-xs font-semibold text-cyan-900"
+                        className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-900"
                       >
                         {k}
                       </span>
@@ -297,7 +297,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
               <p className="mt-1 text-[0.65rem] text-slate-500">{READINESS_REG_HINT_SHORT}</p>
               <p className="mt-2 text-sm text-slate-700">{readiness.interpretation}</p>
               <p className="mt-3 text-3xl font-bold tabular-nums text-slate-900">
-                <span className={readiness.score < 40 ? "text-rose-700" : readiness.score < 70 ? "text-amber-800" : "text-emerald-800"}>
+                <span className={readiness.score < 40 ? "text-red-700" : readiness.score < 70 ? "text-amber-800" : "text-emerald-800"}>
                   {readiness.score}
                 </span>
                 <span className="text-lg font-semibold text-slate-500">/100</span>
@@ -332,7 +332,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
             <section
               id="governance-maturity-anchor"
               className={`${CH_CARD} ${
-                gmHighlightPulse ? "ring-2 ring-cyan-500 ring-offset-2 transition-shadow" : ""
+                gmHighlightPulse ? "ring-2 ring-brand-500 ring-offset-2 transition-shadow" : ""
               }`}
               data-testid="snap-gm-advisor-brief"
             >
@@ -574,7 +574,7 @@ export function AdvisorGovernanceSnapshotView({ clientTenantId }: { clientTenant
               </button>
             </div>
             {mdErr ? (
-              <p className="mt-3 text-sm text-rose-800">{mdErr}</p>
+              <p className="mt-3 text-sm text-red-800">{mdErr}</p>
             ) : null}
             {mdOut ? (
               <div

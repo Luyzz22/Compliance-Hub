@@ -75,10 +75,10 @@ export function BoardReadinessBriefingPanel() {
   }, [briefing]);
 
   return (
-    <section className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-sm">
+    <section className="rounded-xl border border-brand-200 bg-brand-50/40 p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-800">Wave 35</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">Wave 35</p>
           <h2 className="text-sm font-semibold text-slate-900">Board Readiness Briefing</h2>
           <p className="mt-1 max-w-3xl text-xs text-slate-600">
             Strukturiertes Memo-/Deck-Gerüst aus Live-Dashboard-Daten. Redaktion und rechtliche Prüfung
@@ -90,21 +90,21 @@ export function BoardReadinessBriefingPanel() {
             type="button"
             onClick={() => void generate()}
             disabled={loading}
-            className="rounded-lg bg-indigo-900 px-3 py-1.5 text-sm text-white hover:bg-indigo-800 disabled:opacity-50"
+            className="rounded-lg bg-brand-900 px-3 py-1.5 text-sm text-white hover:bg-brand-800 disabled:opacity-50"
           >
             {loading ? "Erzeuge…" : "Briefing erzeugen"}
           </button>
           <button
             type="button"
             onClick={() => void saveBaseline()}
-            className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-sm text-indigo-950 hover:bg-indigo-50"
+            className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm text-brand-950 hover:bg-brand-50"
           >
             Baseline für Deltas speichern
           </button>
         </div>
       </div>
 
-      <details className="mt-3 rounded-lg border border-indigo-100 bg-white/70 px-3 py-2 text-xs text-slate-700">
+      <details className="mt-3 rounded-lg border border-brand-100 bg-white/70 px-3 py-2 text-xs text-slate-700">
         <summary className="cursor-pointer font-medium text-slate-800">Gliederung (Outline)</summary>
         <ul className="mt-2 list-inside list-decimal space-y-1">
           {BOARD_READINESS_BRIEFING_OUTLINE_DE.map((o) => (
@@ -116,10 +116,10 @@ export function BoardReadinessBriefingPanel() {
       </details>
 
       {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-      {baselineMsg ? <p className="mt-2 text-sm text-indigo-900">{baselineMsg}</p> : null}
+      {baselineMsg ? <p className="mt-2 text-sm text-brand-900">{baselineMsg}</p> : null}
 
       {briefing ? (
-        <div className="mt-4 space-y-4 border-t border-indigo-100 pt-4">
+        <div className="mt-4 space-y-4 border-t border-brand-100 pt-4">
           <p className="font-mono text-[10px] text-slate-500">
             Briefing: {new Date(briefing.generated_at).toLocaleString("de-DE")} · Quelle Dashboard:{" "}
             {new Date(briefing.source_board_readiness_generated_at).toLocaleString("de-DE")}

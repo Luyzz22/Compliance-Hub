@@ -18,7 +18,7 @@ function subLink(active: boolean) {
   return [
     "whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium transition",
     active
-      ? "bg-white text-cyan-900 shadow-sm ring-1 ring-slate-200/80"
+      ? "bg-white text-brand-900 shadow-sm ring-1 ring-slate-200/80"
       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
   ].join(" ");
 }
@@ -52,7 +52,7 @@ function NavStrip({
         {crossLink ? (
           <Link
             href={crossLink.href}
-            className="ml-auto text-xs font-semibold text-cyan-800 underline decoration-cyan-600/30 underline-offset-4 hover:text-cyan-950"
+            className="ml-auto text-xs font-semibold text-brand-800 underline decoration-brand-600/30 underline-offset-4 hover:text-brand-950"
           >
             {crossLink.label}
           </Link>

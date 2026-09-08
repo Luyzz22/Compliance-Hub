@@ -95,8 +95,8 @@ export function Nis2KpiAiAssistClient({ aiSystemId }: Props) {
   };
 
   return (
-    <div className="mt-4 rounded-xl border border-dashed border-cyan-200 bg-cyan-50/40 p-4">
-      <p className="text-xs font-semibold text-cyan-950">KI-Assistenz (NIS2 / KRITIS)</p>
+    <div className="mt-4 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 p-4">
+      <p className="text-xs font-semibold text-brand-950">KI-Assistenz (NIS2 / KRITIS)</p>
       <p className="mt-1 text-xs text-slate-600">
         Nur Vorschläge – finale Bewertung und Speicherung durch das Compliance-Team.
       </p>

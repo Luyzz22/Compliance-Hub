@@ -33,7 +33,7 @@ import {
 
 function badgeClasses(h: PortfolioHealth): string {
   if (h === "critical") {
-    return "bg-rose-100 text-rose-900 ring-1 ring-rose-200";
+    return "bg-red-100 text-red-900 ring-1 ring-red-200";
   }
   if (h === "attention") {
     return "bg-amber-100 text-amber-950 ring-1 ring-amber-200";
@@ -76,7 +76,7 @@ function crossRegCoverageIndicator(meanPercent: number | null | undefined): {
   const p = Math.round(meanPercent);
   if (p >= 70) return { label: `${p}%`, dotClass: "bg-emerald-500" };
   if (p >= 40) return { label: `${p}%`, dotClass: "bg-amber-500" };
-  return { label: `${p}%`, dotClass: "bg-rose-500" };
+  return { label: `${p}%`, dotClass: "bg-red-500" };
 }
 
 export interface AdvisorPortfolioTableProps {
@@ -86,7 +86,7 @@ export interface AdvisorPortfolioTableProps {
 }
 
 function readinessBadgeClasses(score: number): string {
-  if (score < 40) return "bg-rose-100 text-rose-900 ring-1 ring-rose-200";
+  if (score < 40) return "bg-red-100 text-red-900 ring-1 ring-red-200";
   if (score < 70) return "bg-amber-100 text-amber-950 ring-1 ring-amber-200";
   return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200";
 }
@@ -199,7 +199,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                     >
                       {t.nis2_entity_category === "essential_entity" ? (
                         <span
-                          className="rounded bg-violet-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-violet-900 ring-1 ring-violet-200"
+                          className="rounded bg-brand-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-brand-900 ring-1 ring-brand-200"
                           title="NIS2: wesentliche Einrichtung"
                         >
                           NIS2 wesentl.
@@ -223,7 +223,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                       ) : null}
                       {t.recent_incidents_90d ? (
                         <span
-                          className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-50 px-1 text-[0.65rem] font-bold text-rose-800 ring-1 ring-rose-200"
+                          className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-50 px-1 text-[0.65rem] font-bold text-red-800 ring-1 ring-red-200"
                           title={`Vorfälle in den letzten 90 Tagen; Laststufe: ${t.incident_burden_level ?? "?"}. Keine Einzelfallinhalte.`}
                           aria-label="Hinweis: Vorfälle in den letzten 90 Tagen"
                           data-testid={`advisor-incident-flag-${t.tenant_id}`}
@@ -262,7 +262,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                   >
                     {t.primary_focus_tag_de ? (
                       <span
-                        className="inline-flex max-w-[6.5rem] truncate rounded-full bg-cyan-50 px-2 py-0.5 font-medium text-cyan-900 ring-1 ring-cyan-200"
+                        className="inline-flex max-w-[6.5rem] truncate rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900 ring-1 ring-brand-200"
                         title={
                           (t.governance_maturity_advisor_brief?.recommended_focus_areas?.[0] ??
                             t.advisor_priority_explanation_de ??
@@ -286,7 +286,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                             {fwShow.map((k) => (
                               <span
                                 key={k}
-                                className="rounded bg-cyan-50 px-1.5 py-0.5 font-semibold text-cyan-900"
+                                className="rounded bg-brand-50 px-1.5 py-0.5 font-semibold text-brand-900"
                               >
                                 {k}
                               </span>
@@ -400,7 +400,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                             </span>
                             {(t.operational_monitoring_summary.safety_related_runtime_incidents_90d ??
                               0) > 0 ? (
-                              <span className="mt-0.5 block text-[0.6rem] leading-tight text-rose-800">
+                              <span className="mt-0.5 block text-[0.6rem] leading-tight text-red-800">
                                 Sicherheit:{" "}
                                 {t.operational_monitoring_summary.safety_related_runtime_incidents_90d}
                               </span>
@@ -482,7 +482,7 @@ export function AdvisorPortfolioTable({ rows, advisorId }: AdvisorPortfolioTable
                       {chConfig.featurePilotRunbook() ? (
                         <button
                           type="button"
-                          className="text-xs font-medium text-cyan-800 underline decoration-cyan-300 underline-offset-2 hover:text-cyan-950"
+                          className="text-xs font-medium text-brand-800 underline decoration-brand-300 underline-offset-2 hover:text-brand-950"
                           onClick={() => openWorkspaceTenantAndGo(t.tenant_id, "/tenant/pilot-runbook")}
                         >
                           Pilot-Runbook (Kunde)

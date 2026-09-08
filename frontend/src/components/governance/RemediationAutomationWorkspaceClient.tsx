@@ -112,7 +112,7 @@ export function RemediationAutomationWorkspaceClient({ tenantId }: Props) {
         <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <article className={`${CH_CARD} border-slate-200/80`}>
             <p className={CH_SECTION_LABEL}>Überfällige Maßnahmen (gesamt)</p>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-800">
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-red-800">
               {summary?.overdue_actions ?? "—"}
             </p>
           </article>

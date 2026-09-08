@@ -279,6 +279,48 @@ könnte dem eigenen Impressum widersprechen — auf einer Seite, deren ganzes
 Argument Nachweisbarkeit ist, wäre das der teuerste denkbare Fehler.
 `src/lib/marketing/houseIdentity.test.ts` hält das fest.
 
+## Arbeitsflächen der Anwendung
+
+Die öffentliche Fläche und die angemeldete Anwendung teilen eine Palette. Bis
+zu dieser Ebene taten sie das nicht: die Arbeitsflächen führten Cyan als Marke
+und dazu vier weitere Fremdfamilien als jeweils eigenen Panel-Akzent — „Wave
+35" indigo, „Wave 36" violett, Demo-Hinweise himmelblau, Frameworkbadges in
+sechs unverwandten Tönen. Jede für sich eine kleine Entscheidung, zusammen eine
+Oberfläche, auf der Farbe nichts mehr bedeutet.
+
+Zwei Mechanismen führen sie zusammen, und die Wahl zwischen ihnen richtet sich
+danach, ob der Klassenname nach der Änderung noch stimmt:
+
+**Umbenannt**, wo der Name sonst lügen würde. `cyan-*` → `brand-*` (die Marke
+ist Navy, nicht Cyan), `violet`/`indigo`/`sky`/`blue`/`purple` → `brand`
+(Modulakzent bzw. Info), `rose-*` → `red-*` (zwei Gefahrenfarben sind eine zu
+viel). Stufengleich, weil die Hausrampe auf jeder Stufe dunkler ist als die
+abgelöste — Kontrast steigt, er sinkt nie.
+
+**Umgewertet**, wo der Name die Rolle weiterhin korrekt benennt. `slate-*`
+bleibt *das Neutral* und bekommt die Graphitwerte des Hauses; `emerald`,
+`amber`, `red` und `yellow` bleiben Erfolg, Warnung und Gefahr und bekommen die
+gedeckten Statuswerte. Das sind rund 4.000 Verwendungen, die ohne einen
+einzigen geänderten Klassennamen mitziehen — ein Diff über 4.000 Stellen für
+dieselbe Rolle wäre Risiko ohne Gegenwert gewesen.
+
+Die Rollen liegen als Tailwind-Tokens in `src/app/globals.css` (`@theme`).
+Neue Flächen verwenden `brand-*`, `brass-*`, `slate-*` und die Statusfamilien —
+keine rohen Fremdpaletten. `src/test/housePalette.test.ts` hält das.
+
+Nebenbei geschlossen: `bg-red-500 text-white` stand bei 3,8:1, `bg-emerald-500
+text-white` bei 2,5:1 und `bg-orange-400 text-white` in der Risikomatrix bei
+2,1:1. Alle 29 real vorkommenden Klassenkombinationen erfüllen jetzt AA,
+gemessen gegen das kompilierte CSS.
+
+### Kategoriale Sets
+
+Wo mehrere Kategorien unterscheidbar sein müssen — Regelwerksbadges,
+Risikostufen — kommen die Marken aus den sechs Rollen des Hauses (Navy,
+Messing, Grün, Ocker, helles Navy, Graphit), nicht aus sechs Signalfarben.
+Das trägt, weil die Farbe dort Zuordnungshilfe ist und nicht
+Informationsträger: das Label steht immer daneben.
+
 ## Do's and Don'ts
 
 - Evidenz, Grenzen und Prüfverantwortung stehen neben der Aussage, die sie
@@ -297,8 +339,10 @@ Argument Nachweisbarkeit ist, wäre das der teuerste denkbare Fehler.
 - Keine generischen Drei-Karten-Raster, keine Badge-Wände, keine dekorativen
   Dashboards.
 - Keine zwei konkurrierenden Designsysteme auf derselben Website: die
-  öffentliche Fläche nutzt ausschließlich die `mk-*`-Rollen, keine rohen
-  Tailwind-Paletten.
+  öffentliche Fläche nutzt ausschließlich die `mk-*`-Rollen, die Anwendung die
+  `brand-*`/`brass-*`/`slate-*`- und Statusrollen — keine rohen Fremdpaletten.
+- Kein neuer Akzent pro Panel. Braucht eine Fläche eine eigene Farbe, ist das
+  fast immer ein Hinweis darauf, dass ihre Rolle nicht geklärt ist.
 
 ### Zum Gedankenstrich
 

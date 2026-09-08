@@ -136,7 +136,7 @@ const RISK_BADGE: Record<string, string> = {
   prohibited:
     "bg-red-50 text-red-900 border border-red-200",
   high_risk:
-    "bg-rose-50 text-rose-900 border border-rose-200",
+    "bg-red-50 text-red-900 border border-red-200",
   limited_risk:
     "bg-amber-50 text-amber-900 border border-amber-200",
   minimal_risk:
@@ -440,7 +440,7 @@ export default function EUAIActPage() {
               </div>
               <div className={`${CH_CARD} p-5`}>
                 <div className="text-xs font-medium text-slate-600">Hochrisiko</div>
-                <div className="mt-2 text-3xl font-semibold text-rose-700">
+                <div className="mt-2 text-3xl font-semibold text-red-700">
                   {summary?.high_risk ?? 0}
                 </div>
               </div>
@@ -558,12 +558,12 @@ export default function EUAIActPage() {
                   {dashboard.urgent_gaps.map((gap, i) => (
                     <div
                       key={i}
-                      className="rounded-xl border border-rose-200 bg-rose-50/80 p-3"
+                      className="rounded-xl border border-red-200 bg-red-50/80 p-3"
                     >
-                      <div className="text-sm font-medium text-rose-900">
+                      <div className="text-sm font-medium text-red-900">
                         {gap.article}: {gap.requirement_name}
                       </div>
-                      <div className="mt-1 text-xs text-rose-800/90">
+                      <div className="mt-1 text-xs text-red-800/90">
                         System: {gap.ai_system_name} ({gap.ai_system_id})
                       </div>
                     </div>
@@ -786,7 +786,7 @@ export default function EUAIActPage() {
                 </label>
               ))}
               <div className="border-t border-slate-200 pt-3 mt-3">
-                <label className="flex items-center gap-3 text-sm font-medium text-rose-800">
+                <label className="flex items-center gap-3 text-sm font-medium text-red-800">
                   <input
                     type="checkbox"
                     checked={!!wizardData.profiles_natural_persons}
@@ -904,7 +904,7 @@ export default function EUAIActPage() {
             eingeordnet ist.
           </p>
           {nis2Kpis?.recommended?.scenario_label && (
-            <p className="mt-2 text-xs font-medium text-indigo-800">
+            <p className="mt-2 text-xs font-medium text-brand-800">
               Szenario-Mapping: {nis2Kpis.recommended.scenario_label}
             </p>
           )}

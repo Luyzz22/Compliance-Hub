@@ -22,7 +22,7 @@ import {
 import { getWorkspaceTenantIdServer } from "@/lib/workspaceTenantServer";
 
 function severityClass(sev: ControlCenterSeverityDto): string {
-  if (sev === "critical") return "border-rose-300 bg-rose-50 text-rose-800";
+  if (sev === "critical") return "border-red-300 bg-red-50 text-red-800";
   if (sev === "warning") return "border-amber-300 bg-amber-50 text-amber-900";
   return "border-slate-300 bg-slate-50 text-slate-700";
 }
@@ -95,7 +95,7 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
       <section className="grid gap-4 md:grid-cols-4">
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Kritisch</p>
-          <p className="mt-2 text-3xl font-semibold text-rose-700">{data.summary_counts.critical}</p>
+          <p className="mt-2 text-3xl font-semibold text-red-700">{data.summary_counts.critical}</p>
         </article>
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Warnung</p>
@@ -126,7 +126,7 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
               </div>
               <p className="mt-2 font-medium text-slate-900">{item.title}</p>
               <p className="mt-1 text-xs text-slate-600">{item.summary_de}</p>
-              <Link className="mt-2 inline-block text-xs font-semibold text-cyan-700 underline" href={item.action_href}>
+              <Link className="mt-2 inline-block text-xs font-semibold text-brand-700 underline" href={item.action_href}>
                 {item.action_label}
               </Link>
             </li>
@@ -189,14 +189,14 @@ export default async function TenantControlCenterPage({ searchParams }: PageProp
             </p>
           ) : null}
           {retryResult ? (
-            <p className="mt-2 rounded border border-cyan-200 bg-cyan-50 px-2 py-1 text-cyan-950">
+            <p className="mt-2 rounded border border-brand-200 bg-brand-50 px-2 py-1 text-brand-950">
               Retry ausgeführt: {retryResult.sync_result.sync_status} · Retry von{" "}
               {retryResult.sync_result.retry_of_sync_run_id ?? "—"}.
             </p>
           ) : null}
           <p className="mt-2 text-slate-600">
             Verlauf und Retry-Steuerung:{" "}
-            <Link className="font-semibold text-cyan-700 underline" href="/tenant/onboarding-readiness">
+            <Link className="font-semibold text-brand-700 underline" href="/tenant/onboarding-readiness">
               Onboarding Readiness
             </Link>
           </p>

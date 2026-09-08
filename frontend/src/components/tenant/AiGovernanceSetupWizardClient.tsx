@@ -510,7 +510,7 @@ export function AiGovernanceSetupWizardClient({
   return (
     <div className={CH_SHELL} data-testid="ai-governance-setup-wizard">
       <header className="mb-8">
-        <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-cyan-800">
+        <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-brand-800">
           Mandanten-Workspace
         </p>
         {mutationsBlocked ? (
@@ -553,7 +553,7 @@ export function AiGovernanceSetupWizardClient({
               onClick={() => setStep(i)}
               className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                 active
-                  ? "border-cyan-600 bg-cyan-50 text-cyan-950"
+                  ? "border-brand-600 bg-brand-50 text-brand-950"
                   : done
                     ? "border-emerald-200 bg-emerald-50 text-emerald-900"
                     : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -569,7 +569,7 @@ export function AiGovernanceSetupWizardClient({
           onClick={() => setStep(6)}
           className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
             step === 6
-              ? "border-cyan-600 bg-cyan-50 text-cyan-950"
+              ? "border-brand-600 bg-brand-50 text-brand-950"
               : "border-slate-200 bg-white text-slate-600"
           }`}
         >
@@ -578,7 +578,7 @@ export function AiGovernanceSetupWizardClient({
       </nav>
 
       {err ? (
-        <div className="mb-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           {err}
         </div>
       ) : null}
@@ -912,7 +912,7 @@ export function AiGovernanceSetupWizardClient({
                 <article key={f.framework_key} className="rounded-lg border border-slate-200 p-3">
                   <p className="text-xs font-bold uppercase text-slate-500">{f.framework_key}</p>
                   <p className="text-sm font-semibold text-slate-900">{f.name}</p>
-                  <p className="mt-2 text-2xl font-bold text-cyan-800">{f.coverage_percent}%</p>
+                  <p className="mt-2 text-2xl font-bold text-brand-800">{f.coverage_percent}%</p>
                   <p className="text-xs text-slate-600">
                     {f.gap_count} Lücken · {f.total_requirements} Pflichten
                   </p>

@@ -532,7 +532,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
         }
       />
       {clientId.trim() && portfolioRow ? (
-        <p className="rounded-lg border border-violet-100 bg-violet-50/60 px-3 py-2 text-xs text-violet-950">
+        <p className="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2 text-xs text-brand-950">
           <span className="font-semibold">Nächster Schritt (Queue-Regel):</span>{" "}
           {naechsterSchrittForRow(portfolioRow, KANZLEI_MANY_OPEN_POINTS)}
         </p>
@@ -573,7 +573,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
               type="button"
               disabled={reviewBusy}
               onClick={() => void submitReview()}
-              className="rounded-lg bg-violet-900 px-3 py-1.5 text-xs text-white hover:bg-violet-800 disabled:opacity-50"
+              className="rounded-lg bg-brand-900 px-3 py-1.5 text-xs text-white hover:bg-brand-800 disabled:opacity-50"
             >
               {reviewBusy ? "Speichere…" : "Review durchgeführt"}
             </button>
@@ -582,8 +582,8 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       ) : null}
 
       {clientId.trim() ? (
-        <div className="rounded-lg border border-rose-200 bg-rose-50/40 p-3 text-xs text-slate-800">
-          <p className="font-semibold text-rose-950">Offene Reminders (Wave 43)</p>
+        <div className="rounded-lg border border-red-200 bg-red-50/40 p-3 text-xs text-slate-800">
+          <p className="font-semibold text-red-950">Offene Reminders (Wave 43)</p>
           {remLoading ? (
             <p className="mt-1 text-slate-500">Lade Reminder…</p>
           ) : tenantReminders.length === 0 ? (
@@ -591,7 +591,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
           ) : (
             <ul className="mt-2 space-y-2">
               {tenantReminders.map((r) => (
-                <li key={r.reminder_id} className="rounded border border-rose-100 bg-white/90 p-2">
+                <li key={r.reminder_id} className="rounded border border-red-100 bg-white/90 p-2">
                   <div className="font-medium">{MANDANT_REMINDER_CATEGORY_LABEL_DE[r.category]}</div>
                   <div className="text-slate-600">Fällig: {formatHist(r.due_at)}</div>
                   {r.note ? <div className="mt-0.5 text-slate-700">{r.note}</div> : null}
@@ -600,7 +600,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
                       type="button"
                       disabled={remPatchId === r.reminder_id}
                       onClick={() => void patchTenantReminder(r.reminder_id, "done")}
-                      className="text-cyan-800 underline disabled:opacity-50"
+                      className="text-brand-800 underline disabled:opacity-50"
                     >
                       Erledigt
                     </button>
@@ -617,7 +617,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
               ))}
             </ul>
           )}
-          <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-rose-100 pt-2">
+          <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-red-100 pt-2">
             <label className="text-[11px] font-medium text-slate-700">
               Neu · Fällig
               <input
@@ -652,7 +652,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
               type="button"
               disabled={newRemBusy || !newRemDue.trim()}
               onClick={() => void submitNewReminder()}
-              className="rounded bg-rose-800 px-2 py-1 text-[11px] text-white hover:bg-rose-900 disabled:opacity-50"
+              className="rounded bg-red-800 px-2 py-1 text-[11px] text-white hover:bg-red-900 disabled:opacity-50"
             >
               {newRemBusy ? "…" : "Reminder anlegen"}
             </button>
@@ -690,11 +690,11 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
       </div>
 
       <p className="text-xs text-slate-500">
-        <a className="text-cyan-700 underline" href="/admin/advisor-portfolio">
+        <a className="text-brand-700 underline" href="/admin/advisor-portfolio">
           Kanzlei-Cockpit
         </a>
         {" · "}
-        <a className="text-cyan-700 underline" href="/admin/board-readiness">
+        <a className="text-brand-700 underline" href="/admin/board-readiness">
           Board Readiness
         </a>
       </p>
@@ -720,7 +720,7 @@ export function AdvisorMandantExportClient({ adminConfigured }: Props) {
               {payload.offene_punkte.length ? (
                 payload.offene_punkte.map((o) => (
                   <li key={o.referenz_id + o.pruefpunkt_de.slice(0, 20)}>
-                    <span className="font-mono text-violet-800">{o.referenz_id}</span> · {o.pruefpunkt_de}
+                    <span className="font-mono text-brand-800">{o.referenz_id}</span> · {o.pruefpunkt_de}
                   </li>
                 ))
               ) : (

@@ -31,7 +31,7 @@ export function GlobalWorkspaceEvidenceNavBlock() {
         role="menuitem"
         className={`block px-3 py-2 text-sm no-underline ${
           active
-            ? "bg-cyan-50 font-semibold text-cyan-900"
+            ? "bg-brand-50 font-semibold text-brand-900"
             : "text-slate-700 hover:bg-slate-50"
         }`}
       >

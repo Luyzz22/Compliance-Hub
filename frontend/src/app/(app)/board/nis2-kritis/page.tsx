@@ -66,7 +66,7 @@ function VerticalBucketChart({
                   value={h}
                   label={`${b.count} Systeme im Bereich ${b.range_min_inclusive} bis ${hi} Prozent`}
                   className="h-full min-h-[3px] w-[72%]"
-                  indicatorClassName="fill-cyan-700"
+                  indicatorClassName="fill-brand-700"
                 />
               </div>
               <span className="text-center text-[0.65rem] font-semibold leading-tight text-slate-600">

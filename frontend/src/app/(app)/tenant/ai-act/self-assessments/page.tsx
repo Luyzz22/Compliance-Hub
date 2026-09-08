@@ -48,11 +48,11 @@ export default async function TenantSelfAssessmentsListPage() {
 
       {loadError ? (
         <div
-          className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 shadow-sm"
+          className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm"
           role="alert"
         >
           <p className="font-semibold">Liste konnte nicht geladen werden</p>
-          <p className="mt-1 text-rose-800">{loadError}</p>
+          <p className="mt-1 text-red-800">{loadError}</p>
         </div>
       ) : null}
 

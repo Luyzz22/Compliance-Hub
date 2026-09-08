@@ -275,7 +275,7 @@ export default function TrustCenterPublicPage() {
             <span className="font-medium">Security-Kontakt:</span>{" "}
             <a
               href={securityContact}
-              className="text-[var(--mk-accent-700)] underline decoration-cyan-600/25 underline-offset-4 transition hover:text-[var(--mk-fg)]"
+              className="text-[var(--mk-accent-700)] underline decoration-brand-600/25 underline-offset-4 transition hover:text-[var(--mk-fg)]"
             >
               {securityContactLabel}
             </a>

@@ -152,13 +152,13 @@ export function CrossRegulationLlmGapPanel({ tenantId, requirements }: CrossRegu
 
       {busy ? (
         <p className="mt-4 text-sm text-slate-600" role="status">
-          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-cyan-600 border-t-transparent align-middle" />{" "}
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-brand-600 border-t-transparent align-middle" />{" "}
           Auswertung Ihrer aktuellen Framework-Abdeckung…
         </p>
       ) : null}
 
       {err ? (
-        <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-sm text-rose-900">
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50/80 p-3 text-sm text-red-900">
           <p>{err}</p>
           <button
             type="button"
@@ -196,7 +196,7 @@ export function CrossRegulationLlmGapPanel({ tenantId, requirements }: CrossRegu
                           {badgeFramework(fk)}
                         </span>
                       ))}
-                      <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-900">
+                      <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-900">
                         {s.requirement_ids.length} Pflichten
                       </span>
                       <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900">

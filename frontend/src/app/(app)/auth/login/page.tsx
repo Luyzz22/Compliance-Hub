@@ -199,7 +199,7 @@ function LoginPageInner() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                 />
               </div>
 
@@ -216,7 +216,7 @@ function LoginPageInner() {
                     required
                     value={tenantId}
                     onChange={(event) => setTenantId(event.target.value)}
-                    className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                    className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                   >
                     {tenantOptions.map((tenant) => (
                       <option key={tenant} value={tenant}>
@@ -240,7 +240,7 @@ function LoginPageInner() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                 />
               </div>
 
@@ -261,7 +261,7 @@ function LoginPageInner() {
               <p>
                 <Link
                   href="/auth/forgot-password"
-                  className="font-medium text-cyan-700 underline underline-offset-2"
+                  className="font-medium text-brand-700 underline underline-offset-2"
                 >
                   Passwort vergessen?
                 </Link>
@@ -270,7 +270,7 @@ function LoginPageInner() {
                 Noch kein Konto?{" "}
                 <Link
                   href="/auth/register"
-                  className="font-medium text-cyan-700 underline underline-offset-2"
+                  className="font-medium text-brand-700 underline underline-offset-2"
                 >
                   Jetzt registrieren
                 </Link>

@@ -8,9 +8,9 @@ import { fetchComplianceCompass, type ComplianceCompassSnapshot } from "@/lib/co
 function postureLabel(p: string): { de: string; chip: string } {
   const m: Record<string, { de: string; chip: string }> = {
     strong: { de: "Robust", chip: "bg-emerald-500/15 text-emerald-800 ring-1 ring-emerald-500/20" },
-    steady: { de: "Stabil", chip: "bg-sky-500/10 text-sky-900 ring-1 ring-sky-500/15" },
+    steady: { de: "Stabil", chip: "bg-brand-500/10 text-brand-900 ring-1 ring-brand-500/15" },
     watch: { de: "Beobachten", chip: "bg-amber-500/12 text-amber-900 ring-1 ring-amber-500/20" },
-    elevated: { de: "Erhöhtes Tempo", chip: "bg-rose-500/10 text-rose-900 ring-1 ring-rose-500/20" },
+    elevated: { de: "Erhöhtes Tempo", chip: "bg-red-500/10 text-red-900 ring-1 ring-red-500/20" },
   };
   return m[p] ?? { de: p, chip: "bg-slate-200/60 text-slate-800" };
 }
@@ -93,7 +93,7 @@ export function ComplianceCompassClient({ tenantId }: Props) {
     <div className="min-h-[calc(100vh-8rem)] -mx-4 -mt-2 rounded-[2rem] bg-gradient-to-b from-slate-50 via-white to-slate-100/80 px-4 py-8 font-sans sm:px-8">
       {err ? (
         <div
-          className="rounded-2xl border border-rose-200/60 bg-rose-50/80 px-4 py-3 text-sm text-rose-900"
+          className="rounded-2xl border border-red-200/60 bg-red-50/80 px-4 py-3 text-sm text-red-900"
           role="status"
         >
           {err}
@@ -182,7 +182,7 @@ export function ComplianceCompassClient({ tenantId }: Props) {
                     label={`${p.label_de}: ${p.score_0_100} von 100`}
                     className="mt-3 h-1.5 w-full"
                     trackClassName="fill-slate-200/60"
-                    indicatorClassName="fill-indigo-500"
+                    indicatorClassName="fill-brand-500"
                   />
                   <p className="mt-3 text-sm leading-relaxed text-slate-600">{p.detail_de}</p>
                 </div>

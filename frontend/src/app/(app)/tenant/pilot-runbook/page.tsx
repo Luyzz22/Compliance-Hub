@@ -117,7 +117,7 @@ export default async function PilotRunbookPage() {
               </span>
               <Link
                 href="/tenant/compliance-overview"
-                className="font-medium text-cyan-800 underline decoration-cyan-300 underline-offset-2 hover:text-cyan-950"
+                className="font-medium text-brand-800 underline decoration-brand-300 underline-offset-2 hover:text-brand-950"
               >
                 Guided Setup in der Compliance-Übersicht abschließen
               </Link>

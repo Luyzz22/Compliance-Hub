@@ -70,7 +70,7 @@ export function DemoAzureGovernanceBriefPanel({ tenantId }: { tenantId: string }
   return (
     <section className={`${CH_CARD} overflow-hidden p-0`} aria-labelledby={headingId}>
       <div className="border-b border-slate-200 bg-slate-950 px-5 py-6 text-white sm:px-7">
-        <div className="flex flex-wrap items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-cyan-200">
+        <div className="flex flex-wrap items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-brand-200">
           <span>Azure OpenAI</span>
           <span aria-hidden="true" className="text-slate-500">
             /
@@ -113,9 +113,9 @@ export function DemoAzureGovernanceBriefPanel({ tenantId }: { tenantId: string }
                 aria-pressed={selected}
                 onClick={() => setScenario(item.id)}
                 onKeyDown={(event) => selectScenarioFromKeyboard(event, item.id)}
-                className={`min-h-24 rounded-xl border px-4 py-3 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-700 focus-visible:ring-offset-2 ${
+                className={`min-h-24 rounded-xl border px-4 py-3 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2 ${
                   selected
-                    ? "border-cyan-700 bg-cyan-50 text-slate-950"
+                    ? "border-brand-700 bg-brand-50 text-slate-950"
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
                 }`}
               >
@@ -141,7 +141,7 @@ export function DemoAzureGovernanceBriefPanel({ tenantId }: { tenantId: string }
                 key={step}
                 className="flex min-h-12 items-center gap-2 border-b border-slate-200 px-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"
               >
-                <span className="font-mono text-cyan-800">{index + 1}</span>
+                <span className="font-mono text-brand-800">{index + 1}</span>
                 <span>{step}</span>
               </li>
             ),
@@ -165,7 +165,7 @@ export function DemoAzureGovernanceBriefPanel({ tenantId }: { tenantId: string }
 
         <div aria-live="polite" aria-atomic="true">
           {error ? (
-            <p role="alert" className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+            <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
               {error}
             </p>
           ) : null}
@@ -192,7 +192,7 @@ export function DemoAzureGovernanceBriefPanel({ tenantId }: { tenantId: string }
                         key={`${index}-${action}`}
                         className="flex gap-3 text-sm leading-6 text-slate-700"
                       >
-                        <span className="font-mono text-cyan-800">0{index + 1}</span>
+                        <span className="font-mono text-brand-800">0{index + 1}</span>
                         <span>{action}</span>
                       </li>
                     ))}

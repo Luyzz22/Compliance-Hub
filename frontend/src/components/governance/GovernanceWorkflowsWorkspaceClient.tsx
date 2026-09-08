@@ -251,9 +251,9 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
             {dash?.kpis.overdue_tasks ?? "—"}
           </p>
         </article>
-        <article className={`${CH_CARD} border-rose-200/80`}>
+        <article className={`${CH_CARD} border-red-200/80`}>
           <p className={CH_SECTION_LABEL}>Eskaliert (Task/Level)</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-800">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-red-800">
             {dash?.kpis.escalated_tasks ?? "—"}
           </p>
         </article>
@@ -266,9 +266,9 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <article className={`${CH_CARD} border-indigo-200/80`}>
+        <article className={`${CH_CARD} border-brand-200/80`}>
           <p className={CH_SECTION_LABEL}>Events im letzten Run (Summary)</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-indigo-900">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-brand-900">
             {lastRun != null ? lastRunEventCount : "—"}
           </p>
           {lastRun == null ? (
@@ -280,7 +280,7 @@ export function GovernanceWorkflowsWorkspaceClient({ tenantId }: Props) {
               ) : eventTrend > 0 ? (
                 <span>
                   Gegenüber vorherigem Run:{" "}
-                  <span className="font-medium text-rose-700">+{eventTrend} Events</span>
+                  <span className="font-medium text-red-700">+{eventTrend} Events</span>
                 </span>
               ) : eventTrend < 0 ? (
                 <span>

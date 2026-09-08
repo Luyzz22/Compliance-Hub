@@ -139,7 +139,7 @@ export function AiActDocumentationClient({ aiSystemId }: Props) {
   if (loadErr) {
     return (
       <section
-        className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-900"
+        className="rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 text-sm text-red-900"
         aria-label="EU AI Act Dokumentation"
       >
         <p className="font-semibold">EU AI Act Dokumentation</p>
@@ -197,7 +197,7 @@ export function AiActDocumentationClient({ aiSystemId }: Props) {
                     onClick={() => onPickSection(key)}
                     className={`w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
                       active
-                        ? "bg-cyan-50 text-cyan-950 ring-1 ring-cyan-200"
+                        ? "bg-brand-50 text-brand-950 ring-1 ring-brand-200"
                         : "text-slate-700 hover:bg-slate-50"
                     }`}
                   >

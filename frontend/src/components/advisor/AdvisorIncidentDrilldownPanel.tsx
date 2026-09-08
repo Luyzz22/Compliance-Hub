@@ -37,7 +37,7 @@ function FocusBadges({ it }: { it: AdvisorIncidentDrilldownItem }) {
       ) : null}
       {a ? (
         <span
-          className="rounded bg-sky-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-sky-950"
+          className="rounded bg-brand-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-brand-950"
           title="Gewichteter Schwerpunkt Verfügbarkeit"
         >
           Verfügbarkeit
@@ -204,11 +204,11 @@ export function AdvisorIncidentDrilldownPanel({
     return variant === "snapshot" ? (
       <section className={CH_CARD} data-testid="advisor-incident-drilldown-error">
         <p className={CH_SECTION_LABEL}>Incidents nach KI-System und Lieferant</p>
-        <p className="mt-2 text-sm text-rose-800">{err}</p>
+        <p className="mt-2 text-sm text-red-800">{err}</p>
       </section>
     ) : (
       <div className={CH_SHELL} data-testid="advisor-incident-drilldown-error">
-        <p className="text-sm text-rose-800">{err}</p>
+        <p className="text-sm text-red-800">{err}</p>
       </div>
     );
   }
@@ -318,7 +318,7 @@ export function AdvisorIncidentDrilldownPanel({
       ) : (
         <div className={CH_SHELL} data-testid="advisor-incident-drilldown-full">
           <header className="mb-6">
-            <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-cyan-800">Berater</p>
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-brand-800">Berater</p>
             <h1 className="mt-2 text-xl font-bold text-slate-900">Incident-Drilldown</h1>
             <p className="mt-1 font-mono text-sm text-slate-600">{clientTenantId}</p>
             <p className="mt-2 max-w-2xl text-sm text-slate-600">
@@ -326,7 +326,7 @@ export function AdvisorIncidentDrilldownPanel({
               Kurzhinweise folgen der mandantenweiten OAMI-Subtype-Gewichtung.
             </p>
             <div className="mt-3">
-              <Link href={`/advisor/clients/${encodeURIComponent(clientTenantId)}/governance-snapshot`} className="text-xs text-cyan-800 underline">
+              <Link href={`/advisor/clients/${encodeURIComponent(clientTenantId)}/governance-snapshot`} className="text-xs text-brand-800 underline">
                 Zurück zum Governance-Snapshot
               </Link>
             </div>

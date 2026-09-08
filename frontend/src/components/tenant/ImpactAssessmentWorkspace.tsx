@@ -41,12 +41,12 @@ function postureClasses(posture: string): string {
     posture === "consultation_gate" ||
     posture === "remediation_required"
   ) {
-    return "bg-rose-50 text-rose-800 ring-rose-200";
+    return "bg-red-50 text-red-800 ring-red-200";
   }
   if (posture === "scope_incomplete" || posture === "action_required") {
     return "bg-amber-50 text-amber-900 ring-amber-200";
   }
-  return "bg-cyan-50 text-cyan-900 ring-cyan-200";
+  return "bg-brand-50 text-brand-900 ring-brand-200";
 }
 
 function StepMarker({
@@ -185,7 +185,7 @@ export function ImpactAssessmentWorkspace({
           {[
             ["Systeme", data.summary.total_systems, "text-slate-950"],
             ["Scope offen", data.summary.scope_open_count, "text-amber-700"],
-            ["In Review", data.summary.in_review_count, "text-cyan-800"],
+            ["In Review", data.summary.in_review_count, "text-brand-800"],
             ["Intern freigegeben", data.summary.approved_count, "text-emerald-700"],
           ].map(([label, value, valueClass], index) => (
             <div key={String(label)} className={`flex items-center justify-between gap-4 py-4 lg:block lg:px-5 ${index === 0 ? "lg:pl-0" : ""}`}>
@@ -284,7 +284,7 @@ export function ImpactAssessmentWorkspace({
                     </label>
                     <progress
                       id="impact-readiness-progress"
-                      className="mt-2 h-2 w-full overflow-hidden rounded-full accent-cyan-700"
+                      className="mt-2 h-2 w-full overflow-hidden rounded-full accent-brand-700"
                       value={selected.readiness_score_pct}
                       max={100}
                     >
@@ -327,7 +327,7 @@ export function ImpactAssessmentWorkspace({
       )}
 
       {refreshError ? (
-        <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           {refreshError}
         </p>
       ) : null}

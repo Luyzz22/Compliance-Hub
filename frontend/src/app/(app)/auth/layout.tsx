@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="mb-6 text-center">
         <Link
           href="/"
-          className="text-sm font-semibold text-slate-600 transition hover:text-cyan-700"
+          className="text-sm font-semibold text-slate-600 transition hover:text-brand-700"
         >
           ← Zurück zur Startseite
         </Link>

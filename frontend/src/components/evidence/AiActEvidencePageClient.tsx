@@ -419,7 +419,7 @@ export function AiActEvidencePageClient({ tenantId }: Props) {
               {rows.map((row) => (
                 <tr
                   key={row.event_id}
-                  className="border-b border-slate-100 hover:bg-cyan-50/40 focus-within:bg-cyan-50/50"
+                  className="border-b border-slate-100 hover:bg-brand-50/40 focus-within:bg-brand-50/50"
                 >
                   <td className="max-w-[12rem] whitespace-nowrap px-4 py-3 text-slate-700">
                     {formatTs(row.timestamp)}
@@ -433,7 +433,7 @@ export function AiActEvidencePageClient({ tenantId }: Props) {
                   <td className="px-4 py-3">
                     <button
                       type="button"
-                      className={`${CH_BTN_GHOST} max-w-full text-left text-sm font-normal text-cyan-800 underline decoration-cyan-600/30`}
+                      className={`${CH_BTN_GHOST} max-w-full text-left text-sm font-normal text-brand-800 underline decoration-brand-600/30`}
                       onClick={(e) => openDetail(row, e.currentTarget)}
                       aria-label={`Details zu ${row.event_id}`}
                     >

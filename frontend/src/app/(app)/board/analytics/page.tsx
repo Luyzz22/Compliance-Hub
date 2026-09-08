@@ -150,10 +150,10 @@ function CoverageBar({ fw }: { fw: FrameworkCoverage }) {
 
 function RiskMatrixGrid({ matrix }: { matrix: RiskMatrix }) {
   const cells = [
-    { label: "Kritisch", count: matrix.critical, bg: "bg-red-500 text-white" },
-    { label: "Hoch", count: matrix.high, bg: "bg-orange-400 text-white" },
-    { label: "Mittel", count: matrix.medium, bg: "bg-amber-300 text-amber-900" },
-    { label: "Niedrig", count: matrix.low, bg: "bg-emerald-200 text-emerald-900" },
+    { label: "Kritisch", count: matrix.critical, bg: "bg-red-700 text-white" },
+    { label: "Hoch", count: matrix.high, bg: "bg-red-500 text-white" },
+    { label: "Mittel", count: matrix.medium, bg: "bg-amber-200 text-amber-900" },
+    { label: "Niedrig", count: matrix.low, bg: "bg-emerald-100 text-emerald-900" },
   ];
 
   return (
@@ -184,7 +184,7 @@ function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
     <ul className="divide-y divide-slate-100">
       {entries.map((e) => (
         <li key={e.id} className="flex items-start gap-3 py-2.5">
-          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-cyan-500" />
+          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
           <div className="min-w-0 flex-1">
             <p className="text-sm text-slate-800">
               <strong>{e.actor}</strong> · {e.action}

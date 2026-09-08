@@ -41,7 +41,7 @@ function statusPillClass(status: string): string {
     return "bg-emerald-100 text-emerald-900 ring-emerald-200/80";
   }
   if (status === "in_progress") {
-    return "bg-sky-100 text-sky-950 ring-sky-200/80";
+    return "bg-brand-100 text-brand-950 ring-brand-200/80";
   }
   if (status === "overdue" || status === "needs_review") {
     return "bg-amber-100 text-amber-950 ring-amber-200/80";
@@ -220,7 +220,7 @@ export function GovernanceControlsWorkspaceClient({ tenantId }: Props) {
   const dashboard = (
     <div className="space-y-8">
       {error ? (
-        <p className="text-sm text-rose-800" role="alert">
+        <p className="text-sm text-red-800" role="alert">
           {error}
         </p>
       ) : null}
@@ -245,7 +245,7 @@ export function GovernanceControlsWorkspaceClient({ tenantId }: Props) {
         </article>
         <article className={`${CH_CARD} border-slate-200/80`}>
           <p className={CH_SECTION_LABEL}>In Arbeit</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-sky-800">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-brand-800">
             {summary?.in_progress ?? "—"}
           </p>
         </article>
@@ -267,7 +267,7 @@ export function GovernanceControlsWorkspaceClient({ tenantId }: Props) {
       </section>
 
       {suggestions.length > 0 ? (
-        <article className={`${CH_CARD} border-indigo-100 bg-indigo-50/40`}>
+        <article className={`${CH_CARD} border-brand-100 bg-brand-50/40`}>
           <p className={CH_SECTION_LABEL}>Deterministische Vorschläge</p>
           <p className="mt-1 text-sm text-slate-700">
             Basierend auf NIS2/KRITIS, KI-Register und Betriebs-Health — ohne KI-Blackbox.
@@ -276,7 +276,7 @@ export function GovernanceControlsWorkspaceClient({ tenantId }: Props) {
             {suggestions.map((s) => (
               <li
                 key={s.suggestion_key}
-                className="flex flex-col gap-2 rounded-lg border border-indigo-100 bg-white/90 p-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-lg border border-brand-100 bg-white/90 p-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <p className="font-semibold text-slate-900">{s.title}</p>
@@ -386,7 +386,7 @@ export function GovernanceControlsWorkspaceClient({ tenantId }: Props) {
                     <tr
                       key={r.id}
                       className={`cursor-pointer hover:bg-slate-50/80 ${
-                        selectedId === r.id ? "bg-sky-50/90" : ""
+                        selectedId === r.id ? "bg-brand-50/90" : ""
                       }`}
                       onClick={() => {
                         setSelectedId(r.id);

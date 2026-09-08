@@ -29,10 +29,10 @@ function DistributionBar({ data, total }: { data: Record<string, number>; total:
     high: "fill-emerald-500",
     medium: "fill-amber-500",
     low: "fill-red-500",
-    bm25: "fill-cyan-600",
-    hybrid: "fill-violet-600",
+    bm25: "fill-brand-600",
+    hybrid: "fill-brand-600",
     answered: "fill-emerald-600",
-    escalated: "fill-rose-500",
+    escalated: "fill-red-500",
   };
   const entries = Object.entries(data).filter(([, count]) => count > 0);
   return (
@@ -208,7 +208,7 @@ export default function AdvisorMetricsPage() {
                       <td className="px-4 py-2.5 text-right tabular-nums">{d.confidence_medium}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{d.confidence_low}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{d.agent_answered}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-rose-700">{d.agent_escalated}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-red-700">{d.agent_escalated}</td>
                     </tr>
                   ))}
                 </tbody>

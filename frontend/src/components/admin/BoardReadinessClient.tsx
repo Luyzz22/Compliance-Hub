@@ -12,7 +12,7 @@ type Props = { adminConfigured: boolean };
 function trafficPill(s: BoardReadinessTraffic): string {
   if (s === "green") return "border-emerald-300 bg-emerald-50 text-emerald-950";
   if (s === "amber") return "border-amber-300 bg-amber-50 text-amber-950";
-  return "border-rose-300 bg-rose-50 text-rose-950";
+  return "border-red-300 bg-red-50 text-red-950";
 }
 
 function trafficLabel(s: BoardReadinessTraffic): string {
@@ -73,7 +73,7 @@ export function BoardReadinessClient({ adminConfigured }: Props) {
         <h1 className="text-lg font-semibold text-slate-900">Board Readiness</h1>
         <p className="mt-2 text-sm text-slate-600">
           Bitte zuerst unter{" "}
-          <a className="text-cyan-700 underline" href="/admin/leads">
+          <a className="text-brand-700 underline" href="/admin/leads">
             Lead-Inbox
           </a>{" "}
           mit dem Admin-Secret anmelden, dann diese Seite neu laden.
@@ -293,7 +293,7 @@ export function BoardReadinessClient({ adminConfigured }: Props) {
           </section>
 
           {payload.gtm_demand_strip ? (
-            <section className="rounded-xl border border-cyan-200 bg-cyan-50/40 p-4 shadow-sm">
+            <section className="rounded-xl border border-brand-200 bg-brand-50/40 p-4 shadow-sm">
               <h2 className="text-sm font-semibold text-slate-900">GTM-Nachfrage vs. dominante Readiness</h2>
               <p className="mt-1 text-xs text-slate-600">
                 Kompakte Wave-33-Sicht (gleiche Fensterlogik wie /admin/gtm).
@@ -364,7 +364,7 @@ export function BoardReadinessClient({ adminConfigured }: Props) {
                       </td>
                       <td className="py-2 pr-2 text-[10px]">
                         {Object.entries(a.deep_links).map(([k, v]) => (
-                          <div key={k} className="text-cyan-800">
+                          <div key={k} className="text-brand-800">
                             <span className="text-slate-500">{k}: </span>
                             <code className="break-all">{v}</code>
                           </div>

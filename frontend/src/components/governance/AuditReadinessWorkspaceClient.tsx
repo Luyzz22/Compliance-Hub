@@ -69,7 +69,7 @@ export function AuditReadinessWorkspaceClient({ tenantId, auditId }: Props) {
       </article>
       <article className={`${CH_CARD} border-slate-200/80`}>
         <p className={CH_SECTION_LABEL}>Überfällige Reviews</p>
-        <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-800">
+        <p className="mt-2 text-3xl font-semibold tabular-nums text-red-800">
           {summary.overdue_reviews_count}
         </p>
       </article>
@@ -79,7 +79,7 @@ export function AuditReadinessWorkspaceClient({ tenantId, auditId }: Props) {
   const overview = (
     <div className="space-y-6">
       {error ? (
-        <p className="text-sm text-rose-800" role="alert">
+        <p className="text-sm text-red-800" role="alert">
           {error}
         </p>
       ) : null}
@@ -141,7 +141,7 @@ export function AuditReadinessWorkspaceClient({ tenantId, auditId }: Props) {
               <td className="px-3 py-2 tabular-nums">{r.evidence_completeness_pct}%</td>
               <td className="px-3 py-2 text-xs text-slate-600">
                 {r.review_overdue ? (
-                  <span className="font-semibold text-rose-800">überfällig</span>
+                  <span className="font-semibold text-red-800">überfällig</span>
                 ) : r.next_review_at ? (
                   new Date(r.next_review_at).toLocaleDateString("de-DE")
                 ) : (

@@ -44,7 +44,7 @@ export function QuestionnairePanel({
               Gespeichert um {formatGovernanceTime(savedAtIso)}
             </span>
           ) : saveState === "error" ? (
-            <span className="font-medium text-rose-800">Letzter Speicherversuch fehlgeschlagen</span>
+            <span className="font-medium text-red-800">Letzter Speicherversuch fehlgeschlagen</span>
           ) : (
             <span>Änderungen werden automatisch gespeichert.</span>
           )}

@@ -77,11 +77,11 @@ export function KanzleiReviewPlaybookHelper({ variant = "full", snapshot, footer
   const compact = variant === "compact";
   return (
     <section
-      className={`rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/90 to-white shadow-sm ${
+      className={`rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50/90 to-white shadow-sm ${
         compact ? "p-3" : "p-4"
       }`}
     >
-      <h2 className={`font-semibold text-violet-950 ${compact ? "text-xs" : "text-sm"}`}>
+      <h2 className={`font-semibold text-brand-950 ${compact ? "text-xs" : "text-sm"}`}>
         Kanzlei-Review-Playbook (Wave 41)
       </h2>
       <p className={`mt-1 text-slate-600 ${compact ? "text-[10px] leading-snug" : "text-xs"}`}>

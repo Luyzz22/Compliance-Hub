@@ -73,7 +73,7 @@ export function BoardReportsHubClient({ tenantId }: Props) {
       </div>
 
       {error ? (
-        <p className="text-sm text-rose-800" role="alert">
+        <p className="text-sm text-red-800" role="alert">
           {error}
         </p>
       ) : null}

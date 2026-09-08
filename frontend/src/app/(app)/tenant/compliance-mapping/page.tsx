@@ -8,13 +8,21 @@ import {
 } from "@/lib/boardLayout";
 import Link from "next/link";
 
+/**
+ * Regelwerke mit ihrer Zuordnungsfarbe.
+ *
+ * Die sechs Marken kommen aus den Rollen des Hauses — Navy, Messing, Grün,
+ * Ocker, helles Navy, Graphit — und nicht aus sechs fremden Signalfarben.
+ * Die Farbe ist Zuordnungshilfe, nicht Informationsträger: das Label steht
+ * immer daneben.
+ */
 const frameworks = [
-  { key: "EU_AI_ACT", label: "EU AI Act", color: "bg-purple-100 text-purple-800" },
-  { key: "ISO_42001", label: "ISO 42001", color: "bg-indigo-100 text-indigo-800" },
-  { key: "ISO_27001", label: "ISO 27001", color: "bg-cyan-100 text-cyan-800" },
+  { key: "EU_AI_ACT", label: "EU AI Act", color: "bg-brand-100 text-brand-800" },
+  { key: "ISO_42001", label: "ISO 42001", color: "bg-brass-100 text-brass-700" },
+  { key: "ISO_27001", label: "ISO 27001", color: "bg-emerald-100 text-emerald-800" },
   { key: "NIS2", label: "NIS2", color: "bg-amber-100 text-amber-800" },
-  { key: "DSGVO", label: "DSGVO", color: "bg-blue-100 text-blue-800" },
-  { key: "GoBD", label: "GoBD", color: "bg-emerald-100 text-emerald-800" },
+  { key: "DSGVO", label: "DSGVO", color: "bg-brand-50 text-brand-600" },
+  { key: "GoBD", label: "GoBD", color: "bg-slate-200 text-slate-700" },
 ];
 
 /**
@@ -90,7 +98,7 @@ function coverageCell(level: string) {
       );
     case "planned":
       return (
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700" title="Geplant">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-brand-700" title="Geplant">
           <span className="text-xs font-bold">○</span>
         </span>
       );
@@ -157,7 +165,7 @@ export default function TenantComplianceMappingPage() {
                 label={`${fw.label} Framework-Abdeckung: ${fw.ratio}%`}
                 className="mt-2 h-2 w-full"
                 trackClassName="fill-slate-100"
-                indicatorClassName="fill-cyan-500"
+                indicatorClassName="fill-brand-500"
               />
               <p className="mt-1 text-xs text-slate-500">
                 {fw.covered} von {fw.total} Controls abgedeckt

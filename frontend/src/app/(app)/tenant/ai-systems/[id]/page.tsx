@@ -284,7 +284,7 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
         <p className="mt-4">
           <Link
             href="/board/incidents"
-            className="text-sm font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
+            className="text-sm font-semibold text-brand-700 underline decoration-brand-700/30 hover:text-brand-900"
           >
             Zur Incident-Übersicht
           </Link>
@@ -306,7 +306,7 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
             {regulatoryHints.map((h) => (
               <li
                 key={`${h.requirement_id}-${h.framework_key}`}
-                className="rounded-lg border border-cyan-100 bg-cyan-50/50 px-3 py-2"
+                className="rounded-lg border border-brand-100 bg-brand-50/50 px-3 py-2"
               >
                 <span className="font-semibold text-slate-900">
                   {h.framework_key.toUpperCase()} {h.code}
@@ -319,7 +319,7 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
           <p className="mt-3 text-xs">
             <Link
               href="/tenant/cross-regulation-dashboard"
-              className="font-semibold text-cyan-800 underline"
+              className="font-semibold text-brand-800 underline"
             >
               Zum Cross-Regulation Dashboard
             </Link>
@@ -381,10 +381,10 @@ export default async function TenantAiSystemDetailPage({ params }: PageProps) {
             {violations.map((v) => (
               <li
                 key={v.id}
-                className="rounded-xl border border-rose-100 bg-rose-50/60 px-4 py-3 text-sm text-rose-950"
+                className="rounded-xl border border-red-100 bg-red-50/60 px-4 py-3 text-sm text-red-950"
               >
                 <p className="font-medium">{v.message}</p>
-                <p className="mt-1 text-xs text-rose-800/80">
+                <p className="mt-1 text-xs text-red-800/80">
                   {new Date(v.createdat).toLocaleString("de-DE")}
                 </p>
               </li>

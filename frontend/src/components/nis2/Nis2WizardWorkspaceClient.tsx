@@ -311,7 +311,7 @@ export function Nis2WizardWorkspaceClient({
               Gespeichert {formatGovernanceDateTime(savedAt)}
             </span>
           ) : saveState === "error" ? (
-            <span className="font-medium text-rose-800">Speichern fehlgeschlagen</span>
+            <span className="font-medium text-red-800">Speichern fehlgeschlagen</span>
           ) : (
             <span>Antworten werden automatisch gespeichert (Stub).</span>
           )}

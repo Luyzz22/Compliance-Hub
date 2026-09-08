@@ -20,7 +20,7 @@ export function priorityLabelDe(bucket: string | undefined): string {
 
 export function priorityBadgeClasses(bucket: string | undefined): string {
   if (bucket === "high") {
-    return "bg-rose-50 text-rose-900 ring-1 ring-rose-200";
+    return "bg-red-50 text-red-900 ring-1 ring-red-200";
   }
   if (bucket === "low") {
     return "bg-slate-100 text-slate-700 ring-1 ring-slate-200";

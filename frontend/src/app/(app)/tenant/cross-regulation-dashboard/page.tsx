@@ -88,7 +88,7 @@ export default async function CrossRegulationDashboardPage() {
       {loadError ? (
         <section className={CH_CARD} aria-label="Fehler">
           <p className={CH_SECTION_LABEL}>Daten nicht geladen</p>
-          <p className="mt-2 text-sm text-rose-800">{loadError}</p>
+          <p className="mt-2 text-sm text-red-800">{loadError}</p>
           <p className="mt-2 text-xs text-slate-600">
             Prüfen Sie API-Basis-URL, API-Key und ob{" "}
             <code className="rounded bg-slate-100 px-1">COMPLIANCEHUB_FEATURE_CROSS_REGULATION_DASHBOARD</code>{" "}

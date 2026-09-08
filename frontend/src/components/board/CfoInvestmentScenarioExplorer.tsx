@@ -23,7 +23,7 @@ const DECISION_LABELS: Record<InvestmentDecisionDto, string> = {
 
 const DECISION_CLASSES: Record<InvestmentDecisionDto, string> = {
   fund_now: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  sequence: "border-cyan-300 bg-cyan-50 text-cyan-950",
+  sequence: "border-brand-300 bg-brand-50 text-brand-950",
   validate: "border-amber-300 bg-amber-50 text-amber-950",
   hold: "border-slate-300 bg-slate-100 text-slate-700",
 };
@@ -48,7 +48,7 @@ export function CfoInvestmentScenarioExplorer({
       <div className="border-b border-white/10 px-5 py-6 sm:px-7 lg:px-9 lg:py-8">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-300">
               CFO Decision Lab
             </p>
             <h2 id="cfo-decision-lab-title" className="mt-2 text-2xl font-semibold tracking-tight">
@@ -72,9 +72,9 @@ export function CfoInvestmentScenarioExplorer({
                   type="button"
                   aria-pressed={selected}
                   onClick={() => setScenarioId(item.id)}
-                  className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+                  className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${
                     selected
-                      ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                      ? "border-brand-300 bg-brand-300 text-slate-950"
                       : "border-white/15 bg-white/5 text-slate-200 hover:border-white/30 hover:bg-white/10"
                   }`}
                 >
@@ -159,7 +159,7 @@ export function CfoInvestmentScenarioExplorer({
                   className="rounded-2xl border border-white/10 bg-white/5 p-4"
                 >
                   <div className="flex items-start gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-cyan-200">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-brand-200">
                       {String(initiative.scenario_rank).padStart(2, "0")}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -203,7 +203,7 @@ function FactorMetric({ label, value, weight }: { label: string; value: number; 
         label={`${label}: ${value} von 100`}
         className="mt-2 h-2 w-full"
         trackClassName="fill-slate-700"
-        indicatorClassName="fill-cyan-300"
+        indicatorClassName="fill-brand-300"
       />
     </div>
   );

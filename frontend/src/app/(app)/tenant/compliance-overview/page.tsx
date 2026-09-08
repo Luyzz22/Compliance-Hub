@@ -316,7 +316,7 @@ export default async function TenantComplianceOverviewPage() {
         </div>
         <div className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Offene Violations</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-700">{openViolations}</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-red-700">{openViolations}</p>
           <p className="mt-2 text-xs text-slate-600">Aggregiert über alle Systeme.</p>
         </div>
       </section>
@@ -361,7 +361,7 @@ export default async function TenantComplianceOverviewPage() {
                         className={classNames(
                           "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
                           s.risklevel === "high" &&
-                            "border border-rose-200 bg-rose-50 text-rose-800",
+                            "border border-red-200 bg-red-50 text-red-800",
                           s.risklevel === "limited" &&
                             "border border-amber-200 bg-amber-50 text-amber-900",
                           s.risklevel === "low" &&
@@ -409,14 +409,14 @@ export default async function TenantComplianceOverviewPage() {
             {violations.map((v) => (
               <div
                 key={v.id}
-                className="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-rose-950"
+                className="rounded-lg border border-red-200 bg-red-50/80 p-3 text-red-950"
               >
                 <div className="mb-1 font-medium">{v.message}</div>
-                <div className="flex justify-between text-[11px] text-rose-800/90">
+                <div className="flex justify-between text-[11px] text-red-800/90">
                   <span>System: {v.aisystemid}</span>
                   <span>Rule: {v.ruleid}</span>
                 </div>
-                <div className="mt-1 text-[11px] text-rose-700/80">
+                <div className="mt-1 text-[11px] text-red-700/80">
                   {new Date(v.createdat).toLocaleString("de-DE")}
                 </div>
               </div>

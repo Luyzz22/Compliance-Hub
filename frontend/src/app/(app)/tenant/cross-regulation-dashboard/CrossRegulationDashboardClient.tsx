@@ -307,7 +307,7 @@ export function CrossRegulationDashboardClient({
                     </div>
                   </td>
                   <td className="px-3 py-2 align-top">
-                    <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-xs font-semibold text-cyan-900">
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-900">
                       {coverageLabel(r.coverage_status)}
                     </span>
                   </td>
@@ -338,11 +338,11 @@ export function CrossRegulationDashboardClient({
           <p className="mt-3 text-sm text-slate-500">Lade Drilldown…</p>
         ) : null}
         {detailErr ? (
-          <p className="mt-3 text-sm text-rose-700">{detailErr}</p>
+          <p className="mt-3 text-sm text-red-700">{detailErr}</p>
         ) : null}
         {detail ? (
           <div
-            className={`${CH_CARD} mt-4 border-cyan-200 bg-cyan-50/30`}
+            className={`${CH_CARD} mt-4 border-brand-200 bg-brand-50/30`}
             data-testid="cross-reg-drilldown"
           >
             <p className={CH_SECTION_LABEL}>Drilldown</p>
@@ -364,7 +364,7 @@ export function CrossRegulationDashboardClient({
                         <Link
                           key={id}
                           href={`/tenant/ai-systems/${id}`}
-                          className="mr-2 text-cyan-800 underline"
+                          className="mr-2 text-brand-800 underline"
                         >
                           {id}
                         </Link>
@@ -374,7 +374,7 @@ export function CrossRegulationDashboardClient({
                   {l.policy_ids.length > 0 ? (
                     <div className="mt-1 text-xs text-slate-600">
                       Policy-IDs: {l.policy_ids.join(", ")} (
-                      <Link href="/tenant/policies" className="text-cyan-800 underline">
+                      <Link href="/tenant/policies" className="text-brand-800 underline">
                         Policies
                       </Link>
                       )
@@ -385,7 +385,7 @@ export function CrossRegulationDashboardClient({
                       Action-IDs: {l.action_ids.join(", ")} (
                       <Link
                         href="/board/eu-ai-act-readiness#governance-actions"
-                        className="text-cyan-800 underline"
+                        className="text-brand-800 underline"
                       >
                         Maßnahmen
                       </Link>

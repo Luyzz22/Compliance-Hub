@@ -15,6 +15,138 @@
   --font-mono: "SFMono-Regular", "Cascadia Code", ui-monospace, monospace;
 }
 
+/**
+ * Hausfarben als benannte Tailwind-Rollen.
+ *
+ * Die Arbeitsflächen der Anwendung griffen bisher zu rohen Paletten: Cyan als
+ * Marke, dazu Violett, Indigo und Himmelblau als jeweils eigener Akzent pro
+ * Admin-Panel. Jede Komponente brachte ihre eigene Farbe mit, und keine davon
+ * gehörte zum Haus.
+ *
+ * `brand-*` ist dieselbe Petrol-Navy-Rampe, die die öffentliche Fläche und das
+ * Schwesterprodukt NormPilot führen — Anker `brand-700` = #003856. Die Stufen
+ * sind so gewählt, dass eine stufengleiche Ablösung (`cyan-700` → `brand-700`)
+ * den Kontrast überall erhält oder verbessert: die Hausrampe ist auf jeder
+ * Stufe dunkler als Cyan.
+ *
+ * `brass-*` ist der Autoritätsakzent. Für Text auf hellem Grund ist allein
+ * `brass-600` freigegeben (5.2:1); die helleren Stufen sind Linien- und
+ * Flächenwerte.
+ */
+@theme {
+  --color-brand-50: #f0f5f8;
+  --color-brand-100: #dce8ef;
+  --color-brand-200: #b7d0de;
+  --color-brand-300: #88afc5;
+  --color-brand-400: #5288a6;
+  --color-brand-500: #2a6488;
+  --color-brand-600: #0e4d6e;
+  --color-brand-700: #003856;
+  --color-brand-800: #002a42;
+  --color-brand-900: #001e31;
+  --color-brand-950: #001320;
+
+  --color-brass-50: #fbf6ec;
+  --color-brass-100: #f6eedd;
+  --color-brass-200: #e8d5ac;
+  --color-brass-300: #d2b26f;
+  --color-brass-400: #b98f42;
+  --color-brass-500: #a07734;
+  --color-brass-600: #8a6626;
+  --color-brass-700: #6a4e22;
+  --color-brass-800: #4b3718;
+  --color-brass-900: #2f2210;
+
+  /* -------------------------------------------------------------------
+   * Neutrale Skala.
+   *
+   * `slate-*` bleibt der Name — es ist weiterhin *das Neutral*, und 3484
+   * Verwendungen umzuschreiben hätte einen riesigen Diff für dieselbe Rolle
+   * erzeugt. Was wechselt, sind die Werte: die kühl-neutrale Graphitskala des
+   * Hauses statt Tailwinds bläulichem Slate, dessen Blauanteil neben der
+   * Petrol-Navy-Marke als zweiter, konkurrierender Blauton las.
+   *
+   * Die Helligkeitsreihenfolge bleibt erhalten und jede Stufe ist etwas
+   * dunkler als zuvor. Das ist die sichere Richtung: Kontrast gegen Weiß
+   * steigt, Kontrast für helle Schrift auf dunklen Stufen ebenfalls.
+   * ------------------------------------------------------------------- */
+  --color-slate-50: #f5f8f9;
+  --color-slate-100: #ecf1f3;
+  --color-slate-200: #dde5e9;
+  --color-slate-300: #c3cfd6;
+  --color-slate-400: #7e8e9a;
+  --color-slate-500: #61717c;
+  --color-slate-600: #4e5c65;
+  --color-slate-700: #38444c;
+  --color-slate-800: #252f35;
+  --color-slate-900: #161e23;
+  --color-slate-950: #0c1216;
+
+  /* -------------------------------------------------------------------
+   * Statusrampen.
+   *
+   * Auch hier bleiben die Namen: `emerald`, `amber` und `red` sind die
+   * konventionellen Rollen für Erfolg, Warnung und Gefahr, und die Anwendung
+   * nutzt sie genau dafür. Die Werte sind die gedeckten Statusfarben des
+   * Hauses — Tailwinds Vorgaben sind für eine Prüfoberfläche zu grell und
+   * verfehlen an mehreren Stellen AA.
+   *
+   * Zwei Kontrastfehler verschwinden dabei: `bg-red-500 text-white` stand bei
+   * 3.8:1 und erreicht jetzt 5.8:1, `bg-emerald-500 text-white` stand bei
+   * 2.5:1 und erreicht jetzt 5.0:1.
+   * ------------------------------------------------------------------- */
+  --color-emerald-50: #e9f5ef;
+  --color-emerald-100: #cfe9dc;
+  --color-emerald-200: #b7decb;
+  --color-emerald-300: #8acbae;
+  --color-emerald-400: #4caf87;
+  --color-emerald-500: #0f7f5a;
+  --color-emerald-600: #0f6e4e;
+  --color-emerald-700: #0b563d;
+  --color-emerald-800: #094531;
+  --color-emerald-900: #073527;
+  --color-emerald-950: #042118;
+
+  --color-amber-50: #fbf3e3;
+  --color-amber-100: #f5e5c4;
+  --color-amber-200: #ead4a6;
+  --color-amber-300: #dcbb78;
+  --color-amber-400: #c4993f;
+  --color-amber-500: #a97210;
+  --color-amber-600: #8a5a0b;
+  --color-amber-700: #6e4809;
+  --color-amber-800: #573907;
+  --color-amber-900: #422b05;
+  --color-amber-950: #2a1b03;
+
+  --color-red-50: #fcedeb;
+  --color-red-100: #f8d8d3;
+  --color-red-200: #eec3be;
+  --color-red-300: #e0a099;
+  --color-red-400: #cd6659;
+  --color-red-500: #c02c1e;
+  --color-red-600: #a32217;
+  --color-red-700: #841b12;
+  --color-red-800: #6a150e;
+  --color-red-900: #51100b;
+  --color-red-950: #330a07;
+
+  /* `yellow` trug in dieser Anwendung dieselbe Bedeutung wie `amber` (eine
+     Sensitivitätsmarkierung) und bekommt deshalb dieselben Werte: eine
+     Warnfarbe genügt. */
+  --color-yellow-50: #fbf3e3;
+  --color-yellow-100: #f5e5c4;
+  --color-yellow-200: #ead4a6;
+  --color-yellow-300: #dcbb78;
+  --color-yellow-400: #c4993f;
+  --color-yellow-500: #a97210;
+  --color-yellow-600: #8a5a0b;
+  --color-yellow-700: #6e4809;
+  --color-yellow-800: #573907;
+  --color-yellow-900: #422b05;
+  --color-yellow-950: #2a1b03;
+}
+
 :root {
   color-scheme: light;
 

@@ -162,7 +162,7 @@ export default async function EuAiActReadinessPage() {
                 label={`Gesamt-Readiness: ${readinessPct}%`}
                 className="mt-2 h-3 w-full"
                 trackClassName="fill-slate-100"
-                indicatorClassName="fill-cyan-600"
+                indicatorClassName="fill-brand-600"
               />
               <p className="mt-2 text-sm text-slate-600">
                 Ziel empfohlen: ≥ 85&nbsp;% vor Stichtag.
@@ -246,7 +246,7 @@ export default async function EuAiActReadinessPage() {
                     {requirementGapSummary(r.traffic)}
                   </p>
                   {(r.open_actions_count_for_requirement ?? 0) > 0 ? (
-                    <span className="mt-2 inline-flex rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-900">
+                    <span className="mt-2 inline-flex rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-semibold text-brand-900">
                       {r.open_actions_count_for_requirement} offene Maßnahme
                       {(r.open_actions_count_for_requirement ?? 0) === 1 ? "" : "n"}
                     </span>

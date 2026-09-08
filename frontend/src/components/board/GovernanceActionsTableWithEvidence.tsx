@@ -48,14 +48,14 @@ export function GovernanceActionsTableWithEvidence({
                       {a.related_ai_system_id ? (
                         <Link
                           href={`/tenant/ai-systems/${encodeURIComponent(a.related_ai_system_id)}`}
-                          className="text-xs font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
+                          className="text-xs font-semibold text-brand-700 underline decoration-brand-700/30 hover:text-brand-900"
                         >
                           System
                         </Link>
                       ) : null}
                       <Link
                         href="/tenant/eu-ai-act"
-                        className="text-xs font-semibold text-cyan-700 underline decoration-cyan-700/30 hover:text-cyan-900"
+                        className="text-xs font-semibold text-brand-700 underline decoration-brand-700/30 hover:text-brand-900"
                       >
                         Bearbeiten
                       </Link>

@@ -27,7 +27,7 @@ function navLinkClass(active: boolean): string {
   return [
     "rounded-lg px-2.5 py-2 text-xs font-medium transition md:text-[0.8rem]",
     active
-      ? "bg-cyan-50 text-cyan-900 ring-1 ring-cyan-200/80"
+      ? "bg-brand-50 text-brand-900 ring-1 ring-brand-200/80"
       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
   ].join(" ");
 }
@@ -127,7 +127,7 @@ function DropdownLink({
       role="menuitem"
       className={`block px-3 py-2 text-sm no-underline ${
         active
-          ? "bg-cyan-50 font-semibold text-cyan-900"
+          ? "bg-brand-50 font-semibold text-brand-900"
           : "text-slate-700 hover:bg-slate-50"
       }`}
     >
@@ -227,7 +227,7 @@ function UserMenu({ active }: { active: boolean }) {
         onClick={() => setOpen((o) => !o)}
         className={`flex h-11 w-11 items-center justify-center rounded-lg transition md:h-9 md:w-9 ${
           active
-            ? "bg-cyan-50 text-cyan-900 ring-1 ring-cyan-200/80"
+            ? "bg-brand-50 text-brand-900 ring-1 ring-brand-200/80"
             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
         }`}
       >
@@ -552,7 +552,7 @@ function EnterpriseAppNav() {
           href="/settings"
           className={`ml-0.5 flex h-9 w-9 items-center justify-center rounded-lg transition md:ml-1 ${
             settingsActive
-              ? "bg-cyan-50 text-cyan-900 ring-1 ring-cyan-200/80"
+              ? "bg-brand-50 text-brand-900 ring-1 ring-brand-200/80"
               : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           }`}
           aria-label="Einstellungen"

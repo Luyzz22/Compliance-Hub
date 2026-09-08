@@ -83,11 +83,11 @@ export function TenantUsageSummary(props: TenantUsageSummaryProps) {
       )}
 
       {error ? (
-        <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
           {error}
           <button
             type="button"
-            className="ml-2 text-sm font-semibold text-rose-800 underline"
+            className="ml-2 text-sm font-semibold text-red-800 underline"
             onClick={() => void load()}
           >
             Erneut versuchen

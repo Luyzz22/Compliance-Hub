@@ -113,7 +113,7 @@ export function AiSystemsImportPanel(props: PanelProps = {}) {
         <p className="mt-2 text-xs text-slate-500">
           <Link
             href="/ai-systems-template.csv"
-            className="font-semibold text-cyan-700 underline decoration-cyan-600/30 hover:text-cyan-900"
+            className="font-semibold text-brand-700 underline decoration-brand-600/30 hover:text-brand-900"
             download
           >
             Muster-CSV herunterladen
@@ -129,13 +129,13 @@ export function AiSystemsImportPanel(props: PanelProps = {}) {
             ref={inputRef}
             type="file"
             accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-cyan-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-cyan-900 hover:file:bg-cyan-100"
+            className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-900 hover:file:bg-brand-100"
           />
         </div>
 
         {error ? (
           <p
-            className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900"
+            className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
             role="alert"
           >
             {error}
@@ -150,7 +150,7 @@ export function AiSystemsImportPanel(props: PanelProps = {}) {
                 {result.imported_count}
               </span>{" "}
               · fehlgeschlagen:{" "}
-              <span className="tabular-nums text-rose-700">
+              <span className="tabular-nums text-red-700">
                 {result.failed_count}
               </span>
             </p>

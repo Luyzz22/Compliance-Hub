@@ -163,7 +163,7 @@ function Stepper({ current, labels }: { current: number; labels: readonly string
                 isDone
                   ? "bg-emerald-500 text-white"
                   : isActive
-                    ? "bg-cyan-600 text-white"
+                    ? "bg-brand-600 text-white"
                     : "bg-slate-200 text-slate-500"
               }`}
             >
@@ -171,7 +171,7 @@ function Stepper({ current, labels }: { current: number; labels: readonly string
             </div>
             <span
               className={`hidden text-xs font-medium sm:inline ${
-                isActive ? "text-cyan-700" : "text-slate-500"
+                isActive ? "text-brand-700" : "text-slate-500"
               }`}
             >
               {label}
@@ -317,14 +317,14 @@ function Step2({
               onClick={() => toggle(fw.id)}
               className={`rounded-xl border p-4 text-left transition ${
                 selected
-                  ? "border-cyan-400 bg-cyan-50 ring-1 ring-cyan-300"
+                  ? "border-brand-400 bg-brand-50 ring-1 ring-brand-300"
                   : "border-slate-200 bg-white hover:border-slate-300"
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-900">{fw.name}</span>
                 {selected && (
-                  <span className={`${CH_BADGE} bg-cyan-100 text-cyan-700 ring-cyan-200/70`}>
+                  <span className={`${CH_BADGE} bg-brand-100 text-brand-700 ring-brand-200/70`}>
                     ✓ Ausgewählt
                   </span>
                 )}
@@ -343,7 +343,7 @@ function Step2({
             value={state.frameworks.length}
             max={FRAMEWORKS.length}
             label="Ausgewählte Compliance-Frameworks"
-            indicatorClassName="fill-cyan-500"
+            indicatorClassName="fill-brand-500"
           />
           <p className="mt-1 text-xs text-slate-600">
             {state.frameworks.length} von {FRAMEWORKS.length} Frameworks ausgewählt

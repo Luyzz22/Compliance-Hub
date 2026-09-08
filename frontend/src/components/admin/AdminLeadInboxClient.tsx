@@ -497,7 +497,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
             <h1 className="text-xl font-semibold text-slate-900">Lead-Inbox</h1>
             <a
               href="/admin/gtm"
-              className="text-xs font-medium text-cyan-800 underline hover:text-cyan-950"
+              className="text-xs font-medium text-brand-800 underline hover:text-brand-950"
             >
               GTM Command Center
             </a>
@@ -663,7 +663,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                   <div className="flex flex-wrap gap-1">
                     {row.contact_submission_count > 1 ? (
                       <span
-                        className="rounded bg-violet-100 px-1.5 py-0.5 text-xs text-violet-900"
+                        className="rounded bg-brand-100 px-1.5 py-0.5 text-xs text-brand-900"
                         title="Mehrfach eingereicht (gleiche E-Mail)"
                       >
                         ×{row.contact_submission_count}
@@ -676,7 +676,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                     ) : null}
                     {row.other_contacts_on_same_account > 0 ? (
                       <span
-                        className="rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-900"
+                        className="rounded bg-brand-100 px-1.5 py-0.5 text-xs text-brand-900"
                         title="Weitere Kontakte unter gleicher Firmen-/Domain-Gruppe"
                       >
                         Firma+
@@ -791,8 +791,8 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 ) : null}
               </div>
               {!detailLoading && productBridgeHint ? (
-                <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50/80 px-3 py-2 text-xs text-violet-950">
-                  <p className="font-semibold text-violet-900">Produkt-/Governance-Hinweis (Wave 33)</p>
+                <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50/80 px-3 py-2 text-xs text-brand-950">
+                  <p className="font-semibold text-brand-900">Produkt-/Governance-Hinweis (Wave 33)</p>
                   <p className="mt-1">
                     Readiness:{" "}
                     <span className="font-medium">{productBridgeHint.readiness_label_de}</span>
@@ -805,12 +805,12 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                     ) : null}
                     {productBridgeHint.pilot_flag ? " · Pilot (Mapping)" : null}
                   </p>
-                  <ul className="mt-2 list-inside list-disc space-y-0.5 text-[11px] text-violet-900/90">
+                  <ul className="mt-2 list-inside list-disc space-y-0.5 text-[11px] text-brand-900/90">
                     {productBridgeHint.governance_hints_de.map((line, i) => (
                       <li key={i}>{line}</li>
                     ))}
                   </ul>
-                  <p className="mt-2 text-[10px] text-violet-800/80">
+                  <p className="mt-2 text-[10px] text-brand-800/80">
                     Nur zur Orientierung; keine automatischen Änderungen in CRM oder Mandanten. Klassen:{" "}
                     {GTM_READINESS_LABELS_DE.no_footprint} / {GTM_READINESS_LABELS_DE.early_pilot} / …
                   </p>
@@ -873,7 +873,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                 <li
                   key={h.lead_id}
                   className={`rounded-lg border px-3 py-2 ${
-                    h.lead_id === displayLead.lead_id ? "border-violet-300 bg-violet-50" : "border-slate-200"
+                    h.lead_id === displayLead.lead_id ? "border-brand-300 bg-brand-50" : "border-slate-200"
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -883,7 +883,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                     {h.lead_id !== displayLead.lead_id ? (
                       <button
                         type="button"
-                        className="text-xs text-cyan-700 underline"
+                        className="text-xs text-brand-700 underline"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedId(h.lead_id);
@@ -892,7 +892,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                         öffnen
                       </button>
                     ) : (
-                      <span className="text-xs text-violet-700">aktuell</span>
+                      <span className="text-xs text-brand-700">aktuell</span>
                     )}
                   </div>
                   <p className="mt-1 text-xs text-slate-600">
@@ -1019,7 +1019,7 @@ export function AdminLeadInboxClient({ adminConfigured }: Props) {
                                 <button
                                   type="button"
                                   disabled={syncRetryingId === j.job_id}
-                                  className="text-cyan-700 underline disabled:opacity-50"
+                                  className="text-brand-700 underline disabled:opacity-50"
                                   onClick={() => void retryLeadSyncJob(displayLead.lead_id, j.job_id)}
                                 >
                                   {syncRetryingId === j.job_id ? "…" : "Retry"}

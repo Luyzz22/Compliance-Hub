@@ -175,7 +175,7 @@ export function ContactLeadForm() {
         </p>
         <p className="mt-4 text-xs text-emerald-900/70">
           Alternativ bei Rückfragen:{" "}
-          <a className="font-semibold text-cyan-800 underline" href={PUBLIC_CONTACT_MAILTO}>
+          <a className="font-semibold text-brand-800 underline" href={PUBLIC_CONTACT_MAILTO}>
             {PUBLIC_CONTACT_EMAIL}
           </a>
         </p>
@@ -192,7 +192,7 @@ export function ContactLeadForm() {
         ist <strong>unverbindlich</strong>. Erstkontakt ersetzt <strong>keine Rechtsberatung</strong>.
         Aufbewahrung und Löschung: siehe die Datenschutzerklärung auf{" "}
         <a
-          className="font-medium text-cyan-700 underline-offset-2 hover:underline"
+          className="font-medium text-brand-700 underline-offset-2 hover:underline"
           href="https://complywithai.de/"
         >
           complywithai.de
@@ -229,7 +229,7 @@ export function ContactLeadForm() {
               maxLength={120}
               onFocus={markStarted}
               onChange={clearError}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
           <div>
@@ -245,7 +245,7 @@ export function ContactLeadForm() {
               maxLength={254}
               onFocus={markStarted}
               onChange={clearError}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
         </div>
@@ -263,7 +263,7 @@ export function ContactLeadForm() {
             maxLength={200}
             onFocus={markStarted}
             onChange={clearError}
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </div>
 
@@ -278,7 +278,7 @@ export function ContactLeadForm() {
             defaultValue=""
             onFocus={markStarted}
             onChange={clearError}
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           >
             <option value="" disabled>
               Bitte wählen
@@ -303,7 +303,7 @@ export function ContactLeadForm() {
             onFocus={markStarted}
             onChange={clearError}
             placeholder="z. B. gewünschtes Paket, Zeitfenster, Fragen zu SAP oder Kanzlei-Dossiers"
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </div>
 
@@ -329,7 +329,7 @@ export function ContactLeadForm() {
             </p>
             <p className="mt-2 text-xs">
               Direkter Kontakt:{" "}
-              <a className="font-semibold text-cyan-800 underline" href={PUBLIC_CONTACT_MAILTO}>
+              <a className="font-semibold text-brand-800 underline" href={PUBLIC_CONTACT_MAILTO}>
                 {PUBLIC_CONTACT_EMAIL}
               </a>
             </p>

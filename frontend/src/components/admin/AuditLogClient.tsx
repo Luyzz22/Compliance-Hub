@@ -63,7 +63,7 @@ export function AuditLogClient() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
             Phase 10 · ISO 27001 / GoBD / NIS2 / DSGVO
           </p>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-[2rem] sm:leading-tight">
@@ -108,7 +108,7 @@ export function AuditLogClient() {
                   onClick={() => setTimeRange(tr.days)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                     timeRange === tr.days
-                      ? "bg-cyan-600 text-white"
+                      ? "bg-brand-600 text-white"
                       : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                   }`}
                 >
@@ -124,7 +124,7 @@ export function AuditLogClient() {
               value={actorFilter}
               onChange={(e) => setActorFilter(e.target.value)}
               placeholder="E-Mail oder ID…"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
           <div className="flex-1">
@@ -134,7 +134,7 @@ export function AuditLogClient() {
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
               placeholder="login_success, role_change…"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
           <div className="flex-1">
@@ -144,7 +144,7 @@ export function AuditLogClient() {
               value={resourceFilter}
               onChange={(e) => setResourceFilter(e.target.value)}
               placeholder="session, ai_system…"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </div>
         </div>
@@ -277,7 +277,7 @@ export function AuditLogClient() {
           </div>
           <a
             href="/admin/audit-log/activity-export"
-            className="inline-flex items-center justify-center rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700"
+            className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
           >
             Übersicht öffnen →
           </a>

@@ -214,12 +214,12 @@ export default function AdvisorPortfolioPage() {
       ) : null}
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           <p>{error}</p>
           {advisorId ? (
             <button
               type="button"
-              className="mt-3 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-900 hover:bg-rose-100"
+              className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-900 hover:bg-red-100"
               onClick={() => setLoadAttempt((n) => n + 1)}
             >
               Erneut laden
@@ -241,7 +241,7 @@ export default function AdvisorPortfolioPage() {
                 type="button"
                 className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
                   segmentFilter === "aufbau_monitoring"
-                    ? "border-rose-300 bg-rose-50 text-rose-900"
+                    ? "border-red-300 bg-red-50 text-red-900"
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                 }`}
                 onClick={() => toggleSegment("aufbau_monitoring")}
@@ -278,7 +278,7 @@ export default function AdvisorPortfolioPage() {
                   type="button"
                   className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
                     regulatoryFilter === key
-                      ? "border-violet-400 bg-violet-50 text-violet-950"
+                      ? "border-brand-400 bg-brand-50 text-brand-950"
                       : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                   }`}
                   onClick={() => toggleRegulatory(key)}
@@ -295,7 +295,7 @@ export default function AdvisorPortfolioPage() {
                   type="button"
                   className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
                     pillarFilter === p
-                      ? "border-cyan-400 bg-cyan-50 text-cyan-950"
+                      ? "border-brand-400 bg-brand-50 text-brand-950"
                       : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                   }`}
                   onClick={() => togglePillar(p)}

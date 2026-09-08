@@ -160,7 +160,7 @@ export default async function BoardSuppliersPage() {
               {overview.by_risk_level.map((entry) => (
                 <tr
                   key={entry.risk_level}
-                  className="border-b border-slate-100 transition hover:bg-cyan-50/40"
+                  className="border-b border-slate-100 transition hover:bg-brand-50/40"
                 >
                   <td className="px-4 py-3 font-semibold text-slate-900">
                     {riskLevelLabel(entry.risk_level)}
@@ -199,7 +199,7 @@ export default async function BoardSuppliersPage() {
                 {topSystems.map((row) => (
                   <tr
                     key={row.ai_system_id}
-                    className="border-b border-slate-100 transition hover:bg-cyan-50/40"
+                    className="border-b border-slate-100 transition hover:bg-brand-50/40"
                   >
                     <td className="px-4 py-3 font-semibold text-slate-900">
                       {row.ai_system_name}

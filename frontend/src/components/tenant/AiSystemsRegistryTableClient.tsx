@@ -64,7 +64,7 @@ export function AiSystemsRegistryTableClient({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="z. B. Chatbot, sys-…"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-cyan-500/0 transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-500/20"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-brand-500/0 transition focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20"
           />
         </label>
         <label className="flex min-w-[9rem] flex-col gap-1 text-xs font-medium text-slate-600">
@@ -72,7 +72,7 @@ export function AiSystemsRegistryTableClient({
           <select
             value={bu}
             onChange={(e) => setBu(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-500/20"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20"
           >
             <option value="">Alle</option>
             {businessUnits.map((b) => (
@@ -87,7 +87,7 @@ export function AiSystemsRegistryTableClient({
           <select
             value={risk}
             onChange={(e) => setRisk(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-500/20"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20"
           >
             <option value="">Alle</option>
             <option value="high">high</option>
@@ -101,7 +101,7 @@ export function AiSystemsRegistryTableClient({
             value={actCat}
             onChange={(e) => setActCat(e.target.value)}
             placeholder="Kategorie"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-500/20"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20"
           />
         </label>
         <p className="text-xs text-[var(--sbs-text-secondary)] sm:ml-auto sm:pb-2">
@@ -135,7 +135,7 @@ export function AiSystemsRegistryTableClient({
                     className={classNames(
                       "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
                       s.risklevel === "high" &&
-                        "border border-rose-200 bg-rose-50 text-rose-800",
+                        "border border-red-200 bg-red-50 text-red-800",
                       s.risklevel === "limited" &&
                         "border border-amber-200 bg-amber-50 text-amber-900",
                       s.risklevel === "low" &&

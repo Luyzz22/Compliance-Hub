@@ -50,7 +50,7 @@ export function ContactPathways() {
     <section className="max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-[0_32px_100px_rgba(7,17,31,0.11)]">
       <div className="grid lg:grid-cols-[1fr_0.9fr]">
         <div className="p-6 sm:p-8 lg:p-10">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-brand-700">
             Gespräch auswählen
           </p>
           <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-3xl">
@@ -78,11 +78,11 @@ export function ContactPathways() {
           </div>
         </div>
 
-        <div className="flex flex-col justify-center border-t border-slate-200/80 bg-gradient-to-br from-slate-50 to-cyan-50/50 p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
+        <div className="flex flex-col justify-center border-t border-slate-200/80 bg-gradient-to-br from-slate-50 to-brand-50/50 p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#07111f] font-mono text-xs font-semibold text-white shadow-lg" aria-hidden>
             0{active + 1}
           </div>
-          <p className="mt-6 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
+          <p className="mt-6 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
             {pathway.label}
           </p>
           <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">

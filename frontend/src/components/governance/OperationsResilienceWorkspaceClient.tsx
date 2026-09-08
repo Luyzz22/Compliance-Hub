@@ -73,7 +73,7 @@ export function OperationsResilienceWorkspaceClient({ tenantId }: Props) {
   const dashboard = (
     <div className="space-y-8">
       {loadError ? (
-        <p className="text-sm text-rose-800" role="alert">
+        <p className="text-sm text-red-800" role="alert">
           {loadError}
         </p>
       ) : null}
@@ -105,7 +105,7 @@ export function OperationsResilienceWorkspaceClient({ tenantId }: Props) {
         </article>
         <article className={`${CH_CARD} border-slate-200/80`}>
           <p className={CH_SECTION_LABEL}>Services down</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-800">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-red-800">
             {kpis?.down_services ?? "—"}
           </p>
         </article>

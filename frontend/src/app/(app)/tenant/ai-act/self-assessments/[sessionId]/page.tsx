@@ -25,9 +25,9 @@ export default async function TenantSelfAssessmentSessionPage({ params }: PagePr
   }
   if (!sessionRes.ok || !sessionRes.data) {
     return (
-      <div className="mx-auto max-w-3xl rounded-2xl border border-rose-200 bg-rose-50/80 p-6 shadow-sm">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50/80 p-6 shadow-sm">
         <h1 className="text-lg font-semibold text-slate-900">Self-Assessment</h1>
-        <p className="mt-2 text-sm text-rose-900" role="alert">
+        <p className="mt-2 text-sm text-red-900" role="alert">
           {!sessionRes.ok
             ? `Sitzung konnte nicht geladen werden (${sessionRes.status}): ${sessionRes.message}`
             : "Sitzung konnte nicht geladen werden: leere Antwort."}

@@ -85,7 +85,7 @@ export function AdvisorBoardReportsPanel({ advisorId }: { advisorId: string }) {
           <p className="mt-4 text-sm text-slate-500">Lade Reports…</p>
         ) : null}
         {err ? (
-          <p className="mt-4 text-sm text-rose-700">{err}</p>
+          <p className="mt-4 text-sm text-red-700">{err}</p>
         ) : null}
 
         {!loading && !err && rows.length === 0 ? (

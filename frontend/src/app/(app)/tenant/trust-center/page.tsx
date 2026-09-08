@@ -68,7 +68,7 @@ const assetCategories = [
 
 const accessTiers = [
   { role: "Prospect", access: "Öffentliche Übersicht, Security-Overview", color: "bg-slate-100 text-slate-700" },
-  { role: "Customer", access: "Policies, TOMs, Compliance-Snapshots", color: "bg-cyan-50 text-cyan-800" },
+  { role: "Customer", access: "Policies, TOMs, Compliance-Snapshots", color: "bg-brand-50 text-brand-800" },
   { role: "Auditor", access: "Zertifikate, Audit-Reports, Evidence Bundles", color: "bg-amber-50 text-amber-800" },
   { role: "Internal Reviewer", access: "Vollzugriff inkl. Board-PDFs", color: "bg-emerald-50 text-emerald-800" },
 ];
@@ -144,7 +144,7 @@ export default function TenantTrustCenterPage() {
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <Link
             href="/tenant/evidence-bundles"
-            className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-center transition hover:border-cyan-200 hover:bg-cyan-50/50"
+            className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-center transition hover:border-brand-200 hover:bg-brand-50/50"
           >
             <span className="text-2xl" aria-hidden>📦</span>
             <p className="mt-2 text-sm font-medium text-slate-900">Evidence Bundles</p>
@@ -152,7 +152,7 @@ export default function TenantTrustCenterPage() {
           </Link>
           <Link
             href="/tenant/compliance-mapping"
-            className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-center transition hover:border-cyan-200 hover:bg-cyan-50/50"
+            className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-center transition hover:border-brand-200 hover:bg-brand-50/50"
           >
             <span className="text-2xl" aria-hidden>🗺️</span>
             <p className="mt-2 text-sm font-medium text-slate-900">Compliance Mapping</p>
@@ -160,7 +160,7 @@ export default function TenantTrustCenterPage() {
           </Link>
           <Link
             href="/tenant/audit-log"
-            className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-center transition hover:border-cyan-200 hover:bg-cyan-50/50"
+            className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-center transition hover:border-brand-200 hover:bg-brand-50/50"
           >
             <span className="text-2xl" aria-hidden>📋</span>
             <p className="mt-2 text-sm font-medium text-slate-900">Audit-Log</p>

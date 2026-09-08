@@ -5,13 +5,13 @@ import type { HealthStatus } from "@/lib/internalHealth";
 const STATUS_RING: Record<HealthStatus, string> = {
   up: "bg-emerald-50 text-emerald-900 ring-emerald-200/90",
   degraded: "bg-amber-50 text-amber-950 ring-amber-200/90",
-  down: "bg-rose-50 text-rose-900 ring-rose-200/90",
+  down: "bg-red-50 text-red-900 ring-red-200/90",
 };
 
 const STATUS_DOT: Record<HealthStatus, string> = {
   up: "bg-emerald-500",
   degraded: "bg-amber-500",
-  down: "bg-rose-600",
+  down: "bg-red-600",
 };
 
 const STATUS_LABEL_DE: Record<HealthStatus, string> = {

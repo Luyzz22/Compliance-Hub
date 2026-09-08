@@ -40,14 +40,14 @@ export function AuditActivityExportClient() {
           <nav className="mb-2 flex items-center gap-1 text-xs">
             <a
               href="/admin/audit-log"
-              className="text-xs font-medium text-slate-500 transition hover:text-cyan-700"
+              className="text-xs font-medium text-slate-500 transition hover:text-brand-700"
             >
               Audit-Log
             </a>
             <span className="select-none text-xs text-slate-300">/</span>
             <span className="text-xs font-semibold text-slate-800">Aktivitätsübersicht</span>
           </nav>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
             Audit-Trail · Aggregation
           </p>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-[2rem] sm:leading-tight">

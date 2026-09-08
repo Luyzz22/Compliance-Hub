@@ -342,7 +342,7 @@ export function TransparencyAssessmentEditor({
         </button>
       </div>
       {error ? (
-        <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           {error}
         </p>
       ) : null}

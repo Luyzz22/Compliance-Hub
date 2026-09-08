@@ -96,7 +96,7 @@ export default async function InvestmentPortfolioPage() {
           label="Sequenzieren"
           value={portfolio.summary.sequence_count}
           detail="Abhängigkeiten und Delivery-Reihenfolge klären"
-          accent="text-cyan-800"
+          accent="text-brand-800"
         />
         <SummaryCard
           label="Finance Inputs offen"

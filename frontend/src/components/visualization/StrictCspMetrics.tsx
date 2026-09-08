@@ -11,7 +11,7 @@ export function HorizontalMetricBar({
   label,
   className = "h-2 w-full",
   trackClassName = "fill-slate-200",
-  indicatorClassName = "fill-cyan-600",
+  indicatorClassName = "fill-brand-600",
 }: {
   value: number;
   max?: number;
@@ -147,7 +147,7 @@ export function MetricRing({
   children,
   className = "h-28 w-28",
   trackClassName = "stroke-slate-200",
-  indicatorClassName = "stroke-cyan-600",
+  indicatorClassName = "stroke-brand-600",
 }: {
   value: number;
   label: string;

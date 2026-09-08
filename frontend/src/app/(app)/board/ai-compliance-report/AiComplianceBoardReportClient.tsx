@@ -187,7 +187,7 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
       </div>
 
       {loadErr ? (
-        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           {loadErr}
         </div>
       ) : null}
@@ -349,7 +349,7 @@ export function AiComplianceBoardReportClient({ tenantId }: { tenantId: string }
                 </label>
               ))}
             </div>
-            {genErr ? <p className="mt-3 text-sm text-rose-700">{genErr}</p> : null}
+            {genErr ? <p className="mt-3 text-sm text-red-700">{genErr}</p> : null}
             {genBusy ? (
               <p className="mt-3 text-sm text-slate-600" role="status">
                 Die KI analysiert Ihre aktuelle Abdeckung und generiert ein Board-taugliches Summary…

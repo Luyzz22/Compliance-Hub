@@ -27,7 +27,7 @@ interface Props {
 
 function exposurePillClass(level: TenantRiskOverview["nis2ExposureLevel"]): string {
   if (level === "high") {
-    return "bg-rose-100 text-rose-900 ring-rose-200/80";
+    return "bg-red-100 text-red-900 ring-red-200/80";
   }
   if (level === "medium") {
     return "bg-amber-100 text-amber-950 ring-amber-200/80";
@@ -75,7 +75,7 @@ export function TenantRiskOverviewPanel({ overview }: Props) {
         </article>
         <article className={`${CH_CARD} border-slate-200/80`}>
           <p className={CH_SECTION_LABEL}>AI Act · HIGH Risk</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-700">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-red-700">
             {overview.aiHighRiskCount}
           </p>
           <p className="mt-1 text-xs text-slate-600">LIMITED: {overview.aiLimitedRiskCount}</p>

@@ -147,7 +147,7 @@ export function BoardWhatIfSimulatorClient() {
                     onClick={() => toggleSystem(s.id)}
                     className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 transition ${
                       on
-                        ? "bg-cyan-600 text-white ring-cyan-700"
+                        ? "bg-brand-600 text-white ring-brand-700"
                         : "bg-slate-50 text-slate-700 ring-slate-200 hover:bg-slate-100"
                     }`}
                   >
@@ -237,7 +237,7 @@ export function BoardWhatIfSimulatorClient() {
       )}
 
       {err ? (
-        <p className="mt-3 text-sm text-rose-700" role="alert">
+        <p className="mt-3 text-sm text-red-700" role="alert">
           {err}
         </p>
       ) : null}

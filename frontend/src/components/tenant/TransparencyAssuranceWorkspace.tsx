@@ -29,12 +29,12 @@ const POSTURE_LABELS: Record<string, string> = {
 function postureClasses(posture: string): string {
   if (posture === "verified") return "bg-emerald-50 text-emerald-800 ring-emerald-200";
   if (posture === "review_overdue" || posture === "action_required") {
-    return "bg-rose-50 text-rose-800 ring-rose-200";
+    return "bg-red-50 text-red-800 ring-red-200";
   }
   if (posture === "scope_incomplete" || posture === "requires_scope") {
     return "bg-amber-50 text-amber-900 ring-amber-200";
   }
-  return "bg-cyan-50 text-cyan-900 ring-cyan-200";
+  return "bg-brand-50 text-brand-900 ring-brand-200";
 }
 
 function deadlineLabel(days: number): string {
@@ -129,7 +129,7 @@ export function TransparencyAssuranceWorkspace({
         </article>
         <article className={CH_CARD}>
           <p className={CH_SECTION_LABEL}>Review überfällig</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-rose-700">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-red-700">
             {data.summary.overdue_review_count}
           </p>
         </article>
@@ -239,7 +239,7 @@ export function TransparencyAssuranceWorkspace({
       )}
 
       {refreshError ? (
-        <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           {refreshError}
         </p>
       ) : null}

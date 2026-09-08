@@ -159,7 +159,7 @@ export default function TenantEvidenceBundlesPage() {
                   </div>
                   {bundle.signed && bundle.keyId && (
                     <div className="mt-1 flex items-center gap-1.5">
-                      <span className={`${CH_BADGE} bg-indigo-50 text-indigo-700 ring-indigo-200/70`}>
+                      <span className={`${CH_BADGE} bg-brand-50 text-brand-700 ring-brand-200/70`}>
                         🔑 Key: {bundle.keyId}
                       </span>
                       {bundle.longTermValid ? (
@@ -177,7 +177,7 @@ export default function TenantEvidenceBundlesPage() {
                     {bundle.frameworks.map((fw) => (
                       <span
                         key={fw}
-                        className="inline-flex items-center rounded-full bg-cyan-50 px-2 py-0.5 text-[0.6rem] font-medium text-cyan-700"
+                        className="inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-[0.6rem] font-medium text-brand-700"
                       >
                         {fw}
                       </span>

@@ -106,7 +106,7 @@ export default function ResetPasswordPage() {
                 required
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
               />
             </div>
 
@@ -124,7 +124,7 @@ export default function ResetPasswordPage() {
                 minLength={10}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
               />
             </div>
 
@@ -142,7 +142,7 @@ export default function ResetPasswordPage() {
           <p className="mt-4 text-sm text-slate-500">
             <Link
               href="/auth/forgot-password"
-              className="font-medium text-cyan-700 underline underline-offset-2"
+              className="font-medium text-brand-700 underline underline-offset-2"
             >
               Neuen Token anfordern
             </Link>

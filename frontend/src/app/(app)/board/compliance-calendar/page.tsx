@@ -215,7 +215,7 @@ export default function ComplianceCalendarPage() {
     <div className="min-w-0">
       {/* ── Header ── */}
       <header className="mb-8 border-b border-slate-200/80 pb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
           Compliance Calendar
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
@@ -417,7 +417,7 @@ export default function ComplianceCalendarPage() {
                       {d.title}
                     </h3>
                     {d.is_system && (
-                      <span className="rounded border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-cyan-700">
+                      <span className="rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-brand-700">
                         System
                       </span>
                     )}
@@ -483,7 +483,7 @@ export default function ComplianceCalendarPage() {
           </li>
           <li>
             System-Deadlines (
-            <span className="rounded border border-cyan-200 bg-cyan-50 px-1 text-[0.6rem] font-semibold uppercase text-cyan-700">
+            <span className="rounded border border-brand-200 bg-brand-50 px-1 text-[0.6rem] font-semibold uppercase text-brand-700">
               System
             </span>
             ) sind für alle Mandanten sichtbar und nicht editierbar.

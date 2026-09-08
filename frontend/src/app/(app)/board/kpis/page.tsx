@@ -277,7 +277,7 @@ export default async function BoardKpisPage() {
           <p className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href="/board/eu-ai-act-readiness"
-              className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
+              className="text-xs font-semibold text-brand-800 underline decoration-brand-700/30 hover:text-brand-950"
             >
               Zur Readiness-Roadmap →
             </Link>
@@ -314,7 +314,7 @@ export default async function BoardKpisPage() {
           <p className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href="/board/incidents"
-              className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
+              className="text-xs font-semibold text-brand-800 underline decoration-brand-700/30 hover:text-brand-950"
             >
               Zum Incident-Drilldown →
             </Link>
@@ -348,7 +348,7 @@ export default async function BoardKpisPage() {
           <p className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href="/board/suppliers"
-              className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
+              className="text-xs font-semibold text-brand-800 underline decoration-brand-700/30 hover:text-brand-950"
             >
               Supplier-Drilldown →
             </Link>
@@ -382,7 +382,7 @@ export default async function BoardKpisPage() {
           <p className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href="/tenant/eu-ai-act"
-              className="text-xs font-semibold text-cyan-800 underline decoration-cyan-700/30 hover:text-cyan-950"
+              className="text-xs font-semibold text-brand-800 underline decoration-brand-700/30 hover:text-brand-950"
             >
               Tenant-Cockpit →
             </Link>
@@ -402,7 +402,7 @@ export default async function BoardKpisPage() {
 
       <section
         aria-label="Exporte für Vorstand und Prüfer"
-        className={`${CH_CARD} mb-8 border-cyan-100 bg-gradient-to-br from-white to-cyan-50/40`}
+        className={`${CH_CARD} mb-8 border-brand-100 bg-gradient-to-br from-white to-brand-50/40`}
       >
         <h2 className={CH_SECTION_LABEL}>Export &amp; Berichte</h2>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
@@ -576,29 +576,29 @@ export default async function BoardKpisPage() {
             </div>
           </div>
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="flex min-w-0 flex-col rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
+            <div className="flex min-w-0 flex-col rounded-xl border border-brand-100 bg-brand-50/80 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-800">
                 NIS2 / KRITIS KPI (Mittelwert)
               </h3>
-              <p className="mt-2 text-2xl font-semibold text-indigo-950">
+              <p className="mt-2 text-2xl font-semibold text-brand-950">
                 {complianceOverview.nis2_kritis_kpi_mean_percent != null
                   ? `${Math.round(complianceOverview.nis2_kritis_kpi_mean_percent)} %`
                   : "–"}
               </p>
-              <p className="mt-1 text-xs text-indigo-900/80">
+              <p className="mt-1 text-xs text-brand-900/80">
                 Durchschnitt aller gepflegten Incident-/Supplier-/OT-IT-KPIs (0–100).
               </p>
             </div>
-            <div className="flex min-w-0 flex-col rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-800">
+            <div className="flex min-w-0 flex-col rounded-xl border border-brand-100 bg-brand-50/80 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-800">
                 NIS2 / KRITIS KPI-Abdeckung
               </h3>
-              <p className="mt-2 text-2xl font-semibold text-indigo-950">
+              <p className="mt-2 text-2xl font-semibold text-brand-950">
                 {formatPercent(
                   complianceOverview.nis2_kritis_systems_full_coverage_ratio ?? 0,
                 )}
               </p>
-              <p className="mt-1 text-xs text-indigo-900/80">
+              <p className="mt-1 text-xs text-brand-900/80">
                 Anteil KI-Systeme mit allen drei KPI-Typen befüllt.
               </p>
             </div>

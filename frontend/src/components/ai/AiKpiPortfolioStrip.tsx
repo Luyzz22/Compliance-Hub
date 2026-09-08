@@ -108,7 +108,7 @@ export function AiKpiPortfolioStrip({
       </div>
 
       {busy ? <p className="mt-3 text-sm text-slate-500">Lade KPI-Summary…</p> : null}
-      {err ? <p className="mt-3 text-sm text-rose-700">{err}</p> : null}
+      {err ? <p className="mt-3 text-sm text-red-700">{err}</p> : null}
 
       {!busy && !err && data ? (
         <div className="mt-4 space-y-3">
@@ -119,7 +119,7 @@ export function AiKpiPortfolioStrip({
               <>
                 {" "}
                 · Systeme mit roter KPI-Ampel:{" "}
-                <span className="font-semibold text-rose-800">
+                <span className="font-semibold text-red-800">
                   {data.per_system_critical.length}
                 </span>
               </>
@@ -128,7 +128,7 @@ export function AiKpiPortfolioStrip({
           {top.length === 0 ? (
             <p className="text-sm text-slate-600">
               Noch keine KPI-Zeitreihen gepflegt – Werte je System unter{" "}
-              <Link href="/tenant/ai-systems" className="font-semibold text-cyan-800 underline">
+              <Link href="/tenant/ai-systems" className="font-semibold text-brand-800 underline">
                 KI-Register
               </Link>{" "}
               erfassen.
