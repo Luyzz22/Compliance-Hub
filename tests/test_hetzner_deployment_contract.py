@@ -175,7 +175,10 @@ def test_audit_key_is_mounted_only_into_the_backend() -> None:
 def test_frontend_is_standalone_and_has_no_vercel_runtime_dependency() -> None:
     next_config = (ROOT / "frontend" / "next.config.ts").read_text(encoding="utf-8")
     package = json.loads((ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))
-    assert 'output: "standalone"' in next_config
+    # Container-Builds sind standalone. Nur der Vercel-Plattformadapter, der mit
+    # `standalone` abbricht, bekommt seine eigene Ausgabe; `VERCEL` ist im Container
+    # durch Preflight und Release-Gate verboten.
+    assert 'output: process.env.VERCEL ? undefined : "standalone"' in next_config
     assert "@vercel/oidc" not in package.get("dependencies", {})
     assert "@azure/storage-blob" not in package.get("dependencies", {})
     assert "@azure/identity" not in package.get("dependencies", {})

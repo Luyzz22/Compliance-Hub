@@ -23,7 +23,24 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  /**
+   * Ausgabeformat nach Zielplattform.
+   *
+   * Der Hetzner-Container kopiert `.next/standalone` (siehe `Dockerfile.hetzner`)
+   * und braucht deshalb `standalone`. Auf Vercel verpackt der Plattform-Adapter
+   * die Ausgabe selbst — und mit `standalone` bricht dessen `onBuildComplete` ab:
+   * `ENOENT … .next/next-server.js.nft.json`. Reproduziert mit Vercel CLI 61.1.0
+   * und `NEXT_ENABLE_ADAPTER=1`; ohne `standalone` baut derselbe Stand durch.
+   *
+   * Der Fehler kam mit PR #290, zusammen mit der Plattformsperre im Release-Gate,
+   * und blieb hinter ihr verborgen: solange das Gate jeden Vercel-Build vorher
+   * abbrach, kam kein Build bis zu dieser Stelle.
+   *
+   * `VERCEL` setzt ausschließlich die Plattform. Im Container verbieten Preflight
+   * und Release-Gate die Variable, ein Container-Build entsteht also nie ohne
+   * `standalone`.
+   */
+  output: process.env.VERCEL ? undefined : "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
   turbopack: {
