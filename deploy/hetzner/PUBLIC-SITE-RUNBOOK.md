@@ -39,14 +39,32 @@ ohne die Schutzwirkung zu erhöhen.
 
   Voraussetzung im Vercel-Projekt: `COMPLIANCEHUB_RELEASE_PROFILE=public_site`
   muss als Environment-Variable gesetzt sein, sonst greift die Sperre wie zuvor.
+  (In Produktion ist sie gesetzt — der Build vom 30.09.2026 hat sie bestätigt.)
+
+  **Zweite Sperre, ebenfalls behoben.** Hinter dem Gate verbarg sich ein zweiter
+  Fehler aus demselben PR #290: `output: "standalone"` in `next.config.ts`. Der
+  Vercel-Plattformadapter bricht damit in `onBuildComplete` ab
+  (`ENOENT … .next/next-server.js.nft.json`). Lokal reproduzierbar nur mit
+  `NEXT_ENABLE_ADAPTER=1` und Vercel CLI 61.1.0 — ein normaler `next build`
+  zeigt den Fehler nicht. `standalone` gilt jetzt nur noch außerhalb von Vercel;
+  der Container behält es, denn `Dockerfile.hetzner` kopiert `.next/standalone`.
+
+  **Stand 30.09.2026:** Production-Deployment `dpl_ASzN8GEHgEHZxZttx8D1s63NxHST`
+  aus Commit `ebd9876` ist `READY` und liefert `complywithai.de` und
+  `www.complywithai.de` aus. Erster erfolgreicher Build seit dem 11.08.2026.
 - `preproduction-build.yml` ist **noch nie gelaufen**; der self-hosted Runner
   mit dem Label `compliancehub-hetzner-release` existiert nicht.
 - Die GitHub-Verknüpfung des Vercel-Projekts `compliance-hub` ist **getrennt**
-  (`link: null`). Solange sie fehlt, löst kein Push einen Build aus — unabhängig
-  vom Gate. Sie ist in den Projekteinstellungen wiederherzustellen.
+  (`link: null`). Solange sie fehlt, löst kein Push einen Build aus. Das
+  Deployment vom 30.09. wurde deshalb über die Vercel-API direkt aus
+  `Luyzz22/Compliance-Hub@main` angestoßen. Die Verknüpfung selbst lässt sich
+  über die verfügbare API nicht herstellen, nur in den Projekteinstellungen:
+  *Settings → Git → Connect Git Repository → `Luyzz22/Compliance-Hub`*,
+  Root Directory `frontend`, Production Branch `main`.
 
-Die Website hing damit auf einem Stand von vor mehreren Releases fest. Der
-Gate-Blocker ist gelöst; offen bleibt die GitHub-Verknüpfung.
+Die Website hing damit auf einem Stand von vor mehreren Releases fest. Beide
+Build-Sperren sind gelöst und die Seite ist aktuell; offen bleibt nur die
+GitHub-Verknüpfung für automatische Deployments bei jedem Push.
 
 ## Reihenfolge — die Website darf nicht offline gehen
 
