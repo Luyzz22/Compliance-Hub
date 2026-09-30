@@ -54,17 +54,20 @@ ohne die Schutzwirkung zu erhöhen.
   `www.complywithai.de` aus. Erster erfolgreicher Build seit dem 11.08.2026.
 - `preproduction-build.yml` ist **noch nie gelaufen**; der self-hosted Runner
   mit dem Label `compliancehub-hetzner-release` existiert nicht.
-- Die GitHub-Verknüpfung des Vercel-Projekts `compliance-hub` ist **getrennt**
-  (`link: null`). Solange sie fehlt, löst kein Push einen Build aus. Das
-  Deployment vom 30.09. wurde deshalb über die Vercel-API direkt aus
-  `Luyzz22/Compliance-Hub@main` angestoßen. Die Verknüpfung selbst lässt sich
-  über die verfügbare API nicht herstellen, nur in den Projekteinstellungen:
-  *Settings → Git → Connect Git Repository → `Luyzz22/Compliance-Hub`*,
-  Root Directory `frontend`, Production Branch `main`.
+- Die GitHub-Verknüpfung des Vercel-Projekts `compliance-hub` war **getrennt**
+  (`link: null`); kein Push löste einen Build aus. Das Deployment vom 30.09.
+  wurde deshalb über die Vercel-API direkt aus `Luyzz22/Compliance-Hub@main`
+  angestoßen.
+
+  **Wiederhergestellt am 30.09.2026** über die Projekteinstellungen
+  (*Settings → Git → Connect Git Repository*). Die API bietet dafür keinen Weg;
+  sollte die Verknüpfung erneut abreißen, ist sie dort herzustellen — Root
+  Directory `frontend`, Production Branch `main`. Jeder Push auf `main` rollt
+  seither automatisch nach `complywithai.de` aus.
 
 Die Website hing damit auf einem Stand von vor mehreren Releases fest. Beide
-Build-Sperren sind gelöst und die Seite ist aktuell; offen bleibt nur die
-GitHub-Verknüpfung für automatische Deployments bei jedem Push.
+Build-Sperren sind gelöst, die GitHub-Verknüpfung ist wiederhergestellt, und
+jeder Push auf `main` rollt wieder automatisch aus.
 
 ## Reihenfolge — die Website darf nicht offline gehen
 
