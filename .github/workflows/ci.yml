@@ -63,7 +63,7 @@ jobs:
           COMPLIANCEHUB_ENV_FILE=.env.synthetic-demo.example docker compose --env-file .env.synthetic-demo.example -f compose.synthetic-demo.yml config --quiet
 
       - name: Upload backend SBOM
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backend-cyclonedx-sbom
           path: backend-sbom.cdx.json
@@ -107,7 +107,7 @@ jobs:
         run: npm run build
 
       - name: Upload frontend SBOM
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: frontend-cyclonedx-sbom
           path: frontend/frontend-sbom.cdx.json
@@ -160,7 +160,7 @@ jobs:
 
       - name: Upload container scan evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: trivy-${{ matrix.component }}-${{ github.sha }}
           path: trivy-${{ matrix.component }}.json
