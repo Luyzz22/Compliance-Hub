@@ -16,3 +16,7 @@ node_modules/
 output/playwright/
 *-sbom.cdx.json
 build/
+
+# Impeccable: engine binary is fetched + checksum-verified on demand; hooks stay personal
+.claude/skills/impeccable/scripts/bin/
+.claude/settings.local.json
