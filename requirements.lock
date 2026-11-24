@@ -75,9 +75,9 @@ backoff==2.2.1 \
     --hash=sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba \
     --hash=sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8
     # via posthog
-certifi==2026.7.22 \
-    --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775 \
-    --hash=sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55
+certifi==2026.11.20 \
+    --hash=sha256:7422df25243767b9877031a2248cb14d09ddac9beee846f4cef3d5c9191d488f \
+    --hash=sha256:af1cb240a8133f105aa52684a3a3258339d7f2fd0bd4e2812698ff5cf5588c4e
     # via
     #   httpcore
     #   httpx
@@ -348,9 +348,9 @@ distro==1.9.0 \
     #   langsmith
     #   openai
     #   posthog
-dnspython==2.8.0 \
-    --hash=sha256:01d9bbc4a2d76bf0db7c1f729812ded6d912bd318d3b1cf81d30c0f845dbf3af \
-    --hash=sha256:181d3c6996452cb1189c4046c61599b84a5a86e099562ffde77d26984ff26d0f
+dnspython==2.9.2 \
+    --hash=sha256:8d4d39a513e649d634004ce4d39ade2352efcea472a0247535a5c2d18a9d7ba9 \
+    --hash=sha256:af15f7d385a6ae2fb35a796fde2138004c8c42c7389090e2addc83e3b3340fd8
     # via email-validator
 docstring-parser==0.18.0 \
     --hash=sha256:292510982205c12b1248696f44959db3cdd1740237a968ea1e2e7a900eeb2015 \
@@ -697,9 +697,9 @@ langgraph-prebuilt==1.1.0 \
     --hash=sha256:3c579cf6eed2d17f9c157c2d0fcaddcd8688524e7022d3b22b37a3bf4589d528 \
     --hash=sha256:51e311747d755b751d5c6b39b0c1446124d3a7643d2515017e6714b323508fc9
     # via langgraph
-langgraph-sdk==0.4.2 \
-    --hash=sha256:75fa5096c1177ce39c847096a8fe3745ffd480ddb412995f836e9f5f884c43dd \
-    --hash=sha256:b88f0f5f6328ac0680d6790614a905b2bcfa257f2276dba4e38f0e86db0aa738
+langgraph-sdk==0.4.14 \
+    --hash=sha256:13eb1fee92504d87c1f0f43c8e213e7ba0a46bd23a07e3198e413d48efac5833 \
+    --hash=sha256:d47a6755890ae537aa80613a3138680ac77f5d256a2d3953af95a96328e6964d
     # via langgraph
 langsmith==0.10.18 \
     --hash=sha256:388236a4f031c1fe60e1517891c276ed01b102ad4405e0e9236255f2abd24cfa \
@@ -908,20 +908,20 @@ openpyxl==3.1.5 \
     --hash=sha256:5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2 \
     --hash=sha256:cf0e3cf56142039133628b5acffe8ef0c12bc902d2aadd3e0fe5878dc08d1050
     # via compliancehub (pyproject.toml)
-opentelemetry-api==1.44.0 \
-    --hash=sha256:67647e5e9566edcf421166fdf022b3537f818635daa852b289e34604dc6fb33a \
-    --hash=sha256:94b98c893a91b88657eaac1e3ba89618cdb85be6918196705354f34728b2cdef
+opentelemetry-api==1.45.2 \
+    --hash=sha256:2cbd737377e710ee740d261c94e93fa0f08e6d037c18f17513cc0a2d94479a34 \
+    --hash=sha256:d7b0008e21e5fd61cbe7a7f34ca3b6905a78ab677d9bc395e299359c75cda6b4
     # via
     #   compliancehub (pyproject.toml)
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
-opentelemetry-sdk==1.44.0 \
-    --hash=sha256:cebe7f65dc12f26ead75c6064de12fd2a9052e5060c0272d402cfa203aae123b \
-    --hash=sha256:df081c4c6bcfdb1211e3e86140376792643128a25f8d72d1d27675936e7e96ad
+opentelemetry-sdk==1.45.2 \
+    --hash=sha256:7eec4de13dd21ff3a1670dcb0e02079e692736f94d733dfdce5af461d884248d \
+    --hash=sha256:ff974ea70ee4f1d51e2ec152db37c2b626c7bf82bb3f7d86114fd8704e7199c6
     # via compliancehub (pyproject.toml)
-opentelemetry-semantic-conventions==0.65b0 \
-    --hash=sha256:1cacde7b0ad306f84c5ef08c3dbe1bbaf20165bba6f8bff43b670e555a086bcb \
-    --hash=sha256:f9b2b81e9d5b64f11bc952075e7e9c7fb0aab075c7fd1c46d597f1b919852d60
+opentelemetry-semantic-conventions==0.66b2 \
+    --hash=sha256:4cbe61e5f9275d57ab31708446e7938ef4291ebbe6a7fca6f7a629c5acae87d8 \
+    --hash=sha256:7da5f1a5dc4383eb66711d4d3d3e71824d9403ac1559fea021cc103c1a4c4976
     # via opentelemetry-sdk
 orjson==3.11.9 \
     --hash=sha256:011382e2a60fda9d46f1cdee31068cfc52ffe952b587d683ec0463002802a0f4 \
@@ -1271,9 +1271,9 @@ pydantic-core==2.46.4 \
     --hash=sha256:fc3e9034a63de20e15e8ade85358bc6efc614008cab72898b4b4952bea0509ff \
     --hash=sha256:fd8b3d9fd264be37976686c7f65cd52a83f5e84f4bfd2adf9c1d469676bbb6ae
     # via pydantic
-pyjwt==2.13.0 \
-    --hash=sha256:41571c89ca91598c79e8ef18a2d07367d4810fbbd6f637794879baf1b7703423 \
-    --hash=sha256:66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728
+pyjwt==2.15.1 \
+    --hash=sha256:42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193 \
+    --hash=sha256:4f259e80cdfb6b3fc18a7de51fd1ef9ec79652f25019bae68975ca2468a34df8
     # via
     #   compliancehub (pyproject.toml)
     #   msal
@@ -1576,15 +1576,15 @@ starlette==1.6.0 \
     --hash=sha256:a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c \
     --hash=sha256:d4e3ac5e546444960c710297a3c9fc3f7ebae1b7e963f3d36173b49da535be9b
     # via fastapi
-temporalio==1.31.0 \
-    --hash=sha256:04d26f0f634f5325f6a19a45cd67cc5a2da4bd35268d27997f6723134d38c8be \
-    --hash=sha256:2993f4b880170825414116dec7d7159a5d199efc279f29570be6b5c4a9f6edd5 \
-    --hash=sha256:52f8cc7f0b5a19d49f0c2d748420267aaacc2be0bb614743de8d10faf77a57c9 \
-    --hash=sha256:5f9aaf06000768eb80cf5774457d227379dae455a3099aa0a18c4dca631c0d27 \
-    --hash=sha256:9e840b462125274cb0d4748e7cedc386c303b2a51bf76bab30b96f1ebbc657ae \
-    --hash=sha256:aa6e9602829584b22037da6ccf99d2e089f02cec86ee7178206b1afb115cf092 \
-    --hash=sha256:abbfb486ba00053ccfa57c9c38b38f80f5dbfd08c67beb7a621515a57a9b9e9b \
-    --hash=sha256:f23f36d0e5d2e67f2129fc1cb876cf1e4e614f791a717d692f7c15fb732abe41
+temporalio==1.35.0 \
+    --hash=sha256:45b5438f41ab154eda4eea40069df2fa8779cb8f5c27f266b917a700bfba8bb8 \
+    --hash=sha256:51bae017d484450084daa19afafad12fa0af1a00af351ba304104d7b97b44f9a \
+    --hash=sha256:6f434c0d3b6d049f4473f9f5d3e80b5e80c986440fd0490f2ee70cc631cbcddd \
+    --hash=sha256:8a5ce8b1e9c9e2df5fb9f17a345c0ef0a132c787cef8cf5a6593b5d707648253 \
+    --hash=sha256:96310ae91b098c9fe2194f0892cef25381e8f870e48d5c069230312bbd1c6262 \
+    --hash=sha256:ac3ab920cc05e24a1d420688a49aabed7b2be8f25dd275200dfa839be30980fd \
+    --hash=sha256:b93845a2200d23b8edc9a8b0bf78b58bdb5e78721602b3f64072867e07e28504 \
+    --hash=sha256:c7a14f29909f8d847f78de49305af89c0ec5aea39272cd4050124386ac3ca295
     # via compliancehub (pyproject.toml)
 tenacity==9.1.4 \
     --hash=sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55 \
@@ -1634,9 +1634,9 @@ typing-inspection==0.4.3 \
     # via
     #   fastapi
     #   pydantic
-urllib3==2.7.0 \
-    --hash=sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c \
-    --hash=sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897
+urllib3==2.8.0 \
+    --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3 \
+    --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63
     # via requests
 uuid-utils==0.17.0 \
     --hash=sha256:03815cea572c8a693cab5475b9d750cc161470961c7defa27e9286cad62f38f5 \
@@ -2272,7 +2272,7 @@ zstandard==0.25.0 \
     # via langsmith
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==84.0.0 \
-    --hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670 \
-    --hash=sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73
+setuptools==84.2.1 \
+    --hash=sha256:3ff8b3b5492a0aa66960f4419365a86b84e013070d4313e4d4a6894f5d64d6bc \
+    --hash=sha256:ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2
     # via compliancehub (pyproject.toml::build-system.requires)
