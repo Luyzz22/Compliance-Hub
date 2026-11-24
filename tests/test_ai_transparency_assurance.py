@@ -120,7 +120,10 @@ def test_model_enforces_four_eyes_and_timezone_aware_review() -> None:
         AITransparencyAssessmentUpsert.model_validate(body)
 
 
-def test_assurance_register_defaults_upsert_summary_and_audit_minimization() -> None:
+@patch("app.services.ai_transparency_assurance.datetime", wraps=datetime)
+def test_assurance_register_defaults_upsert_summary_and_audit_minimization(mock_datetime) -> None:
+    # Keep this verified scenario inside its fixture's review window.
+    mock_datetime.now.return_value = datetime(2026, 8, 2, tzinfo=UTC)
     tenant_id = f"transparency-{uuid4().hex[:10]}"
     system_id = f"article50-{uuid4().hex[:10]}"
     with TestClient(app) as client:

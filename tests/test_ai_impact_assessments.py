@@ -135,7 +135,10 @@ def test_model_requires_timezone_and_dpo_involvement_for_approved_dpia() -> None
         AIImpactAssessmentUpsert.model_validate(body)
 
 
-def test_portfolio_defaults_upsert_and_minimized_audit() -> None:
+@patch("app.services.ai_impact_assessments.datetime", wraps=datetime)
+def test_portfolio_defaults_upsert_and_minimized_audit(mock_datetime) -> None:
+    # Keep this approval scenario inside its fixture's review window.
+    mock_datetime.now.return_value = datetime(2026, 8, 2, tzinfo=UTC)
     tenant_id = f"impact-{uuid4().hex[:10]}"
     system_id = f"impact-system-{uuid4().hex[:10]}"
     with TestClient(app) as client:

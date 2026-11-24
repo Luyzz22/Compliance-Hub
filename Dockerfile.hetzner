@@ -23,7 +23,8 @@ ENV PATH=/opt/venv/bin:$PATH \
     LANGCHAIN_TRACING_V2=false \
     LANGSMITH_TRACING=false
 WORKDIR /app
-RUN addgroup --system --gid 10001 compliancehub \
+RUN apk add --no-cache --upgrade 'krb5-libs=1.22.3-r0' \
+    && addgroup --system --gid 10001 compliancehub \
     && adduser --system --disabled-password --no-create-home --uid 10001 --ingroup compliancehub compliancehub \
     && rm -rf /usr/local/lib/python3.11/site-packages/* \
         /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.11
