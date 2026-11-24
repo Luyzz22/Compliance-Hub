@@ -190,6 +190,7 @@ export async function redeemEntraAuthorizationCode(
     scopes: SCOPES,
     redirectUri: config.redirectUri,
     codeVerifier: transaction.codeVerifier,
+    nonce: transaction.nonce,
   });
   const claims = result?.idTokenClaims as IdTokenClaims | undefined;
   if (
